@@ -13,12 +13,39 @@
 }
 
 .navbar.scrolled {
-  background: rgba(245, 237, 232, 0.85);
+  background: rgba(245, 237, 232, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--neutral-border);
 }
 
+/* ── Modo claro (home sobre carrusel oscuro) ── */
+.navbar.light .logoCasa {
+  color: var(--bg-base);
+}
+
+.navbar.light .logoScarlatta {
+  color: rgba(245, 237, 232, 0.85);
+}
+
+.navbar.light .navLink {
+  color: rgba(245, 237, 232, 0.75);
+}
+
+.navbar.light .navLink:hover,
+.navbar.light .navLink.active {
+  color: var(--bg-base);
+}
+
+.navbar.light .navLink::after {
+  background: var(--bg-base);
+}
+
+.navbar.light .menuBtn {
+  color: var(--bg-base);
+}
+
+/* ── Inner layout ── */
 .inner {
   display: flex;
   align-items: center;
@@ -29,6 +56,7 @@
   padding: 0 var(--space-lg);
 }
 
+/* ── Logo ── */
 .logo {
   display: flex;
   flex-direction: column;
@@ -43,6 +71,7 @@
   color: var(--brand-wine);
   text-transform: lowercase;
   letter-spacing: 0.02em;
+  transition: color var(--duration-base) var(--ease-gentle);
 }
 
 .logoScarlatta {
@@ -53,8 +82,10 @@
   color: var(--brand-rose);
   line-height: 1.1;
   margin-top: -2px;
+  transition: color var(--duration-base) var(--ease-gentle);
 }
 
+/* ── Desktop nav links ── */
 .nav {
   display: flex;
   align-items: center;
@@ -70,7 +101,7 @@
   text-decoration: none;
   letter-spacing: 0.02em;
   position: relative;
-  padding-bottom: 2px;
+  padding-bottom: 3px;
   transition: color var(--duration-fast) var(--ease-out);
 }
 
@@ -80,8 +111,9 @@
   bottom: 0;
   left: 0;
   width: 0;
-  height: 1px;
+  height: 2px;
   background: var(--brand-wine);
+  border-radius: 2px;
   transition: width var(--duration-base) var(--ease-out);
 }
 
@@ -90,11 +122,11 @@
   color: var(--brand-wine);
 }
 
-.navLink:hover::after,
 .navLink.active::after {
   width: 100%;
 }
 
+/* ── CTA button ── */
 .ctaBtn {
   font-family: var(--font-body);
   font-size: 13px;
@@ -116,12 +148,15 @@
   box-shadow: 0 6px 20px rgba(123, 31, 46, 0.30);
 }
 
+/* ── Hamburger button ── */
 .menuBtn {
   display: none;
   color: var(--brand-wine);
   padding: 4px;
+  transition: color var(--duration-base) var(--ease-gentle);
 }
 
+/* ── Mobile overlay ── */
 .mobileNav {
   display: none;
   position: fixed;
@@ -131,13 +166,30 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-xl);
-  list-style: none;
-  animation: fadeIn var(--duration-base) var(--ease-out);
 }
 
 .mobileNav.open {
   display: flex;
+  animation: slideDown var(--duration-base) var(--ease-out) both;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobileLinks {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xl);
 }
 
 .mobileNavLink {
@@ -150,8 +202,27 @@
   transition: color var(--duration-fast);
 }
 
-.mobileNavLink:hover {
+.mobileNavLink:hover,
+.mobileActive {
   color: var(--brand-wine);
+}
+
+.mobileNavCta {
+  color: var(--brand-wine);
+  font-style: normal;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--brand-wine);
+  color: var(--text-on-dark);
+  padding: 12px 36px;
+  border-radius: var(--radius-pill);
+  margin-top: var(--space-md);
+}
+
+.mobileNavCta:hover {
+  color: var(--text-on-dark);
+  opacity: 0.9;
 }
 
 .mobileClose {

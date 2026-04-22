@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import styles from './Navbar.module.css'
 
@@ -15,6 +15,10 @@ const links = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+  const location = useLocation()
+
+  const isHome = location.pathname === '/'
+  const isLight = isHome && !scrolled
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -27,9 +31,17 @@ export default function Navbar() {
     return () => { document.body.style.overflow = '' }
   }, [open])
 
+  useEffect(() => {
+    setOpen(false)
+  }, [location.pathname])
+
   return (
     <>
-      <nav className={`${styles.navbar} ${scrolled ? styles.scrolled : ''}`}>
+      <nav className={[
+        styles.navbar,
+        scrolled ? styles.scrolled : '',
+        isLight ? styles.light : '',
+      ].join(' ')}>
         <div className={styles.inner}>
           <Link to="/" className={styles.logo}>
             <span className={styles.logoCasa}>casa</span>
@@ -64,7 +76,7 @@ export default function Navbar() {
         </div>
       </nav>
 
-      <ul className={`${styles.mobileNav} ${open ? styles.open : ''}`}>
+      <div className={`${styles.mobileNav} ${open ? styles.open : ''}`}>
         <button
           className={styles.mobileClose}
           onClick={() => setOpen(false)}
@@ -72,28 +84,31 @@ export default function Navbar() {
         >
           <X size={28} />
         </button>
-        {links.map(({ to, label }) => (
-          <li key={to}>
-            <NavLink
-              to={to}
-              className={styles.mobileNavLink}
+        <ul className={styles.mobileLinks}>
+          {links.map(({ to, label }) => (
+            <li key={to}>
+              <NavLink
+                to={to}
+                className={({ isActive }) =>
+                  `${styles.mobileNavLink}${isActive ? ' ' + styles.mobileActive : ''}`
+                }
+                onClick={() => setOpen(false)}
+              >
+                {label}
+              </NavLink>
+            </li>
+          ))}
+          <li>
+            <Link
+              to="/reservar"
+              className={`${styles.mobileNavLink} ${styles.mobileNavCta}`}
               onClick={() => setOpen(false)}
             >
-              {label}
-            </NavLink>
+              Reservar
+            </Link>
           </li>
-        ))}
-        <li>
-          <Link
-            to="/reservar"
-            className={styles.mobileNavLink}
-            onClick={() => setOpen(false)}
-            style={{ color: 'var(--brand-wine)' }}
-          >
-            Reservar
-          </Link>
-        </li>
-      </ul>
+        </ul>
+      </div>
     </>
   )
 }
