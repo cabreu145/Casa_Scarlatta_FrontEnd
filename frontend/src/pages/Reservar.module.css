@@ -337,6 +337,122 @@
   line-height: 1.7;
 }
 
+/* ── Seat step ── */
+.seatInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-lg);
+}
+
+.seatInfoName {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.seatInfoMeta {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.seatStage {
+  background: var(--bg-elevated);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-label);
+  margin-bottom: var(--space-lg);
+}
+
+.seatGrid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 10px;
+  justify-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.seat {
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(123, 31, 46, 0.35);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.seat:hover:not(:disabled) {
+  background: rgba(123, 31, 46, 0.12);
+  border-color: var(--brand-wine);
+  transform: scale(1.08);
+}
+
+.seat:focus-visible {
+  outline: 2px solid var(--brand-wine);
+  outline-offset: 2px;
+}
+
+.seatOccupied {
+  background: #CCCCCC;
+  border-color: #CCCCCC;
+  cursor: not-allowed;
+}
+
+.seatSelected {
+  background: var(--brand-wine);
+  border-color: var(--brand-wine);
+  box-shadow: 0 0 0 3px rgba(123, 31, 46, 0.20);
+}
+
+.seatLegend {
+  display: flex;
+  gap: var(--space-xl);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md);
+}
+
+.seatLegendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.seatDot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotAvail   { border: 2px solid rgba(123, 31, 46, 0.35); background: transparent; }
+.dotOccupied { background: #CCCCCC; }
+.dotSelected { background: var(--brand-wine); }
+
+.seatConfirmText {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.seatConfirmText strong {
+  color: var(--text-primary);
+}
+
 @media (max-width: 640px) {
   .typeGrid { grid-template-columns: 1fr; }
   .formRow { grid-template-columns: 1fr; }
