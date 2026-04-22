@@ -1,0 +1,147 @@
+.footer {
+  background: var(--neutral-dark);
+  color: var(--text-on-dark);
+  padding: var(--space-4xl) 0 var(--space-xl);
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: var(--space-3xl);
+  padding-bottom: var(--space-3xl);
+  border-bottom: 1px solid rgba(245, 237, 232, 0.12);
+}
+
+.brand .logoCasa {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--brand-blush);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+  display: block;
+}
+
+.brand .logoScarlatta {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--brand-blush);
+  line-height: 1.1;
+  display: block;
+  margin-top: -2px;
+}
+
+.tagline {
+  font-size: 13px;
+  color: rgba(245, 237, 232, 0.55);
+  margin-top: var(--space-md);
+  line-height: 1.6;
+  max-width: 260px;
+}
+
+.colTitle {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--brand-blush);
+  margin-bottom: var(--space-md);
+}
+
+.colLinks {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.colLinks a {
+  font-size: 14px;
+  color: rgba(245, 237, 232, 0.65);
+  text-decoration: none;
+  transition: color var(--duration-fast);
+}
+
+.colLinks a:hover {
+  color: var(--brand-blush);
+}
+
+.schedule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.scheduleRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: rgba(245, 237, 232, 0.65);
+}
+
+.scheduleRow span:first-child {
+  color: rgba(245, 237, 232, 0.45);
+  font-size: 12px;
+}
+
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-xl);
+}
+
+.copy {
+  font-size: 12px;
+  color: rgba(245, 237, 232, 0.35);
+}
+
+.social {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.socialLink {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(245, 237, 232, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(245, 237, 232, 0.55);
+  transition: border-color var(--duration-fast), color var(--duration-fast);
+}
+
+.socialLink:hover {
+  border-color: var(--brand-blush);
+  color: var(--brand-blush);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2xl);
+  }
+}
+
+@media (max-width: 540px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bottom {
+    flex-direction: column;
+    gap: var(--space-md);
+    text-align: center;
+  }
+}

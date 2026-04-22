@@ -1,0 +1,30 @@
+.wrap {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.btn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 22px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--neutral-border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  letter-spacing: 0.03em;
+}
+
+.btn:hover {
+  border-color: var(--brand-wine);
+  color: var(--brand-wine);
+}
+
+.btn.active {
+  background: var(--brand-wine);
+  border-color: var(--brand-wine);
+  color: var(--text-on-dark);
+}

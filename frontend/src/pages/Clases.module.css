@@ -1,0 +1,73 @@
+.hero {
+  padding: var(--space-4xl) 0 var(--space-2xl);
+  background: var(--bg-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.blobTop {
+  top: -100px;
+  right: -60px;
+  width: 400px;
+  height: 400px;
+}
+
+.heroInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  position: relative;
+  z-index: 1;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-xl);
+}
+
+.viewToggle {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.viewBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--neutral-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast);
+}
+
+.viewBtn.active {
+  background: var(--brand-wine);
+  border-color: var(--brand-wine);
+  color: white;
+}
+
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-2xl) var(--space-lg) var(--space-4xl);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-lg);
+}
+
+.count {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-lg);
+}

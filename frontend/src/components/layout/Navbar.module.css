@@ -1,0 +1,173 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  transition: background var(--duration-base) var(--ease-gentle),
+              border-color var(--duration-base) var(--ease-gentle),
+              backdrop-filter var(--duration-base) var(--ease-gentle);
+}
+
+.navbar.scrolled {
+  background: rgba(245, 237, 232, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--neutral-border);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.logo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.logoCasa {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--brand-wine);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.logoScarlatta {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--brand-rose);
+  line-height: 1.1;
+  margin-top: -2px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  list-style: none;
+}
+
+.navLink {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  position: relative;
+  padding-bottom: 2px;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.navLink::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--brand-wine);
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+.navLink:hover,
+.navLink.active {
+  color: var(--brand-wine);
+}
+
+.navLink:hover::after,
+.navLink.active::after {
+  width: 100%;
+}
+
+.ctaBtn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-on-dark);
+  background: var(--brand-wine);
+  padding: 10px 22px;
+  border-radius: var(--radius-pill);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+  letter-spacing: 0.03em;
+}
+
+.ctaBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(123, 31, 46, 0.30);
+}
+
+.menuBtn {
+  display: none;
+  color: var(--brand-wine);
+  padding: 4px;
+}
+
+.mobileNav {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg-base);
+  z-index: 99;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xl);
+  list-style: none;
+  animation: fadeIn var(--duration-base) var(--ease-out);
+}
+
+.mobileNav.open {
+  display: flex;
+}
+
+.mobileNavLink {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 36px;
+  font-weight: 400;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color var(--duration-fast);
+}
+
+.mobileNavLink:hover {
+  color: var(--brand-wine);
+}
+
+.mobileClose {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  color: var(--brand-wine);
+}
+
+@media (max-width: 768px) {
+  .nav,
+  .ctaBtn {
+    display: none;
+  }
+
+  .menuBtn {
+    display: flex;
+  }
+}

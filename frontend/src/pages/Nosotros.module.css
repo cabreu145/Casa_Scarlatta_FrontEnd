@@ -1,0 +1,130 @@
+.hero {
+  padding: var(--space-4xl) 0;
+  background: var(--bg-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.blob {
+  top: -80px;
+  right: -60px;
+  width: 500px;
+  height: 500px;
+}
+
+.heroInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4xl);
+  align-items: center;
+}
+
+.storyContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.storyText {
+  font-size: 17px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.storyImage {
+  width: 100%;
+  aspect-ratio: 4/5;
+  object-fit: cover;
+  border-radius: var(--radius-xl);
+}
+
+/* Team */
+.team {
+  background: var(--bg-surface);
+  padding: var(--space-4xl) 0;
+}
+
+.teamInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-lg);
+  margin-top: var(--space-2xl);
+}
+
+.instructorCard {
+  background: var(--bg-base);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.instructorCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(123, 31, 46, 0.10);
+}
+
+.instructorImg {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.instructorBody {
+  padding: var(--space-lg);
+}
+
+.instructorName {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  color: var(--text-primary);
+}
+
+.instructorRole {
+  font-size: 13px;
+  color: var(--text-label);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 3px;
+}
+
+.instructorBio {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  margin-top: var(--space-sm);
+}
+
+/* Values */
+.valuesSection {
+  padding: var(--space-4xl) 0;
+}
+
+.valuesInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+@media (max-width: 900px) {
+  .heroInner { grid-template-columns: 1fr; }
+  .teamGrid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 540px) {
+  .teamGrid { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,343 @@
+.page {
+  min-height: calc(100vh - 72px);
+  background: var(--bg-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.blob {
+  top: -60px;
+  right: -80px;
+  width: 500px;
+  height: 500px;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: var(--space-4xl) var(--space-lg);
+}
+
+.steps {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-top: var(--space-2xl);
+  margin-bottom: var(--space-3xl);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.step.active {
+  color: var(--brand-wine);
+}
+
+.step.done {
+  color: var(--neutral-taupe);
+}
+
+.stepNum {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.step.active .stepNum {
+  background: var(--brand-wine);
+  color: white;
+  border-color: var(--brand-wine);
+}
+
+.stepLine {
+  flex: 1;
+  height: 1px;
+  background: var(--neutral-border);
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+}
+
+.cardTitle {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xl);
+}
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.typeOption {
+  border: 2px solid var(--neutral-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.typeOption:hover {
+  border-color: var(--brand-wine);
+}
+
+.typeOption.selected {
+  border-color: var(--brand-wine);
+  background: rgba(123, 31, 46, 0.04);
+}
+
+.typeOption.suet {
+  border-color: rgba(204, 26, 26, 0.25);
+  background: rgba(13, 5, 5, 0.03);
+}
+
+.typeOption.suet.selected,
+.typeOption.suet:hover {
+  border-color: var(--suet-red);
+  background: rgba(204, 26, 26, 0.06);
+}
+
+.typeName {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  color: var(--text-primary);
+}
+
+.typeOption.suet .typeName { color: var(--suet-red); }
+.typeOption.flow .typeName { color: var(--brand-wine); }
+
+.typeDesc {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.classesList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.classOption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md) var(--space-lg);
+  border: 1.5px solid var(--neutral-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+  background: var(--bg-base);
+}
+
+.classOption:hover {
+  border-color: var(--brand-wine);
+}
+
+.classOption.selected {
+  border-color: var(--brand-wine);
+  background: rgba(123, 31, 46, 0.04);
+}
+
+.classOptionName {
+  font-family: var(--font-heading);
+  font-size: 17px;
+  color: var(--text-primary);
+}
+
+.classOptionMeta {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.spotsLeft {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-label);
+}
+
+.spotsLeft.low { color: var(--suet-red); }
+
+/* Summary */
+.summary {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.summaryLabel { color: var(--text-muted); }
+.summaryValue {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.field input,
+.field select {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1.5px solid var(--neutral-border);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--brand-wine);
+}
+
+.error {
+  font-size: 12px;
+  color: #C0392B;
+}
+
+.navBtns {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-lg);
+}
+
+.backBtn {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--duration-fast);
+}
+
+.backBtn:hover { color: var(--brand-wine); }
+
+.nextBtn {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-on-dark);
+  background: var(--brand-wine);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 12px 32px;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.nextBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(123, 31, 46, 0.28);
+}
+
+.nextBtn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Success */
+.success {
+  text-align: center;
+  padding: var(--space-3xl) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.successIcon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(123, 31, 46, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-wine);
+}
+
+.successTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 40px;
+  color: var(--brand-wine);
+}
+
+.successText {
+  font-size: 16px;
+  color: var(--text-secondary);
+  max-width: 400px;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .typeGrid { grid-template-columns: 1fr; }
+  .formRow { grid-template-columns: 1fr; }
+}

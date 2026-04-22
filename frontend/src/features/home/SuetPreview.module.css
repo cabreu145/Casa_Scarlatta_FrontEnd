@@ -1,0 +1,126 @@
+.section {
+  background: var(--suet-bg);
+  padding: var(--space-4xl) 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.redGlow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(204, 26, 26, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: var(--space-4xl);
+  position: relative;
+  z-index: 1;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--suet-red);
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: clamp(52px, 8vw, 96px);
+  font-weight: 400;
+  color: var(--text-on-dark);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+}
+
+.desc {
+  font-size: 16px;
+  color: rgba(245, 237, 232, 0.65);
+  line-height: 1.75;
+  max-width: 420px;
+}
+
+.features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.featureItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 14px;
+  color: rgba(245, 237, 232, 0.75);
+}
+
+.featureDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--suet-red);
+  flex-shrink: 0;
+}
+
+.imgGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.imgWrap {
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--suet-surface);
+}
+
+.imgWrap img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  transition: transform var(--duration-slow) var(--ease-out);
+  filter: brightness(0.85) saturate(0.9);
+}
+
+.imgWrap:hover img {
+  transform: scale(1.04);
+}
+
+.imgWrap:first-child {
+  grid-column: span 2;
+}
+
+.imgWrap:first-child img {
+  height: 280px;
+}
+
+@media (max-width: 900px) {
+  .inner {
+    grid-template-columns: 1fr;
+    gap: var(--space-2xl);
+  }
+
+  .imgGrid {
+    order: -1;
+  }
+}

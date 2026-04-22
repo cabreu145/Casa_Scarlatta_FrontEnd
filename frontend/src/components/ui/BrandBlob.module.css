@@ -1,0 +1,15 @@
+.blob {
+  position: absolute;
+  background: var(--brand-blush);
+  opacity: 0.35;
+  animation: blobMorph var(--duration-morph) ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blob {
+    animation: none;
+    border-radius: 60% 40% 70% 30% / 50% 60% 40% 70%;
+  }
+}

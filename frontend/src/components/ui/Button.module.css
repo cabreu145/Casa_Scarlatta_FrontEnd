@@ -1,0 +1,76 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  border-radius: var(--radius-pill);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out),
+              background var(--duration-fast),
+              color var(--duration-fast),
+              border-color var(--duration-fast);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* Sizes */
+.sm  { padding: 9px 20px;  font-size: 13px; }
+.md  { padding: 12px 28px; font-size: 14px; }
+.lg  { padding: 16px 40px; font-size: 15px; }
+
+/* Primary */
+.primary {
+  background: var(--brand-wine);
+  color: var(--text-on-dark);
+}
+.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(123, 31, 46, 0.30);
+}
+.primary:active { transform: translateY(0); }
+
+/* Ghost */
+.ghost {
+  background: transparent;
+  color: var(--brand-wine);
+  border: 1.5px solid var(--brand-wine);
+}
+.ghost:hover {
+  background: var(--brand-wine);
+  color: var(--text-on-dark);
+  transform: translateY(-2px);
+}
+
+/* Ghost Light — sobre fondos oscuros */
+.ghostLight {
+  background: transparent;
+  color: var(--text-on-dark);
+  border: 1.5px solid rgba(245, 237, 232, 0.55);
+}
+.ghostLight:hover {
+  background: rgba(245, 237, 232, 0.12);
+  border-color: var(--text-on-dark);
+  transform: translateY(-2px);
+}
+
+/* Blush */
+.blush {
+  background: var(--brand-blush);
+  color: var(--brand-wine);
+}
+.blush:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(232, 164, 173, 0.40);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}

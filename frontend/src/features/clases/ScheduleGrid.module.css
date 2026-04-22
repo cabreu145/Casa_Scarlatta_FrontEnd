@@ -1,0 +1,71 @@
+.wrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+
+.table thead th {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-label);
+  padding: var(--space-md) var(--space-md);
+  text-align: left;
+  border-bottom: 1px solid var(--neutral-border);
+}
+
+.table tbody tr {
+  border-bottom: 1px solid rgba(123, 31, 46, 0.07);
+  transition: background var(--duration-fast);
+}
+
+.table tbody tr:hover {
+  background: var(--bg-surface);
+}
+
+.table td {
+  padding: var(--space-md) var(--space-md);
+  font-size: 14px;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.className {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.badge.suet {
+  background: rgba(204, 26, 26, 0.08);
+  color: var(--suet-red);
+}
+
+.badge.flow {
+  background: rgba(194, 107, 122, 0.1);
+  color: var(--brand-rose);
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}

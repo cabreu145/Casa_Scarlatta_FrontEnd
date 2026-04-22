@@ -1,0 +1,115 @@
+.section {
+  background: var(--flow-light);
+  padding: var(--space-4xl) 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: var(--space-4xl);
+}
+
+.imgWrap {
+  position: relative;
+}
+
+.mainImg {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  border-radius: var(--radius-xl);
+}
+
+.secondImg {
+  position: absolute;
+  width: 55%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  bottom: -var(--space-xl);
+  right: calc(-1 * var(--space-xl));
+  border: 4px solid var(--flow-light);
+  bottom: var(--space-xl);
+  right: calc(-1 * var(--space-lg));
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--flow-accent);
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: clamp(52px, 8vw, 96px);
+  font-weight: 400;
+  color: var(--brand-wine);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+}
+
+.desc {
+  font-size: 16px;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  max-width: 420px;
+}
+
+.pillars {
+  display: flex;
+  gap: var(--space-xl);
+  margin-top: var(--space-sm);
+}
+
+.pillar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.pillarIcon {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 32px;
+  color: var(--brand-rose);
+}
+
+.pillarLabel {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-label);
+}
+
+.divV {
+  width: 1px;
+  background: var(--neutral-border);
+  align-self: stretch;
+}
+
+@media (max-width: 900px) {
+  .inner {
+    grid-template-columns: 1fr;
+    gap: var(--space-2xl);
+  }
+
+  .secondImg {
+    display: none;
+  }
+}

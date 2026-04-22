@@ -1,0 +1,219 @@
+.hero {
+  min-height: calc(100vh - 72px);
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.blob1 {
+  top: -80px;
+  right: -100px;
+  width: 560px;
+  height: 560px;
+}
+
+.blob2 {
+  bottom: -120px;
+  left: -80px;
+  width: 340px;
+  height: 340px;
+  opacity: 0.18 !important;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-4xl) var(--space-lg);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: var(--space-4xl);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  animation: fadeSlideUp var(--duration-slow) var(--ease-out) both;
+}
+
+.overline {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--text-label);
+}
+
+.titleWrap {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.titleCasa {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: clamp(28px, 4vw, 48px);
+  color: var(--brand-wine);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.titleScarlatta {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(64px, 10vw, 112px);
+  color: var(--brand-rose);
+  line-height: 0.9;
+  margin-top: -4px;
+}
+
+.tagline {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--neutral-taupe);
+  margin-top: var(--space-sm);
+}
+
+.desc {
+  font-size: 17px;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  max-width: 460px;
+  animation: fadeSlideUp var(--duration-slow) var(--ease-out) 150ms both;
+}
+
+.ctas {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  animation: fadeSlideUp var(--duration-slow) var(--ease-out) 250ms both;
+}
+
+.services {
+  display: flex;
+  gap: var(--space-xl);
+  margin-top: var(--space-lg);
+  animation: fadeSlideUp var(--duration-slow) var(--ease-out) 350ms both;
+}
+
+.serviceItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.serviceLabel {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-label);
+}
+
+.serviceName {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.dividerV {
+  width: 1px;
+  background: var(--neutral-border);
+  height: 40px;
+  align-self: center;
+}
+
+.imageWrap {
+  position: relative;
+  animation: fadeSlideUp var(--duration-slow) var(--ease-out) 100ms both;
+}
+
+.mainImage {
+  width: 100%;
+  aspect-ratio: 4/5;
+  object-fit: cover;
+  border-radius: var(--radius-xl);
+}
+
+.floatCard {
+  position: absolute;
+  bottom: var(--space-xl);
+  left: calc(-1 * var(--space-xl));
+  background: var(--bg-base);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 8px 32px rgba(44, 24, 16, 0.08);
+  animation: fadeSlideUp var(--duration-slow) var(--ease-out) 400ms both;
+}
+
+.floatNumber {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 40px;
+  color: var(--brand-wine);
+  line-height: 1;
+}
+
+.floatText {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.scrollHint {
+  position: absolute;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.scrollLine {
+  width: 1px;
+  height: 48px;
+  background: linear-gradient(to bottom, var(--neutral-border), transparent);
+}
+
+@media (max-width: 900px) {
+  .inner {
+    grid-template-columns: 1fr;
+    gap: var(--space-2xl);
+  }
+
+  .imageWrap {
+    order: -1;
+  }
+
+  .mainImage {
+    aspect-ratio: 16/9;
+  }
+
+  .floatCard {
+    left: var(--space-md);
+    bottom: var(--space-md);
+  }
+
+  .scrollHint {
+    display: none;
+  }
+}
