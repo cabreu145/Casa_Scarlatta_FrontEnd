@@ -1,3 +1,4 @@
+/* ── Historia ── */
 .hero {
   padding: var(--space-4xl) 0;
   background: var(--bg-base);
@@ -43,7 +44,46 @@
   border-radius: var(--radius-xl);
 }
 
-/* Team */
+/* ── Banner grupal ── */
+.groupBanner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 5;
+  overflow: hidden;
+}
+
+.groupBannerImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.groupBannerOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(44, 24, 16, 0.50);
+}
+
+.groupBannerText {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(32px, 5vw, 64px);
+  color: var(--bg-base);
+  letter-spacing: 0.02em;
+}
+
+/* ── Equipo ── */
 .team {
   background: var(--bg-surface);
   padding: var(--space-4xl) 0;
@@ -58,10 +98,11 @@
 .teamGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   margin-top: var(--space-2xl);
 }
 
+/* ── Instructor card ── */
 .instructorCard {
   background: var(--bg-base);
   border: 1px solid var(--neutral-border);
@@ -76,53 +117,74 @@
   box-shadow: 0 16px 40px rgba(123, 31, 46, 0.10);
 }
 
+.imgWrap {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+}
+
 .instructorImg {
   width: 100%;
-  aspect-ratio: 3/4;
+  height: 100%;
   object-fit: cover;
   border-radius: 0;
+  display: block;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.instructorCard:hover .instructorImg {
+  transform: scale(1.03);
 }
 
 .instructorBody {
   padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
 }
 
 .instructorName {
   font-family: var(--font-heading);
   font-size: 20px;
   color: var(--text-primary);
+  line-height: 1.2;
 }
 
-.instructorRole {
-  font-size: 13px;
-  color: var(--text-label);
-  font-weight: 500;
+/* ── Specialty badge ── */
+.badge {
+  display: inline-flex;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin-top: 3px;
+  letter-spacing: 0.14em;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.badge_suet {
+  background: rgba(155, 21, 21, 0.10);
+  color: #8B1010;
+}
+
+.badge_flow {
+  background: rgba(194, 107, 122, 0.14);
+  color: var(--brand-wine);
 }
 
 .instructorBio {
   font-size: 14px;
   color: var(--text-secondary);
-  line-height: 1.65;
-  margin-top: var(--space-sm);
+  line-height: 1.7;
+  margin-top: 2px;
 }
 
-/* Values */
-.valuesSection {
-  padding: var(--space-4xl) 0;
-}
-
-.valuesInner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--space-lg);
-}
-
+/* ── Responsive ── */
 @media (max-width: 900px) {
   .heroInner { grid-template-columns: 1fr; }
-  .teamGrid { grid-template-columns: 1fr 1fr; }
+  .teamGrid  { grid-template-columns: 1fr 1fr; }
+  .groupBanner { aspect-ratio: 4 / 3; }
 }
 
 @media (max-width: 540px) {
