@@ -1,0 +1,137 @@
+.carousel {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--neutral-dark);
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1s var(--ease-gentle);
+}
+
+.slide.active {
+  opacity: 1;
+}
+
+.bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(44, 24, 16, 0.35) 0%,
+    rgba(44, 24, 16, 0.55) 60%,
+    rgba(44, 24, 16, 0.70) 100%
+  );
+  z-index: 1;
+}
+
+.content {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  text-align: center;
+  padding: 0 var(--space-lg);
+}
+
+.logoWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  gap: 0;
+}
+
+.logoCasa {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: clamp(20px, 3vw, 28px);
+  color: var(--bg-base);
+  text-transform: lowercase;
+  letter-spacing: 0.08em;
+}
+
+.logoScarlatta {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(72px, 12vw, 120px);
+  color: var(--bg-base);
+  line-height: 0.9;
+  margin-top: -4px;
+}
+
+.tagline {
+  font-family: var(--font-body);
+  font-size: clamp(11px, 1.2vw, 13px);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: rgba(245, 237, 232, 0.75);
+}
+
+.cta {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-on-dark);
+  background: var(--brand-wine);
+  padding: 14px 40px;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+  margin-top: var(--space-sm);
+}
+
+.cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(123, 31, 46, 0.45);
+}
+
+.dots {
+  position: absolute;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(245, 237, 232, 0.40);
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+  padding: 0;
+}
+
+.dot:hover {
+  background: rgba(245, 237, 232, 0.70);
+}
+
+.dotActive {
+  background: var(--bg-base);
+  transform: scale(1.25);
+}

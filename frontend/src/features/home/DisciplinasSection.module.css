@@ -1,0 +1,122 @@
+.section {
+  display: flex;
+  width: 100%;
+}
+
+.card {
+  position: relative;
+  flex: 1;
+  min-height: 520px;
+  overflow: hidden;
+  cursor: pointer;
+  transform: scale(1);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.card:hover {
+  transform: scale(1.02);
+  z-index: 1;
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--brand-wine);
+  outline-offset: -3px;
+}
+
+.cardImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.card:hover .cardImg {
+  transform: scale(1.04);
+}
+
+.cardOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(44, 24, 16, 0.85) 0%,
+    rgba(44, 24, 16, 0.20) 55%,
+    transparent 100%
+  );
+}
+
+.cardContent {
+  position: absolute;
+  bottom: var(--space-3xl);
+  left: var(--space-3xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.cardSub {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: rgba(245, 237, 232, 0.70);
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(56px, 7vw, 96px);
+  color: var(--bg-base);
+  line-height: 0.9;
+}
+
+.hoverCta {
+  position: absolute;
+  bottom: var(--space-3xl);
+  right: var(--space-3xl);
+  background: rgba(245, 237, 232, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(245, 237, 232, 0.30);
+  border-radius: var(--radius-pill);
+  padding: 10px 22px;
+  color: var(--bg-base);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+  pointer-events: none;
+}
+
+.card:hover .hoverCta {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .section {
+    flex-direction: column;
+  }
+
+  .card {
+    min-height: 400px;
+  }
+
+  .cardContent {
+    bottom: var(--space-2xl);
+    left: var(--space-xl);
+  }
+
+  .hoverCta {
+    display: none;
+  }
+}
