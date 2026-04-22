@@ -1,0 +1,209 @@
+.wrapper {
+  width: 100%;
+}
+
+/* ── Mobile tabs (hidden on desktop) ── */
+.mobileTabs {
+  display: none;
+  gap: var(--space-xs);
+  overflow-x: auto;
+  padding-bottom: var(--space-sm);
+  scrollbar-width: none;
+}
+.mobileTabs::-webkit-scrollbar { display: none; }
+
+.mobileTab {
+  flex-shrink: 0;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-label);
+  background: transparent;
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              color var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out);
+}
+
+.mobileTabActive {
+  background: var(--brand-wine);
+  color: var(--text-on-dark);
+  border-color: var(--brand-wine);
+}
+
+/* ── Desktop grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-sm);
+  align-items: start;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.dayHeader {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-label);
+  text-align: center;
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--neutral-border);
+  margin-bottom: var(--space-xs);
+}
+
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 18px;
+  padding: var(--space-md) 0;
+}
+
+/* ── Class block ── */
+.block {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  background: var(--bg-base);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+  animation: fadeSlideUp var(--duration-base) var(--ease-out) both;
+}
+
+.block:hover:not(:disabled) {
+  border-color: var(--brand-rose);
+  box-shadow: 0 4px 16px rgba(123, 31, 46, 0.10);
+  transform: translateY(-1px);
+}
+
+.block:focus-visible {
+  outline: 2px solid var(--brand-wine);
+  outline-offset: 2px;
+}
+
+.blockFull {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.blockTop {
+  margin-bottom: 2px;
+}
+
+.typeTag {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+}
+
+.type_suet {
+  background: rgba(204, 26, 26, 0.12);
+  color: #9B1515;
+}
+
+.type_flow {
+  background: rgba(194, 107, 122, 0.14);
+  color: var(--brand-wine);
+}
+
+.blockName {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.blockMeta {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.blockInstructor {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Capacity badge ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.badge_ok .dot      { background: #3DAD6B; }
+.badge_ok           { color: #2D8A52; }
+
+.badge_low .dot     { background: #E8A020; }
+.badge_low          { color: #B87C10; }
+
+.badge_critical .dot { background: #D94040; }
+.badge_critical      { color: #B02020; }
+
+.badgeFull {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* ── Mobile: single-day panel ── */
+.mobileDay {
+  display: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .grid    { display: none; }
+  .mobileDay { display: block; }
+  .mobileTabs { display: flex; }
+
+  .block {
+    padding: var(--space-md);
+  }
+
+  .blockName { font-size: 14px; }
+  .blockMeta { font-size: 12px; }
+  .blockInstructor { font-size: 12px; }
+}
