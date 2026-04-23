@@ -11,8 +11,8 @@ const Dithering = lazy(() =>
 const links = [
   { to: '/', label: 'Inicio' },
   { to: '/clases', label: 'Clases' },
-  { to: '/suet', label: 'Suet' },
-  { to: '/flow', label: 'Flow' },
+  { to: '/suet', label: 'Stride' },
+  { to: '/flow', label: 'Slow' },
   { to: '/nosotros', label: 'Nosotros' },
   { to: '/contacto', label: 'Contacto' },
 ]

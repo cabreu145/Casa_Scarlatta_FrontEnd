@@ -163,12 +163,12 @@
   border-radius: var(--radius-pill);
 }
 
-.badge_suet {
+.badge_stride {
   background: rgba(155, 21, 21, 0.10);
   color: #8B1010;
 }
 
-.badge_flow {
+.badge_slow {
   background: rgba(194, 107, 122, 0.14);
   color: var(--brand-wine);
 }

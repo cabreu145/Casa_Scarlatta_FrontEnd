@@ -1,8 +1,8 @@
 import styles from './ClassTypeFilter.module.css'
 
 const filters = [
-  { value: 'Suet', label: 'STRIDE' },
-  { value: 'Flow', label: 'SLOW' },
+  { value: 'Stride', label: 'STRIDE' },
+  { value: 'Slow', label: 'SLOW' },
 ]
 
 export default function ClassTypeFilter({ active, onChange }) {

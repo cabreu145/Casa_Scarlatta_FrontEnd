@@ -14,7 +14,7 @@ const features = [
   { icon: <Users size={28} />, title: 'Cupo limitado', desc: 'Máximo 20 personas. Atención personalizada y espacio garantizado en cada clase.' },
 ]
 
-const suetClasses = classes.filter(c => c.type === 'Suet')
+const suetClasses = classes.filter(c => c.type === 'Stride')
 
 export default function Suet() {
   return (
@@ -24,14 +24,14 @@ export default function Suet() {
         <div className={styles.heroBg} />
         <img
           src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1400&q=80"
-          alt="Sala Suet"
+          alt="Sala Stride"
           className={styles.heroImage}
         />
         <div className={styles.redStripes} />
         <div className={styles.glow} />
         <div className={styles.heroContent}>
           <span className={styles.overline}>Casa Scarlatta · Alta intensidad</span>
-          <h1 className={styles.heroTitle}>Suet</h1>
+          <h1 className={styles.heroTitle}>STRIDE</h1>
           <p className={styles.heroSub}>
             Entrenamiento que fusiona cardio y fuerza en bloques de alta
             intensidad con música envolvente. Aquí se suda de verdad.
@@ -84,7 +84,7 @@ export default function Suet() {
       {/* Schedule */}
       <div className={styles.schedule}>
         <SectionHeader
-          label="Horarios Suet"
+          label="Horarios STRIDE"
           title="Próximas clases"
           dark
           size="md"

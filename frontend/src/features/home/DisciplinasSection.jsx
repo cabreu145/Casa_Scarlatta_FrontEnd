@@ -31,7 +31,7 @@ export default function DisciplinasSection() {
       <div className={styles.intro}>
         <span className={styles.introLabel}>DISCIPLINES</span>
         <h2 className={styles.introTitle}>
-          Move with Purpose,<br />Live with Intention.
+          Move with Purpose,Live with Intention.
         </h2>
       </div>
       <div className={styles.cardsRow}>

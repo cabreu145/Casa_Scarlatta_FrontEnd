@@ -4,8 +4,8 @@ import { X } from 'lucide-react'
 import styles from './SeatSelector.module.css'
 
 const LAYOUT = {
-  Suet: { rows: 4, cols: 5 },
-  Flow: { rows: 3, cols: 5 },
+  Stride: { rows: 4, cols: 5 },
+  Slow: { rows: 3, cols: 5 },
 }
 
 function generateOccupied(rows, cols, totalSpots) {

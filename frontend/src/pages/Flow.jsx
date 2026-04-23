@@ -5,7 +5,7 @@ import SectionHeader from '@/components/ui/SectionHeader'
 import { classes } from '@/data/classes'
 import styles from './Flow.module.css'
 
-const flowClasses = classes.filter(c => c.type === 'Flow')
+const flowClasses = classes.filter(c => c.type === 'Slow')
 
 const values = [
   { num: '01', title: 'Pilates Mat', desc: 'Fortalece el core desde adentro. Trabajo profundo, respiración y conciencia corporal.' },
@@ -23,7 +23,7 @@ export default function Flow() {
         <div className={styles.heroInner}>
           <div className={styles.heroContent}>
             <span className={styles.overline}>Casa Scarlatta · Movimiento consciente</span>
-            <h1 className={styles.heroTitle}>Flow</h1>
+            <h1 className={styles.heroTitle}>Slow</h1>
             <p className={styles.heroSub}>
               Una experiencia transformadora que fusiona movimiento consciente,
               fuerza y meditación. Tu espacio para conectarte.
@@ -36,7 +36,7 @@ export default function Flow() {
           <div className={styles.heroImageWrap}>
             <img
               src="https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=700&q=80"
-              alt="Sala Flow — pilates y meditación"
+              alt="Sala Slow — pilates y meditación"
               className={styles.heroImage}
               loading="eager"
             />
@@ -49,7 +49,7 @@ export default function Flow() {
         <div className={styles.valuesInner}>
           <SectionHeader
             label="La práctica"
-            title="Tres pilares del Flow"
+            title="Tres pilares del Slow"
             size="md"
           />
           <div className={styles.valuesGrid}>
@@ -67,7 +67,7 @@ export default function Flow() {
       {/* Classes */}
       <section className={styles.classesSec}>
         <SectionHeader
-          label="Horarios Flow"
+          label="Horarios Slow"
           title="Encuentra tu clase"
           subtitle="Cupo máximo de 15 personas para garantizar atención personalizada."
           size="md"

@@ -9,11 +9,11 @@ const slides = [
   },
   {
     src: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1600&q=80',
-    alt: 'Sala Suet — alta intensidad',
+    alt: 'Sala STRIDE — alta intensidad',
   },
   {
     src: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=1600&q=80',
-    alt: 'Sala Flow — movimiento consciente',
+    alt: 'Sala Slow — movimiento consciente',
   },
   {
     src: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1600&q=80',

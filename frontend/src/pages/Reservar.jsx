@@ -9,14 +9,14 @@ import styles from './Reservar.module.css'
 
 const salas = [
   {
-    key: 'Suet',
-    nombre: 'STRIDE',
+    key: 'Stride',
+    nombre: 'Stride',
     subtexto: 'Alta intensidad',
     img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&q=80',
     alt: 'Sala Stride — alta intensidad',
   },
   {
-    key: 'Flow',
+    key: 'Slow',
     nombre: 'SLOW',
     subtexto: 'Movimiento consciente',
     img: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=1200&q=80',
@@ -100,7 +100,7 @@ export default function Reservar() {
                 ← Cambiar sala
               </button>
               <span className={styles.calendarType}>
-                {selectedType === 'Suet' ? 'STRIDE' : 'SLOW'}
+                {selectedType === 'Stride' ? 'STRIDE' : 'SLOW'}
               </span>
             </div>
             <WeeklyCalendar

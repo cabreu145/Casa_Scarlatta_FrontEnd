@@ -22,7 +22,7 @@ export default function FlowPreview() {
 
         <div className={styles.content}>
           <span className={styles.label}>Movimiento consciente</span>
-          <h2 className={styles.title}>Flow</h2>
+          <h2 className={styles.title}>Slow</h2>
           <p className={styles.desc}>
             Una experiencia transformadora que fusiona movimiento consciente,
             fuerza y meditación. Ambiente zen, espacio de calma y presencia.
@@ -41,12 +41,12 @@ export default function FlowPreview() {
             <div className={styles.divV} />
             <div className={styles.pillar}>
               <span className={styles.pillarIcon}>∿</span>
-              <span className={styles.pillarLabel}>Flow</span>
+              <span className={styles.pillarLabel}>Slow</span>
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 'var(--space-md)', marginTop: 'var(--space-sm)' }}>
-            <Button to="/flow">Conocer Flow</Button>
+            <Button to="/flow">Conocer Slow</Button>
             <Button to="/reservar" variant="ghost">Reservar</Button>
           </div>
         </div>

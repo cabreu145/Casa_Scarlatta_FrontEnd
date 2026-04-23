@@ -50,7 +50,7 @@ export default function PricingSection() {
       <div className={styles.inner}>
         <div className={styles.header}>
           <span className={styles.label}>MEMBRESÍAS</span>
-          <h2 className={styles.title}>Elige tu plan</h2>
+          <h2 className={styles.title}>Elige tu Paquete</h2>
         </div>
         <div className={styles.grid}>
           {plans.map(({ key, nombre, precio, clases, destacado, beneficios }) => (

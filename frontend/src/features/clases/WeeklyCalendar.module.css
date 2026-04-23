@@ -124,12 +124,12 @@
   border-radius: var(--radius-pill);
 }
 
-.type_suet {
+.type_stride {
   background: rgba(204, 26, 26, 0.12);
   color: #9B1515;
 }
 
-.type_flow {
+.type_slow {
   background: rgba(194, 107, 122, 0.14);
   color: var(--brand-wine);
 }
