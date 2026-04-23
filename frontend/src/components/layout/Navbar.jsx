@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react' // useState kept for mobile menu
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import LiquidButton from '@/components/ui/LiquidButton'
@@ -18,19 +18,9 @@ const links = [
 ]
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-
-  const isHome = location.pathname === '/'
-  const isLight = isHome && !scrolled
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
@@ -43,11 +33,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={[
-        styles.navbar,
-        scrolled ? styles.scrolled : '',
-        isLight ? styles.light : '',
-      ].join(' ')}>
+      <nav className={styles.navbar}>
         <Suspense fallback={null}>
           <div style={{
             position: 'absolute', inset: 0,

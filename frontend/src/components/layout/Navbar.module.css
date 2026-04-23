@@ -8,53 +8,10 @@
   display: flex;
   align-items: center;
   overflow: hidden;
-  transition: background var(--duration-base) var(--ease-gentle),
-              border-color var(--duration-base) var(--ease-gentle),
-              backdrop-filter var(--duration-base) var(--ease-gentle);
-}
-
-.navbar.scrolled {
-  background: rgba(245, 237, 232, 0.88);
+  background: rgba(245, 237, 232, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--neutral-border);
-}
-
-/* ── Modo claro (home sobre carrusel oscuro) ── */
-.navbar.light .logoCasa {
-  color: var(--bg-base);
-}
-
-.navbar.light .logoScarlatta {
-  color: rgba(245, 237, 232, 0.85);
-}
-
-.navbar.light .navLink .linkText {
-  color: rgba(245, 237, 232, 0.75);
-}
-
-.navbar.light .navLink:hover .linkText {
-  color: var(--bg-base);
-}
-
-.navbar.light .navLink.active .linkText {
-  color: var(--bg-base);
-}
-
-.navbar.light .navLink::before {
-  border-color: var(--bg-base);
-}
-
-.navbar.light .navLink::after {
-  background: rgba(245, 237, 232, 0.20);
-}
-
-.navbar.light .navLink:hover .linkText {
-  color: var(--text-primary);
-}
-
-.navbar.light .menuBtn {
-  color: var(--bg-base);
 }
 
 /* ── Inner layout ── */
