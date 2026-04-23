@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
+import LiquidButton from '@/components/ui/LiquidButton'
 import styles from './Navbar.module.css'
 
 const links = [
@@ -16,6 +17,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
 
   const isHome = location.pathname === '/'
   const isLight = isHome && !scrolled
@@ -64,7 +66,7 @@ export default function Navbar() {
             ))}
           </ul>
 
-          <Link to="/reservar" className={styles.ctaBtn}>Reservar</Link>
+          <LiquidButton onClick={() => navigate('/reservar')}>Reservar</LiquidButton>
 
           <button
             className={styles.menuBtn}
