@@ -84,6 +84,13 @@
   );
 }
 
+.cardMotionBtn {
+  position: absolute;
+  top: var(--space-xl);
+  right: var(--space-xl);
+  z-index: 2;
+}
+
 .cardContent {
   position: absolute;
   bottom: var(--space-3xl);

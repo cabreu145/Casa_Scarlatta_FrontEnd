@@ -1,0 +1,56 @@
+.motionBtn {
+  background: var(--bg-base);
+  position: relative;
+  height: auto;
+  width: 200px;
+  cursor: pointer;
+  border-radius: 40px;
+  border: none;
+  padding: 4px;
+  outline: none;
+}
+
+.circle {
+  display: block;
+  height: 48px;
+  width: 48px;
+  overflow: hidden;
+  border-radius: 40px;
+  background: var(--brand-wine);
+  transition: width 500ms ease;
+}
+
+.motionBtn:hover .circle {
+  width: 100%;
+}
+
+.icon {
+  position: absolute;
+  top: 50%;
+  left: 16px;
+  transform: translateY(-50%);
+  transition: transform 500ms ease;
+  color: var(--bg-base);
+}
+
+.motionBtn:hover .icon {
+  transform: translateY(-50%) translateX(4px);
+}
+
+.btnText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin-left: 16px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 500ms ease;
+}
+
+.motionBtn:hover .btnText {
+  color: var(--bg-base);
+}
