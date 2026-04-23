@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import LiquidButton from '@/components/ui/LiquidButton'
 import styles from './Navbar.module.css'
+
+const Dithering = lazy(() =>
+  import('@paper-design/shaders-react').then(mod => ({ default: mod.Dithering }))
+)
 
 const links = [
   { to: '/', label: 'Inicio' },
@@ -44,6 +48,21 @@ export default function Navbar() {
         scrolled ? styles.scrolled : '',
         isLight ? styles.light : '',
       ].join(' ')}>
+        <Suspense fallback={null}>
+          <div style={{
+            position: 'absolute', inset: 0,
+            pointerEvents: 'none', zIndex: 0, opacity: 0.18,
+          }}>
+            <Dithering
+              colorBack="#00000000"
+              colorFront="#7B1F2E"
+              shape="warp"
+              type="4x4"
+              speed={0.12}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </div>
+        </Suspense>
         <div className={styles.inner}>
           <Link to="/" className={styles.logo}>
             <span className={styles.logoCasa}>casa</span>
