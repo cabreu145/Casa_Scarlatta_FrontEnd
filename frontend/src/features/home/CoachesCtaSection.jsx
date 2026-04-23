@@ -1,7 +1,10 @@
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import MotionButton from '@/components/ui/MotionButton'
 import styles from './CoachesCtaSection.module.css'
 
 export default function CoachesCtaSection() {
+  const navigate = useNavigate()
+
   return (
     <section className={styles.section}>
       <img
@@ -16,7 +19,7 @@ export default function CoachesCtaSection() {
         <p className={styles.subtitle}>
           Instructores certificados, apasionados por el movimiento
         </p>
-        <Link to="/nosotros" className={styles.cta}>Conócenos</Link>
+        <MotionButton label="Conócenos" onClick={() => navigate('/nosotros')} />
       </div>
     </section>
   )
