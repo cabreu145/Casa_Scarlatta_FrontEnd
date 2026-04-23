@@ -1,5 +1,10 @@
+import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './Footer.module.css'
+
+const Dithering = lazy(() =>
+  import('@paper-design/shaders-react').then(mod => ({ default: mod.Dithering }))
+)
 
 const IconInstagram = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -24,7 +29,23 @@ export default function Footer() {
 
   return (
     <footer className={styles.footer}>
-      <div className={styles.inner}>
+      <Suspense fallback={null}>
+        <div style={{
+          position: 'absolute', top: 0, left: 0,
+          width: '100%', height: '100%',
+          pointerEvents: 'none', zIndex: 0, opacity: 0.15,
+        }}>
+          <Dithering
+            colorBack="#00000000"
+            colorFront="#C0392B"
+            shape="warp"
+            type="4x4"
+            speed={0.15}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+      </Suspense>
+      <div className={styles.inner} style={{ position: 'relative', zIndex: 1 }}>
         <div className={styles.grid}>
           <div className={styles.brand}>
             <Link to="/">

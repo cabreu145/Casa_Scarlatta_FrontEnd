@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './HeroCarousel.module.css'
+
+const Dithering = lazy(() =>
+  import('@paper-design/shaders-react').then(mod => ({ default: mod.Dithering }))
+)
 
 const slides = [
   {
@@ -49,6 +53,23 @@ export default function HeroCarousel() {
       onMouseLeave={() => setPaused(false)}
       aria-label="Hero — Casa Scarlatta"
     >
+      <Suspense fallback={null}>
+        <div style={{
+          position: 'absolute', top: 0, left: 0,
+          width: '100%', height: '100%',
+          pointerEvents: 'none', zIndex: 0, opacity: 0.3,
+        }}>
+          <Dithering
+            colorBack="#00000000"
+            colorFront="#C0392B"
+            shape="warp"
+            type="4x4"
+            speed={0.2}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+      </Suspense>
+
       {slides.map((slide, i) => (
         <div
           key={i}

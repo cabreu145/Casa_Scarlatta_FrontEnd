@@ -2,6 +2,8 @@
   background: var(--neutral-dark);
   color: var(--text-on-dark);
   padding: var(--space-4xl) 0 var(--space-xl);
+  position: relative;
+  overflow: hidden;
 }
 
 .inner {
