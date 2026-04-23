@@ -1,14 +1,50 @@
-.section {
+.wrapper {
+  background: var(--bg-base);
+  padding-top: 80px;
+}
+
+.intro {
+  text-align: center;
+  padding-bottom: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.introLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #9A7B6B;
+}
+
+.introTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 64px;
+  line-height: 1.1;
+  color: var(--brand-wine);
+}
+
+.cardsRow {
   display: flex;
   width: 100%;
+  gap: 24px;
+  padding: 0 24px 80px;
+  box-sizing: border-box;
 }
 
 .card {
   position: relative;
-  flex: 1;
+  flex: 0 0 calc(50% - 12px);
   min-height: 520px;
   overflow: hidden;
   cursor: pointer;
+  border-radius: 20px;
   transform: scale(1);
   transition: transform var(--duration-base) var(--ease-out);
 }
@@ -103,11 +139,18 @@
 }
 
 @media (max-width: 768px) {
-  .section {
+  .introTitle {
+    font-size: 40px;
+    padding: 0 var(--space-lg);
+  }
+
+  .cardsRow {
     flex-direction: column;
+    padding: 0 16px 60px;
   }
 
   .card {
+    flex: 0 0 auto;
     min-height: 400px;
   }
 
