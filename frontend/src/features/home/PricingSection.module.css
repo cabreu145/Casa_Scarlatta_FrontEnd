@@ -1,0 +1,215 @@
+.section {
+  background: var(--bg-base);
+  padding: 80px 0;
+}
+
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.label {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #9A7B6B;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 52px;
+  color: var(--brand-wine);
+  line-height: 1.1;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Card base ── */
+.card {
+  position: relative;
+  background: #EDE0D9;
+  border: 1px solid rgba(123, 31, 46, 0.15);
+  border-radius: 20px;
+  padding: 40px 32px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Card destacada (Esencial) ── */
+.cardFeatured {
+  background: var(--brand-wine);
+  border-color: var(--brand-wine);
+  color: var(--bg-base);
+  padding-top: 52px;
+}
+
+/* ── Badge MÁS POPULAR ── */
+.badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--brand-rose);
+  color: var(--bg-base);
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding: 5px 16px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+/* ── Plan name ── */
+.planName {
+  font-family: var(--font-heading);
+  font-size: 28px;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+.cardFeatured .planName {
+  color: var(--bg-base);
+}
+
+/* ── Price ── */
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.price {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 52px;
+  font-weight: 400;
+  color: var(--brand-wine);
+  line-height: 1;
+}
+
+.cardFeatured .price {
+  color: var(--bg-base);
+}
+
+.priceSuffix {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.cardFeatured .priceSuffix {
+  color: rgba(245, 237, 232, 0.65);
+}
+
+/* ── Clases label ── */
+.clasesLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+
+.cardFeatured .clasesLabel {
+  color: rgba(245, 237, 232, 0.65);
+}
+
+/* ── Beneficios ── */
+.beneficios {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 36px;
+  flex: 1;
+}
+
+.beneficio {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.cardFeatured .beneficio {
+  color: rgba(245, 237, 232, 0.85);
+}
+
+.bullet {
+  color: var(--brand-wine);
+  font-size: 8px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.cardFeatured .bullet {
+  color: var(--brand-rose);
+}
+
+/* ── CTA button ── */
+.cta {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 13px 28px;
+  border-radius: var(--radius-pill);
+  border: none;
+  cursor: pointer;
+  background: var(--brand-wine);
+  color: var(--bg-base);
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+  align-self: stretch;
+}
+
+.cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(123, 31, 46, 0.28);
+}
+
+.ctaFeatured {
+  background: var(--bg-base);
+  color: var(--brand-wine);
+}
+
+.ctaFeatured:hover {
+  box-shadow: 0 8px 24px rgba(245, 237, 232, 0.20);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .title {
+    font-size: 40px;
+  }
+}
