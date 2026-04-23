@@ -79,7 +79,7 @@ export default function Navbar() {
                     `${styles.navLink}${isActive ? ' ' + styles.active : ''}`
                   }
                 >
-                  {label}
+                  <span className={styles.linkText}>{label}</span>
                 </NavLink>
               </li>
             ))}

@@ -29,17 +29,28 @@
   color: rgba(245, 237, 232, 0.85);
 }
 
-.navbar.light .navLink {
+.navbar.light .navLink .linkText {
   color: rgba(245, 237, 232, 0.75);
 }
 
-.navbar.light .navLink:hover,
-.navbar.light .navLink.active {
+.navbar.light .navLink:hover .linkText {
   color: var(--bg-base);
 }
 
+.navbar.light .navLink.active .linkText {
+  color: var(--bg-base);
+}
+
+.navbar.light .navLink::before {
+  border-color: var(--bg-base);
+}
+
 .navbar.light .navLink::after {
-  background: var(--bg-base);
+  background: rgba(245, 237, 232, 0.20);
+}
+
+.navbar.light .navLink:hover .linkText {
+  color: var(--text-primary);
 }
 
 .navbar.light .menuBtn {
@@ -92,7 +103,7 @@
 .nav {
   display: flex;
   align-items: center;
-  gap: var(--space-xl);
+  gap: var(--space-sm);
   list-style: none;
 }
 
@@ -104,29 +115,70 @@
   text-decoration: none;
   letter-spacing: 0.02em;
   position: relative;
-  padding-bottom: 3px;
-  transition: color var(--duration-fast) var(--ease-out);
+  display: inline-block;
 }
 
-.navLink::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--brand-wine);
-  border-radius: 2px;
-  transition: width var(--duration-base) var(--ease-out);
+.linkText {
+  position: relative;
+  z-index: 10;
+  display: block;
+  padding: 6px 10px;
+  transition: color 300ms ease;
 }
 
-.navLink:hover,
-.navLink.active {
+.navLink:hover .linkText,
+.navLink.active .linkText {
   color: var(--brand-wine);
 }
 
-.navLink.active::after {
+/* Borde top+bottom animado */
+.navLink::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-top: 2px solid var(--brand-wine);
+  border-bottom: 2px solid var(--brand-wine);
+  transform: scaleY(2);
+  opacity: 0;
+  transition: transform 300ms ease, opacity 300ms ease;
+  transform-origin: center;
+}
+
+.navLink:hover::before {
+  transform: scaleY(1);
+  opacity: 1;
+}
+
+/* Relleno de fondo animado */
+.navLink::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 0;
   width: 100%;
+  height: calc(100% - 2px);
+  background: var(--brand-wine);
+  transform: scaleY(0);
+  opacity: 0;
+  transition: transform 300ms ease, opacity 300ms ease;
+  transform-origin: top;
+}
+
+.navLink:hover::after {
+  transform: scaleY(1);
+  opacity: 1;
+}
+
+.navLink:hover .linkText {
+  color: var(--bg-base);
+}
+
+/* Estado activo — borde bottom como indicador permanente */
+.navLink.active::before {
+  border-top: none;
+  border-bottom: 2px solid var(--brand-wine);
+  transform: scaleY(1);
+  opacity: 1;
 }
 
 /* ── CTA button ── */
