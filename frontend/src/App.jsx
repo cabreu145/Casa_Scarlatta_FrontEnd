@@ -10,6 +10,7 @@ import Flow from '@/pages/Flow'
 import Nosotros from '@/pages/Nosotros'
 import Contacto from '@/pages/Contacto'
 import Reservar from '@/pages/Reservar'
+import Login from '@/pages/Login'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -23,6 +24,7 @@ function AnimatedRoutes() {
         <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
         <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
         <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
+        <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   )

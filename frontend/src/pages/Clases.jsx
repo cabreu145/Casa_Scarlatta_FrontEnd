@@ -8,10 +8,10 @@ import { classes } from '@/data/classes'
 import styles from './Clases.module.css'
 
 export default function Clases() {
-  const [filter, setFilter] = useState('Todos')
+  const [filter, setFilter] = useState(null)
   const [selectedClass, setSelectedClass] = useState(null)
 
-  const filtered = filter === 'Todos' ? classes : classes.filter(c => c.type === filter)
+  const filtered = filter ? classes.filter(c => c.type === filter) : classes
 
   return (
     <main>

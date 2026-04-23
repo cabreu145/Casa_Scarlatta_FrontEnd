@@ -40,7 +40,7 @@ export default function SeatSelector({ cls, onClose }) {
   }
 
   function confirm() {
-    navigate('/reservar', {
+    navigate('/login', {
       state: { selectedClass: cls, selectedSeat: selected },
     })
   }
