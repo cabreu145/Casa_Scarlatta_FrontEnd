@@ -71,7 +71,7 @@ export default function Navbar() {
             ))}
           </ul>
 
-          <LiquidButton onClick={() => navigate('/reservar')}>Reservar</LiquidButton>
+          <LiquidButton onClick={() => navigate('/login')}>Iniciar sesión</LiquidButton>
 
           <button
             className={styles.menuBtn}
