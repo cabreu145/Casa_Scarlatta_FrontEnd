@@ -65,6 +65,34 @@ export const useClasesStore = create(
         return true
       },
 
+      // Reserva desde el flujo público /reservar (datos vienen de classes.js)
+      reservarDesdePublico: (userId, cls, asiento) => {
+        const hoy = new Date()
+        const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+        const diaIndex = dias.indexOf(cls.day)
+        const hoySemana = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1
+        const diff = diaIndex >= 0 ? diaIndex - hoySemana : 0
+        const fecha = new Date(hoy)
+        fecha.setDate(hoy.getDate() + (diff >= 0 ? diff : diff + 7))
+
+        const nuevaReserva = {
+          id: Date.now(),
+          userId,
+          claseId: null,
+          claseNombre: cls.name,
+          claseHora: cls.time,
+          claseDia: cls.day,
+          coachNombre: cls.instructor,
+          tipo: cls.type,
+          asiento,
+          estado: 'confirmada',
+          fecha: fecha.toISOString().split('T')[0],
+        }
+
+        set((state) => ({ reservas: [...state.reservas, nuevaReserva] }))
+        return nuevaReserva
+      },
+
       agregarClase: (nuevaClase) =>
         set((state) => ({
           clases: [...state.clases, { ...nuevaClase, id: Date.now() }],

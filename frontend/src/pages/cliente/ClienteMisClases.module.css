@@ -1,0 +1,64 @@
+.cancelModal {
+  max-width: 440px;
+  text-align: center;
+}
+
+.modalIcon {
+  display: flex;
+  justify-content: center;
+  color: #B45309;
+  margin-bottom: var(--space-xs);
+}
+
+.claseResumen {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.claseNombre {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.claseDetalle {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.aviso {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: var(--radius-md);
+  padding: var(--space-md) var(--space-lg);
+  font-size: 13px;
+  text-align: left;
+}
+
+.aviso strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.aviso span {
+  line-height: 1.5;
+}
+
+.avisoOk {
+  background: rgba(34, 139, 34, 0.08);
+  border: 1px solid rgba(34, 139, 34, 0.25);
+  color: #1a6b1a;
+}
+
+.avisoWarn {
+  background: rgba(180, 83, 9, 0.08);
+  border: 1px solid rgba(180, 83, 9, 0.25);
+  color: #92400E;
+}

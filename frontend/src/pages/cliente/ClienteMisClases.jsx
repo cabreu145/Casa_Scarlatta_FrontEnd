@@ -1,9 +1,11 @@
-import { CalendarDays, BookOpen, CreditCard, User } from 'lucide-react'
+import { useState } from 'react'
+import { CalendarDays, BookOpen, CreditCard, User, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
 import { useClasesStore } from '@/stores/clasesStore'
 import styles from '@/styles/dashboard.module.css'
+import localStyles from './ClienteMisClases.module.css'
 
 const clienteLinks = [
   { to: '/cliente/dashboard', icon: CalendarDays, label: 'Dashboard' },
@@ -13,27 +15,35 @@ const clienteLinks = [
   { to: '/cliente/perfil', icon: User, label: 'Perfil' },
 ]
 
+function horasHastaClase(reserva) {
+  const ahora = new Date()
+  const fechaClase = new Date(`${reserva.fecha}T${reserva.claseHora}:00`)
+  return (fechaClase - ahora) / 1000 / 60 / 60
+}
+
 export default function ClienteMisClases() {
   const { usuario, actualizarClasesPaquete } = useAuth()
   const { getReservasByUsuario, cancelarReserva } = useClasesStore()
   const reservas = getReservasByUsuario(usuario?.id)
+  const [confirmando, setConfirmando] = useState(null)
 
-  const puedeCanselar = (reserva) => {
-    if (reserva.estado !== 'confirmada') return false
-    const ahora = new Date()
-    const fechaClase = new Date(`${reserva.fecha}T${reserva.claseHora}:00`)
-    const diffHoras = (fechaClase - ahora) / 1000 / 60 / 60
-    return diffHoras > 2
-  }
+  const devuelveCredito = confirmando
+    ? horasHastaClase(confirmando) > 2
+    : false
 
-  const handleCancelar = (reserva) => {
-    const ok = cancelarReserva(reserva.id, usuario.id)
+  const handleConfirmarCancelacion = () => {
+    const ok = cancelarReserva(confirmando.id, usuario.id)
     if (ok) {
-      actualizarClasesPaquete(1)
-      toast.success('Clase cancelada. Crédito devuelto.')
+      if (devuelveCredito) {
+        actualizarClasesPaquete(1)
+        toast.success('Clase cancelada. Tu crédito fue devuelto.')
+      } else {
+        toast('Clase cancelada. Sin devolución de crédito por cancelación tardía.', { icon: '⚠️' })
+      }
     } else {
-      toast.error('No se pudo cancelar la clase')
+      toast.error('No se pudo cancelar la clase.')
     }
+    setConfirmando(null)
   }
 
   const estadoClass = {
@@ -87,10 +97,10 @@ export default function ClienteMisClases() {
                       </span>
                     </td>
                     <td>
-                      {puedeCanselar(r) && (
+                      {r.estado === 'confirmada' && (
                         <button
                           className={`${styles.btn} ${styles.btnDanger} ${styles.btnSm}`}
-                          onClick={() => handleCancelar(r)}
+                          onClick={() => setConfirmando(r)}
                         >
                           Cancelar
                         </button>
@@ -100,6 +110,55 @@ export default function ClienteMisClases() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Modal de confirmación */}
+        {confirmando && (
+          <div className={styles.modalOverlay}>
+            <div className={`${styles.modal} ${localStyles.cancelModal}`}>
+              <div className={localStyles.modalIcon}>
+                <AlertTriangle size={32} strokeWidth={1.5} />
+              </div>
+
+              <h2 className={styles.modalTitle}>¿Cancelar esta clase?</h2>
+
+              <div className={localStyles.claseResumen}>
+                <span className={localStyles.claseNombre}>{confirmando.claseNombre}</span>
+                <span className={localStyles.claseDetalle}>
+                  {confirmando.claseDia} · {confirmando.claseHora} · {confirmando.coachNombre}
+                </span>
+              </div>
+
+              <div className={`${localStyles.aviso} ${devuelveCredito ? localStyles.avisoOk : localStyles.avisoWarn}`}>
+                {devuelveCredito ? (
+                  <>
+                    <strong>✓ Tu crédito será devuelto</strong>
+                    <span>Estás cancelando con más de 2 horas de anticipación.</span>
+                  </>
+                ) : (
+                  <>
+                    <strong>⚠ Sin devolución de crédito</strong>
+                    <span>Solo se devuelve el crédito si cancelas con al menos 2 horas de anticipación.</span>
+                  </>
+                )}
+              </div>
+
+              <div className={styles.modalActions}>
+                <button
+                  className={`${styles.btn} ${styles.btnSecondary}`}
+                  onClick={() => setConfirmando(null)}
+                >
+                  Mantener reserva
+                </button>
+                <button
+                  className={`${styles.btn} ${styles.btnDanger}`}
+                  onClick={handleConfirmarCancelacion}
+                >
+                  Sí, cancelar clase
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
