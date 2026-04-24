@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, CalendarDays, Package, BarChart2, DollarSign } from 'lucide-react'
+import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { useClasesStore } from '@/stores/clasesStore'
 import { mockUsers } from '@/data/mockUsers'
@@ -7,9 +7,10 @@ import styles from '@/styles/dashboard.module.css'
 
 export const adminLinks = [
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/admin/usuarios', icon: Users, label: 'Usuarios' },
-  { to: '/admin/clases', icon: CalendarDays, label: 'Clases' },
   { to: '/admin/paquetes', icon: Package, label: 'Paquetes' },
+  { to: '/admin/coaches', icon: UserCheck, label: 'Coaches' },
+  { to: '/admin/clases', icon: CalendarDays, label: 'Clases' },
+  { to: '/admin/usuarios', icon: Users, label: 'Usuarios' },
   { to: '/admin/finanzas', icon: DollarSign, label: 'Finanzas' },
   { to: '/admin/reportes', icon: BarChart2, label: 'Reportes' },
 ]

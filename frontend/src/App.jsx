@@ -14,6 +14,7 @@ import Nosotros from '@/pages/Nosotros'
 import Contacto from '@/pages/Contacto'
 import Reservar from '@/pages/Reservar'
 import Login from '@/pages/Login'
+import Registro from '@/pages/Registro'
 
 import ClienteDashboard from '@/pages/cliente/ClienteDashboard'
 import ClienteCalendario from '@/pages/cliente/ClienteCalendario'
@@ -25,6 +26,7 @@ import CoachDashboard from '@/pages/coach/CoachDashboard'
 import CoachMisClases from '@/pages/coach/CoachMisClases'
 
 import AdminDashboard from '@/pages/admin/AdminDashboard'
+import AdminCoaches from '@/pages/admin/AdminCoaches'
 import AdminUsuarios from '@/pages/admin/AdminUsuarios'
 import AdminClases from '@/pages/admin/AdminClases'
 import AdminPaquetes from '@/pages/admin/AdminPaquetes'
@@ -56,6 +58,7 @@ function AnimatedRoutes() {
         <Route path="/coach/mis-clases" element={<ProtectedRoute rolRequerido="coach"><CoachMisClases /></ProtectedRoute>} />
 
         <Route path="/admin/dashboard" element={<ProtectedRoute rolRequerido="admin"><AdminDashboard /></ProtectedRoute>} />
+        <Route path="/admin/coaches" element={<ProtectedRoute rolRequerido="admin"><AdminCoaches /></ProtectedRoute>} />
         <Route path="/admin/usuarios" element={<ProtectedRoute rolRequerido="admin"><AdminUsuarios /></ProtectedRoute>} />
         <Route path="/admin/clases" element={<ProtectedRoute rolRequerido="admin"><AdminClases /></ProtectedRoute>} />
         <Route path="/admin/paquetes" element={<ProtectedRoute rolRequerido="admin"><AdminPaquetes /></ProtectedRoute>} />
@@ -79,6 +82,7 @@ function AnimatedRoutes() {
           <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
           <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
           <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
+          <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />
         </Routes>
       </AnimatePresence>
       <Footer />

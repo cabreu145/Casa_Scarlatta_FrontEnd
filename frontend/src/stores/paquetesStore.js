@@ -2,11 +2,14 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 const paquetesIniciales = [
+  // ── Suscripciones mensuales ──
   {
     id: 1,
     nombre: 'Básico',
     precio: 999,
     clases: 8,
+    vigencia: 'Mensual',
+    categoria: 'mensual',
     beneficios: [
       '8 clases al mes',
       'Acceso a Stride y Slow',
@@ -20,9 +23,11 @@ const paquetesIniciales = [
     nombre: 'Esencial',
     precio: 1499,
     clases: 16,
+    vigencia: 'Mensual',
+    categoria: 'mensual',
     beneficios: [
       '16 clases al mes',
-      'Acceso prioritario',
+      'Acceso prioritario a horarios',
       'Clase de bienvenida gratis',
       'Descuentos en talleres',
       'Sin permanencia',
@@ -34,12 +39,57 @@ const paquetesIniciales = [
     nombre: 'Premium',
     precio: 1999,
     clases: 0,
+    vigencia: 'Mensual',
+    categoria: 'mensual',
     beneficios: [
       'Clases ilimitadas',
       'Acceso VIP a todos los horarios',
       'Clase privada mensual',
       'Descuentos exclusivos',
       'Soporte prioritario',
+    ],
+    destacado: false,
+  },
+  // ── Packs de clases ──
+  {
+    id: 4,
+    nombre: 'Primera Clase',
+    precio: 299,
+    clases: 1,
+    vigencia: '7 días',
+    categoria: 'pack',
+    beneficios: [
+      'Para nuevos clientes',
+      'Stride o Slow a elegir',
+      'Válido 7 días',
+    ],
+    destacado: false,
+  },
+  {
+    id: 5,
+    nombre: 'Pack 5',
+    precio: 649,
+    clases: 5,
+    vigencia: '30 días',
+    categoria: 'pack',
+    beneficios: [
+      '5 clases a tu ritmo',
+      'Stride o Slow',
+      'Válido 30 días',
+    ],
+    destacado: false,
+  },
+  {
+    id: 6,
+    nombre: 'Pack 20',
+    precio: 2299,
+    clases: 20,
+    vigencia: '60 días',
+    categoria: 'pack',
+    beneficios: [
+      '20 clases sin límite mensual',
+      'Stride y Slow',
+      'Válido 60 días',
     ],
     destacado: false,
   },
@@ -87,6 +137,6 @@ export const usePaquetesStore = create(
 
       resetearPaquetes: () => set({ paquetes: paquetesIniciales }),
     }),
-    { name: 'casa-scarlatta-paquetes' }
+    { name: 'casa-scarlatta-paquetes-v2' }
   )
 )

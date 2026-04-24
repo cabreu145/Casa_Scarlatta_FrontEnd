@@ -1,13 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { adminLinks } from './AdminDashboard'
 import { mockUsers } from '@/data/mockUsers'
+import { SkeletonTable } from '@/components/ui/SkeletonLoader'
+import { exportCSV } from '@/utils/exportCSV'
 import styles from '@/styles/dashboard.module.css'
 
+const CSV_COLUMNS = [
+  { label: 'Nombre', key: 'nombre' },
+  { label: 'Email', key: 'email' },
+  { label: 'Teléfono', key: 'telefono' },
+  { label: 'Fecha nacimiento', key: 'fechaNacimiento' },
+  { label: 'Paquete', render: (u) => u.paquete || '—' },
+  { label: 'Estado', render: (u) => (u.activo ? 'Activo' : 'Inactivo') },
+]
+
+function ConfirmModal({ mensaje, onConfirm, onClose }) {
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modal}>
+        <h2 className={styles.modalTitle}>Confirmar acción</h2>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-secondary)' }}>{mensaje}</p>
+        <div className={styles.modalActions}>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClose}>Cancelar</button>
+          <button className={`${styles.btn} ${styles.btnDanger}`} onClick={onConfirm}>Confirmar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminUsuarios() {
-  const [usuarios, setUsuarios] = useState(mockUsers)
+  const [usuarios, setUsuarios] = useState([])
+  const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [filtroRol, setFiltroRol] = useState('todos')
+  const [confirmar, setConfirmar] = useState(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setUsuarios(mockUsers)
+      setCargando(false)
+    }, 800)
+    return () => clearTimeout(t)
+  }, [])
 
   const filtrados = usuarios.filter((u) => {
     const matchBusqueda =
@@ -17,10 +54,26 @@ export default function AdminUsuarios() {
     return matchBusqueda && matchRol
   })
 
-  const toggleActivo = (id) => {
-    setUsuarios((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, activo: !u.activo } : u))
-    )
+  const handleToggle = (usuario) => {
+    setConfirmar({
+      mensaje: usuario.activo
+        ? `¿Desactivar a ${usuario.nombre}? No podrá iniciar sesión.`
+        : `¿Reactivar a ${usuario.nombre}?`,
+      onConfirm: () => {
+        setUsuarios((prev) =>
+          prev.map((u) => (u.id === usuario.id ? { ...u, activo: !u.activo } : u))
+        )
+        toast.success(`${usuario.nombre} ${usuario.activo ? 'desactivado' : 'reactivado'}`)
+        setConfirmar(null)
+      },
+    })
+  }
+
+  const handleExportar = () => {
+    const fecha = new Date().toISOString().split('T')[0]
+    const clientes = filtrados.filter((u) => u.rol === 'cliente')
+    exportCSV(clientes, `usuarios_casascarlatta_${fecha}.csv`, CSV_COLUMNS)
+    toast.success('CSV exportado correctamente')
   }
 
   const rolClass = {
@@ -34,7 +87,7 @@ export default function AdminUsuarios() {
       <div className={styles.page}>
         <div className={styles.pageHeader}>
           <h1 className={styles.greeting}>Usuarios</h1>
-          <p className={styles.subtitle}>{filtrados.length} usuarios</p>
+          <p className={styles.subtitle}>{mockUsers.length} usuarios registrados</p>
         </div>
 
         <div className={styles.searchBar}>
@@ -54,6 +107,12 @@ export default function AdminUsuarios() {
               {r.charAt(0).toUpperCase() + r.slice(1)}
             </button>
           ))}
+          <button
+            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
+            onClick={handleExportar}
+          >
+            Exportar CSV
+          </button>
         </div>
 
         <div className={styles.panel}>
@@ -62,44 +121,60 @@ export default function AdminUsuarios() {
               <tr>
                 <th>Nombre</th>
                 <th>Email</th>
+                <th>Teléfono</th>
+                <th>Fecha nac.</th>
                 <th>Rol</th>
                 <th>Paquete</th>
+                <th>Tipo</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {filtrados.map((u) => (
-                <tr key={u.id}>
-                  <td style={{ fontWeight: 500 }}>{u.nombre}</td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{u.email}</td>
-                  <td>
-                    <span className={`${styles.badge} ${rolClass[u.rol] || ''}`}>
-                      {u.rol}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: 13 }}>{u.paquete || '—'}</td>
-                  <td>
-                    <span
-                      className={`${styles.badge} ${u.activo ? styles.badgeConfirmada : styles.badgeCancelada}`}
-                    >
-                      {u.activo ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      className={`${styles.btn} ${u.activo ? styles.btnDanger : styles.btnSecondary} ${styles.btnSm}`}
-                      onClick={() => toggleActivo(u.id)}
-                    >
-                      {u.activo ? 'Desactivar' : 'Activar'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {cargando ? (
+                <SkeletonTable rows={5} cols={9} />
+              ) : (
+                filtrados.map((u) => (
+                  <tr key={u.id}>
+                    <td style={{ fontWeight: 500 }}>{u.nombre}</td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{u.email}</td>
+                    <td style={{ fontSize: 13 }}>{u.telefono || '—'}</td>
+                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{u.fechaNacimiento || '—'}</td>
+                    <td>
+                      <span className={`${styles.badge} ${rolClass[u.rol] || ''}`}>{u.rol}</span>
+                    </td>
+                    <td style={{ fontSize: 13 }}>{u.paquete || '—'}</td>
+                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                      {u.paqueteInfo?.tipo || (u.rol === 'cliente' ? 'Individual' : '—')}
+                    </td>
+                    <td>
+                      <span className={`${styles.badge} ${u.activo ? styles.badgeConfirmada : styles.badgeCancelada}`}>
+                        {u.activo ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className={`${styles.btn} ${u.activo ? styles.btnDanger : styles.btnSecondary} ${styles.btnSm}`}
+                        onClick={() => handleToggle(u)}
+                      >
+                        {u.activo ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {confirmar && (
+        <ConfirmModal
+          mensaje={confirmar.mensaje}
+          onConfirm={confirmar.onConfirm}
+          onClose={() => setConfirmar(null)}
+        />
+      )}
     </DashboardLayout>
   )
 }

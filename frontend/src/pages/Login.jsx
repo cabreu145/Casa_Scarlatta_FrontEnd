@@ -12,6 +12,43 @@ const rolDashboard = {
   admin: '/admin/dashboard',
 }
 
+function LegalModal({ titulo, children, onClose }) {
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+        zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px',
+      }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div style={{
+        background: 'var(--bg-base)', borderRadius: 'var(--radius-xl)',
+        padding: '32px', maxWidth: 460, width: '100%',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.2)',
+        display: 'flex', flexDirection: 'column', gap: '16px',
+      }}>
+        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, color: 'var(--text-primary)', margin: 0 }}>
+          {titulo}
+        </h2>
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+          {children}
+        </div>
+        <button
+          onClick={onClose}
+          style={{
+            alignSelf: 'flex-end', fontFamily: 'var(--font-body)', fontSize: 14,
+            fontWeight: 500, color: '#F5EDE8', background: 'var(--brand-wine)',
+            padding: '10px 24px', borderRadius: '999px', border: 'none', cursor: 'pointer',
+          }}
+        >
+          Entendido
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Login() {
   const location = useLocation()
   const reservation = location.state ?? {}
@@ -50,7 +87,7 @@ export default function Login() {
         <div className={styles.card}>
           {mode === 'login'
             ? <LoginForm from={location.state?.from} />
-            : <RegisterForm onSuccess={() => setMode('login')} />}
+            : <RegisterForm onSuccess={() => setMode('login')} LegalModal={LegalModal} />}
         </div>
       </div>
     </main>
@@ -113,17 +150,52 @@ function LoginForm({ from }) {
   )
 }
 
-function RegisterForm({ onSuccess }) {
+function RegisterForm({ onSuccess, LegalModal: Modal }) {
   const { register } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ nombre: '', apellido: '', email: '', password: '', telefono: '' })
+  const [form, setForm] = useState({
+    nombre: '', apellido: '', email: '', password: '',
+    telefono: '', fechaNacimiento: '',
+  })
+  const [checks, setChecks] = useState({ privacidad: false, responsiva: false })
+  const [legalModal, setLegalModal] = useState(null) // 'privacidad' | 'responsiva'
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState({})
 
-  const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
+  const set = (field) => (e) => {
+    setForm((prev) => ({ ...prev, [field]: e.target.value }))
+    setErrors((prev) => ({ ...prev, [field]: '' }))
+  }
+
+  const calcularEdad = (fecha) => {
+    if (!fecha) return 0
+    const hoy = new Date()
+    const nac = new Date(fecha)
+    let edad = hoy.getFullYear() - nac.getFullYear()
+    const m = hoy.getMonth() - nac.getMonth()
+    if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--
+    return edad
+  }
+
+  const validar = () => {
+    const errs = {}
+    if (!form.nombre.trim()) errs.nombre = 'El nombre es obligatorio'
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+      errs.email = 'El email no es válido'
+    if (form.password.length < 6) errs.password = 'Mínimo 6 caracteres'
+    if (form.fechaNacimiento && calcularEdad(form.fechaNacimiento) < 16)
+      errs.fechaNacimiento = 'Debes tener al menos 16 años'
+    return errs
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.nombre || !form.email || !form.password) return toast.error('Completa los campos obligatorios')
+    const errs = validar()
+    if (Object.keys(errs).length) { setErrors(errs); return }
+    if (!checks.privacidad || !checks.responsiva) {
+      toast.error('Acepta los documentos legales para continuar')
+      return
+    }
     setLoading(true)
     try {
       const user = await register({
@@ -131,43 +203,138 @@ function RegisterForm({ onSuccess }) {
         email: form.email,
         password: form.password,
         telefono: form.telefono,
+        fechaNacimiento: form.fechaNacimiento,
       })
-      toast.success('Cuenta creada exitosamente')
+      toast.success('¡Bienvenida a Casa Scarlatta!')
       navigate('/', { replace: true })
     } catch (err) {
-      toast.error(err.message || 'Error al crear cuenta')
+      if (err.message?.includes('registrado')) {
+        setErrors({ email: 'Este email ya está registrado' })
+      } else {
+        toast.error(err.message || 'Error al crear cuenta')
+      }
     } finally {
       setLoading(false)
     }
   }
 
+  const puedeContinuar = checks.privacidad && checks.responsiva
+
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
-      <div className={styles.formRow}>
-        <div className={styles.field}>
-          <label htmlFor="nombre">Nombre *</label>
-          <input id="nombre" type="text" placeholder="Tu nombre" autoComplete="given-name" value={form.nombre} onChange={set('nombre')} />
+    <>
+      <form className={styles.form} onSubmit={handleSubmit} noValidate>
+        <div className={styles.formRow}>
+          <div className={styles.field}>
+            <label htmlFor="nombre">Nombre *</label>
+            <input
+              id="nombre" type="text" placeholder="Tu nombre"
+              autoComplete="given-name" value={form.nombre} onChange={set('nombre')}
+              style={errors.nombre ? { borderColor: '#EF4444' } : {}}
+            />
+            {errors.nombre && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.nombre}</span>}
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="apellido">Apellido</label>
+            <input id="apellido" type="text" placeholder="Tu apellido" autoComplete="family-name" value={form.apellido} onChange={set('apellido')} />
+          </div>
         </div>
+
         <div className={styles.field}>
-          <label htmlFor="apellido">Apellido</label>
-          <input id="apellido" type="text" placeholder="Tu apellido" autoComplete="family-name" value={form.apellido} onChange={set('apellido')} />
+          <label htmlFor="reg-email">Correo electrónico *</label>
+          <input
+            id="reg-email" type="email" placeholder="tu@correo.com"
+            autoComplete="email" value={form.email} onChange={set('email')}
+            style={errors.email ? { borderColor: '#EF4444' } : {}}
+          />
+          {errors.email && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.email}</span>}
         </div>
-      </div>
-      <div className={styles.field}>
-        <label htmlFor="reg-email">Correo electrónico *</label>
-        <input id="reg-email" type="email" placeholder="tu@correo.com" autoComplete="email" value={form.email} onChange={set('email')} />
-      </div>
-      <div className={styles.field}>
-        <label htmlFor="reg-password">Contraseña *</label>
-        <input id="reg-password" type="password" placeholder="Mínimo 6 caracteres" autoComplete="new-password" value={form.password} onChange={set('password')} />
-      </div>
-      <div className={styles.field}>
-        <label htmlFor="telefono">Teléfono</label>
-        <input id="telefono" type="tel" placeholder="+52 55 0000 0000" autoComplete="tel" value={form.telefono} onChange={set('telefono')} />
-      </div>
-      <button type="submit" className={styles.submitBtn} disabled={loading}>
-        {loading ? 'Creando cuenta...' : 'Crear cuenta'}
-      </button>
-    </form>
+
+        <div className={styles.formRow}>
+          <div className={styles.field}>
+            <label htmlFor="fechaNacimiento">Fecha de nacimiento</label>
+            <input
+              id="fechaNacimiento" type="date" value={form.fechaNacimiento}
+              onChange={set('fechaNacimiento')}
+              max={new Date().toISOString().split('T')[0]}
+              style={errors.fechaNacimiento ? { borderColor: '#EF4444' } : {}}
+            />
+            {errors.fechaNacimiento && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.fechaNacimiento}</span>}
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="telefono">Teléfono</label>
+            <input id="telefono" type="tel" placeholder="5512345678" autoComplete="tel" value={form.telefono} onChange={set('telefono')} maxLength={10} />
+          </div>
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="reg-password">Contraseña *</label>
+          <input
+            id="reg-password" type="password" placeholder="Mínimo 6 caracteres"
+            autoComplete="new-password" value={form.password} onChange={set('password')}
+            style={errors.password ? { borderColor: '#EF4444' } : {}}
+          />
+          {errors.password && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.password}</span>}
+        </div>
+
+        {/* Legal checkboxes */}
+        <div className={styles.legales}>
+          <label className={styles.checkLabel}>
+            <input
+              type="checkbox" checked={checks.privacidad}
+              onChange={(e) => setChecks((p) => ({ ...p, privacidad: e.target.checked }))}
+            />
+            <span>
+              He leído y acepto el{' '}
+              <button type="button" className={styles.linkBtn} onClick={() => setLegalModal('privacidad')}>
+                Aviso de Privacidad
+              </button>
+            </span>
+          </label>
+          <label className={styles.checkLabel}>
+            <input
+              type="checkbox" checked={checks.responsiva}
+              onChange={(e) => setChecks((p) => ({ ...p, responsiva: e.target.checked }))}
+            />
+            <span>
+              Acepto la{' '}
+              <button type="button" className={styles.linkBtn} onClick={() => setLegalModal('responsiva')}>
+                responsiva de actividad física
+              </button>
+            </span>
+          </label>
+        </div>
+
+        <button
+          type="submit"
+          className={styles.submitBtn}
+          disabled={loading || !puedeContinuar}
+          style={!puedeContinuar ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+        >
+          {loading ? 'Creando cuenta...' : 'Crear cuenta'}
+        </button>
+      </form>
+
+      {legalModal === 'privacidad' && (
+        <Modal titulo="Aviso de Privacidad" onClose={() => setLegalModal(null)}>
+          <p>
+            Casa Scarlatta Wellness Studio recopila tus datos personales (nombre, email, teléfono,
+            fecha de nacimiento) únicamente para gestionar tu cuenta y reservas. Tus datos no serán
+            compartidos con terceros. Puedes solicitar la eliminación de tu cuenta en cualquier
+            momento escribiendo a <strong>hola@casascarlatta.com</strong>.
+          </p>
+        </Modal>
+      )}
+
+      {legalModal === 'responsiva' && (
+        <Modal titulo="Responsiva de Actividad Física" onClose={() => setLegalModal(null)}>
+          <p>
+            Declaro que cuento con las condiciones físicas adecuadas para participar en las
+            actividades de Casa Scarlatta. Libero al estudio de cualquier responsabilidad por
+            lesiones derivadas de mi participación en clases. Recomiendo consultar a un médico
+            antes de iniciar cualquier programa de ejercicio.
+          </p>
+        </Modal>
+      )}
+    </>
   )
 }

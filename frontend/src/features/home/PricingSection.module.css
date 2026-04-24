@@ -1,21 +1,22 @@
 .section {
   background: var(--bg-base);
-  padding: 80px 0;
+  padding: 96px 0;
 }
 
 .inner {
-  max-width: 1200px;
+  max-width: 1140px;
   margin: 0 auto;
   padding: 0 var(--space-lg);
 }
 
+/* ── Header ── */
 .header {
   text-align: center;
-  margin-bottom: 56px;
+  margin-bottom: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .label {
@@ -31,119 +32,170 @@
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 400;
-  font-size: 52px;
+  font-size: clamp(38px, 5vw, 54px);
   color: var(--brand-wine);
   line-height: 1.1;
+  margin: 0;
 }
 
+.subtitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Cards grid ── */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  align-items: start;
+  gap: 20px;
+  align-items: stretch;
 }
 
 /* ── Card base ── */
 .card {
   position: relative;
   background: #EDE0D9;
-  border: 1px solid rgba(123, 31, 46, 0.15);
-  border-radius: 20px;
-  padding: 40px 32px 36px;
+  border: 1.5px solid rgba(123, 31, 46, 0.12);
+  border-radius: 24px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
 }
 
-/* ── Card destacada (Esencial) ── */
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(123, 31, 46, 0.14);
+}
+
+/* ── Featured card ── */
 .cardFeatured {
   background: var(--brand-wine);
   border-color: var(--brand-wine);
-  color: var(--bg-base);
-  padding-top: 52px;
+  transform: translateY(-8px);
+  box-shadow: 0 20px 56px rgba(123, 31, 46, 0.28);
 }
 
-/* ── Badge MÁS POPULAR ── */
+.cardFeatured:hover {
+  transform: translateY(-12px);
+  box-shadow: 0 28px 64px rgba(123, 31, 46, 0.35);
+}
+
+/* ── MÁS POPULAR badge ── */
 .badge {
   position: absolute;
-  top: -14px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 16px;
+  right: 16px;
   background: var(--brand-rose);
-  color: var(--bg-base);
+  color: #fff;
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  padding: 5px 16px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
+  padding: 4px 12px;
+  border-radius: 999px;
 }
 
-/* ── Plan name ── */
+/* ── Big class count block ── */
+.countBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 32px 28px;
+  gap: 4px;
+}
+
+.countNum {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(72px, 9vw, 96px);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--brand-wine);
+}
+
+.cardFeatured .countNum {
+  color: #F5EDE8;
+}
+
+.countLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(123, 31, 46, 0.5);
+}
+
+.cardFeatured .countLabel {
+  color: rgba(245, 237, 232, 0.55);
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: rgba(123, 31, 46, 0.12);
+  margin: 0 28px;
+}
+
+.cardFeatured .divider {
+  background: rgba(245, 237, 232, 0.18);
+}
+
+/* ── Package info section ── */
 .planName {
   font-family: var(--font-heading);
-  font-size: 28px;
+  font-size: 24px;
   color: var(--text-primary);
-  margin-bottom: 20px;
+  padding: 24px 32px 4px;
 }
 
 .cardFeatured .planName {
-  color: var(--bg-base);
+  color: #F5EDE8;
 }
 
-/* ── Price ── */
 .priceRow {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  margin-bottom: 4px;
+  padding: 0 32px 20px;
+  flex-wrap: wrap;
 }
 
 .price {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 52px;
+  font-size: 38px;
   font-weight: 400;
   color: var(--brand-wine);
   line-height: 1;
 }
 
 .cardFeatured .price {
-  color: var(--bg-base);
+  color: #F5EDE8;
 }
 
 .priceSuffix {
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-muted);
+  margin-left: 4px;
 }
 
 .cardFeatured .priceSuffix {
-  color: rgba(245, 237, 232, 0.65);
+  color: rgba(245, 237, 232, 0.6);
 }
 
-/* ── Clases label ── */
-.clasesLabel {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  margin-bottom: 28px;
-}
-
-.cardFeatured .clasesLabel {
-  color: rgba(245, 237, 232, 0.65);
-}
-
-/* ── Beneficios ── */
+/* ── Benefits ── */
 .beneficios {
   list-style: none;
+  margin: 0 0 28px;
+  padding: 0 32px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 36px;
+  gap: 10px;
   flex: 1;
 }
 
@@ -152,23 +204,24 @@
   align-items: flex-start;
   gap: 10px;
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.4;
 }
 
 .cardFeatured .beneficio {
-  color: rgba(245, 237, 232, 0.85);
+  color: rgba(245, 237, 232, 0.82);
 }
 
-.bullet {
+.check {
   color: var(--brand-wine);
-  font-size: 8px;
-  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 1px;
   flex-shrink: 0;
 }
 
-.cardFeatured .bullet {
+.cardFeatured .check {
   color: var(--brand-rose);
 }
 
@@ -177,42 +230,78 @@
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
-  padding: 13px 28px;
-  border-radius: var(--radius-pill);
+  padding: 14px 28px;
+  margin: 0 28px 28px;
+  border-radius: 999px;
   border: none;
   cursor: pointer;
   background: var(--brand-wine);
-  color: var(--bg-base);
+  color: #F5EDE8;
   text-decoration: none;
   text-align: center;
   display: block;
-  transition: transform var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
-  align-self: stretch;
+  letter-spacing: 0.03em;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(123, 31, 46, 0.28);
+  box-shadow: 0 8px 24px rgba(123, 31, 46, 0.3);
 }
 
 .ctaFeatured {
-  background: var(--bg-base);
+  background: #F5EDE8;
   color: var(--brand-wine);
 }
 
 .ctaFeatured:hover {
-  box-shadow: 0 8px 24px rgba(245, 237, 232, 0.20);
+  box-shadow: 0 8px 24px rgba(245, 237, 232, 0.22);
 }
 
+/* ── Footer link ── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 48px;
+  flex-wrap: wrap;
+}
+
+.footerText {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.footerLink {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--brand-wine);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(123, 31, 46, 0.3);
+  transition: border-color 0.15s;
+}
+
+.footerLink:hover {
+  border-color: var(--brand-wine);
+}
+
+/* ── Responsive ── */
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: 1fr;
-    max-width: 420px;
+    max-width: 380px;
     margin: 0 auto;
   }
 
-  .title {
-    font-size: 40px;
+  .cardFeatured {
+    transform: none;
+  }
+
+  .cardFeatured:hover {
+    transform: translateY(-4px);
   }
 }

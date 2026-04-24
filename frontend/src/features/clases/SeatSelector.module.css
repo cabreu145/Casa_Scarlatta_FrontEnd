@@ -266,6 +266,135 @@
   font-weight: 700;
 }
 
+/* ── Sin clases modal ── */
+.noClasesModal {
+  background: var(--bg-base);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl) var(--space-2xl) var(--space-xl);
+  width: 100%;
+  max-width: 580px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-lg);
+  animation: fadeSlideUp var(--duration-base) var(--ease-out) both;
+  box-shadow: 0 32px 80px rgba(44, 24, 16, 0.25);
+}
+
+.noClasesIcon {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: rgba(123, 31, 46, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-wine);
+}
+
+.noClasesTitle {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--text-primary);
+  margin: 0;
+  font-weight: 400;
+}
+
+.noClasesSub {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+  max-width: 380px;
+}
+
+/* Mini package cards */
+.noClasesPaquetes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  width: 100%;
+}
+
+.noClasesPaqueteCard {
+  background: var(--bg-surface);
+  border: 1.5px solid var(--neutral-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg) var(--space-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.noClasesPaquetePopular {
+  border-color: var(--brand-wine);
+  background: rgba(123, 31, 46, 0.04);
+}
+
+.noClasesPopularTag {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: white;
+  background: var(--brand-wine);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.noClasesPaqueteNombre {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.noClasesPaqueteClases {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.noClasesPaquetePrecio {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--brand-wine);
+}
+
+.noClasesActions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  width: 100%;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--neutral-border);
+}
+
+.noClasesBtnSecondary {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--neutral-border);
+  padding: 12px 28px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.noClasesBtnSecondary:hover {
+  background: var(--bg-surface);
+}
+
 /* ── Mobile ── */
 @media (max-width: 600px) {
   .modal {

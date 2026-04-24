@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, BookOpen, CreditCard, User, AlertTriangle } from 'lucide-react'
+import { LayoutDashboard, BookOpen, CreditCard, User, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
@@ -8,11 +8,10 @@ import styles from '@/styles/dashboard.module.css'
 import localStyles from './ClienteMisClases.module.css'
 
 const clienteLinks = [
-  { to: '/cliente/dashboard', icon: CalendarDays, label: 'Dashboard' },
-  { to: '/cliente/calendario', icon: CalendarDays, label: 'Calendario' },
+  { to: '/cliente/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/cliente/mis-clases', icon: BookOpen, label: 'Mis Clases' },
-  { to: '/cliente/pagos', icon: CreditCard, label: 'Pagos' },
-  { to: '/cliente/perfil', icon: User, label: 'Perfil' },
+  { to: '/cliente/perfil', icon: User, label: 'Mi Perfil' },
+  { to: '/cliente/pagos', icon: CreditCard, label: 'Pagos y Paquetes' },
 ]
 
 function horasHastaClase(reserva) {

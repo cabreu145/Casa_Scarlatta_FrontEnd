@@ -32,6 +32,15 @@
   margin-bottom: var(--space-sm);
 }
 
+.avatarImg {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: var(--space-sm);
+  border: 2px solid var(--neutral-border);
+}
+
 .avatarName {
   font-family: var(--font-heading);
   font-size: 18px;

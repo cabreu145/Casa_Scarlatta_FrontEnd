@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, CheckCircle } from 'lucide-react'
+import { X, CheckCircle, ShoppingBag } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import { useClasesStore } from '@/stores/clasesStore'
@@ -48,6 +48,7 @@ export default function SeatSelector({ cls, onClose }) {
 
   const [selected, setSelected] = useState(null)
   const [confirmado, setConfirmado] = useState(false)
+  const [sinClases, setSinClases] = useState(false)
 
   const rowLabels = Array.from({ length: rows }, (_, i) => i + 1)
   const colLabels = Array.from({ length: cols }, (_, i) => i + 1)
@@ -66,7 +67,7 @@ export default function SeatSelector({ cls, onClose }) {
 
     const esIlimitado = usuario?.paquete === 'Premium' || usuario?.clasesPaquete === 999
     if (!esIlimitado && (!usuario?.clasesPaquete || usuario.clasesPaquete <= 0)) {
-      toast.error('No tienes clases disponibles. Renueva tu paquete.')
+      setSinClases(true)
       return
     }
 
@@ -82,6 +83,61 @@ export default function SeatSelector({ cls, onClose }) {
     setSelected(null)
     onClose()
     navigate('/cliente/mis-clases')
+  }
+
+  if (sinClases) {
+    return (
+      <div className={styles.backdrop}>
+        <div className={styles.noClasesModal}>
+          <div className={styles.noClasesIcon}>
+            <ShoppingBag size={48} strokeWidth={1.2} />
+          </div>
+          <h2 className={styles.noClasesTitle}>Sin clases disponibles</h2>
+          <p className={styles.noClasesSub}>
+            Necesitas un paquete activo para reservar. Elige el plan que
+            mejor se adapte a tu ritmo.
+          </p>
+
+          {/* Mini paquetes */}
+          <div className={styles.noClasesPaquetes}>
+            {[
+              { nombre: 'Básico', clases: '8 clases', precio: '$999' },
+              { nombre: 'Esencial', clases: '16 clases', precio: '$1,499', popular: true },
+              { nombre: 'Premium', clases: 'Ilimitadas', precio: '$1,999' },
+            ].map((p) => (
+              <div
+                key={p.nombre}
+                className={`${styles.noClasesPaqueteCard} ${p.popular ? styles.noClasesPaquetePopular : ''}`}
+              >
+                {p.popular && <span className={styles.noClasesPopularTag}>MÁS POPULAR</span>}
+                <span className={styles.noClasesPaqueteNombre}>{p.nombre}</span>
+                <span className={styles.noClasesPaqueteClases}>{p.clases}</span>
+                <span className={styles.noClasesPaquetePrecio}>{p.precio}/mes</span>
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.noClasesActions}>
+            <button
+              className={styles.noClasesBtnSecondary}
+              onClick={() => { setSinClases(false); onClose() }}
+            >
+              Volver
+            </button>
+            <button
+              className={styles.confirmBtn}
+              onClick={() => {
+                setSinClases(false)
+                onClose()
+                navigate(isAuthenticated ? '/cliente/pagos' : '/login')
+              }}
+            >
+              Ver paquetes →
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
