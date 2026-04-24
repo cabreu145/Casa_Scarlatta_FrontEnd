@@ -183,6 +183,9 @@
   cursor: pointer;
   background: var(--brand-wine);
   color: var(--bg-base);
+  text-decoration: none;
+  text-align: center;
+  display: block;
   transition: transform var(--duration-fast) var(--ease-out),
               box-shadow var(--duration-fast) var(--ease-out);
   align-self: stretch;

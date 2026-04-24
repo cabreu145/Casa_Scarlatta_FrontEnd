@@ -134,6 +134,13 @@
   color: var(--brand-wine);
 }
 
+.hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
 @media (max-width: 480px) {
   .formRow { grid-template-columns: 1fr; }
 }

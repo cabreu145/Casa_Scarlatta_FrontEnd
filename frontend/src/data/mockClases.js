@@ -1,0 +1,15 @@
+export const mockClases = [
+  { id: 1, nombre: 'Stride Power', tipo: 'Stride', dia: 'Lunes', hora: '07:00', duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', cupoMax: 20, cupoActual: 18 },
+  { id: 2, nombre: 'Slow Pilates', tipo: 'Slow', dia: 'Lunes', hora: '09:00', duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', cupoMax: 15, cupoActual: 12 },
+  { id: 3, nombre: 'Stride Cardio', tipo: 'Stride', dia: 'Lunes', hora: '18:00', duracion: 45, coachId: 6, coachNombre: 'Ana Torres', cupoMax: 20, cupoActual: 3 },
+  { id: 4, nombre: 'Slow Meditación', tipo: 'Slow', dia: 'Martes', hora: '08:00', duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', cupoMax: 15, cupoActual: 10 },
+  { id: 5, nombre: 'Stride HIIT', tipo: 'Stride', dia: 'Martes', hora: '19:00', duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', cupoMax: 20, cupoActual: 15 },
+  { id: 6, nombre: 'Slow Stretch', tipo: 'Slow', dia: 'Miércoles', hora: '07:30', duracion: 55, coachId: 5, coachNombre: 'Sofía Reyes', cupoMax: 15, cupoActual: 7 },
+  { id: 7, nombre: 'Stride Power', tipo: 'Stride', dia: 'Miércoles', hora: '17:00', duracion: 50, coachId: 6, coachNombre: 'Ana Torres', cupoMax: 20, cupoActual: 2 },
+  { id: 8, nombre: 'Stride Fuerza', tipo: 'Stride', dia: 'Jueves', hora: '07:00', duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', cupoMax: 20, cupoActual: 12 },
+  { id: 9, nombre: 'Slow Mindfulness', tipo: 'Slow', dia: 'Jueves', hora: '10:00', duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', cupoMax: 15, cupoActual: 5 },
+  { id: 10, nombre: 'Stride Cardio', tipo: 'Stride', dia: 'Viernes', hora: '08:00', duracion: 45, coachId: 6, coachNombre: 'Ana Torres', cupoMax: 20, cupoActual: 14 },
+  { id: 11, nombre: 'Slow Pilates', tipo: 'Slow', dia: 'Viernes', hora: '18:00', duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', cupoMax: 15, cupoActual: 9 },
+  { id: 12, nombre: 'Stride Weekend', tipo: 'Stride', dia: 'Sábado', hora: '09:00', duracion: 60, coachId: 2, coachNombre: 'Carlos Méndez', cupoMax: 20, cupoActual: 6 },
+  { id: 13, nombre: 'Slow Weekend', tipo: 'Slow', dia: 'Sábado', hora: '11:00', duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', cupoMax: 15, cupoActual: 4 },
+]

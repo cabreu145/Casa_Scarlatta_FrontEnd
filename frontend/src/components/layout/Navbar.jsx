@@ -1,7 +1,9 @@
-import { useState, useEffect, lazy, Suspense } from 'react' // useState kept for mobile menu
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import LiquidButton from '@/components/ui/LiquidButton'
+import { useAuth } from '@/context/AuthContext'
+import toast from 'react-hot-toast'
 import styles from './Navbar.module.css'
 
 const Dithering = lazy(() =>
@@ -17,10 +19,25 @@ const links = [
   { to: '/contacto', label: 'Contacto' },
 ]
 
+const rolDashboard = {
+  cliente: '/cliente/dashboard',
+  coach: '/coach/dashboard',
+  admin: '/admin/dashboard',
+}
+
+const rolLabel = {
+  cliente: 'Cliente',
+  coach: 'Coach',
+  admin: 'Admin',
+}
+
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
+  const { isAuthenticated, usuario, logout } = useAuth()
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
@@ -29,7 +46,26 @@ export default function Navbar() {
 
   useEffect(() => {
     setOpen(false)
+    setDropdownOpen(false)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (!dropdownOpen) return
+    const handleClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [dropdownOpen])
+
+  const handleLogout = () => {
+    logout()
+    setDropdownOpen(false)
+    toast.success('Sesión cerrada')
+    navigate('/')
+  }
 
   return (
     <>
@@ -71,7 +107,42 @@ export default function Navbar() {
             ))}
           </ul>
 
-          <LiquidButton onClick={() => navigate('/login')}>Iniciar sesión</LiquidButton>
+          {isAuthenticated && usuario ? (
+            <div className={styles.avatarWrapper} ref={dropdownRef}>
+              <button
+                className={styles.avatar}
+                onClick={() => setDropdownOpen((v) => !v)}
+                aria-label="Menú de usuario"
+              >
+                {usuario.nombre.charAt(0).toUpperCase()}
+              </button>
+
+              {dropdownOpen && (
+                <div className={styles.dropdown}>
+                  <div className={styles.dropdownHeader}>
+                    <span className={styles.dropdownName}>{usuario.nombre}</span>
+                    <span className={styles.dropdownRole}>{rolLabel[usuario.rol] || usuario.rol}</span>
+                  </div>
+                  <div className={styles.dropdownDivider} />
+                  <button
+                    className={styles.dropdownItem}
+                    onClick={() => navigate(rolDashboard[usuario.rol] || '/')}
+                  >
+                    Mi dashboard
+                  </button>
+                  <div className={styles.dropdownDivider} />
+                  <button
+                    className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`}
+                    onClick={handleLogout}
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <LiquidButton onClick={() => navigate('/login')}>Iniciar sesión</LiquidButton>
+          )}
 
           <button
             className={styles.menuBtn}
@@ -105,15 +176,37 @@ export default function Navbar() {
               </NavLink>
             </li>
           ))}
-          <li>
-            <Link
-              to="/reservar"
-              className={`${styles.mobileNavLink} ${styles.mobileNavCta}`}
-              onClick={() => setOpen(false)}
-            >
-              Reservar
-            </Link>
-          </li>
+          {isAuthenticated && usuario ? (
+            <>
+              <li>
+                <button
+                  className={`${styles.mobileNavLink} ${styles.mobileNavCta}`}
+                  onClick={() => { setOpen(false); navigate(rolDashboard[usuario.rol] || '/') }}
+                >
+                  Mi dashboard
+                </button>
+              </li>
+              <li>
+                <button
+                  className={styles.mobileNavLink}
+                  style={{ fontSize: 18, color: 'var(--text-muted)' }}
+                  onClick={() => { setOpen(false); handleLogout() }}
+                >
+                  Cerrar sesión
+                </button>
+              </li>
+            </>
+          ) : (
+            <li>
+              <Link
+                to="/reservar"
+                className={`${styles.mobileNavLink} ${styles.mobileNavCta}`}
+                onClick={() => setOpen(false)}
+              >
+                Reservar
+              </Link>
+            </li>
+          )}
         </ul>
       </div>
     </>

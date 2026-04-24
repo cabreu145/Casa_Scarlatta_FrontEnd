@@ -1,0 +1,428 @@
+/* ── Shared dashboard styles ── */
+
+.page {
+  padding: var(--space-2xl);
+  max-width: 1100px;
+}
+
+.pageHeader {
+  margin-bottom: var(--space-2xl);
+}
+
+.greeting {
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3vw, 32px);
+  color: var(--text-primary);
+  font-weight: 400;
+  margin: 0 0 var(--space-xs);
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Stats grid ── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+.statCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+.statLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: var(--space-sm);
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--brand-wine);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.statSub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+/* ── Content grid ── */
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+/* ── Panel / card ── */
+.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+}
+
+.panelTitle {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 var(--space-lg);
+}
+
+/* ── Table ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: left;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--neutral-border);
+}
+
+.table td {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  padding: var(--space-md);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--bg-elevated);
+}
+
+/* ── Badges / tags ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  text-transform: capitalize;
+}
+
+.badgeStride {
+  background: rgba(204, 26, 26, 0.1);
+  color: #CC1A1A;
+}
+
+.badgeSlow {
+  background: rgba(123, 31, 46, 0.1);
+  color: var(--brand-wine);
+}
+
+.badgeConfirmada {
+  background: rgba(34, 139, 34, 0.1);
+  color: #228B22;
+}
+
+.badgeCancelada {
+  background: rgba(200, 50, 50, 0.1);
+  color: #C83232;
+}
+
+.badgeCompletada {
+  background: rgba(100, 100, 100, 0.1);
+  color: var(--text-muted);
+}
+
+/* ── Buttons ── */
+.btn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  border: none;
+  cursor: pointer;
+  transition: transform var(--duration-fast), box-shadow var(--duration-fast);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btnPrimary {
+  background: var(--brand-wine);
+  color: #F5EDE8;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(123, 31, 46, 0.25);
+}
+
+.btnSecondary {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--neutral-border);
+}
+
+.btnSecondary:hover {
+  background: var(--bg-surface);
+}
+
+.btnDanger {
+  background: rgba(200, 50, 50, 0.1);
+  color: #C83232;
+}
+
+.btnDanger:hover {
+  background: rgba(200, 50, 50, 0.2);
+}
+
+.btnSm {
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+/* ── Empty state ── */
+.emptyState {
+  text-align: center;
+  padding: var(--space-4xl) var(--space-2xl);
+  color: var(--text-muted);
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: var(--space-md);
+  opacity: 0.4;
+}
+
+.emptyText {
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+/* ── Quick actions ── */
+.actions {
+  display: flex;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  margin-top: var(--space-lg);
+}
+
+/* ── Progress bar ── */
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  margin-top: var(--space-sm);
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--brand-wine);
+  border-radius: var(--radius-pill);
+  transition: width 0.6s var(--ease-out);
+}
+
+/* ── Modal ── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+}
+
+.modal {
+  background: var(--bg-base);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+}
+
+.modalTitle {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-md);
+}
+
+.modalActions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: flex-end;
+  margin-top: var(--space-xl);
+}
+
+/* ── Form inside dashboard ── */
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.field label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.field input,
+.field select,
+.field textarea {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1.5px solid var(--neutral-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--brand-wine);
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+/* ── Search bar ── */
+.searchBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1.5px solid var(--neutral-border);
+  border-radius: var(--radius-pill);
+  padding: 9px 16px;
+  outline: none;
+  flex: 1;
+  min-width: 200px;
+  transition: border-color var(--duration-fast);
+}
+
+.searchInput:focus {
+  border-color: var(--brand-wine);
+}
+
+/* ── Bar chart (CSS only) ── */
+.barChart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 130px 1fr 50px;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.barLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barTrack {
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--brand-wine);
+  border-radius: var(--radius-pill);
+}
+
+.barFillSlow {
+  background: var(--brand-rose);
+}
+
+.barValue {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-lg);
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
