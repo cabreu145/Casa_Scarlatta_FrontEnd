@@ -13,6 +13,7 @@
 }
 
 .modal {
+  position: relative;
   background: var(--bg-base);
   border-radius: var(--radius-xl);
   padding: var(--space-2xl);

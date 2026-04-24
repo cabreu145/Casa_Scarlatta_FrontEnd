@@ -1,12 +1,24 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { usePaquetesStore } from '@/stores/paquetesStore'
 import { useAuth } from '@/context/AuthContext'
+import CompraModal from '@/components/ui/CompraModal'
 import styles from './PricingSection.module.css'
 
 export default function PricingSection() {
   const { paquetes } = usePaquetesStore()
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const mensuales = paquetes.filter((p) => p.categoria === 'mensual')
+  const [modalPaquete, setModalPaquete] = useState(null)
+
+  const handleComprar = (p) => {
+    if (!isAuthenticated) {
+      navigate('/login')
+    } else {
+      setModalPaquete(p)
+    }
+  }
 
   return (
     <section className={styles.section}>
@@ -21,22 +33,34 @@ export default function PricingSection() {
 
         <div className={styles.grid}>
           {mensuales.map((p) => (
-            <PaqueteCard key={p.id} p={p} destino={isAuthenticated ? '/cliente/pagos' : '/login'} />
+            <PaqueteCard key={p.id} p={p} onComprar={() => handleComprar(p)} />
           ))}
         </div>
 
         <div className={styles.footer}>
           <p className={styles.footerText}>¿Prefieres clases sueltas?</p>
-          <Link to={isAuthenticated ? '/cliente/pagos' : '/login'} className={styles.footerLink}>
+          <button
+            className={styles.footerLink}
+            onClick={() => navigate(isAuthenticated ? '/cliente/pagos' : '/login')}
+          >
             Ver todos los paquetes →
-          </Link>
+          </button>
         </div>
       </div>
+
+      {modalPaquete && (
+        <CompraModal
+          paquete={modalPaquete}
+          compartido={false}
+          partnerNombre={null}
+          onClose={() => setModalPaquete(null)}
+        />
+      )}
     </section>
   )
 }
 
-function PaqueteCard({ p, destino }) {
+function PaqueteCard({ p, onComprar }) {
   const esFeatured = p.destacado
   const clasesDisplay = p.clases === 0 ? '∞' : p.clases
   const clasesLabel = p.clases === 0 ? 'Ilimitadas' : p.clases === 1 ? 'Clase' : 'Clases'
@@ -70,12 +94,12 @@ function PaqueteCard({ p, destino }) {
         ))}
       </ul>
 
-      <Link
-        to={destino}
+      <button
         className={`${styles.cta} ${esFeatured ? styles.ctaFeatured : ''}`}
+        onClick={onComprar}
       >
-        Comenzar
-      </Link>
+        Comprar
+      </button>
     </div>
   )
 }

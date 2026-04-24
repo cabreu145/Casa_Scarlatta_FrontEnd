@@ -15,6 +15,7 @@ export const mockUsers = [
     activo: true,
     fechaRegistro: '2025-11-10',
     paqueteInfo: { fechaCompra: '2025-11-10', estado: 'Activo', tipo: 'Individual' },
+    metodoPago: null,
   },
   {
     id: 2,
@@ -59,6 +60,7 @@ export const mockUsers = [
     activo: true,
     fechaRegistro: '2025-12-05',
     paqueteInfo: { fechaCompra: '2025-12-05', estado: 'Activo', tipo: 'Individual' },
+    metodoPago: { tipo: 'tarjeta', ultimos4: '3721', marca: 'Mastercard' },
   },
   {
     id: 5,
@@ -104,5 +106,6 @@ export const mockUsers = [
     activo: true,
     fechaRegistro: '2026-01-15',
     paqueteInfo: { fechaCompra: '2026-01-15', estado: 'Activo', tipo: 'Individual' },
+    metodoPago: { tipo: 'tarjeta', ultimos4: '8904', marca: 'Visa' },
   },
 ]

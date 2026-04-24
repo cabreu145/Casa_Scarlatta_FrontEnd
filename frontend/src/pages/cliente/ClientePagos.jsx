@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { LayoutDashboard, BookOpen, CreditCard, User } from 'lucide-react'
-import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
+import CompraModal from '@/components/ui/CompraModal'
 import { useAuth } from '@/context/AuthContext'
 import { usePaquetesStore } from '@/stores/paquetesStore'
 import { mockUsers } from '@/data/mockUsers'
@@ -106,7 +106,7 @@ function PaqueteCard({ p, activo, modoCompartido, emailCompartido, emailError, o
 }
 
 export default function ClientePagos() {
-  const { usuario, actualizarPerfil } = useAuth()
+  const { usuario } = useAuth()
   const { paquetes } = usePaquetesStore()
 
   const mensuales = paquetes.filter((p) => p.categoria === 'mensual')
@@ -148,26 +148,6 @@ export default function ClientePagos() {
     } else {
       setConfirmando({ paquete: p, compartido: false, partnerNombre: null })
     }
-  }
-
-  const handleComprar = () => {
-    if (!confirmando) return
-    const { paquete: p, compartido, partnerNombre } = confirmando
-    const clases = p.clases === 0 ? 999 : compartido ? Math.floor(p.clases / 2) : p.clases
-    const tipo = compartido && partnerNombre ? `Compartido con ${partnerNombre}` : 'Individual'
-
-    actualizarPerfil({
-      paquete: p.nombre,
-      clasesPaquete: clases,
-      clasesPaqueteTotal: clases,
-      paqueteInfo: {
-        fechaCompra: new Date().toISOString().split('T')[0],
-        estado: 'Activo',
-        tipo,
-      },
-    })
-    toast.success(`Paquete ${p.nombre} activado exitosamente ✓`)
-    setConfirmando(null)
   }
 
   const toggleModo = (pId, val) => {
@@ -294,38 +274,14 @@ export default function ClientePagos() {
           </div>
         )}
 
-        {/* Modal confirmación */}
+        {/* Modal de compra */}
         {confirmando && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modal}>
-              <h2 className={styles.modalTitle}>Confirmar compra</h2>
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-secondary)' }}>
-                ¿Activar el paquete <strong>{confirmando.paquete.nombre}</strong> por{' '}
-                <strong>${confirmando.paquete.precio.toLocaleString()}</strong>
-                {confirmando.paquete.categoria === 'mensual' ? '/mes' : ` · válido ${confirmando.paquete.vigencia}`}?
-              </p>
-              {confirmando.compartido && (
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--brand-wine)', marginTop: 8 }}>
-                  👥 Compartido con <strong>{confirmando.partnerNombre}</strong>
-                </p>
-              )}
-              <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>
-                {confirmando.paquete.clases === 0
-                  ? 'Clases ilimitadas'
-                  : confirmando.compartido
-                  ? `${Math.floor(confirmando.paquete.clases / 2)} clases para ti`
-                  : `${confirmando.paquete.clases} clases`}
-              </p>
-              <div className={styles.modalActions}>
-                <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setConfirmando(null)}>
-                  Cancelar
-                </button>
-                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleComprar}>
-                  Confirmar compra
-                </button>
-              </div>
-            </div>
-          </div>
+          <CompraModal
+            paquete={confirmando.paquete}
+            compartido={confirmando.compartido}
+            partnerNombre={confirmando.partnerNombre}
+            onClose={() => setConfirmando(null)}
+          />
         )}
       </div>
     </DashboardLayout>

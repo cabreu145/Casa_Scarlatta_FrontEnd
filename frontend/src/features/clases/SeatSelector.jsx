@@ -150,6 +150,9 @@ export default function SeatSelector({ cls, onClose }) {
         {/* ── Vista de éxito ── */}
         {confirmado ? (
           <div className={styles.successView}>
+            <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar" style={{ position: 'absolute', top: 14, right: 14 }}>
+              <X size={20} />
+            </button>
             <CheckCircle size={52} strokeWidth={1.5} className={styles.successIcon} />
             <h2 className={styles.successTitle}>¡Reserva confirmada!</h2>
             <p className={styles.successSub}>

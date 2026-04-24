@@ -1,82 +1,92 @@
 import { useState } from 'react'
 import styles from './WeeklyCalendar.module.css'
 
-const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-const DAY_SHORT = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
+const DAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const DAYS_ABBR = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
 
-function spotsStatus(spots) {
-  if (spots === 0) return 'full'
-  if (spots <= 2) return 'critical'
-  if (spots <= 5) return 'low'
-  return 'ok'
-}
-
-function SpotsBadge({ spots }) {
-  const status = spotsStatus(spots)
-  if (status === 'full') {
-    return <span className={`${styles.badge} ${styles.badgeFull}`}>LLENO</span>
+function getWeekWindow() {
+  const result = []
+  const today = new Date()
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() + i)
+    result.push({
+      fullName: DAYS_ES[d.getDay()],
+      abbr: DAYS_ABBR[d.getDay()],
+      dateLabel: `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
+      isToday: i === 0,
+    })
   }
-  return (
-    <span className={`${styles.badge} ${styles['badge_' + status]}`}>
-      <span className={styles.dot} />
-      {spots} lugares
-    </span>
-  )
+  return result
 }
 
-function ClassBlock({ cls, onSelect }) {
+function formatTime(time) {
+  const [h, m] = time.split(':').map(Number)
+  const suffix = h >= 12 ? 'pm' : 'am'
+  const hr = h > 12 ? h - 12 : h === 0 ? 12 : h
+  return `${hr}:${String(m || 0).padStart(2, '0')} ${suffix}`
+}
+
+function isPastTime(time) {
+  const now = new Date()
+  const [h, m] = time.split(':').map(Number)
+  return (h * 60 + (m || 0)) < (now.getHours() * 60 + now.getMinutes())
+}
+
+function ClassBlock({ cls, onSelect, isToday }) {
   const isFull = cls.spots === 0
+  const isPast = isToday && isPastTime(cls.time)
+  const disabled = isFull || isPast
+  const spotsLow = cls.spots > 0 && cls.spots <= 3
+
   return (
     <button
-      className={`${styles.block} ${isFull ? styles.blockFull : ''}`}
-      onClick={() => !isFull && onSelect && onSelect(cls)}
-      disabled={isFull}
-      aria-label={`${cls.name}, ${cls.day} ${cls.time}, ${cls.spots} lugares`}
+      className={`${styles.block} ${isFull ? styles.blockFull : ''} ${isPast ? styles.blockPast : ''}`}
+      onClick={() => !disabled && onSelect && onSelect(cls)}
+      disabled={disabled}
+      aria-label={`${cls.name} con ${cls.instructor} a las ${cls.time}`}
     >
-      <div className={styles.blockTop}>
-        <span className={`${styles.typeTag} ${styles['type_' + cls.type.toLowerCase()]}`}>
-          {cls.type}
-        </span>
-      </div>
+      <span className={`${styles.typeTag} ${styles['type_' + cls.type.toLowerCase()]}`}>
+        {cls.type}
+      </span>
       <p className={styles.blockName}>{cls.name}</p>
-      <p className={styles.blockMeta}>{cls.time} · {cls.duration} min</p>
+      <p className={styles.blockMeta}>{formatTime(cls.time)} · {cls.duration} min</p>
       <p className={styles.blockInstructor}>{cls.instructor}</p>
-      <SpotsBadge spots={cls.spots} />
+      {isFull
+        ? <span className={styles.spotsFull}>LLENO</span>
+        : <span className={`${styles.spots} ${spotsLow ? styles.spotsLow : styles.spotsOk}`}>
+            ● {cls.spots} lugares
+          </span>
+      }
     </button>
   )
 }
 
 export default function WeeklyCalendar({ classes, onSelectClass }) {
   const [activeDay, setActiveDay] = useState(0)
-  const byDay = DAYS.map(day => classes.filter(c => c.day === day))
+  const days = getWeekWindow()
+
+  const byDay = days.map(({ fullName }) =>
+    classes
+      .filter(c => c.day === fullName)
+      .sort((a, b) => a.time.localeCompare(b.time))
+  )
 
   return (
     <div className={styles.wrapper}>
-      {/* Mobile tabs */}
-      <div className={styles.mobileTabs} role="tablist">
-        {DAY_SHORT.map((d, i) => (
-          <button
-            key={d}
-            role="tab"
-            aria-selected={i === activeDay}
-            className={`${styles.mobileTab} ${i === activeDay ? styles.mobileTabActive : ''}`}
-            onClick={() => setActiveDay(i)}
-          >
-            {d}
-          </button>
-        ))}
-      </div>
-
-      {/* Desktop: columnas por día */}
+      {/* ── Desktop grid ── */}
       <div className={styles.grid}>
-        {DAYS.map((day, i) => (
-          <div key={day} className={styles.column}>
-            <div className={styles.dayHeader}>{DAY_SHORT[i]}</div>
+        {days.map(({ abbr, dateLabel, isToday }, i) => (
+          <div key={i} className={`${styles.column} ${isToday ? styles.columnToday : ''}`}>
+            <div className={`${styles.colHeader} ${isToday ? styles.colHeaderToday : ''}`}>
+              <span className={styles.colDate}>{dateLabel}</span>
+              <span className={styles.colDay}>{abbr}</span>
+            </div>
             <div className={styles.slots}>
               {byDay[i].length === 0
-                ? <p className={styles.empty}>—</p>
+                ? <div className={styles.emptySlot} />
                 : byDay[i].map((c, j) => (
-                    <ClassBlock key={j} cls={c} onSelect={onSelectClass} />
+                    <ClassBlock key={j} cls={c} onSelect={onSelectClass} isToday={isToday} />
                   ))
               }
             </div>
@@ -84,16 +94,28 @@ export default function WeeklyCalendar({ classes, onSelectClass }) {
         ))}
       </div>
 
-      {/* Mobile: un día a la vez */}
+      {/* ── Mobile tabs ── */}
+      <div className={styles.mobileTabs}>
+        {days.map(({ abbr, dateLabel }, i) => (
+          <button
+            key={i}
+            className={`${styles.mobileTab} ${i === activeDay ? styles.mobileTabActive : ''}`}
+            onClick={() => setActiveDay(i)}
+          >
+            <span className={styles.mobileTabDate}>{dateLabel}</span>
+            <span className={styles.mobileTabDay}>{abbr}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Mobile single day ── */}
       <div className={styles.mobileDay}>
-        <div className={styles.slots}>
-          {byDay[activeDay].length === 0
-            ? <p className={styles.empty}>Sin clases este día</p>
-            : byDay[activeDay].map((c, j) => (
-                <ClassBlock key={j} cls={c} onSelect={onSelectClass} />
-              ))
-          }
-        </div>
+        {byDay[activeDay].length === 0
+          ? <p className={styles.emptyText}>Sin clases este día</p>
+          : byDay[activeDay].map((c, j) => (
+              <ClassBlock key={j} cls={c} onSelect={onSelectClass} isToday={days[activeDay].isToday} />
+            ))
+        }
       </div>
     </div>
   )

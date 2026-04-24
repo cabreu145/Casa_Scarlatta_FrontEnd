@@ -1,6 +1,7 @@
 import styles from './ClassTypeFilter.module.css'
 
 const filters = [
+  { value: null, label: 'TODOS' },
   { value: 'Stride', label: 'STRIDE' },
   { value: 'Slow', label: 'SLOW' },
 ]
@@ -10,7 +11,7 @@ export default function ClassTypeFilter({ active, onChange }) {
     <div className={styles.wrap}>
       {filters.map(({ value, label }) => (
         <button
-          key={value}
+          key={label}
           className={`${styles.btn} ${active === value ? styles.active : ''}`}
           onClick={() => onChange(value)}
         >

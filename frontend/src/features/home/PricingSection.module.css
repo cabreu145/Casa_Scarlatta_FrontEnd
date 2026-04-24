@@ -280,8 +280,11 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--brand-wine);
-  text-decoration: none;
+  background: none;
+  border: none;
   border-bottom: 1px solid rgba(123, 31, 46, 0.3);
+  padding: 0;
+  cursor: pointer;
   transition: border-color 0.15s;
 }
 

@@ -1,30 +1,31 @@
 .wrap {
   display: flex;
-  gap: var(--space-sm);
+  gap: 8px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .btn {
   font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
   padding: 9px 22px;
-  border-radius: var(--radius-pill);
-  border: 1.5px solid var(--neutral-border);
+  border-radius: 999px;
+  border: 1.5px solid rgba(245, 237, 232, 0.18);
   background: transparent;
-  color: var(--text-secondary);
+  color: rgba(245, 237, 232, 0.45);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-  letter-spacing: 0.03em;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
 .btn:hover {
-  border-color: var(--brand-wine);
-  color: var(--brand-wine);
+  border-color: rgba(245, 237, 232, 0.4);
+  color: rgba(245, 237, 232, 0.8);
 }
 
-.btn.active {
+.active {
   background: var(--brand-wine);
   border-color: var(--brand-wine);
-  color: var(--text-on-dark);
+  color: #F5EDE8;
 }

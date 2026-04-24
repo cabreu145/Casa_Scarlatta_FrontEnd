@@ -44,149 +44,187 @@
   border-radius: var(--radius-xl);
 }
 
-/* ── Banner grupal ── */
-.groupBanner {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 5;
-  overflow: hidden;
+/* ── Coaches banner ── */
+.coachesBanner {
+  background: #1a0a0e;
+  padding: 56px 24px 32px;
+  text-align: center;
 }
 
-.groupBannerImg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 0;
-}
-
-.groupBannerOverlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(44, 24, 16, 0.50);
-}
-
-.groupBannerText {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
+.coachesBannerContent {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-weight: 400;
-  font-size: clamp(32px, 5vw, 64px);
-  color: var(--bg-base);
-  letter-spacing: 0.02em;
+  gap: 8px;
 }
 
-/* ── Equipo ── */
+.coachesBannerLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: rgba(245, 237, 232, 0.5);
+  text-transform: uppercase;
+}
+
+.coachesBannerTitle {
+  font-family: var(--font-body);
+  font-size: clamp(64px, 11vw, 130px);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #F5EDE8;
+  margin: 0;
+  line-height: 1;
+}
+
+/* ── Equipo / Carrusel ── */
 .team {
-  background: var(--bg-surface);
-  padding: var(--space-4xl) 0;
+  background: #1a0a0e;
+  padding: 16px 0 56px;
 }
 
 .teamInner {
-  max-width: 1200px;
+  max-width: 1040px;
   margin: 0 auto;
-  padding: 0 var(--space-lg);
+  padding: 0 24px;
 }
 
 .teamGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-xl);
-  margin-top: var(--space-2xl);
+  gap: 18px;
+  animation: slideInCards 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes slideInCards {
+  from { opacity: 0; transform: translateX(48px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 /* ── Instructor card ── */
 .instructorCard {
-  background: var(--bg-base);
-  border: 1px solid var(--neutral-border);
-  border-radius: var(--radius-lg);
+  position: relative;
   overflow: hidden;
-  transition: transform var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
-}
-
-.instructorCard:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 16px 40px rgba(123, 31, 46, 0.10);
-}
-
-.imgWrap {
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
+  height: 500px;
+  border-radius: 16px;
+  cursor: default;
 }
 
 .instructorImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 0;
   display: block;
-  transition: transform var(--duration-slow) var(--ease-out);
+  transition: transform 0.5s ease;
 }
 
 .instructorCard:hover .instructorImg {
-  transform: scale(1.03);
+  transform: scale(1.06);
 }
 
-.instructorBody {
-  padding: var(--space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
+/* Always-visible bottom gradient + name */
+.instructorBottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 56px 22px 22px;
+  background: linear-gradient(to top, rgba(20,8,12,0.85) 0%, transparent 100%);
+  transition: opacity 0.3s ease;
+}
+
+.instructorCard:hover .instructorBottom {
+  opacity: 0;
+}
+
+.instructorRole {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: rgba(245, 237, 232, 0.6);
+  margin-bottom: 5px;
 }
 
 .instructorName {
-  font-family: var(--font-heading);
-  font-size: 20px;
-  color: var(--text-primary);
-  line-height: 1.2;
-}
-
-/* ── Specialty badge ── */
-.badge {
-  display: inline-flex;
-  align-self: flex-start;
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: 20px;
   font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
+  color: #F5EDE8;
+  margin: 0;
+  line-height: 1.1;
 }
 
-.badge_stride {
-  background: rgba(155, 21, 21, 0.10);
-  color: #8B1010;
+/* Hover overlay with bio */
+.instructorOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 8, 12, 0.80);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 28px;
+  opacity: 0;
+  transition: opacity 0.35s ease;
 }
 
-.badge_slow {
-  background: rgba(194, 107, 122, 0.14);
-  color: var(--brand-wine);
+.instructorCard:hover .instructorOverlay {
+  opacity: 1;
 }
 
 .instructorBio {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.7;
-  margin-top: 2px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: rgba(245, 237, 232, 0.92);
+  text-align: center;
+  line-height: 1.8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+/* ── Dots navigation ── */
+.dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(245, 237, 232, 0.25);
+  border: none;
+  cursor: pointer;
+  transition: background 0.25s ease, width 0.25s ease;
+  padding: 0;
+}
+
+.dotActive {
+  background: #F5EDE8;
+  width: 24px;
 }
 
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .heroInner { grid-template-columns: 1fr; }
   .teamGrid  { grid-template-columns: 1fr 1fr; }
-  .groupBanner { aspect-ratio: 4 / 3; }
+  .coachesBanner { aspect-ratio: 4 / 3; }
 }
 
-@media (max-width: 540px) {
-  .teamGrid { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  .teamGrid {
+    grid-template-columns: 1fr;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .instructorCard { height: 340px; }
 }
