@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import ClassTypeFilter from '@/features/clases/ClassTypeFilter'
 import WeeklyCalendar from '@/features/clases/WeeklyCalendar'
 import SeatSelector from '@/features/clases/SeatSelector'
@@ -6,7 +7,8 @@ import { classes } from '@/data/classes'
 import styles from './Clases.module.css'
 
 export default function Clases() {
-  const [filter, setFilter] = useState(null)
+  const [searchParams] = useSearchParams()
+  const [filter, setFilter] = useState(searchParams.get('tipo') || 'Stride')
   const [selectedClass, setSelectedClass] = useState(null)
 
   const filtered = filter ? classes.filter(c => c.type === filter) : classes

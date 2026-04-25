@@ -1,7 +1,6 @@
 import styles from './ClassTypeFilter.module.css'
 
 const filters = [
-  { value: null, label: 'TODOS' },
   { value: 'Stride', label: 'STRIDE' },
   { value: 'Slow', label: 'SLOW' },
 ]

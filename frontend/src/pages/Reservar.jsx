@@ -10,16 +10,18 @@ import styles from './Reservar.module.css'
 const salas = [
   {
     key: 'Stride',
-    nombre: 'Stride',
+    logo: '/brand/STRYDE_X_T.png',
+    logoAlt: 'STRYDE X',
     subtexto: 'Alta intensidad',
-    img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&q=80',
+    img: '/fotos/stride-hero.jpg',
     alt: 'Sala Stride — alta intensidad',
   },
   {
     key: 'Slow',
-    nombre: 'SLOW',
+    logo: '/brand/LOGO_SLOW.png',
+    logoAlt: 'slow.',
     subtexto: 'Movimiento consciente',
-    img: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=1200&q=80',
+    img: '/fotos/slow-hero.jpg',
     alt: 'Sala Slow — movimiento consciente',
   },
 ]
@@ -37,8 +39,7 @@ export default function Reservar() {
     : classes
 
   function selectSala(key) {
-    setSelectedType(key)
-    setStep(1)
+    navigate(`/clases?tipo=${key}`)
   }
 
   return (
@@ -50,25 +51,20 @@ export default function Reservar() {
           title="Asegura tu lugar"
           subtitle="Cupos limitados. Cancela hasta 2 horas antes sin cargo."
           size="lg"
+          titleStyle={{
+            fontFamily: 'var(--font-body)',
+            fontStyle: 'normal',
+            fontWeight: 400,
+            textTransform: 'uppercase',
+            letterSpacing: '0.3em',
+          }}
         />
 
-        {/* Steps indicator */}
-        <div className={styles.steps}>
-          {stepLabels.map((label, i) => (
-            <div key={label} style={{ display: 'contents' }}>
-              <div className={`${styles.step} ${i === step ? styles.active : ''} ${i < step ? styles.done : ''}`}>
-                <div className={styles.stepNum}>{i < step ? '✓' : i + 1}</div>
-                {label}
-              </div>
-              {i < stepLabels.length - 1 && <div className={styles.stepLine} />}
-            </div>
-          ))}
-        </div>
 
         {/* Step 0: Sala */}
         {step === 0 && (
           <div className={styles.salaGrid}>
-            {salas.map(({ key, nombre, subtexto, img, alt }) => (
+            {salas.map(({ key, logo, logoAlt, subtexto, img, alt }) => (
               <div
                 key={key}
                 className={styles.salaCard}
@@ -76,13 +72,13 @@ export default function Reservar() {
                 role="button"
                 tabIndex={0}
                 onKeyDown={e => e.key === 'Enter' && selectSala(key)}
-                aria-label={`Reservar clase de ${nombre}`}
+                aria-label={`Reservar clase de ${logoAlt}`}
               >
                 <img src={img} alt={alt} className={styles.salaImg} loading="lazy" />
                 <div className={styles.salaOverlay} aria-hidden="true" />
                 <div className={styles.salaContent}>
                   <span className={styles.salaSub}>{subtexto}</span>
-                  <h2 className={styles.salaNombre}>{nombre}</h2>
+                  <img src={logo} alt={logoAlt} className={styles.salaLogo} draggable="false" />
                 </div>
               </div>
             ))}
