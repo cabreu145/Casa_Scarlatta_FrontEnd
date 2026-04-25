@@ -8,7 +8,7 @@ export default function CoachesCtaSection() {
   return (
     <section className={styles.section}>
       <img
-        src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1600&q=80"
+        src="/fotos/coaches_banner.jpg"
         alt="Equipo de instructores Casa Scarlatta"
         className={styles.bg}
         loading="lazy"

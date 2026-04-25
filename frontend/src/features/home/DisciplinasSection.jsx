@@ -47,7 +47,7 @@ export default function DisciplinasSection() {
             onKeyDown={e => e.key === 'Enter' && navigate(ruta)}
             aria-label={`Ir a clases de ${logoAlt}`}
           >
-            <img src={img} alt={alt} className={styles.cardImg} loading="lazy" />
+            <img src={img} alt={alt} className={styles.cardImg} loading="eager" fetchPriority="high" />
             <div className={styles.cardOverlay} aria-hidden="true" />
             <div className={styles.cardMotionBtn} onClick={e => { e.stopPropagation(); navigate(rutaInfo) }}>
               <MotionButton label="Conocer más" onClick={() => navigate(rutaInfo)} />

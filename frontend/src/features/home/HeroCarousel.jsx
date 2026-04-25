@@ -2,7 +2,14 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './HeroCarousel.module.css'
 
+const VIDEO_SLIDE_INDEX = 0
+
 const slides = [
+  {
+    type: 'video',
+    videoId: 'djp5ZQQ7WXA',
+    start: 14,
+  },
   {
     src: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1600&q=80',
     alt: 'Clase en Casa Scarlatta',
@@ -26,21 +33,60 @@ const INTERVAL = 4000
 export default function HeroCarousel() {
   const [current, setCurrent] = useState(0)
   const [paused, setPaused] = useState(false)
+  const [videoReady, setVideoReady] = useState(false)
   const timerRef = useRef(null)
+  const iframeRef = useRef(null)
 
   const advance = useCallback(() => {
     setCurrent(prev => (prev + 1) % slides.length)
   }, [])
 
+  // Load YouTube iframe when browser is idle (after critical resources)
+  useEffect(() => {
+    const load = () => setVideoReady(true)
+    if ('requestIdleCallback' in window) {
+      const id = requestIdleCallback(load, { timeout: 800 })
+      return () => cancelIdleCallback(id)
+    } else {
+      const t = setTimeout(load, 500)
+      return () => clearTimeout(t)
+    }
+  }, [])
+
+  // Pause auto-advance while video slide is playing; resume for image slides
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     if (mq.matches) return
-
+    if (current === VIDEO_SLIDE_INDEX) {
+      clearInterval(timerRef.current)
+      return
+    }
     if (!paused) {
       timerRef.current = setInterval(advance, INTERVAL)
     }
     return () => clearInterval(timerRef.current)
-  }, [paused, advance])
+  }, [current, paused, advance])
+
+  // Listen for YouTube video end event and advance slide
+  useEffect(() => {
+    const handleMessage = (e) => {
+      if (!String(e.origin).includes('youtube.com')) return
+      try {
+        const data = JSON.parse(e.data)
+        if (data.event === 'onStateChange' && data.info === 0) {
+          advance()
+        }
+      } catch {}
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [advance])
+
+  const handleIframeLoad = () => {
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'listening' }), '*'
+    )
+  }
 
   return (
     <section
@@ -55,7 +101,21 @@ export default function HeroCarousel() {
           className={`${styles.slide} ${i === current ? styles.active : ''}`}
           aria-hidden={i !== current}
         >
-          <img src={slide.src} alt={slide.alt} className={styles.bg} />
+          {slide.type === 'video' ? (
+            <>
+              <iframe
+                ref={iframeRef}
+                className={styles.videoBg}
+                src={videoReady ? `https://www.youtube.com/embed/${slide.videoId}?autoplay=1&mute=1&loop=1&playlist=${slide.videoId}&controls=0&rel=0&modestbranding=1&showinfo=0&fs=0&iv_load_policy=3&disablekb=1&start=${slide.start}` : undefined}
+                title="Casa Scarlatta video"
+                allow="autoplay; encrypted-media"
+                frameBorder="0"
+              />
+              <div className={styles.videoBlock} />
+            </>
+          ) : (
+            <img src={slide.src} alt={slide.alt} className={styles.bg} />
+          )}
         </div>
       ))}
 

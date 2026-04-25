@@ -49,6 +49,7 @@
   overflow: hidden;
   cursor: pointer;
   border-radius: 20px;
+  background: #1a0a08;
   transform: scale(1);
   transition: transform var(--duration-base) var(--ease-out);
 }
