@@ -27,7 +27,7 @@ export default function DashboardLayout({ children, links }) {
           <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)}>
             <Menu size={22} />
           </button>
-          <span className={styles.mobileTitle}>Casa Scarlatta</span>
+          <span className={styles.mobileTitle}>Casa Scarlatt</span>
         </header>
         <main className={styles.content}>
           {children}

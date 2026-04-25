@@ -87,8 +87,12 @@ export default function Navbar() {
         </Suspense>
         <div className={styles.inner}>
           <Link to="/" className={styles.logo}>
-            <span className={styles.logoCasa}>casa</span>
-            <span className={styles.logoScarlatta}>Scarlatta</span>
+            <img
+              src="/brand/CASA_SCARLATTA_ISOTIPO.png"
+              alt="Casa Scarlatta"
+              draggable="false"
+              className={styles.navLogo}
+            />
           </Link>
 
           <ul className={styles.nav}>

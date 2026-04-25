@@ -29,30 +29,14 @@
 /* ── Logo ── */
 .logo {
   display: flex;
-  flex-direction: column;
-  line-height: 1;
+  align-items: center;
   text-decoration: none;
 }
 
-.logoCasa {
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--brand-wine);
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
-  transition: color var(--duration-base) var(--ease-gentle);
-}
-
-.logoScarlatta {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 22px;
-  font-weight: 400;
-  color: var(--brand-rose);
-  line-height: 1.1;
-  margin-top: -2px;
-  transition: color var(--duration-base) var(--ease-gentle);
+.navLogo {
+  height: 52px;
+  width: auto;
+  mix-blend-mode: multiply;
 }
 
 /* ── Desktop nav links ── */

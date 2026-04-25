@@ -5,20 +5,22 @@ import styles from './DisciplinasSection.module.css'
 const disciplinas = [
   {
     key: 'stride',
-    nombre: 'STRIDE',
+    logo: '/brand/STRYDE_X_T.png',
+    logoAlt: 'STRYDE X',
     subtexto: 'Alta intensidad',
     ruta: '/clases?tipo=stride',
     rutaInfo: '/suet',
-    img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1200&q=80',
+    img: '/fotos/stride-hero.jpg',
     alt: 'Sala Stride — treadmills con iluminación LED roja',
   },
   {
     key: 'slow',
-    nombre: 'SLOW',
+    logo: '/brand/LOGO_SLOW.png',
+    logoAlt: 'slow.',
     subtexto: 'Movimiento consciente',
     ruta: '/clases?tipo=slow',
     rutaInfo: '/flow',
-    img: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=1200&q=80',
+    img: '/fotos/slow-hero.jpg',
     alt: 'Sala Slow — pilates y movimiento consciente',
   },
 ]
@@ -29,13 +31,13 @@ export default function DisciplinasSection() {
   return (
     <section className={styles.wrapper}>
       <div className={styles.intro}>
-        <span className={styles.introLabel}>DISCIPLINES</span>
         <h2 className={styles.introTitle}>
-          Move with Purpose,Live with Intention.
+          IT'S NOT JUST<br />MOVEMENT
         </h2>
+        <p className={styles.introSub}>IT'S A CONNECTION</p>
       </div>
       <div className={styles.cardsRow}>
-        {disciplinas.map(({ key, nombre, subtexto, ruta, rutaInfo, img, alt }) => (
+        {disciplinas.map(({ key, logo, logoAlt, subtexto, ruta, rutaInfo, img, alt }) => (
           <div
             key={key}
             className={styles.card}
@@ -43,7 +45,7 @@ export default function DisciplinasSection() {
             role="link"
             tabIndex={0}
             onKeyDown={e => e.key === 'Enter' && navigate(ruta)}
-            aria-label={`Ir a clases de ${nombre}`}
+            aria-label={`Ir a clases de ${logoAlt}`}
           >
             <img src={img} alt={alt} className={styles.cardImg} loading="lazy" />
             <div className={styles.cardOverlay} aria-hidden="true" />
@@ -52,7 +54,12 @@ export default function DisciplinasSection() {
             </div>
             <div className={styles.cardContent}>
               <span className={styles.cardSub}>{subtexto}</span>
-              <h2 className={styles.cardTitle}>{nombre}</h2>
+              <img
+                src={logo}
+                alt={logoAlt}
+                className={styles.cardLogo}
+                draggable="false"
+              />
             </div>
           </div>
         ))}

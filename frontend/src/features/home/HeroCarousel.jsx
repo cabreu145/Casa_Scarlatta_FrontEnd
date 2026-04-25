@@ -66,7 +66,7 @@ export default function HeroCarousel() {
           <span className={styles.logoCasa}>casa</span>
           <span className={styles.logoScarlatta}>Scarlatta</span>
         </div>
-        <p className={styles.tagline}>Movimiento que transforma</p>
+        <p className={styles.tagline}>Wellness Center</p>
         <Link to="/reservar" className={styles.cta}>Reservar</Link>
       </div>
 

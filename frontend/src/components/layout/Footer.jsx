@@ -49,8 +49,12 @@ export default function Footer() {
         <div className={styles.grid}>
           <div className={styles.brand}>
             <Link to="/">
-              <span className={styles.logoCasa}>casa</span>
-              <span className={styles.logoScarlatta}>Scarlatta</span>
+              <img
+                src="/brand/CASA_SCARLATTA_ISOTIPO.png"
+                alt="Casa Scarlatta"
+                draggable="false"
+                className={styles.footerLogo}
+              />
             </Link>
             <p className={styles.tagline}>
               Estudio de movimiento enfocado en el bienestar integral.<br />
@@ -61,8 +65,8 @@ export default function Footer() {
           <div>
             <p className={styles.colTitle}>Estudio</p>
             <ul className={styles.colLinks}>
-              <li><Link to="/suet">Stride Fitroom</Link></li>
-              <li><Link to="/flow">Slow Method</Link></li>
+              <li><Link to="/suet">Stryde X </Link></li>
+              <li><Link to="/flow">Slow </Link></li>
               <li><Link to="/clases">Clases</Link></li>
               <li><Link to="/nosotros">Nosotros</Link></li>
             </ul>
@@ -73,7 +77,7 @@ export default function Footer() {
             <ul className={styles.colLinks}>
               <li><Link to="/reservar">Reservar clase</Link></li>
               <li><Link to="/contacto">Contacto</Link></li>
-              <li><a href="#membresias">Membresías</a></li>
+              <li><a href="#membresias">Paquetes</a></li>
             </ul>
           </div>
 

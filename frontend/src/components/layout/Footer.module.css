@@ -18,27 +18,7 @@
   gap: var(--space-3xl);
   padding-bottom: var(--space-3xl);
   border-bottom: 1px solid rgba(245, 237, 232, 0.12);
-}
-
-.brand .logoCasa {
-  font-family: var(--font-body);
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--brand-blush);
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
-  display: block;
-}
-
-.brand .logoScarlatta {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 28px;
-  font-weight: 400;
-  color: var(--brand-blush);
-  line-height: 1.1;
-  display: block;
-  margin-top: -2px;
+  align-items: start;
 }
 
 .tagline {
@@ -127,6 +107,13 @@
 .socialLink:hover {
   border-color: var(--brand-blush);
   color: var(--brand-blush);
+}
+
+.footerLogo {
+  width: 70px;
+  height: auto;
+  filter: brightness(0) saturate(100%) invert(75%) sepia(20%) saturate(500%) hue-rotate(300deg) brightness(1.05);
+  margin-bottom: var(--space-md);
 }
 
 @media (max-width: 900px) {
