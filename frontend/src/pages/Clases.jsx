@@ -19,11 +19,16 @@ export default function Clases() {
         <div className={styles.heroInner}>
           <span className={styles.heroLabel}>RESERVA TU LUGAR</span>
           <h1 className={styles.heroTitle}>CLASES</h1>
-          <ClassTypeFilter active={filter} onChange={setFilter} />
         </div>
       </section>
 
-      <WeeklyCalendar classes={filtered} onSelectClass={setSelectedClass} />
+      <div className={styles.filterWrap}>
+        <ClassTypeFilter active={filter} onChange={setFilter} />
+      </div>
+
+      <div className={styles.calendarWrap}>
+        <WeeklyCalendar classes={filtered} onSelectClass={setSelectedClass} />
+      </div>
 
       {selectedClass && (
         <SeatSelector cls={selectedClass} onClose={() => setSelectedClass(null)} />

@@ -32,7 +32,7 @@ export default function PricingSection() {
             Membresías
           </span>
           <div className="h-px w-8 bg-[rgba(123,31,46,0.25)]" />
-          <h2 className="font-display text-[clamp(36px,4.5vw,52px)] italic font-medium leading-tight text-[#5A1520] tracking-tight">
+          <h2 className="font-sans text-[clamp(36px,4.5vw,52px)] not-italic font-normal leading-tight text-[#5A1520] uppercase tracking-[0.3em]">
             Elige tu Paquete
           </h2>
           <p className="font-sans text-sm font-light text-[#A08878] tracking-wide">

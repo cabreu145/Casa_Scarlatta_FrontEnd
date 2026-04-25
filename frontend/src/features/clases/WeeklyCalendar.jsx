@@ -1,43 +1,58 @@
 import { useState } from 'react'
 import styles from './WeeklyCalendar.module.css'
 
-const DAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const DAYS_ES   = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const DAYS_ABBR = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
+const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
-function getWeekWindow() {
+function getWeekWindow(offsetWeeks = 0) {
   const result = []
-  const today = new Date()
+  const today  = new Date()
+  const base   = new Date(today)
+  base.setDate(today.getDate() + offsetWeeks * 7)
+
   for (let i = 0; i < 7; i++) {
-    const d = new Date(today)
-    d.setDate(today.getDate() + i)
+    const d = new Date(base)
+    d.setDate(base.getDate() + i)
     result.push({
-      fullName: DAYS_ES[d.getDay()],
-      abbr: DAYS_ABBR[d.getDay()],
-      dateLabel: `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
-      isToday: i === 0,
+      fullName:   DAYS_ES[d.getDay()],
+      abbr:       DAYS_ABBR[d.getDay()],
+      dateLabel:  `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
+      isToday:    offsetWeeks === 0 && i === 0,
+      monthIndex: d.getMonth(),
+      year:       d.getFullYear(),
     })
   }
   return result
 }
 
+function getMonthLabel(days) {
+  const first = days[0]
+  const last  = days[days.length - 1]
+  if (first.monthIndex === last.monthIndex) {
+    return `${MONTHS_ES[first.monthIndex]} ${first.year}`
+  }
+  return `${MONTHS_ES[first.monthIndex]} – ${MONTHS_ES[last.monthIndex]} ${last.year}`
+}
+
 function formatTime(time) {
   const [h, m] = time.split(':').map(Number)
   const suffix = h >= 12 ? 'pm' : 'am'
-  const hr = h > 12 ? h - 12 : h === 0 ? 12 : h
+  const hr     = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${hr}:${String(m || 0).padStart(2, '0')} ${suffix}`
 }
 
 function isPastTime(time) {
-  const now = new Date()
+  const now    = new Date()
   const [h, m] = time.split(':').map(Number)
   return (h * 60 + (m || 0)) < (now.getHours() * 60 + now.getMinutes())
 }
 
 function ClassBlock({ cls, onSelect, isToday }) {
-  const isFull = cls.spots === 0
-  const isPast = isToday && isPastTime(cls.time)
-  const disabled = isFull || isPast
-  const spotsLow = cls.spots > 0 && cls.spots <= 3
+  const isFull    = cls.spots === 0
+  const isPast    = isToday && isPastTime(cls.time)
+  const disabled  = isFull || isPast
+  const spotsLow  = cls.spots > 0 && cls.spots <= 3
 
   return (
     <button
@@ -63,8 +78,10 @@ function ClassBlock({ cls, onSelect, isToday }) {
 }
 
 export default function WeeklyCalendar({ classes, onSelectClass }) {
-  const [activeDay, setActiveDay] = useState(0)
-  const days = getWeekWindow()
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [activeDay, setActiveDay]   = useState(0)
+  const days  = getWeekWindow(weekOffset)
+  const label = getMonthLabel(days)
 
   const byDay = days.map(({ fullName }) =>
     classes
@@ -74,6 +91,29 @@ export default function WeeklyCalendar({ classes, onSelectClass }) {
 
   return (
     <div className={styles.wrapper}>
+
+      {/* ── Month nav ── */}
+      <div className={styles.monthNav}>
+        <button
+          className={`${styles.navBtn} ${weekOffset === 0 ? styles.navBtnDisabled : ''}`}
+          onClick={() => { setWeekOffset(0); setActiveDay(0) }}
+          disabled={weekOffset === 0}
+          aria-label="Regresar a semana actual"
+        >
+          ←
+        </button>
+
+        <span className={styles.monthLabel}>{label}</span>
+
+        <button
+          className={styles.navBtn}
+          onClick={() => setWeekOffset(w => w + 1)}
+          aria-label="Siguiente semana"
+        >
+          →
+        </button>
+      </div>
+
       {/* ── Desktop grid ── */}
       <div className={styles.grid}>
         {days.map(({ abbr, dateLabel, isToday }, i) => (

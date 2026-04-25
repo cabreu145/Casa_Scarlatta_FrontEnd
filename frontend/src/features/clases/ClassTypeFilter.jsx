@@ -1,20 +1,21 @@
 import styles from './ClassTypeFilter.module.css'
 
 const filters = [
-  { value: 'Stride', label: 'STRIDE' },
-  { value: 'Slow', label: 'SLOW' },
+  { value: 'Stride', img: '/brand/Isotipo_SX.png', alt: 'STRYDE X' },
+  { value: 'Slow', img: '/brand/SLOW_ISOTIPO.png', alt: 'slow.' },
 ]
 
 export default function ClassTypeFilter({ active, onChange }) {
   return (
     <div className={styles.wrap}>
-      {filters.map(({ value, label }) => (
+      {filters.map(({ value, img, alt }) => (
         <button
-          key={label}
+          key={value}
           className={`${styles.btn} ${active === value ? styles.active : ''}`}
           onClick={() => onChange(value)}
+          aria-label={alt}
         >
-          {label}
+          <img src={img} alt={alt} className={`${styles.isotipo} ${value === 'Slow' ? styles.isotipoSlow : ''}`} draggable="false" />
         </button>
       ))}
     </div>
