@@ -18,10 +18,12 @@
 }
 
 .title {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-style: normal;
   font-size: clamp(64px, 10vw, 120px);
-  font-weight: 400;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--brand-blush);
   line-height: 1;
   margin: 0;
@@ -86,10 +88,12 @@
 }
 
 .ubicacionTitle {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
   font-style: normal;
   font-size: clamp(32px, 5vw, 56px);
-  font-weight: 400;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--brand-blush);
   margin: 0;
 }
