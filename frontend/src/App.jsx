@@ -22,6 +22,7 @@ import ClienteMisClases from '@/pages/cliente/ClienteMisClases'
 import ClientePagos from '@/pages/cliente/ClientePagos'
 import ClientePerfil from '@/pages/cliente/ClientePerfil'
 
+import CoachPanel from '@/pages/coach/CoachPanel'
 import CoachDashboard from '@/pages/coach/CoachDashboard'
 import CoachMisClases from '@/pages/coach/CoachMisClases'
 
@@ -55,7 +56,7 @@ function AnimatedRoutes() {
         <Route path="/cliente/pagos" element={<ProtectedRoute rolRequerido="cliente"><ClientePagos /></ProtectedRoute>} />
         <Route path="/cliente/perfil" element={<ProtectedRoute rolRequerido="cliente"><ClientePerfil /></ProtectedRoute>} />
 
-        <Route path="/coach/dashboard" element={<ProtectedRoute rolRequerido="coach"><CoachDashboard /></ProtectedRoute>} />
+        <Route path="/coach/dashboard" element={<ProtectedRoute rolRequerido="coach"><CoachPanel /></ProtectedRoute>} />
         <Route path="/coach/mis-clases" element={<ProtectedRoute rolRequerido="coach"><CoachMisClases /></ProtectedRoute>} />
 
         <Route path="/admin/dashboard" element={<ProtectedRoute rolRequerido="admin"><AdminPanel /></ProtectedRoute>} />
