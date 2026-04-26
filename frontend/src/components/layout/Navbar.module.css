@@ -284,8 +284,8 @@
 }
 
 .mobileNavLink {
-  font-family: var(--font-display);
-  font-style: italic;
+  font-family: var(--font-heading);
+  font-style: normal;
   font-size: 36px;
   font-weight: 400;
   color: var(--text-primary);

@@ -1,165 +1,128 @@
 .page {
-  min-height: calc(100vh - 72px);
-  background: var(--bg-base);
-  position: relative;
-  overflow: hidden;
-}
-
-.blob {
-  top: -80px;
-  left: -80px;
-  width: 450px;
-  height: 450px;
-  opacity: 0.22 !important;
+  background: #1a0a0e;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4xl) var(--space-lg);
 }
 
 .inner {
-  position: relative;
-  z-index: 1;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--space-4xl) var(--space-lg);
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: var(--space-4xl);
-  align-items: start;
-}
-
-.info {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xl);
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2xl);
+  max-width: 800px;
+  width: 100%;
 }
 
-.infoItem {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+.title {
+  font-family: var(--font-heading);
+  font-style: normal;
+  font-size: clamp(64px, 10vw, 120px);
+  font-weight: 400;
+  color: var(--brand-blush);
+  line-height: 1;
+  margin: 0;
 }
 
-.infoLabel {
-  font-size: 11px;
-  font-weight: 500;
+.subtitle {
+  font-size: 13px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--text-label);
+  letter-spacing: 0.22em;
+  color: rgba(245, 237, 232, 0.55);
+  margin: 0;
 }
 
-.infoValue {
-  font-size: 16px;
-  color: var(--text-primary);
-  line-height: 1.6;
+.contactRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4xl);
+  flex-wrap: wrap;
+  margin-top: var(--space-sm);
 }
 
-.infoValue a {
-  color: var(--brand-wine);
+.contactItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  text-decoration: none;
+  color: #F5EDE8;
+  transition: opacity 0.2s ease;
+}
+
+.contactItem:hover {
+  opacity: 0.7;
+}
+
+.contactIcon {
+  flex-shrink: 0;
+}
+
+.contactLabel {
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.03em;
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(245, 237, 232, 0.3);
 }
 
 .divider {
+  width: 60%;
   height: 1px;
-  background: var(--neutral-border);
+  background: var(--brand-blush);
+  opacity: 0.35;
 }
 
-/* Form */
-.form {
-  background: var(--bg-surface);
-  border: 1px solid var(--neutral-border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-2xl);
+.ubicacion {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-lg);
 }
 
-.formTitle {
+.ubicacionTitle {
   font-family: var(--font-heading);
-  font-size: 28px;
-  color: var(--text-primary);
+  font-style: normal;
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 400;
+  color: var(--brand-blush);
+  margin: 0;
 }
 
-.formRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-md);
-}
-
-.field {
+.ubicacionContent {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
+  align-items: flex-start;
+  gap: var(--space-sm);
+  color: rgba(245, 237, 232, 0.7);
 }
 
-.field label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.field input,
-.field select,
-.field textarea {
-  font-family: var(--font-body);
-  font-size: 15px;
-  color: var(--text-primary);
-  background: var(--bg-base);
-  border: 1.5px solid var(--neutral-border);
-  border-radius: var(--radius-md);
-  padding: 11px 14px;
-  outline: none;
-  transition: border-color var(--duration-fast);
-  resize: none;
-}
-
-.field input:focus,
-.field select:focus,
-.field textarea:focus {
-  border-color: var(--brand-wine);
-}
-
-.field input::placeholder,
-.field textarea::placeholder {
-  color: var(--text-muted);
-}
-
-.fieldFull {
-  grid-column: span 2;
-}
-
-.error {
-  font-size: 12px;
-  color: #C0392B;
+.ubicacionIcon {
+  flex-shrink: 0;
   margin-top: 2px;
+  color: var(--brand-blush);
+  opacity: 0.7;
 }
 
-.submitBtn {
-  font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-on-dark);
-  background: var(--brand-wine);
-  border: none;
-  border-radius: var(--radius-pill);
-  padding: 14px 32px;
-  cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
-  align-self: flex-start;
+.ubicacionText {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.7;
+  margin: 0;
+  text-align: left;
 }
 
-.submitBtn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(123, 31, 46, 0.28);
-}
+@media (max-width: 640px) {
+  .contactRow {
+    flex-direction: column;
+    gap: var(--space-xl);
+  }
 
-.submitBtn:disabled {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-@media (max-width: 900px) {
-  .inner { grid-template-columns: 1fr; }
-  .formRow { grid-template-columns: 1fr; }
-  .fieldFull { grid-column: span 1; }
+  .divider {
+    width: 80%;
+  }
 }

@@ -1,65 +1,194 @@
-/* ── Historia ── */
-.hero {
-  padding: var(--space-4xl) 0;
-  background: var(--bg-base);
+.page {
+  background: #1a0a0e;
+  min-height: 100vh;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SECCIÓN 1 — HISTORIA ── */
+.historia {
+  display: grid;
+  grid-template-columns: 30fr 70fr;
+  min-height: 85vh;
+}
+
+/* Carrusel */
+.carouselWrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3xl) var(--space-xl);
+  gap: var(--space-md);
+}
+
+.carouselTrack {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 20px;
   overflow: hidden;
 }
 
-.blob {
-  top: -80px;
-  right: -60px;
-  width: 500px;
-  height: 500px;
+.carouselImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  opacity: 0;
+  transition: opacity 0.75s ease;
 }
 
-.heroInner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 var(--space-lg);
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4xl);
+.carouselImgActive {
+  opacity: 1;
+}
+
+.imageOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    rgba(20, 0, 10, 0.45),
+    rgba(20, 0, 10, 0.1)
+  );
+  pointer-events: none;
+}
+
+.carouselDots {
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(245, 237, 232, 0.3);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.25s ease, width 0.25s ease;
+}
+
+.dotActive {
+  background: rgba(245, 237, 232, 0.85);
+  width: 24px;
+}
+
+/* Historia — texto derecha */
+.historiaContent {
+  display: flex;
   align-items: center;
+  padding: var(--space-4xl) var(--space-3xl);
+  background: #1a0a0e;
 }
 
-.storyContent {
+.historiaText {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
-}
-
-.storyText {
-  font-size: 17px;
-  color: var(--text-secondary);
-  line-height: 1.8;
-}
-
-.storyImage {
+  gap: var(--space-2xl);
   width: 100%;
-  aspect-ratio: 4/5;
-  object-fit: cover;
-  border-radius: var(--radius-xl);
 }
 
-/* ── Coaches banner ── */
-.coachesBanner {
-  background: #1a0a0e;
-  padding: 56px 24px 32px;
+.historiaTitle {
+  font-family: var(--font-body);
+  font-style: normal;
+  font-size: clamp(32px, 4.4vw, 62px);
+  font-weight: 700;
+  color: #F5EDE8;
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  animation: fadeIn 0.8s ease both;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: var(--brand-blush);
+  opacity: 0.45;
+}
+
+.experienceBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: fadeIn 0.8s ease both;
+  animation-delay: 0.2s;
+}
+
+.experienceTitle {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  color: rgba(245, 237, 232, 0.7);
+}
+
+.experienceText {
+  font-size: 17px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: rgba(245, 237, 232, 0.9);
+  max-width: 400px;
+  margin: 0 auto;
   text-align: center;
 }
 
-.coachesBannerContent {
+.ctaBtn {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 14px 32px;
+  border-radius: 999px;
+  background: #F5EDE8;
+  color: #1a0a0e;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  width: fit-content;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  animation: fadeIn 0.8s ease both;
+  animation-delay: 0.4s;
+}
+
+.ctaBtn:hover {
+  opacity: 0.88;
+  transform: translateY(-2px);
+}
+
+/* ── SECCIÓN 2 — COACHES ── */
+.coachesSec {
+  background: #1a0a0e;
+  padding-bottom: var(--space-4xl);
+}
+
+.coachesHeader {
+  padding: var(--space-3xl) var(--space-lg) var(--space-xl);
+  text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
 }
 
-.coachesBannerLabel {
-  font-family: var(--font-body);
+.coachesDivider {
+  width: 80%;
+  height: 1px;
+  background: var(--brand-blush);
+  opacity: 0.45;
+  margin-top: var(--space-sm);
+}
+
+.coachesLabel {
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.22em;
@@ -67,9 +196,9 @@
   text-transform: uppercase;
 }
 
-.coachesBannerTitle {
+.coachesTitle {
   font-family: var(--font-body);
-  font-size: clamp(64px, 11vw, 130px);
+  font-size: clamp(36px, 5vw, 64px);
   font-weight: 800;
   letter-spacing: 0.04em;
   color: #F5EDE8;
@@ -77,32 +206,17 @@
   line-height: 1;
 }
 
-/* ── Equipo / Carrusel ── */
-.team {
-  background: #1a0a0e;
-  padding: 16px 0 56px;
-}
-
-.teamInner {
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
-.teamGrid {
+.coachesGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  animation: slideInCards 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  grid-template-columns: repeat(5, 1fr);
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  gap: 14px;
 }
 
-@keyframes slideInCards {
-  from { opacity: 0; transform: translateX(48px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-/* ── Instructor card ── */
-.instructorCard {
+/* Coach card */
+.coachCard {
   position: relative;
   overflow: hidden;
   height: 500px;
@@ -110,7 +224,7 @@
   cursor: default;
 }
 
-.instructorImg {
+.coachImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -118,28 +232,26 @@
   transition: transform 0.5s ease;
 }
 
-.instructorCard:hover .instructorImg {
+.coachCard:hover .coachImg {
   transform: scale(1.06);
 }
 
-/* Always-visible bottom gradient + name */
-.instructorBottom {
+.coachBottom {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 56px 22px 22px;
-  background: linear-gradient(to top, rgba(20,8,12,0.85) 0%, transparent 100%);
+  padding: 56px 18px 18px;
+  background: linear-gradient(to top, rgba(20, 8, 12, 0.88) 0%, transparent 100%);
   transition: opacity 0.3s ease;
 }
 
-.instructorCard:hover .instructorBottom {
+.coachCard:hover .coachBottom {
   opacity: 0;
 }
 
-.instructorRole {
+.coachBadge {
   display: block;
-  font-family: var(--font-body);
   font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
@@ -148,9 +260,9 @@
   margin-bottom: 5px;
 }
 
-.instructorName {
+.coachName {
   font-family: var(--font-body);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -159,26 +271,24 @@
   line-height: 1.1;
 }
 
-/* Hover overlay with bio */
-.instructorOverlay {
+.coachOverlay {
   position: absolute;
   inset: 0;
-  background: rgba(20, 8, 12, 0.80);
+  background: rgba(20, 8, 12, 0.82);
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 28px;
+  padding: 28px 22px;
   opacity: 0;
   transition: opacity 0.35s ease;
 }
 
-.instructorCard:hover .instructorOverlay {
+.coachCard:hover .coachOverlay {
   opacity: 1;
 }
 
-.instructorBio {
-  font-family: var(--font-body);
+.coachBio {
   font-size: 13px;
   color: rgba(245, 237, 232, 0.92);
   text-align: center;
@@ -188,43 +298,82 @@
   margin: 0;
 }
 
-/* ── Dots navigation ── */
-.dots {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 28px;
+/* ── RESPONSIVE ── */
+@media (max-width: 1100px) {
+  .coachesGrid { grid-template-columns: repeat(3, 1fr); }
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(245, 237, 232, 0.25);
-  border: none;
-  cursor: pointer;
-  transition: background 0.25s ease, width 0.25s ease;
-  padding: 0;
-}
+@media (max-width: 1024px) {
+  .historia {
+    grid-template-columns: 1fr;
+    min-height: unset;
+  }
 
-.dotActive {
-  background: #F5EDE8;
-  width: 24px;
-}
+  /* Imagen full-width arriba */
+  .carouselWrap {
+    padding: 0;
+    order: 0;
+  }
 
-/* ── Responsive ── */
-@media (max-width: 900px) {
-  .heroInner { grid-template-columns: 1fr; }
-  .teamGrid  { grid-template-columns: 1fr 1fr; }
-  .coachesBanner { aspect-ratio: 4 / 3; }
+  .carouselTrack {
+    aspect-ratio: unset;
+    height: 55vw;
+    min-height: 280px;
+    max-height: 480px;
+    border-radius: 0;
+    width: 100%;
+  }
+
+  .carouselDots {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .carouselWrap {
+    position: relative;
+  }
+
+  /* Texto abajo */
+  .historiaContent {
+    order: 1;
+    padding: 40px 24px 48px;
+    background: #1a0a0e;
+  }
+
+  .historiaText {
+    gap: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .historiaTitle {
+    font-size: clamp(26px, 5.5vw, 40px);
+    line-height: 1.1;
+  }
+
+  .experienceText {
+    font-size: 15px;
+    max-width: 100%;
+  }
+
+  .ctaBtn {
+    width: 100%;
+    text-align: center;
+    padding: 16px 24px;
+  }
 }
 
 @media (max-width: 640px) {
-  .teamGrid {
-    grid-template-columns: 1fr;
-    max-width: 320px;
-    margin: 0 auto;
+  .coachesGrid { grid-template-columns: repeat(2, 1fr); }
+  .coachCard { height: 320px; }
+
+  .carouselTrack {
+    height: 70vw;
   }
-  .instructorCard { height: 340px; }
+
+  .historiaTitle {
+    font-size: clamp(22px, 6.5vw, 32px);
+  }
 }

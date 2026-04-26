@@ -1,140 +1,102 @@
-import { useState, useEffect } from 'react'
-import BrandBlob from '@/components/ui/BrandBlob'
-import SectionHeader from '@/components/ui/SectionHeader'
+import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import styles from './Nosotros.module.css'
 
-const instructors = [
-  {
-    name: 'Sofía Reyes',
-    badge: 'SLOW · PILATES MAT',
-    bio: 'Instructora certificada de pilates con 8 años de experiencia. Especialista en movimiento consciente y rehabilitación.',
-    img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600&q=80',
-  },
-  {
-    name: 'Carlos Méndez',
-    badge: 'STRIDE · ALTA INTENSIDAD',
-    bio: 'Entrenador personal con certificación en HIIT y entrenamiento funcional. Creador del método STRIDE.',
-    img: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=600&q=80',
-  },
-  {
-    name: 'Valentina Cruz',
-    badge: 'SLOW · MEDITACIÓN',
-    bio: 'Maestra de yoga y meditación. Combina la práctica ancestral con técnicas modernas de bienestar.',
-    img: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=600&q=80',
-  },
-  {
-    name: 'Ana Torres',
-    badge: 'STRIDE · FUNCIONAL',
-    bio: 'Especialista en entrenamiento funcional y fuerza. Apasionada por ayudar a sus estudiantes a superar sus límites.',
-    img: 'https://images.unsplash.com/photo-1548690312-e3b507d8c110?w=600&q=80',
-  },
-  {
-    name: 'Miguel Herrera',
-    badge: 'STRIDE · CARDIO',
-    bio: 'Ex atleta profesional reconvertido en coach. Su energía es contagiosa y sus clases son un reto constante.',
-    img: 'https://images.unsplash.com/photo-1519058082700-08a0b56da9b4?w=600&q=80',
-  },
-  {
-    name: 'Daniela Morales',
-    badge: 'SLOW · RESPIRACIÓN',
-    bio: 'Coach de bienestar holístico. Especializada en técnicas de respiración y movimiento restaurativo.',
-    img: 'https://images.unsplash.com/photo-1509967419530-da38b4704bc6?w=600&q=80',
-  },
+const carouselImages = [
+  '/fotos/team_laughing.jpg',
+  '/fotos/team_scene_2.jpg',
+  '/fotos/team_scene_3.jpg',
+  '/fotos/team_scene_4.jpg',
 ]
 
-const VISIBLE = 3
-
-function chunk(arr, size) {
-  const result = []
-  for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size))
-  return result
-}
+const coaches = [
+  { name: 'Mafer', badge: 'Especialidad · placeholder', bio: 'Descripción placeholder — agrega aquí la biografía y especialidades de Mafer.', img: '/fotos/mafer_coach.jpg' },
+  { name: 'Majo',  badge: 'Especialidad · placeholder', bio: 'Descripción placeholder — agrega aquí la biografía y especialidades de Majo.',  img: '/fotos/majo_coach.jpg'  },
+  { name: 'Mali',  badge: 'Especialidad · placeholder', bio: 'Descripción placeholder — agrega aquí la biografía y especialidades de Mali.',  img: '/fotos/mali_coach.jpg'  },
+  { name: 'Daya',  badge: 'Especialidad · placeholder', bio: 'Descripción placeholder — agrega aquí la biografía y especialidades de Daya.',  img: '/fotos/daya_coach.jpg'  },
+  { name: 'Coste', badge: 'Especialidad · placeholder', bio: 'Descripción placeholder — agrega aquí la biografía y especialidades de Coste.', img: '/fotos/coste_coach.jpg' },
+]
 
 export default function Nosotros() {
-  const pages = chunk(instructors, VISIBLE)
-  const [page, setPage] = useState(0)
+  const [current, setCurrent] = useState(0)
+
+  const next = useCallback(() => setCurrent(c => (c + 1) % carouselImages.length), [])
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setPage((p) => (p + 1) % pages.length)
-    }, 4500)
-    return () => clearInterval(timer)
-  }, [pages.length])
+    const t = setInterval(next, 4500)
+    return () => clearInterval(t)
+  }, [next])
 
   return (
-    <main>
-      {/* Historia */}
-      <section className={styles.hero}>
-        <BrandBlob className={styles.blob} width={500} height={500} />
-        <div className={styles.heroInner}>
-          <div className={styles.storyContent}>
-            <SectionHeader
-              label="Nuestra historia"
-              title="Un espacio creado con propósito"
-              size="lg"
-            />
-            <p className={styles.storyText}>
-              Casa Scarlatta nació del deseo de crear un lugar donde el movimiento
-              sea más que ejercicio. Un espacio boutique donde cada persona encuentre
-              su ritmo, su método y su comunidad.
-            </p>
-            <p className={styles.storyText}>
-              Dos salas, dos experiencias, un mismo propósito: transformar cuerpos
-              y mentes a través del movimiento consciente e intencional.
-            </p>
-            <p className={styles.storyText}>
-              Creemos que el bienestar no es un destino — es un camino que se
-              recorre día a día, clase a clase.
-            </p>
-          </div>
-          <img
-            src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=700&q=80"
-            alt="Casa Scarlatta Wellness Studio"
-            className={styles.storyImage}
-            loading="lazy"
-          />
-        </div>
-      </section>
+    <main className={styles.page}>
 
-      {/* Banner coaches */}
-      <div className={styles.coachesBanner}>
-        <div className={styles.coachesBannerContent}>
-          <span className={styles.coachesBannerLabel}>NUESTRO EQUIPO</span>
-          <h2 className={styles.coachesBannerTitle}>COACHES</h2>
-        </div>
-      </div>
+      {/* SECCIÓN 1 — HISTORIA */}
+      <section className={styles.historia}>
 
-      {/* Carrusel de coaches */}
-      <section className={styles.team}>
-        <div className={styles.teamInner}>
-          <div key={page} className={styles.teamGrid}>
-            {pages[page].map(({ name, badge, bio, img }) => (
-              <div key={name} className={styles.instructorCard}>
-                <img src={img} alt={name} className={styles.instructorImg} loading="lazy" />
-                <div className={styles.instructorBottom}>
-                  <span className={styles.instructorRole}>{badge}</span>
-                  <h3 className={styles.instructorName}>{name}</h3>
-                </div>
-                <div className={styles.instructorOverlay}>
-                  <p className={styles.instructorBio}>{bio}</p>
-                </div>
-              </div>
+        {/* Imagen — izquierda */}
+        <div className={styles.carouselWrap}>
+          <div className={styles.carouselTrack}>
+            {carouselImages.map((src, i) => (
+              <img
+                key={src}
+                src={src}
+                alt=""
+                className={`${styles.carouselImg} ${i === current ? styles.carouselImgActive : ''}`}
+              />
             ))}
+            <div className={styles.imageOverlay} />
           </div>
-
-          {/* Dots */}
-          <div className={styles.dots}>
-            {pages.map((_, i) => (
+          <div className={styles.carouselDots}>
+            {carouselImages.map((_, i) => (
               <button
                 key={i}
-                className={`${styles.dot} ${i === page ? styles.dotActive : ''}`}
-                onClick={() => setPage(i)}
-                aria-label={`Grupo ${i + 1}`}
+                className={`${styles.dot} ${i === current ? styles.dotActive : ''}`}
+                onClick={() => setCurrent(i)}
+                aria-label={`Foto ${i + 1}`}
               />
             ))}
           </div>
         </div>
+
+        {/* Texto — derecha */}
+        <div className={styles.historiaContent}>
+          <div className={styles.historiaText}>
+
+            <h1 className={styles.historiaTitle}>
+              Creemos en el equilibrio entre fluidez y fuerza, entre disciplina y presencia.
+            </h1>
+
+            <div className={styles.divider} />
+            <p className={styles.experienceText}>Arrive. Breathe. Move. Connect. Transform.</p>
+
+
+          </div>
+        </div>
       </section>
+
+      {/* SECCIÓN 2 — COACHES */}
+      <section className={styles.coachesSec}>
+        <div className={styles.coachesHeader}>
+          <span className={styles.coachesLabel}>Nuestro equipo</span>
+          <h2 className={styles.coachesTitle}>COACHES</h2>
+          <div className={styles.coachesDivider} />
+        </div>
+        <div className={styles.coachesGrid}>
+          {coaches.map(({ name, badge, bio, img }) => (
+            <div key={name} className={styles.coachCard}>
+              <img src={img} alt={name} className={styles.coachImg} loading="lazy" />
+              <div className={styles.coachBottom}>
+                <span className={styles.coachBadge}>{badge}</span>
+                <h3 className={styles.coachName}>{name}</h3>
+              </div>
+              <div className={styles.coachOverlay}>
+                <p className={styles.coachBio}>{bio}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
     </main>
   )
 }
