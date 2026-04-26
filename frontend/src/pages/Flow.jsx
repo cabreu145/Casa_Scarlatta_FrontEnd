@@ -30,7 +30,6 @@ export default function Flow() {
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
               <Button to="/reservar" size="lg">Reservar clase</Button>
-              <Button to="/clases" variant="ghost" size="lg">Ver horarios</Button>
             </div>
           </div>
           <div className={styles.heroImageWrap}>

@@ -1,47 +1,33 @@
-import { Link } from 'react-router-dom'
-import { Zap, Music, Dumbbell, Timer, Flame, Users } from 'lucide-react'
+import { Music, Zap, Target, Heart, Dumbbell, Flame, Brain, CheckCircle, ArrowRight, Calendar } from 'lucide-react'
 import Button from '@/components/ui/Button'
-import SectionHeader from '@/components/ui/SectionHeader'
-import { classes } from '@/data/classes'
+import ExpandButton from '@/components/ui/ExpandButton'
 import styles from './Suet.module.css'
-
-const features = [
-  { icon: <Zap size={28} />, title: 'Alta intensidad', desc: 'Bloques de cardio y fuerza diseñados para maximizar resultados en cada sesión.' },
-  { icon: <Music size={28} />, title: 'DJ en sala', desc: 'Música en vivo que sincroniza con tu ritmo. La energía de un club, la efectividad de un gym.' },
-  { icon: <Dumbbell size={28} />, title: 'Equipo premium', desc: 'Treadmills, steps, rack de pesas y kettlebells. Todo lo que necesitas en un espacio.' },
-  { icon: <Timer size={28} />, title: '45–50 min', desc: 'Clases cortas, efectivas e intensas. Optimizadas para resultados reales sin perder el tiempo.' },
-  { icon: <Flame size={28} />, title: 'LED rojo', desc: 'Iluminación dramática que crea el ambiente perfecto para entrar en modo bestia.' },
-  { icon: <Users size={28} />, title: 'Cupo limitado', desc: 'Máximo 20 personas. Atención personalizada y espacio garantizado en cada clase.' },
-]
-
-const suetClasses = classes.filter(c => c.type === 'Stride')
 
 export default function Suet() {
   return (
     <div className={styles.page}>
+
       {/* Hero */}
       <section className={styles.hero}>
         <div className={styles.heroBg} />
-        <img
-          src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1400&q=80"
-          alt="Sala Stride"
-          className={styles.heroImage}
-        />
-        <div className={styles.redStripes} />
+        <img src="/fotos/gym_banner_stryde.jpg" alt="Sala Stryde" className={styles.heroImage} />
         <div className={styles.glow} />
         <div className={styles.heroContent}>
-          <span className={styles.overline}>Casa Scarlatta · Alta intensidad</span>
-          <h1 className={styles.heroTitle}>STRIDE</h1>
+          <div className={styles.logoGroup}>
+            <span className={styles.overline}>Casa Scarlatta &mdash; Alta Intensidad</span>
+            <img src="/brand/STRYDE_X_T.png" alt="Stryde" className={styles.heroLogo} />
+            <span className={styles.logoTagline}>Stronger Every Stryde</span>
+          </div>
           <p className={styles.heroSub}>
-            Entrenamiento que fusiona cardio y fuerza en bloques de alta
-            intensidad con música envolvente. Aquí se suda de verdad.
+            Entrenamiento de alto rendimiento que fusiona cardio y fuerza en bloques de
+            alta intensidad con música envolvente.
+          </p>
+          <p className={styles.heroSubSmall}>
+            Mejora tu resistencia. Tonifica tu cuerpo. Eleva tu disciplina.
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
-            <Button to="/reservar" size="lg" style={{ background: 'var(--suet-red)' }}>
+            <Button to="/clases?tipo=Stride" size="lg" style={{ background: 'var(--suet-red)' }}>
               Reservar clase
-            </Button>
-            <Button to="/clases" variant="ghostLight" size="lg">
-              Ver horarios
             </Button>
           </div>
         </div>
@@ -62,45 +48,136 @@ export default function Suet() {
         ))}
       </div>
 
-      {/* Features */}
-      <div className={styles.features}>
-        <SectionHeader
-          label="La experiencia"
-          title="Más que un gym"
-          dark
-          size="md"
-        />
-        <div className={styles.featuresGrid}>
-          {features.map(({ icon, title, desc }) => (
-            <div key={title} className={styles.featureCard}>
-              <span className={styles.featureIcon}>{icon}</span>
-              <h3 className={styles.featureTitle}>{title}</h3>
-              <p className={styles.featureDesc}>{desc}</p>
+      {/* ROW 1 — Concepto / Experiencia / Quote */}
+      <div className={styles.gridRow1}>
+        {/* Panel: Concepto */}
+        <div className={styles.panelConcepto}>
+          <img src="/fotos/stride-hero.jpg" alt="" className={styles.panelBg} />
+          <div className={styles.panelOverlay} />
+          <div className={styles.panelConceptoContent}>
+            <span className={styles.secLabel}>Concepto</span>
+            <h2 className={styles.conceptoTitle}>
+              La fuerza<br />no se encuentra.<br />Se construye.
+            </h2>
+            <p className={styles.conceptoText}>
+              <strong>STRYDE X</strong> es más que una clase.<br />
+              Es disciplina en movimiento.<br />
+              Es el compromiso que transforma<br />tu cuerpo y tu mente.
+            </p>
+          </div>
+        </div>
+
+        {/* Panel: Experiencia */}
+        <div className={styles.panelExperiencia}>
+          <span className={styles.secLabel}>Experiencia</span>
+          <div className={styles.expItems}>
+            <div className={styles.expItem}>
+              <Music size={20} className={styles.expIcon} />
+              <div>
+                <h4 className={styles.expTitle}>Música envolvente</h4>
+                <p className={styles.expDesc}>Que marca el ritmo de cada repetición.</p>
+              </div>
             </div>
-          ))}
+            <div className={styles.expItem}>
+              <Zap size={20} className={styles.expIcon} />
+              <div>
+                <h4 className={styles.expTitle}>Ambiente energético</h4>
+                <p className={styles.expDesc}>Luz, sonido y diseño que te impulsan.</p>
+              </div>
+            </div>
+            <div className={styles.expItem}>
+              <Target size={20} className={styles.expIcon} />
+              <div>
+                <h4 className={styles.expTitle}>Enfoque total</h4>
+                <p className={styles.expDesc}>Un espacio creado para superar tus límites.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Panel: Quote con foto */}
+        <div className={styles.panelQuote}>
+          <img src="/fotos/gym_banner_stryde.jpg" alt="" className={styles.panelBg} />
+          <div className={styles.panelQuoteOverlay} />
+          <div className={styles.panelQuoteContent}>
+            <span className={styles.bigQuoteMark}>&ldquo;</span>
+            <p className={styles.quoteText}>
+              Cada bloque te acerca a tu mejor versión.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Schedule */}
-      <div className={styles.schedule}>
-        <SectionHeader
-          label="Horarios STRIDE"
-          title="Próximas clases"
-          dark
-          size="md"
-        />
-        <div className={styles.classesList}>
-          {suetClasses.map((c, i) => (
-            <div key={i} className={styles.classRow}>
-              <div className={styles.classInfo}>
-                <span className={styles.className}>{c.name}</span>
-                <span className={styles.classMeta}>{c.day} · {c.time} · {c.duration} min · {c.instructor}</span>
-              </div>
-              <Link to="/reservar" className={styles.classReserve}>Reservar</Link>
+      {/* ROW 2 — Metodología / Beneficios */}
+      <div className={styles.gridRow2}>
+        {/* Panel: Metodología */}
+        <div className={styles.panelMetodologia}>
+          <span className={styles.secLabel}>Metodología</span>
+          <p className={styles.metSubtitle}>Entrenamiento en bloques de alta intensidad</p>
+          <div className={styles.metFlow}>
+            <div className={styles.metStep}>
+              <Heart size={28} className={styles.metIcon} />
+              <h4 className={styles.metStepTitle}>Cardio</h4>
+              <p className={styles.metStepDesc}>Intervalos de alta intensidad que elevan tu capacidad cardiovascular.</p>
             </div>
-          ))}
+            <ArrowRight size={20} className={styles.metArrow} />
+            <div className={styles.metStep}>
+              <Dumbbell size={28} className={styles.metIcon} />
+              <h4 className={styles.metStepTitle}>Fuerza</h4>
+              <p className={styles.metStepDesc}>Movimientos funcionales que desarrollan fuerza, potencia y tonicidad muscular.</p>
+            </div>
+            <ArrowRight size={20} className={styles.metArrow} />
+            <div className={styles.metStep}>
+              <Target size={28} className={styles.metIcon} />
+              <h4 className={styles.metStepTitle}>Resistencia</h4>
+              <p className={styles.metStepDesc}>Secuencias continuas para mejorar tu rendimiento y llevarte al siguiente nivel.</p>
+            </div>
+          </div>
+          <p className={styles.metConclusion}>Todo en una sesión. &nbsp;Máximo rendimiento.</p>
+        </div>
+
+        {/* Panel: Beneficios */}
+        <div className={styles.panelBeneficios}>
+          <span className={styles.secLabel}>Beneficios</span>
+          <div className={styles.benRow}>
+            <div className={styles.benItem}>
+              <Flame size={28} className={styles.benIcon} />
+              <p className={styles.benLabel}>Aumento de fuerza y tonificación</p>
+            </div>
+            <div className={styles.benItem}>
+              <Heart size={28} className={styles.benIcon} />
+              <p className={styles.benLabel}>Mejora de resistencia física</p>
+            </div>
+            <div className={styles.benItem}>
+              <Zap size={28} className={styles.benIcon} />
+              <p className={styles.benLabel}>Alto gasto calórico</p>
+            </div>
+            <div className={styles.benItem}>
+              <Brain size={28} className={styles.benIcon} />
+              <p className={styles.benLabel}>Mayor disciplina y enfoque mental</p>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* ROW 3 — Ideal para ti */}
+      <div className={styles.idealSection}>
+        <span className={styles.secLabel}>Ideal para ti si…</span>
+        <ul className={styles.idealList}>
+          {[
+            'Buscas resultados visibles.',
+            'Disfrutas los retos físicos.',
+            'Quieres estructura y progreso.',
+            'Valoras la estética y la experiencia.',
+          ].map(item => (
+            <li key={item} className={styles.idealItem}>
+              <CheckCircle size={16} className={styles.idealIcon} />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
     </div>
   )
 }
