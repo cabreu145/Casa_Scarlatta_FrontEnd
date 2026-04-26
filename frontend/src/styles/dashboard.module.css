@@ -37,6 +37,23 @@
   border: 1px solid var(--neutral-border);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--duration-fast), box-shadow var(--duration-fast), border-color var(--duration-fast);
+}
+
+.statCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-wine), var(--brand-blush));
+}
+
+.statCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(123, 31, 46, 0.1);
+  border-color: rgba(123, 31, 46, 0.22);
 }
 
 .statLabel {
@@ -51,10 +68,11 @@
 
 .statValue {
   font-family: var(--font-display);
-  font-size: 28px;
-  color: var(--brand-wine);
-  font-weight: 400;
+  font-size: 38px;
+  color: var(--text-primary);
+  font-weight: 600;
   line-height: 1;
+  letter-spacing: -0.01em;
 }
 
 .statSub {
@@ -78,16 +96,25 @@
   border: 1px solid var(--neutral-border);
   border-radius: var(--radius-lg);
   padding: var(--space-xl);
+  transition: box-shadow var(--duration-fast), border-color var(--duration-fast);
+}
+
+.panel:hover {
+  box-shadow: 0 4px 20px rgba(123, 31, 46, 0.07);
+  border-color: rgba(123, 31, 46, 0.18);
 }
 
 .panelTitle {
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   margin: 0 0 var(--space-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 /* ── Table ── */
@@ -423,6 +450,269 @@
   }
 
   .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── KPI icon ── */
+.kpiIcon {
+  position: absolute;
+  top: var(--space-lg);
+  right: var(--space-lg);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: rgba(123, 31, 46, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-wine);
+}
+
+.kpiChange {
+  font-family: var(--font-body);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--space-xs);
+}
+
+.kpiChangeUp { color: #2D7D46; }
+.kpiChangeDown { color: #C83232; }
+
+/* ── Mini list ── */
+.miniList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.miniItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  transition: background var(--duration-fast);
+  cursor: default;
+}
+
+.miniItem:hover {
+  background: rgba(123, 31, 46, 0.06);
+}
+
+.miniAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--brand-wine), var(--brand-blush));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  color: #F5EDE8;
+  flex-shrink: 0;
+}
+
+.miniName {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.miniSub {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.miniRight {
+  margin-left: auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.miniVal {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* ── Tags ── */
+.tagGreen {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(45, 125, 70, 0.12);
+  color: #2D7D46;
+  white-space: nowrap;
+}
+
+.tagRed {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(200, 50, 50, 0.12);
+  color: #C83232;
+  white-space: nowrap;
+}
+
+.tagYellow {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(180, 120, 20, 0.12);
+  color: #B47814;
+  white-space: nowrap;
+}
+
+.tagBlue {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(33, 150, 243, 0.12);
+  color: #1976D2;
+  white-space: nowrap;
+}
+
+.tagPink {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(232, 164, 173, 0.25);
+  color: var(--brand-wine);
+  white-space: nowrap;
+}
+
+/* ── Dashboard grid layouts ── */
+.dashGrid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.threeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+/* ── Chart.js container ── */
+.chartWrap {
+  height: 180px;
+  position: relative;
+}
+
+/* ── Donut chart ── */
+.donutRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-lg);
+}
+
+.donutChart {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+
+.donutLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Spots bar (class occupancy) ── */
+.spotsBar {
+  height: 3px;
+  background: var(--bg-base);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.spotsFill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--brand-wine), var(--brand-blush));
+}
+
+/* ── Class day badge ── */
+.claseDay {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--brand-wine), var(--brand-rose));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  color: #F5EDE8;
+  flex-shrink: 0;
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.claseDayNum {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (max-width: 1100px) {
+  .dashGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .threeGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashGrid,
+  .threeGrid {
     grid-template-columns: 1fr;
   }
 }
