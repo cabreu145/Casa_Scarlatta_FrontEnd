@@ -16,11 +16,8 @@ import Reservar from '@/pages/Reservar'
 import Login from '@/pages/Login'
 import Registro from '@/pages/Registro'
 
-import ClienteDashboard from '@/pages/cliente/ClienteDashboard'
-import ClienteCalendario from '@/pages/cliente/ClienteCalendario'
-import ClienteMisClases from '@/pages/cliente/ClienteMisClases'
-import ClientePagos from '@/pages/cliente/ClientePagos'
-import ClientePerfil from '@/pages/cliente/ClientePerfil'
+import ClientPanel from '@/pages/cliente/ClientPanel'
+import { Navigate } from 'react-router-dom'
 
 import CoachPanel from '@/pages/coach/CoachPanel'
 import CoachDashboard from '@/pages/coach/CoachDashboard'
@@ -50,11 +47,11 @@ function AnimatedRoutes() {
       <>
         <Navbar />
       <Routes location={location} key={location.pathname}>
-        <Route path="/cliente/dashboard" element={<ProtectedRoute rolRequerido="cliente"><ClienteDashboard /></ProtectedRoute>} />
-        <Route path="/cliente/calendario" element={<ProtectedRoute rolRequerido="cliente"><ClienteCalendario /></ProtectedRoute>} />
-        <Route path="/cliente/mis-clases" element={<ProtectedRoute rolRequerido="cliente"><ClienteMisClases /></ProtectedRoute>} />
-        <Route path="/cliente/pagos" element={<ProtectedRoute rolRequerido="cliente"><ClientePagos /></ProtectedRoute>} />
-        <Route path="/cliente/perfil" element={<ProtectedRoute rolRequerido="cliente"><ClientePerfil /></ProtectedRoute>} />
+        <Route path="/cliente/dashboard" element={<ProtectedRoute rolRequerido="cliente"><ClientPanel /></ProtectedRoute>} />
+        <Route path="/cliente/calendario" element={<Navigate to="/cliente/dashboard" replace />} />
+        <Route path="/cliente/mis-clases" element={<Navigate to="/cliente/dashboard" replace />} />
+        <Route path="/cliente/pagos" element={<Navigate to="/cliente/dashboard" replace />} />
+        <Route path="/cliente/perfil" element={<Navigate to="/cliente/dashboard" replace />} />
 
         <Route path="/coach/dashboard" element={<ProtectedRoute rolRequerido="coach"><CoachPanel /></ProtectedRoute>} />
         <Route path="/coach/mis-clases" element={<ProtectedRoute rolRequerido="coach"><CoachMisClases /></ProtectedRoute>} />

@@ -82,7 +82,7 @@ export default function SeatSelector({ cls, onClose }) {
     setConfirmado(false)
     setSelected(null)
     onClose()
-    navigate('/cliente/mis-clases')
+    navigate('/cliente/dashboard')
   }
 
   if (sinClases) {
