@@ -1,3 +1,15 @@
+/**
+ * AuthContext.jsx
+ * ─────────────────────────────────────────────────────
+ * Contexto global de autenticación. Expone useAuth() a toda la app.
+ * Encapsula useAuthStore para que ningún componente lo llame directo.
+ * Cuando haya backend: reemplazar mockUsers por llamadas a
+ * ENDPOINTS.login y ENDPOINTS.registro vía httpPost().
+ *
+ * Usado en: App.jsx (AuthProvider), todos los componentes con useAuth()
+ * Depende de: authStore, mockUsers
+ * ─────────────────────────────────────────────────────
+ */
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { mockUsers } from '@/data/mockUsers'

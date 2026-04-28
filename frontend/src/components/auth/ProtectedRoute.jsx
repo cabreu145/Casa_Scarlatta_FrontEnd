@@ -1,10 +1,11 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { ROUTES } from '@/constants/routes'
 
 const rolDashboard = {
-  cliente: '/cliente/dashboard',
-  coach: '/coach/dashboard',
-  admin: '/admin/dashboard',
+  cliente: ROUTES.cliente.dashboard,
+  coach:   ROUTES.coach.dashboard,
+  admin:   ROUTES.admin.dashboard,
 }
 
 export default function ProtectedRoute({ children, rolRequerido }) {
@@ -28,11 +29,11 @@ export default function ProtectedRoute({ children, rolRequerido }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to={ROUTES.login} state={{ from: location }} replace />
   }
 
   if (rolRequerido && usuario?.rol !== rolRequerido) {
-    const destino = rolDashboard[usuario?.rol] || '/login'
+    const destino = rolDashboard[usuario?.rol] || ROUTES.login
     return <Navigate to={destino} replace />
   }
 

@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { adminLinks } from './AdminDashboard'
-import { mockUsers } from '@/data/mockUsers'
-import { SkeletonTable } from '@/components/ui/SkeletonLoader'
+import { useUsuariosStore } from '@/stores/usuariosStore'
 import { exportCSV } from '@/utils/exportCSV'
 import styles from '@/styles/dashboard.module.css'
 
@@ -32,21 +31,12 @@ function ConfirmModal({ mensaje, onConfirm, onClose }) {
 }
 
 export default function AdminUsuarios() {
-  const [usuarios, setUsuarios] = useState([])
-  const [cargando, setCargando] = useState(true)
+  const { usuarios, actualizarUsuario } = useUsuariosStore()
   const [busqueda, setBusqueda] = useState('')
   const [filtroRol, setFiltroRol] = useState('todos')
   const [confirmar, setConfirmar] = useState(null)
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setUsuarios(mockUsers)
-      setCargando(false)
-    }, 800)
-    return () => clearTimeout(t)
-  }, [])
-
-  const filtrados = usuarios.filter((u) => {
+  const filtrados = (usuarios ?? []).filter((u) => {
     const matchBusqueda =
       u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       u.email.toLowerCase().includes(busqueda.toLowerCase())
@@ -60,9 +50,7 @@ export default function AdminUsuarios() {
         ? `¿Desactivar a ${usuario.nombre}? No podrá iniciar sesión.`
         : `¿Reactivar a ${usuario.nombre}?`,
       onConfirm: () => {
-        setUsuarios((prev) =>
-          prev.map((u) => (u.id === usuario.id ? { ...u, activo: !u.activo } : u))
-        )
+        actualizarUsuario(usuario.id, { activo: !usuario.activo })
         toast.success(`${usuario.nombre} ${usuario.activo ? 'desactivado' : 'reactivado'}`)
         setConfirmar(null)
       },
@@ -87,7 +75,7 @@ export default function AdminUsuarios() {
       <div className={styles.page}>
         <div className={styles.pageHeader}>
           <h1 className={styles.greeting}>Usuarios</h1>
-          <p className={styles.subtitle}>{mockUsers.length} usuarios registrados</p>
+          <p className={styles.subtitle}>{usuarios.length} usuarios registrados</p>
         </div>
 
         <div className={styles.searchBar}>
@@ -131,10 +119,7 @@ export default function AdminUsuarios() {
               </tr>
             </thead>
             <tbody>
-              {cargando ? (
-                <SkeletonTable rows={5} cols={9} />
-              ) : (
-                filtrados.map((u) => (
+              {filtrados.map((u) => (
                   <tr key={u.id}>
                     <td style={{ fontWeight: 500 }}>{u.nombre}</td>
                     <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{u.email}</td>
@@ -161,8 +146,7 @@ export default function AdminUsuarios() {
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
+                ))}
             </tbody>
           </table>
         </div>

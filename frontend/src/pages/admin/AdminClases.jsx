@@ -1,12 +1,27 @@
+/**
+ * AdminClases.jsx
+ * ─────────────────────────────────────────────────────
+ * Panel de gestión de clases para administradores.
+ * Ofrece vista de calendario y vista de lista, con CRUD completo
+ * (crear, editar, eliminar) vía modal y confirmación.
+ *
+ * Usado en: App.jsx (ruta "/admin/clases", protegida por rol admin)
+ * Depende de: clasesStore, classService, useClasses, DashboardLayout
+ * ─────────────────────────────────────────────────────
+ */
 import { useState, useMemo } from 'react'
-import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2, MapPin, User, Clock } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2, MapPin, User, Clock, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { adminLinks } from './AdminDashboard'
 import { useClasesStore } from '@/stores/clasesStore'
+import { useReservasStore } from '@/stores/reservasStore'
+import { useUsuariosStore } from '@/stores/usuariosStore'
 import { mockUsers } from '@/data/mockUsers'
 import { getAvailability } from '@/services/classService'
+import { marcarNoAsistio } from '@/services/reservasService'
 import { useClasses } from '@/hooks/useClasses'
+import { ESTADOS_RESERVA } from '@/data/mockData'
 import styles from '@/styles/dashboard.module.css'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -99,7 +114,7 @@ function AvailabilityBadge({ clase }) {
 }
 
 // ─── Class row (app style) ────────────────────────────────────────────────────
-function ClassRow({ clase, onEdit, onDelete }) {
+function ClassRow({ clase, onEdit, onDelete, onAlumnos }) {
   const { status } = getAvailability(clase)
   const isFull = status === 'full'
   const [hovered, setHovered] = useState(false)
@@ -179,6 +194,14 @@ function ClassRow({ clase, onEdit, onDelete }) {
         <AvailabilityBadge clase={clase} />
         <div style={{ display: 'flex', gap: 5 }}>
           <button
+            onClick={() => onAlumnos(clase)}
+            className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
+            title="Ver alumnos"
+            style={{ padding: '5px 10px' }}
+          >
+            <Users size={13} />
+          </button>
+          <button
             onClick={() => onEdit(clase)}
             className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
             title="Editar clase"
@@ -203,6 +226,8 @@ function ClassRow({ clase, onEdit, onDelete }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AdminClases() {
   const { clases, agregarClase, editarClase, eliminarClase } = useClasesStore()
+  const { reservas } = useReservasStore()
+  const { getUsuarioById } = useUsuariosStore()
 
   // View / navigation state
   const [vista,           setVista]           = useState('calendario')
@@ -215,6 +240,7 @@ export default function AdminClases() {
   const [editando,      setEditando]      = useState(null)
   const [form,          setForm]          = useState(claseVacia)
   const [eliminandoId,  setEliminandoId]  = useState(null)
+  const [modalAlumnos,  setModalAlumnos]  = useState(null)
 
   // Week grid
   const days       = useMemo(() => getWeekDays(weekOffset), [weekOffset])
@@ -468,6 +494,7 @@ export default function AdminClases() {
                     clase={clase}
                     onEdit={abrirEditar}
                     onDelete={setEliminandoId}
+                    onAlumnos={setModalAlumnos}
                   />
                 ))}
               </div>
@@ -508,6 +535,9 @@ export default function AdminClases() {
                       </span>
                     </td>
                     <td style={{ display: 'flex', gap: 6 }}>
+                      <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={() => setModalAlumnos(c)}>
+                        Alumnos
+                      </button>
                       <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={() => abrirEditar(c)}>
                         Editar
                       </button>
@@ -603,6 +633,89 @@ export default function AdminClases() {
             </div>
           </div>
         )}
+
+        {/* ── Alumnos modal ── */}
+        {modalAlumnos && (() => {
+          const alumnos = reservas.filter((r) => r.claseId === modalAlumnos.id)
+          return (
+            <div className={styles.modalOverlay}>
+              <div className={styles.modal} style={{ maxWidth: 520 }}>
+                <h2 className={styles.modalTitle}>
+                  Alumnos — {modalAlumnos.nombre}
+                </h2>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 'var(--space-lg)' }}>
+                  {modalAlumnos.dia} · {modalAlumnos.hora} · {alumnos.length} registros
+                </p>
+
+                {alumnos.length === 0 ? (
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--space-2xl) 0' }}>
+                    Sin alumnos registrados en esta clase.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
+                    {alumnos.map((r) => {
+                      const alumno = getUsuarioById(r.userId)
+                      const nombre = alumno?.nombre ?? `Usuario #${r.userId}`
+                      const esConfirmada = r.estado === ESTADOS_RESERVA.CONFIRMADA
+
+                      return (
+                        <div
+                          key={r.id}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            background: 'var(--bg-elevated)',
+                            borderRadius: 'var(--radius-lg)',
+                            border: '1px solid var(--neutral-border)',
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {nombre}
+                            </div>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                              {r.asiento ?? 'Sin asiento'} · {r.fecha}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span className={`${styles.badge} ${
+                              r.estado === 'confirmada'  ? styles.badgeActive  :
+                              r.estado === 'completada'  ? styles.badgeActive  :
+                              r.estado === 'no_asistio'  ? styles.badgeDanger  :
+                              styles.badgeInactive
+                            }`}>
+                              {r.estado === 'no_asistio' ? 'No asistió' :
+                               r.estado === 'confirmada'  ? 'Confirmada' :
+                               r.estado === 'completada'  ? 'Completada' : 'Cancelada'}
+                            </span>
+                            {esConfirmada && (
+                              <button
+                                className={`${styles.btn} ${styles.btnDanger} ${styles.btnSm}`}
+                                onClick={() => {
+                                  const resultado = marcarNoAsistio(r.id)
+                                  if (resultado.ok) toast.success(`${nombre} marcado como no asistió`)
+                                  else toast.error(resultado.error)
+                                }}
+                              >
+                                No asistió
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <div className={styles.modalActions}>
+                  <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setModalAlumnos(null)}>
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
       </div>
     </DashboardLayout>

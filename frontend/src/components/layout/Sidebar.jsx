@@ -1,3 +1,14 @@
+/**
+ * Sidebar.jsx
+ * ─────────────────────────────────────────────────────
+ * Barra lateral de navegación para los dashboards.
+ * Recibe los links dinámicamente para reutilizarse en
+ * cliente, coach y admin sin cambiar su código.
+ *
+ * Usado en: DashboardLayout.jsx
+ * Depende de: AuthContext, react-hot-toast
+ * ─────────────────────────────────────────────────────
+ */
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'

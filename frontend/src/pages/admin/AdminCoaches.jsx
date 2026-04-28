@@ -3,34 +3,26 @@ import { X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { adminLinks } from './AdminDashboard'
-import { mockUsers } from '@/data/mockUsers'
+import { useCoachesStore } from '@/stores/coachesStore'
 import styles from '@/styles/dashboard.module.css'
 
 const ESPECIALIDADES = ['Stride', 'Slow', 'Ambas']
 
-const coachesIniciales = mockUsers
-  .filter((u) => u.rol === 'coach')
-  .map((u) => ({
-    id: u.id,
-    nombre: u.nombre,
-    email: u.email,
-    especialidad: u.especialidad || 'Stride',
-    activo: u.activo,
-  }))
-
 function CoachModal({ coach, onSave, onClose }) {
   const [form, setForm] = useState(
-    coach ?? { nombre: '', email: '', especialidad: 'Stride', activo: true }
+    coach
+      ? { nombre: coach.nombre, email: coach.email || '', especialidad: coach.especialidad || 'Stride', activo: coach.activo }
+      : { nombre: '', email: '', especialidad: 'Stride', activo: true }
   )
   const [errors, setErrors] = useState({})
 
-  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }))
+  const setField = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }))
 
   const handleSubmit = (e) => {
     e.preventDefault()
     const errs = {}
     if (!form.nombre.trim()) errs.nombre = 'El nombre es obligatorio'
-    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       errs.email = 'Email inválido'
     if (Object.keys(errs).length) { setErrors(errs); return }
     onSave(form)
@@ -52,19 +44,19 @@ function CoachModal({ coach, onSave, onClose }) {
           <div className={styles.formGrid} style={{ marginBottom: 'var(--space-lg)' }}>
             <div className={`${styles.field} ${styles.fieldFull}`}>
               <label>Nombre completo</label>
-              <input type="text" value={form.nombre} onChange={set('nombre')}
+              <input type="text" value={form.nombre} onChange={setField('nombre')}
                 placeholder="Nombre y apellido" style={errors.nombre ? { borderColor: '#EF4444' } : {}} />
               {errors.nombre && <span style={{ fontSize: 12, color: '#EF4444' }}>{errors.nombre}</span>}
             </div>
             <div className={`${styles.field} ${styles.fieldFull}`}>
               <label>Email</label>
-              <input type="email" value={form.email} onChange={set('email')}
+              <input type="email" value={form.email} onChange={setField('email')}
                 placeholder="coach@casascarlatta.com" style={errors.email ? { borderColor: '#EF4444' } : {}} />
               {errors.email && <span style={{ fontSize: 12, color: '#EF4444' }}>{errors.email}</span>}
             </div>
             <div className={styles.field}>
               <label>Especialidad</label>
-              <select value={form.especialidad} onChange={set('especialidad')}>
+              <select value={form.especialidad} onChange={setField('especialidad')}>
                 {ESPECIALIDADES.map((e) => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
@@ -100,37 +92,42 @@ function ConfirmModal({ mensaje, onConfirm, onClose }) {
 }
 
 export default function AdminCoaches() {
-  const [coaches, setCoaches] = useState(coachesIniciales)
-  const [modal, setModal] = useState(null) // null | 'nuevo' | { coach }
+  const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
+
+  const [modal, setModal]       = useState(null)   // null | 'nuevo' | { coach }
   const [confirmar, setConfirmar] = useState(null)
   const [busqueda, setBusqueda] = useState('')
 
   const filtrados = coaches.filter(
     (c) =>
       c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      c.email.toLowerCase().includes(busqueda.toLowerCase())
+      (c.email || '').toLowerCase().includes(busqueda.toLowerCase())
   )
 
   const handleSave = (form) => {
     if (modal === 'nuevo') {
-      setCoaches((prev) => [...prev, { ...form, id: Date.now() }])
+      agregarCoach({ nombre: form.nombre, email: form.email, especialidad: form.especialidad, foto: null })
       toast.success('Coach creado exitosamente')
     } else {
-      setCoaches((prev) => prev.map((c) => (c.id === modal.coach.id ? { ...c, ...form } : c)))
+      editarCoach(modal.coach.id, { nombre: form.nombre, email: form.email, especialidad: form.especialidad })
       toast.success('Cambios guardados')
     }
     setModal(null)
   }
 
   const handleToggle = (coach) => {
-    const accion = coach.activo ? 'dar de baja' : 'reactivar'
     setConfirmar({
       mensaje: coach.activo
         ? `¿Dar de baja a ${coach.nombre}? Dejará de aparecer en el horario.`
         : `¿Reactivar a ${coach.nombre}?`,
       onConfirm: () => {
-        setCoaches((prev) => prev.map((c) => (c.id === coach.id ? { ...c, activo: !c.activo } : c)))
-        toast.success(`${coach.nombre} ${coach.activo ? 'dado de baja' : 'reactivado'}`)
+        if (coach.activo) {
+          eliminarCoach(coach.id)
+          toast.success(`${coach.nombre} dado de baja`)
+        } else {
+          editarCoach(coach.id, { activo: true })
+          toast.success(`${coach.nombre} reactivado`)
+        }
         setConfirmar(null)
       },
     })
@@ -177,7 +174,7 @@ export default function AdminCoaches() {
               {filtrados.map((c) => (
                 <tr key={c.id}>
                   <td style={{ fontWeight: 500 }}>{c.nombre}</td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{c.email}</td>
+                  <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{c.email || '—'}</td>
                   <td>
                     <span className={`${styles.badge} ${espBadge[c.especialidad] || styles.badgeCompletada}`}>
                       {c.especialidad}

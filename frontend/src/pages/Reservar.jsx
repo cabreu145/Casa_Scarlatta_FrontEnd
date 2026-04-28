@@ -4,7 +4,7 @@ import BrandBlob from '@/components/ui/BrandBlob'
 import SectionHeader from '@/components/ui/SectionHeader'
 import WeeklyCalendar from '@/features/clases/WeeklyCalendar'
 import SeatSelector from '@/features/clases/SeatSelector'
-import { classes } from '@/data/classes'
+import { useClasesStore } from '@/stores/clasesStore'
 import styles from './Reservar.module.css'
 
 const salas = [
@@ -29,14 +29,15 @@ const salas = [
 const stepLabels = ['Sala', 'Clase']
 
 export default function Reservar() {
+  const { clases } = useClasesStore()
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [selectedType, setSelectedType] = useState(null)
   const [selectedClass, setSelectedClass] = useState(null)
 
   const filteredClasses = selectedType
-    ? classes.filter(c => c.type === selectedType)
-    : classes
+    ? clases.filter(c => c.tipo === selectedType)
+    : clases
 
   function selectSala(key) {
     navigate(`/clases?tipo=${key}`)

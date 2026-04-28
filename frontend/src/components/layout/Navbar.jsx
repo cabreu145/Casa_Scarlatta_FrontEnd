@@ -1,8 +1,20 @@
+/**
+ * Navbar.jsx
+ * ─────────────────────────────────────────────────────
+ * Barra de navegación principal. Incluye menú desktop,
+ * menú móvil con overlay, avatar con dropdown de usuario
+ * y shader animado de fondo (Dithering, cargado lazy).
+ *
+ * Usado en: App.jsx (todas las rutas)
+ * Depende de: AuthContext, ROUTES, LiquidButton, react-hot-toast
+ * ─────────────────────────────────────────────────────
+ */
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import LiquidButton from '@/components/ui/LiquidButton'
 import { useAuth } from '@/context/AuthContext'
+import { ROUTES } from '@/constants/routes'
 import toast from 'react-hot-toast'
 import styles from './Navbar.module.css'
 
@@ -20,9 +32,9 @@ const links = [
 ]
 
 const rolDashboard = {
-  cliente: '/cliente/dashboard',
-  coach: '/coach/dashboard',
-  admin: '/admin/dashboard',
+  cliente: ROUTES.cliente.dashboard,
+  coach:   ROUTES.coach.dashboard,
+  admin:   ROUTES.admin.dashboard,
 }
 
 const rolLabel = {
@@ -145,7 +157,7 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <LiquidButton onClick={() => navigate('/login')}>Iniciar sesión</LiquidButton>
+            <LiquidButton onClick={() => navigate(ROUTES.login)}>Iniciar sesión</LiquidButton>
           )}
 
           <button

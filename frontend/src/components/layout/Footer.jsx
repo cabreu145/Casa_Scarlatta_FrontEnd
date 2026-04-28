@@ -1,3 +1,13 @@
+/**
+ * Footer.jsx
+ * ─────────────────────────────────────────────────────
+ * Pie de página con links de navegación, horarios, redes
+ * sociales y shader animado de fondo (Dithering, lazy).
+ *
+ * Usado en: App.jsx (solo en rutas públicas)
+ * Depende de: react-router-dom, @paper-design/shaders-react
+ * ─────────────────────────────────────────────────────
+ */
 import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './Footer.module.css'

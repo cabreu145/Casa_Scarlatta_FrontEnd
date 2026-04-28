@@ -1,3 +1,14 @@
+/**
+ * reportesStore.js
+ * ─────────────────────────────────────────────────────
+ * Store de Zustand con datos estadísticos para el panel de reportes.
+ * No persiste (datos estáticos mock, no hay acciones de escritura).
+ * Cuando haya backend, reemplazar con llamadas a ENDPOINTS.reportes.
+ *
+ * Usado en: AdminReportes
+ * Depende de: zustand
+ * ─────────────────────────────────────────────────────
+ */
 import { create } from 'zustand'
 
 export const useReportesStore = create(() => ({

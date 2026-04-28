@@ -1,12 +1,24 @@
+/**
+ * clasesStore.js
+ * ─────────────────────────────────────────────────────
+ * Store de Zustand para clases y reservas.
+ * Persiste en localStorage bajo la clave 'casa-scarlatta-clases'.
+ * Cuando haya backend, reemplazar mockClases/mockReservas
+ * por llamadas a classService.js.
+ *
+ * Usado en: AdminClases, ClientPanel, CoachDashboard, SeatSelector
+ * Depende de: zustand, mockClases, mockReservas
+ * ─────────────────────────────────────────────────────
+ */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { mockClases } from '@/data/mockClases'
+import { CLASES_MOCK } from '@/data/mockData'
 import { mockReservas } from '@/data/mockReservas'
 
 export const useClasesStore = create(
   persist(
     (set, get) => ({
-      clases: mockClases,
+      clases: CLASES_MOCK,
       reservas: mockReservas,
 
       getReservasByUsuario: (userId) =>
@@ -14,6 +26,18 @@ export const useClasesStore = create(
 
       getClasesByCoach: (coachId) =>
         get().clases.filter((c) => c.coachId === coachId),
+
+      getById: (claseId) =>
+        get().clases.find((c) => c.id === claseId),
+
+      actualizarCupo: (claseId, delta) =>
+        set((state) => ({
+          clases: state.clases.map((c) =>
+            c.id === claseId
+              ? { ...c, cupoActual: Math.max(0, Math.min(c.cupoMax, c.cupoActual + delta)) }
+              : c
+          ),
+        })),
 
       reservarClase: (userId, claseId) => {
         const clases = get().clases
@@ -69,7 +93,7 @@ export const useClasesStore = create(
       reservarDesdePublico: (userId, cls, asiento) => {
         const hoy = new Date()
         const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-        const diaIndex = dias.indexOf(cls.day)
+        const diaIndex = dias.indexOf(cls.dia)
         const hoySemana = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1
         const diff = diaIndex >= 0 ? diaIndex - hoySemana : 0
         const fecha = new Date(hoy)
@@ -78,12 +102,12 @@ export const useClasesStore = create(
         const nuevaReserva = {
           id: Date.now(),
           userId,
-          claseId: null,
-          claseNombre: cls.name,
-          claseHora: cls.time,
-          claseDia: cls.day,
-          coachNombre: cls.instructor,
-          tipo: cls.type,
+          claseId: cls.id ?? null,
+          claseNombre: cls.nombre,
+          claseHora: cls.hora,
+          claseDia: cls.dia,
+          coachNombre: cls.coachNombre,
+          tipo: cls.tipo,
           asiento,
           estado: 'confirmada',
           fecha: fecha.toISOString().split('T')[0],

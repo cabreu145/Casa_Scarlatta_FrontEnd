@@ -1,3 +1,14 @@
+/**
+ * DashboardLayout.jsx
+ * ─────────────────────────────────────────────────────
+ * Layout base para todos los paneles (cliente, coach, admin).
+ * Renderiza el Sidebar fijo en desktop y un overlay deslizable
+ * en mobile, con un header con botón de menú hamburguesa.
+ *
+ * Usado en: AdminPanel, AdminClases, CoachPanel y todas las vistas de dashboard
+ * Depende de: Sidebar
+ * ─────────────────────────────────────────────────────
+ */
 import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import Sidebar from './Sidebar'

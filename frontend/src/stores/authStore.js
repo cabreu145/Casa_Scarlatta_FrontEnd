@@ -1,3 +1,13 @@
+/**
+ * authStore.js
+ * ─────────────────────────────────────────────────────
+ * Store de Zustand para el estado de autenticación.
+ * Persiste en localStorage bajo la clave 'casa-scarlatta-auth'.
+ *
+ * Usado en: AuthContext.jsx (único consumidor directo)
+ * Depende de: zustand, zustand/middleware
+ * ─────────────────────────────────────────────────────
+ */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 

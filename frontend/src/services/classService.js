@@ -1,6 +1,15 @@
-// classService.js — fake API layer
-// To connect a real backend, replace only the async* functions at the bottom.
-// The pure helpers stay the same.
+/**
+ * classService.js
+ * ─────────────────────────────────────────────────────
+ * Capa de servicio para clases. Contiene helpers puros de
+ * filtrado/disponibilidad y stubs de API listos para activar.
+ * Para conectar el backend: implementar las funciones *API
+ * usando http.js y los ENDPOINTS de constants/api.js.
+ *
+ * Usado en: Clases.jsx, AdminClases.jsx, useClasses.js
+ * Depende de: (nada — funciones puras, sin imports externos)
+ * ─────────────────────────────────────────────────────
+ */
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -29,28 +38,28 @@ export function getAvailability(clase) {
   return { available, pct, status: pct > 0.5 ? 'ok' : 'low' }
 }
 
-// ── Public page format (day, time, spots, totalSpots) ────────────────────────
+// ── Public page format — ahora usa el mismo formato unificado del store ──────
 
 /**
- * Filter and sort public classes (classes.js format) for a given JS Date.
- * @param {Array} classes  - public classes array (from data/classes.js)
+ * Filter and sort classes (unified format from store) for a given JS Date.
+ * @param {Array} classes  - clases del store (formato unificado de mockData.js)
  * @param {Date}  date     - the target day
  */
 export function getPublicClassesByDate(classes, date) {
   const dayName = DIAS[date.getDay()]
   const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
   return [...classes]
-    .filter((c) => c.day === dayName)
-    .sort((a, b) => toMin(a.time) - toMin(b.time))
+    .filter((c) => c.dia === dayName)
+    .sort((a, b) => toMin(a.hora) - toMin(b.hora))
 }
 
 /**
- * Availability for public-format class (spots / totalSpots).
+ * Availability for unified-format class (cupoMax / cupoActual).
  * status: 'ok' (>50% free) | 'low' (≤50% free) | 'full' (0 free)
  */
 export function getPublicAvailability(cls) {
-  const available = cls.spots
-  const pct = cls.totalSpots > 0 ? available / cls.totalSpots : 0
+  const available = cls.cupoMax - cls.cupoActual
+  const pct = cls.cupoMax > 0 ? available / cls.cupoMax : 0
   if (available <= 0) return { available: 0, pct: 0, status: 'full' }
   return { available, pct, status: pct > 0.5 ? 'ok' : 'low' }
 }

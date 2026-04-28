@@ -1,10 +1,23 @@
+/**
+ * Clases.jsx
+ * ─────────────────────────────────────────────────────
+ * Página pública de listado y reserva de clases.
+ * Incluye navegación semanal, filtro por disciplina (Stride/Slow)
+ * y tarjetas de clase con disponibilidad en tiempo real.
+ *
+ * Usado en: App.jsx (ruta "/clases")
+ * Depende de: classService, classes (data), ClassTypeFilter, SeatSelector
+ * ─────────────────────────────────────────────────────
+ */
 import { useState, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import ClassTypeFilter from '@/features/clases/ClassTypeFilter'
 import SeatSelector from '@/features/clases/SeatSelector'
-import { classes as allClasses } from '@/data/classes'
+import { useClasesStore } from '@/stores/clasesStore'
+import { useAuth } from '@/context/AuthContext'
 import { getPublicClassesByDate, getPublicAvailability } from '@/services/classService'
+import { ROUTES } from '@/constants/routes'
 import styles from './Clases.module.css'
 
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
@@ -64,6 +77,9 @@ function formatHour(time) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Clases() {
+  const { clases: allClasses } = useClasesStore()
+  const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [searchParams]  = useSearchParams()
   const [filter, setFilter]         = useState(searchParams.get('tipo') || 'Stride')
   const [selectedClass, setSelectedClass] = useState(null)
@@ -77,7 +93,7 @@ export default function Clases() {
   // Classes for the selected day, filtered by discipline, via service
   const dayClasses = useMemo(() => {
     const forDay = getPublicClassesByDate(allClasses, selectedDate)
-    return filter ? forDay.filter((c) => c.type === filter) : forDay
+    return filter ? forDay.filter((c) => c.tipo === filter) : forDay
   }, [selectedDate, filter])
 
   const handlePrevWeek = () => {
@@ -168,9 +184,9 @@ export default function Clases() {
               const { available, status } = getPublicAvailability(cls)
               const isFull  = status === 'full'
               const isLow   = status === 'low'
-              const location = cls.type === 'Stride' ? 'Studio A' : 'Studio B'
+              const location = cls.ubicacion ?? (cls.tipo === 'Stride' ? 'Studio A' : 'Studio B')
 
-              const { bg, text } = avatarStyle(cls.instructor)
+              const { bg, text } = avatarStyle(cls.coachNombre)
 
               return (
                 <div key={i} className={`${styles.classCard} ${isFull ? styles.classCardFull : ''}`}>
@@ -179,15 +195,15 @@ export default function Clases() {
                   <div className={styles.avatarWrap}>
                     <div className={styles.avatar} style={{ background: bg }}>
                       <span className={styles.avatarInitials} style={{ color: text }}>
-                        {getInitials(cls.instructor)}
+                        {getInitials(cls.coachNombre)}
                       </span>
                     </div>
                   </div>
 
                   {/* TIME */}
                   <div className={styles.classTime}>
-                    <span className={styles.timeHour}>{formatHour(cls.time)}</span>
-                    <span className={styles.timeDur}>{cls.duration} min</span>
+                    <span className={styles.timeHour}>{formatHour(cls.hora)}</span>
+                    <span className={styles.timeDur}>{cls.duracion} min</span>
                   </div>
 
                   {/* DIVIDER */}
@@ -196,14 +212,14 @@ export default function Clases() {
                   {/* CENTER — class info */}
                   <div className={styles.classBody}>
                     <div className={styles.classTitleRow}>
-                      <span className={styles.className}>{cls.name}</span>
-                      <span className={`${styles.typeBadge} ${cls.type === 'Stride' ? styles.typeBadgeStride : styles.typeBadgeSlow}`}>
-                        {cls.type === 'Stride' ? 'STRYDE' : 'SLOW'}
+                      <span className={styles.className}>{cls.nombre}</span>
+                      <span className={`${styles.typeBadge} ${cls.tipo === 'Stride' ? styles.typeBadgeStride : styles.typeBadgeSlow}`}>
+                        {cls.tipo === 'Stride' ? 'STRYDE' : 'SLOW'}
                       </span>
                     </div>
                     <div className={styles.classMeta}>
                       <span className={styles.metaItem}>
-                        {cls.instructor}
+                        {cls.coachNombre}
                       </span>
                       <span className={styles.metaItem}>
                         <MapPin size={11} />{location}
@@ -223,7 +239,14 @@ export default function Clases() {
                     )}
                     <button
                       className={styles.reservarBtn}
-                      onClick={() => !isFull && setSelectedClass(cls)}
+                      onClick={() => {
+                        if (isFull) return
+                        if (!isAuthenticated) {
+                          navigate(ROUTES.login, { state: { selectedClass: cls } })
+                          return
+                        }
+                        setSelectedClass(cls)
+                      }}
                       disabled={isFull}
                     >
                       RESERVAR

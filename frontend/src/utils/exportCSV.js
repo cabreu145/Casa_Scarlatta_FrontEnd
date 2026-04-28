@@ -1,3 +1,14 @@
+/**
+ * exportCSV.js
+ * ─────────────────────────────────────────────────────
+ * Utilidad para exportar datos tabulares a archivo .csv.
+ * Agrega BOM UTF-8 para compatibilidad con Excel en español.
+ * Escapa automáticamente comas y comillas en los valores.
+ *
+ * Usado en: AdminReportes, AdminFinanzas
+ * Depende de: (nada — función pura sin imports)
+ * ─────────────────────────────────────────────────────
+ */
 // UTF-8 BOM ensures Excel opens the file without garbled characters
 const BOM = '\uFEFF'
 

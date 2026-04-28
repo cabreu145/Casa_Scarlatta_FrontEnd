@@ -49,28 +49,29 @@ function isPastTime(time) {
 }
 
 function ClassBlock({ cls, onSelect, isToday }) {
-  const isFull    = cls.spots === 0
-  const isPast    = isToday && isPastTime(cls.time)
+  const spotsDisponibles = cls.cupoMax - cls.cupoActual
+  const isFull    = spotsDisponibles === 0
+  const isPast    = isToday && isPastTime(cls.hora)
   const disabled  = isFull || isPast
-  const spotsLow  = cls.spots > 0 && cls.spots <= 3
+  const spotsLow  = spotsDisponibles > 0 && spotsDisponibles <= 3
 
   return (
     <button
       className={`${styles.block} ${isFull ? styles.blockFull : ''} ${isPast ? styles.blockPast : ''}`}
       onClick={() => !disabled && onSelect && onSelect(cls)}
       disabled={disabled}
-      aria-label={`${cls.name} con ${cls.instructor} a las ${cls.time}`}
+      aria-label={`${cls.nombre} con ${cls.coachNombre} a las ${cls.hora}`}
     >
-      <span className={`${styles.typeTag} ${styles['type_' + cls.type.toLowerCase()]}`}>
-        {cls.type}
+      <span className={`${styles.typeTag} ${styles['type_' + cls.tipo.toLowerCase()]}`}>
+        {cls.tipo}
       </span>
-      <p className={styles.blockName}>{cls.name}</p>
-      <p className={styles.blockMeta}>{formatTime(cls.time)} · {cls.duration} min</p>
-      <p className={styles.blockInstructor}>{cls.instructor}</p>
+      <p className={styles.blockName}>{cls.nombre}</p>
+      <p className={styles.blockMeta}>{formatTime(cls.hora)} · {cls.duracion} min</p>
+      <p className={styles.blockInstructor}>{cls.coachNombre}</p>
       {isFull
         ? <span className={styles.spotsFull}>LLENO</span>
         : <span className={`${styles.spots} ${spotsLow ? styles.spotsLow : styles.spotsOk}`}>
-            ● {cls.spots} lugares
+            ● {spotsDisponibles} lugares
           </span>
       }
     </button>
@@ -85,8 +86,8 @@ export default function WeeklyCalendar({ classes, onSelectClass }) {
 
   const byDay = days.map(({ fullName }) =>
     classes
-      .filter(c => c.day === fullName)
-      .sort((a, b) => a.time.localeCompare(b.time))
+      .filter(c => c.dia === fullName)
+      .sort((a, b) => a.hora.localeCompare(b.hora))
   )
 
   return (

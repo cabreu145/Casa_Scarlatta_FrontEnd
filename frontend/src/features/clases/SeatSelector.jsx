@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { X, CheckCircle, ShoppingBag } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
-import { useClasesStore } from '@/stores/clasesStore'
+import { ROUTES } from '@/constants/routes'
+import { reservarClase } from '@/services/reservasService'
 import styles from './SeatSelector.module.css'
 
 const LAYOUT = {
@@ -36,14 +37,14 @@ function parseSeat(id) {
 
 export default function SeatSelector({ cls, onClose }) {
   const navigate = useNavigate()
-  const { isAuthenticated, usuario, actualizarClasesPaquete } = useAuth()
-  const { reservarDesdePublico } = useClasesStore()
+  const { isAuthenticated, usuario } = useAuth()
 
-  const { rows, cols } = LAYOUT[cls.type] ?? { rows: 4, cols: 5 }
+  const spotsDisponibles = cls.cupoMax - cls.cupoActual
+  const { rows, cols } = LAYOUT[cls.tipo] ?? { rows: 4, cols: 5 }
 
   const occupied = useMemo(
-    () => generateOccupied(rows, cols, cls.spots),
-    [rows, cols, cls.spots]
+    () => generateOccupied(rows, cols, spotsDisponibles),
+    [rows, cols, spotsDisponibles]
   )
 
   const [selected, setSelected] = useState(null)
@@ -59,21 +60,23 @@ export default function SeatSelector({ cls, onClose }) {
 
   function confirm() {
     if (!isAuthenticated) {
-      navigate('/login', {
+      navigate(ROUTES.login, {
         state: { selectedClass: cls, selectedSeat: selected },
       })
       return
     }
 
-    const esIlimitado = usuario?.paquete === 'Premium' || usuario?.clasesPaquete === 999
-    if (!esIlimitado && (!usuario?.clasesPaquete || usuario.clasesPaquete <= 0)) {
-      setSinClases(true)
+    const { row, col } = parseSeat(selected)
+    const resultado = reservarClase(usuario.id, cls.id, seatLabel(row, col))
+
+    if (!resultado.ok) {
+      if (resultado.error === 'Sin créditos disponibles') {
+        setSinClases(true)
+      } else {
+        toast.error(resultado.error)
+      }
       return
     }
-
-    const { row, col } = parseSeat(selected)
-    reservarDesdePublico(usuario.id, cls, seatLabel(row, col))
-    if (!esIlimitado) actualizarClasesPaquete(-1)
 
     setConfirmado(true)
   }
@@ -82,7 +85,7 @@ export default function SeatSelector({ cls, onClose }) {
     setConfirmado(false)
     setSelected(null)
     onClose()
-    navigate('/cliente/dashboard')
+    navigate(ROUTES.cliente.dashboard)
   }
 
   if (sinClases) {
@@ -129,7 +132,7 @@ export default function SeatSelector({ cls, onClose }) {
               onClick={() => {
                 setSinClases(false)
                 onClose()
-                navigate(isAuthenticated ? '/cliente/pagos' : '/login')
+                navigate(isAuthenticated ? ROUTES.cliente.pagos : ROUTES.login)
               }}
             >
               Ver paquetes →
@@ -156,8 +159,8 @@ export default function SeatSelector({ cls, onClose }) {
             <CheckCircle size={52} strokeWidth={1.5} className={styles.successIcon} />
             <h2 className={styles.successTitle}>¡Reserva confirmada!</h2>
             <p className={styles.successSub}>
-              <strong>{cls.name}</strong><br />
-              {cls.day} · {cls.time} · Coach: {cls.instructor}
+              <strong>{cls.nombre}</strong><br />
+              {cls.dia} · {cls.hora} · Coach: {cls.coachNombre}
             </p>
             {selected && (
               <p className={styles.successSeat}>
@@ -178,9 +181,9 @@ export default function SeatSelector({ cls, onClose }) {
             {/* Header */}
             <div className={styles.header}>
               <div>
-                <p className={styles.headerLabel}>{cls.type} · {cls.day} · {cls.time}</p>
-                <h2 className={styles.headerTitle}>{cls.name}</h2>
-                <p className={styles.headerInstructor}>Coach: {cls.instructor}</p>
+                <p className={styles.headerLabel}>{cls.tipo} · {cls.dia} · {cls.hora}</p>
+                <h2 className={styles.headerTitle}>{cls.nombre}</h2>
+                <p className={styles.headerInstructor}>Coach: {cls.coachNombre}</p>
               </div>
               <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar">
                 <X size={20} />

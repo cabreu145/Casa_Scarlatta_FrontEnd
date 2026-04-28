@@ -1,3 +1,14 @@
+/**
+ * paquetesStore.js
+ * ─────────────────────────────────────────────────────
+ * Store de Zustand para los paquetes de membresía.
+ * Persiste en localStorage bajo la clave 'casa-scarlatta-paquetes-v2'.
+ * Contiene los 6 paquetes disponibles (3 mensuales + 3 packs).
+ *
+ * Usado en: AdminPaquetes, PricingSection, CompraModal
+ * Depende de: zustand, zustand/middleware
+ * ─────────────────────────────────────────────────────
+ */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -133,6 +144,11 @@ export const usePaquetesStore = create(
       marcarDestacado: (id) =>
         set((state) => ({
           paquetes: state.paquetes.map((p) => ({ ...p, destacado: p.id === id })),
+        })),
+
+      agregarPaquete: (nuevoPaquete) =>
+        set((state) => ({
+          paquetes: [...state.paquetes, { ...nuevoPaquete, id: Date.now() }],
         })),
 
       resetearPaquetes: () => set({ paquetes: paquetesIniciales }),

@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import styles from './AdminPanel.module.css'
+import { useCoachesStore }   from '@/stores/coachesStore'
+import { useProductosStore } from '@/stores/productosStore'
+import { useClasesStore }    from '@/stores/clasesStore'
+import { usePaquetesStore }  from '@/stores/paquetesStore'
+import { useUsuariosStore }  from '@/stores/usuariosStore'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign } from 'lucide-react'
@@ -39,6 +45,14 @@ const PRODUCTS = [
   { emoji: '✨', name: 'Colágeno',         price: 95  },
 ]
 
+const PAQUETES_POS = [
+  { emoji: '📦', name: 'Básico — 8 clases',    price: 999  },
+  { emoji: '📦', name: 'Esencial — 16 clases',  price: 1499 },
+  { emoji: '⭐', name: 'Premium — Ilimitadas',  price: 1999 },
+]
+
+const ABBR_DIA = { Lunes: 'LUN', Martes: 'MAR', Miércoles: 'MIÉ', Jueves: 'JUE', Viernes: 'VIE', Sábado: 'SÁB', Domingo: 'DOM' }
+
 // ── Tag helper ───────────────────────────────────────────────────────────────
 function Tag({ color, children }) {
   const cls = {
@@ -68,15 +82,32 @@ function FilterChips({ options, active, onChange }) {
   )
 }
 
+// ── Category emoji fallback ──────────────────────────────────────────────────
+function categoryEmoji(categoria) {
+  return { Accesorios: '🎽', Nutrición: '🧴', Equipo: '🏋️', Ropa: '👕' }[categoria] || '📦'
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 export default function AdminPanel() {
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('dashboard')
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
+  const { coaches, agregarCoach }                         = useCoachesStore()
+  const { productos, agregarProducto,
+          editarProducto, eliminarProducto }               = useProductosStore()
+  const { clases, agregarClase }                          = useClasesStore()
+  const { paquetes, agregarPaquete }                      = usePaquetesStore()
+  const { usuarios, agregarUsuario }                      = useUsuariosStore()
+
   const [cart, setCart]                   = useState([])
-  const [posFilter, setPosFilter]         = useState('Todo')
+  const [posFilter, setPosFilter]         = useState('Todos')
   const [clasesFilter, setClasesFilter]   = useState('Todas')
   const [usersFilter, setUsersFilter]     = useState('Todos')
+
+  // Product CRUD state
+  const [prodModal, setProdModal]               = useState(null) // null | 'nuevo' | { producto }
+  const [prodForm, setProdForm]                 = useState({ nombre: '', categoria: 'Accesorios', precio: '', stock: '', emoji: '' })
+  const [confirmarEliminarProd, setConfirmarEliminarProd] = useState(null)
 
   // Coach form
   const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: '', email: '', telefono: '', bio: '', estado: 'activo' })
@@ -105,6 +136,34 @@ export default function AdminPanel() {
 
   function clearCart() { setCart([]) }
 
+  function handleSaveProducto() {
+    if (!prodForm.nombre.trim()) return
+    const datos = {
+      nombre:    prodForm.nombre,
+      categoria: prodForm.categoria,
+      precio:    Number(prodForm.precio) || 0,
+      stock:     Number(prodForm.stock)  || 0,
+      imagen:    null,
+      activo:    true,
+      emoji:     prodForm.emoji || categoryEmoji(prodForm.categoria),
+    }
+    if (prodModal === 'nuevo') {
+      agregarProducto(datos)
+      toast.success('Producto agregado')
+    } else {
+      editarProducto(prodModal.producto.id, datos)
+      toast.success('Producto actualizado')
+    }
+    setProdModal(null)
+    setProdForm({ nombre: '', categoria: 'Accesorios', precio: '', stock: '', emoji: '' })
+  }
+
+  function handleEliminarProducto() {
+    eliminarProducto(confirmarEliminarProd.id)
+    toast.success('Producto eliminado')
+    setConfirmarEliminarProd(null)
+  }
+
   function procesarVenta() {
     if (cart.length === 0) { alert('Agrega productos a la orden primero'); return }
     alert('✅ Venta procesada exitosamente')
@@ -132,7 +191,7 @@ export default function AdminPanel() {
           <div className={styles.navLabel}>Principal</div>
           {[
             { id: 'dashboard', icon: '📊', label: 'Dashboard'    },
-            { id: 'coaches',   icon: '👤', label: 'Coaches',  badge: '5' },
+            { id: 'coaches',   icon: '👤', label: 'Coaches',  badge: String(coaches.length) },
             { id: 'clases',    icon: '🗓', label: 'Clases'       },
             { id: 'paquetes',  icon: '📦', label: 'Paquetes'     },
           ].map(({ id, icon, label, badge }) => (
@@ -152,7 +211,7 @@ export default function AdminPanel() {
           <div className={styles.navLabel}>Operación</div>
           {[
             { id: 'pos',       icon: '🛒', label: 'Punto de Venta' },
-            { id: 'usuarios',  icon: '👥', label: 'Usuarios', badge: '142' },
+            { id: 'usuarios',  icon: '👥', label: 'Usuarios', badge: String(usuarios.length) },
           ].map(({ id, icon, label, badge }) => (
             <button
               key={id}
@@ -396,38 +455,36 @@ export default function AdminPanel() {
               </button>
             </div>
             <div className={styles.coachesGrid}>
-              {[
-                { i: 'M',  name: 'Mafer García', spec: 'Stride · Funcional',  clases: 24, rating: 4.9, asist: '98%'  },
-                { i: 'Mj', name: 'Majo Reyes',   spec: 'Slow · Pilates',      clases: 19, rating: 4.8, asist: '95%'  },
-                { i: 'Ml', name: 'Mali Torres',  spec: 'Slow · Meditación',   clases: 16, rating: 4.7, asist: '100%' },
-                { i: 'D',  name: 'Daya López',   spec: 'Flow · Yoga',         clases: 21, rating: 5.0, asist: '100%' },
-              ].map(({ i, name, spec, clases, rating, asist }) => (
-                <div key={name} className={styles.coachCard}>
-                  <div className={styles.coachPhoto}>{i}</div>
-                  <div className={styles.coachInfo}>
-                    <div className={styles.coachName}>{name}</div>
-                    <div className={styles.coachSpec}>{spec}</div>
-                    <div className={styles.coachStats}>
-                      <div className={styles.coachStat}>
-                        <div className={styles.coachStatVal}>{clases}</div>
-                        <div className={styles.coachStatLabel}>Clases</div>
+              {coaches.map((c) => {
+                const iniciales = c.nombre.split(' ').slice(0, 2).map((w) => w[0]).join('')
+                return (
+                  <div key={c.id} className={styles.coachCard}>
+                    <div className={styles.coachPhoto}>{iniciales}</div>
+                    <div className={styles.coachInfo}>
+                      <div className={styles.coachName}>{c.nombre}</div>
+                      <div className={styles.coachSpec}>{c.especialidad}</div>
+                      <div className={styles.coachStats}>
+                        <div className={styles.coachStat}>
+                          <div className={styles.coachStatVal}>{c.clases}</div>
+                          <div className={styles.coachStatLabel}>Clases</div>
+                        </div>
+                        <div className={styles.coachStat}>
+                          <div className={styles.coachStatVal}>{c.rating}</div>
+                          <div className={styles.coachStatLabel}>Rating</div>
+                        </div>
+                        <div className={styles.coachStat}>
+                          <div className={styles.coachStatVal}>{c.asist}</div>
+                          <div className={styles.coachStatLabel}>Asistencia</div>
+                        </div>
                       </div>
-                      <div className={styles.coachStat}>
-                        <div className={styles.coachStatVal}>{rating}</div>
-                        <div className={styles.coachStatLabel}>Rating</div>
+                      <div className={styles.coachActions}>
+                        <button className={styles.coachBtn}>✏️ Editar</button>
+                        <button className={styles.coachBtn}>📅 Horario</button>
                       </div>
-                      <div className={styles.coachStat}>
-                        <div className={styles.coachStatVal}>{asist}</div>
-                        <div className={styles.coachStatLabel}>Asistencia</div>
-                      </div>
-                    </div>
-                    <div className={styles.coachActions}>
-                      <button className={styles.coachBtn}>✏️ Editar</button>
-                      <button className={styles.coachBtn}>📅 Horario</button>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
 
@@ -445,34 +502,37 @@ export default function AdminPanel() {
             </div>
             <div className={styles.card}>
               <div className={styles.clasesList}>
-                {[
-                  { day: 'LUN', num: 28, name: 'Stride Power',    meta: '7:00 AM · 50 min · Mafer García',  tipo: 'pink',  tipoLabel: 'Stride', spots: '8/15',  pct: 53,  statusTag: 'green',  statusLabel: 'Abierta'    },
-                  { day: 'LUN', num: 28, name: 'Slow Meditación',  meta: '9:00 AM · 60 min · Majo Reyes',    tipo: 'blue',  tipoLabel: 'Slow',   spots: '15/15', pct: 100, statusTag: 'red',    statusLabel: 'Llena'      },
-                  { day: 'MAR', num: 29, name: 'Stride HIIT',      meta: '7:00 PM · 50 min · Coste Méndez',  tipo: 'pink',  tipoLabel: 'Stride', spots: '5/15',  pct: 33,  statusTag: 'green',  statusLabel: 'Abierta'    },
-                  { day: 'MIÉ', num: 30, name: 'Slow Pilates',     meta: '8:00 AM · 55 min · Mali Torres',   tipo: 'blue',  tipoLabel: 'Slow',   spots: '12/15', pct: 80,  statusTag: 'yellow', statusLabel: 'Casi llena' },
-                ].map(({ day, num, name, meta, tipo, tipoLabel, spots, pct, statusTag, statusLabel }) => (
-                  <div key={name} className={styles.claseItem}>
-                    <div className={styles.claseDay}>
-                      <span style={{ fontSize: 9 }}>{day}</span>
-                      <span className={styles.dayNum}>{num}</span>
-                    </div>
-                    <div>
-                      <div className={styles.claseName}>{name}</div>
-                      <div className={styles.claseMeta}>{meta}</div>
-                    </div>
-                    <Tag color={tipo}>{tipoLabel}</Tag>
-                    <div className={styles.claseSpots}>
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{spots} lugares</div>
-                      <div className={styles.spotsBar}>
-                        <div className={styles.spotsFill} style={{ width: `${pct}%` }} />
+                {(clasesFilter === 'Todas' || clasesFilter === 'Esta semana'
+                  ? clases
+                  : clases.filter((c) => c.tipo === clasesFilter)
+                ).map((c) => {
+                  const pct = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
+                  const statusTag   = pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
+                  const statusLabel = pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
+                  return (
+                    <div key={c.id} className={styles.claseItem}>
+                      <div className={styles.claseDay}>
+                        <span style={{ fontSize: 9 }}>{ABBR_DIA[c.dia] || c.dia}</span>
+                        <span className={styles.dayNum}>—</span>
                       </div>
+                      <div>
+                        <div className={styles.claseName}>{c.nombre}</div>
+                        <div className={styles.claseMeta}>{c.hora} · {c.duracion} min · {c.coachNombre}</div>
+                      </div>
+                      <Tag color={c.tipo === 'Stride' ? 'pink' : 'blue'}>{c.tipo}</Tag>
+                      <div className={styles.claseSpots}>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.cupoActual}/{c.cupoMax} lugares</div>
+                        <div className={styles.spotsBar}>
+                          <div className={styles.spotsFill} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                      <Tag color={statusTag}>{statusLabel}</Tag>
+                      <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '6px 12px', fontSize: 12 }}>
+                        Editar
+                      </button>
                     </div>
-                    <Tag color={statusTag}>{statusLabel}</Tag>
-                    <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '6px 12px', fontSize: 12 }}>
-                      Editar
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </section>
@@ -486,34 +546,23 @@ export default function AdminPanel() {
               </button>
             </div>
             <div className={styles.paquetesGrid}>
-              <div className={styles.paqueteCard}>
-                <div className={styles.paqueteName}>Por clase</div>
-                <div className={styles.paqueteClases}>1 clase individual</div>
-                <div className={styles.paquetePrice}>$120<span>/clase</span></div>
-                <div className={styles.paqueteStats}>
-                  <div className={styles.paqueteStat}><strong>18</strong>vendidos este mes</div>
-                  <div className={styles.paqueteStat}><strong>$2,160</strong>generados</div>
+              {paquetes.map((p) => (
+                <div key={p.id} className={`${styles.paqueteCard} ${p.destacado ? styles.featured : ''}`}>
+                  {p.destacado && <div className={styles.paqueteBadge}>⭐ Más popular</div>}
+                  <div className={styles.paqueteName}>{p.nombre}</div>
+                  <div className={styles.paqueteClases}>
+                    {p.clases === 0 ? 'Clases ilimitadas' : `${p.clases} clases`}
+                    {p.vigencia ? ` · ${p.vigencia}` : ''}
+                  </div>
+                  <div className={styles.paquetePrice}>
+                    ${p.precio.toLocaleString()}<span>/{p.categoria === 'mensual' ? 'mes' : 'paquete'}</span>
+                  </div>
+                  <div className={styles.paqueteStats}>
+                    <div className={styles.paqueteStat}><strong>{p.beneficios.length}</strong>beneficios</div>
+                    <div className={styles.paqueteStat}><strong>{p.categoria}</strong></div>
+                  </div>
                 </div>
-              </div>
-              <div className={`${styles.paqueteCard} ${styles.featured}`}>
-                <div className={styles.paqueteBadge}>⭐ Más popular</div>
-                <div className={styles.paqueteName}>Mensual</div>
-                <div className={styles.paqueteClases}>Clases ilimitadas por mes</div>
-                <div className={styles.paquetePrice}>$1,200<span>/mes</span></div>
-                <div className={styles.paqueteStats}>
-                  <div className={styles.paqueteStat}><strong>42</strong>activos</div>
-                  <div className={styles.paqueteStat}><strong>$50,400</strong>MRR</div>
-                </div>
-              </div>
-              <div className={styles.paqueteCard}>
-                <div className={styles.paqueteName}>10 clases</div>
-                <div className={styles.paqueteClases}>Válido por 60 días</div>
-                <div className={styles.paquetePrice}>$850<span>/paquete</span></div>
-                <div className={styles.paqueteStats}>
-                  <div className={styles.paqueteStat}><strong>26</strong>activos</div>
-                  <div className={styles.paqueteStat}><strong>$22,100</strong>generados</div>
-                </div>
-              </div>
+              ))}
             </div>
 
             <div className={styles.card}>
@@ -564,19 +613,55 @@ export default function AdminPanel() {
           <section className={`${styles.section}${activeSection === 'pos' ? ' ' + styles.active : ''}`}>
             <div className={styles.posGrid}>
               <div>
-                <FilterChips
-                  options={['Todo', '💧 Bebidas', '🥤 Smoothies', '👕 Ropa', '🧴 Suplementos']}
-                  active={posFilter}
-                  onChange={setPosFilter}
-                />
-                <div className={styles.productGrid} style={{ marginTop: 20 }}>
-                  {PRODUCTS.map((p) => (
-                    <button key={p.name} className={styles.productCard} onClick={() => addToCart(p)}>
-                      <div className={styles.productEmoji}>{p.emoji}</div>
-                      <div className={styles.productName}>{p.name}</div>
-                      <div className={styles.productPrice}>${p.price}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <FilterChips
+                    options={['Todos', '📦 Paquetes', 'Accesorios', 'Nutrición', 'Equipo', 'Ropa']}
+                    active={posFilter}
+                    onChange={setPosFilter}
+                  />
+                  {posFilter !== '📦 Paquetes' && (
+                    <button
+                      className={`${styles.btn} ${styles.btnPrimary}`}
+                      style={{ fontSize: 13, padding: '6px 14px' }}
+                      onClick={() => { setProdModal('nuevo'); setProdForm({ nombre: '', categoria: posFilter === 'Todos' ? 'Accesorios' : posFilter, precio: '', stock: '', emoji: '' }) }}
+                    >
+                      + Agregar producto
                     </button>
-                  ))}
+                  )}
+                </div>
+                <div className={styles.productGrid}>
+                  {(posFilter === '📦 Paquetes' ? PAQUETES_POS : productos.filter(
+                      (p) => p.activo && (posFilter === 'Todos' || p.categoria === posFilter)
+                    )).map((p) => {
+                    const isPaquete = posFilter === '📦 Paquetes'
+                    const emoji  = p.emoji || categoryEmoji(p.categoria)
+                    const nombre = p.nombre ?? p.name
+                    const precio = p.precio ?? p.price
+                    return (
+                      <div key={p.id ?? p.name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <button
+                          className={styles.productCard}
+                          onClick={() => addToCart({ name: nombre, price: precio, emoji })}
+                        >
+                          <div className={styles.productEmoji}>{emoji}</div>
+                          <div className={styles.productName}>{nombre}</div>
+                          <div className={styles.productPrice}>${precio.toLocaleString()}</div>
+                        </button>
+                        {!isPaquete && (
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button
+                              style={{ flex: 1, fontSize: 11, padding: '3px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)' }}
+                              onClick={() => { setProdForm({ nombre: p.nombre, categoria: p.categoria, precio: String(p.precio), stock: String(p.stock), emoji: p.emoji || '' }); setProdModal({ producto: p }) }}
+                            >✏️</button>
+                            <button
+                              style={{ flex: 1, fontSize: 11, padding: '3px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: '#ef4444' }}
+                              onClick={() => setConfirmarEliminarProd(p)}
+                            >🗑</button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -665,28 +750,35 @@ export default function AdminPanel() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { i: 'S', name: 'Sofía Reyes',     pkg: 'Mensual',   clases: 'Ilimitadas', venc: '30 Abr 2026', ult: 'Hoy 7:00 AM',  total: '$4,800', tag: 'green',  label: 'Activa'       },
-                      { i: 'A', name: 'Ana Torres',      pkg: '10 clases', clases: '3 clases',   venc: '14 May 2026', ult: 'Ayer 9:00 AM', total: '$2,550', tag: 'yellow', label: 'Casi agotado' },
-                      { i: 'L', name: 'Lucía Mendoza',   pkg: 'Mensual',   clases: 'Ilimitadas', venc: '02 May 2026', ult: 'Hoy 9:00 AM',  total: '$6,000', tag: 'red',    label: 'Por vencer'   },
-                      { i: 'V', name: 'Valentina Cruz',  pkg: 'Por clase', clases: '0 clases',   venc: '—',           ult: 'Hace 3 días',  total: '$360',   tag: 'red',    label: 'Sin paquete'  },
-                    ].map(({ i, name, pkg, clases, venc, ult, total, tag, label }) => (
-                      <tr key={name}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div className={styles.miniAvatar} style={{ width: 28, height: 28, fontSize: 12 }}>{i}</div>
-                            {name}
-                          </div>
-                        </td>
-                        <td>{pkg}</td>
-                        <td>{clases}</td>
-                        <td>{venc}</td>
-                        <td>{ult}</td>
-                        <td className={styles.mono}>{total}</td>
-                        <td><Tag color={tag}>{label}</Tag></td>
-                        <td><button className={styles.coachBtn} style={{ width: 60 }}>Ver</button></td>
-                      </tr>
-                    ))}
+                    {usuarios
+                      .filter((u) => {
+                        if (usersFilter === 'Activos')     return u.activo && u.paquete
+                        if (usersFilter === 'Sin paquete') return !u.paquete
+                        if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
+                        return true
+                      })
+                      .map((u) => {
+                        const restantes = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
+                        const tag   = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
+                        const label = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
+                        return (
+                          <tr key={u.id}>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div className={styles.miniAvatar} style={{ width: 28, height: 28, fontSize: 12 }}>{u.nombre[0]}</div>
+                                {u.nombre}
+                              </div>
+                            </td>
+                            <td>{u.paquete || '—'}</td>
+                            <td>{restantes}</td>
+                            <td>{u.paqueteInfo?.fechaVencimiento || '—'}</td>
+                            <td>—</td>
+                            <td className={styles.mono}>—</td>
+                            <td><Tag color={tag}>{label}</Tag></td>
+                            <td><button className={styles.coachBtn} style={{ width: 60 }}>Ver</button></td>
+                          </tr>
+                        )
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -887,7 +979,26 @@ export default function AdminPanel() {
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={closeModal}>Guardar Coach</button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  if (!coachForm.nombre.trim()) return
+                  const spec = [coachForm.disciplina, coachForm.especialidad].filter(Boolean).join(' · ') || 'Stride'
+                  agregarCoach({
+                    nombre:       coachForm.nombre,
+                    especialidad: spec,
+                    bio:          coachForm.bio,
+                    email:        coachForm.email,
+                    telefono:     coachForm.telefono,
+                    foto:         null,
+                  })
+                  toast.success(`${coachForm.nombre} agregado`)
+                  setCoachForm({ nombre: '', especialidad: '', disciplina: '', email: '', telefono: '', bio: '', estado: 'activo' })
+                  closeModal()
+                }}
+              >
+                Guardar Coach
+              </button>
             </div>
           </div>
         )}
@@ -959,7 +1070,28 @@ export default function AdminPanel() {
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={closeModal}>Agregar al Calendario</button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  if (!claseForm.nombre.trim()) return
+                  agregarClase({
+                    nombre:      claseForm.nombre,
+                    tipo:        claseForm.tipo,
+                    coachNombre: claseForm.coach || 'Sin asignar',
+                    dia:         claseForm.dia,
+                    hora:        claseForm.hora,
+                    duracion:    Number(claseForm.duracion) || 50,
+                    cupoMax:     Number(claseForm.cupoMax) || 15,
+                    cupoActual:  0,
+                    descripcion: claseForm.descripcion,
+                  })
+                  toast.success(`Clase "${claseForm.nombre}" agregada`)
+                  setClaseForm({ nombre: '', tipo: 'Stride', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '' })
+                  closeModal()
+                }}
+              >
+                Agregar al Calendario
+              </button>
             </div>
           </div>
         )}
@@ -1020,7 +1152,26 @@ export default function AdminPanel() {
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={closeModal}>Guardar Paquete</button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  if (!paqueteForm.nombre.trim()) return
+                  agregarPaquete({
+                    nombre:     paqueteForm.nombre,
+                    precio:     Number(paqueteForm.precio) || 0,
+                    clases:     paqueteForm.tipo === 'mensual' ? 0 : Number(paqueteForm.numClases) || 1,
+                    vigencia:   paqueteForm.vigencia ? `${paqueteForm.vigencia} días` : 'Mensual',
+                    categoria:  paqueteForm.tipo === 'mensual' ? 'mensual' : 'pack',
+                    beneficios: paqueteForm.descripcion ? [paqueteForm.descripcion] : [],
+                    destacado:  paqueteForm.destacado,
+                  })
+                  toast.success(`Paquete "${paqueteForm.nombre}" creado`)
+                  setPaqueteForm({ nombre: '', tipo: 'mensual', numClases: '', precio: '', vigencia: '', descripcion: '', destacado: false })
+                  closeModal()
+                }}
+              >
+                Guardar Paquete
+              </button>
             </div>
           </div>
         )}
@@ -1088,12 +1239,118 @@ export default function AdminPanel() {
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={closeModal}>Dar de alta</button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  if (!usuarioForm.nombre.trim() || !usuarioForm.email.trim()) return
+                  const clasesPaquete =
+                    usuarioForm.paquete === 'ninguno'  ? 0   :
+                    usuarioForm.paquete === 'mensual'  ? 999 :
+                    usuarioForm.paquete === '10clases' ? 10  : 1
+                  agregarUsuario({
+                    nombre:          usuarioForm.nombre,
+                    email:           usuarioForm.email,
+                    telefono:        usuarioForm.telefono,
+                    fechaNacimiento: usuarioForm.nacimiento,
+                    rol:             'cliente',
+                    activo:          true,
+                    paquete:         usuarioForm.paquete === 'ninguno' ? null : usuarioForm.paquete,
+                    clasesPaquete,
+                    paqueteInfo: {
+                      fechaCompra: new Date().toISOString().split('T')[0],
+                      estado:      'Activo',
+                      tipo:        'Individual',
+                    },
+                    notas: usuarioForm.notas,
+                  })
+                  toast.success(`${usuarioForm.nombre} dado de alta`)
+                  setUsuarioForm({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
+                  closeModal()
+                }}
+              >
+                Dar de alta
+              </button>
             </div>
           </div>
         )}
 
       </div>
+
+      {/* ── MODAL PRODUCTO ── */}
+      {prodModal && (
+        <div
+          className={`${styles.modalOverlay} ${styles.open}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setProdModal(null) }}
+        >
+          <div className={styles.modal}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>{prodModal === 'nuevo' ? 'Agregar producto' : 'Editar producto'}</div>
+              <button className={styles.modalClose} onClick={() => setProdModal(null)}>×</button>
+            </div>
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Nombre</label>
+                <input className={styles.formInput} placeholder="Ej: Botella CS" value={prodForm.nombre}
+                  onChange={(e) => setProdForm((f) => ({ ...f, nombre: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Categoría</label>
+                <select className={styles.formSelect} value={prodForm.categoria}
+                  onChange={(e) => setProdForm((f) => ({ ...f, categoria: e.target.value }))}>
+                  {['Accesorios', 'Nutrición', 'Equipo', 'Ropa'].map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Precio (MXN)</label>
+                <input className={styles.formInput} type="number" min="0" placeholder="Ej: 350" value={prodForm.precio}
+                  onChange={(e) => setProdForm((f) => ({ ...f, precio: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Stock inicial</label>
+                <input className={styles.formInput} type="number" min="0" placeholder="Ej: 20" value={prodForm.stock}
+                  onChange={(e) => setProdForm((f) => ({ ...f, stock: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Emoji (opcional)</label>
+                <input className={styles.formInput} maxLength={2} placeholder="🎽" value={prodForm.emoji}
+                  onChange={(e) => setProdForm((f) => ({ ...f, emoji: e.target.value }))} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setProdModal(null)}>Cancelar</button>
+              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleSaveProducto}>
+                {prodModal === 'nuevo' ? 'Agregar' : 'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONFIRMAR ELIMINAR PRODUCTO ── */}
+      {confirmarEliminarProd && (
+        <div
+          className={`${styles.modalOverlay} ${styles.open}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmarEliminarProd(null) }}
+        >
+          <div className={styles.modal}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Eliminar producto</div>
+              <button className={styles.modalClose} onClick={() => setConfirmarEliminarProd(null)}>×</button>
+            </div>
+            <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 20 }}>
+              ¿Eliminar <strong>{confirmarEliminarProd.nombre}</strong>? Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setConfirmarEliminarProd(null)}>Cancelar</button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                style={{ background: '#ef4444', borderColor: '#ef4444' }}
+                onClick={handleEliminarProducto}
+              >Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

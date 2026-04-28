@@ -4,7 +4,11 @@ import {
   Home, CalendarDays, PlusCircle, User, CreditCard, LogOut, ArrowLeft,
   MapPin, ChevronLeft, ChevronRight
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
+import { useReservasStore } from '@/stores/reservasStore'
+import { useClasesStore } from '@/stores/clasesStore'
+import { reservarClase, cancelarReserva } from '@/services/reservasService'
 import s from './ClientPanel.module.css'
 
 // ── Week helpers ───────────────────────────────────────────────────────────────
@@ -54,21 +58,6 @@ function avatarStyle(name) {
 }
 
 // ── Data ──────────────────────────────────────────────────────────────────────
-const INITIAL_CLASSES = [
-  { id: 1, title: 'Stride Power',  coach: 'Carlos Méndez', date: 'Lunes',     time: '07:00', discipline: 'STRYDE', status: 'confirmada', location: 'Sala Principal' },
-  { id: 2, title: 'Slow Weekend',  coach: 'Sofía Reyes',   date: 'Sábado',    time: '10:00', discipline: 'SLOW',   status: 'cancelada',  location: 'Estudio B' },
-  { id: 3, title: 'Stride HIIT',   coach: 'Carlos Méndez', date: 'Martes',    time: '19:00', discipline: 'STRYDE', status: 'pendiente',  location: 'Sala Principal' },
-  { id: 4, title: 'Slow Flow',     coach: 'Sofía Reyes',   date: 'Miércoles', time: '08:00', discipline: 'SLOW',   status: 'confirmada', location: 'Estudio B' },
-]
-
-const INITIAL_AVAILABLE = [
-  { id: 5,  title: 'Stride Power',  coach: 'Carlos Méndez', date: 'Lunes',     time: '07:00', discipline: 'STRYDE', spots: 4,  capacity: 20 },
-  { id: 6,  title: 'Stride HIIT',   coach: 'Carlos Méndez', date: 'Martes',    time: '19:00', discipline: 'STRYDE', spots: 11, capacity: 20 },
-  { id: 7,  title: 'Slow Flow',     coach: 'Sofía Reyes',   date: 'Miércoles', time: '08:00', discipline: 'SLOW',   spots: 7,  capacity: 15 },
-  { id: 8,  title: 'Stride Fuerza', coach: 'Carlos Méndez', date: 'Jueves',    time: '07:00', discipline: 'STRYDE', spots: 9,  capacity: 20 },
-  { id: 9,  title: 'Slow Weekend',  coach: 'Sofía Reyes',   date: 'Sábado',    time: '10:00', discipline: 'SLOW',   spots: 14, capacity: 15 },
-]
-
 const PAYMENTS = [
   { id: 1, desc: 'Paquete Esencial', date: '1 abril 2025',    amount: '$1,250' },
   { id: 2, desc: 'Paquete Esencial', date: '1 marzo 2025',    amount: '$1,250' },
@@ -96,30 +85,56 @@ function StatusPill({ status }) {
     confirmada: s.statusConfirmada,
     cancelada:  s.statusCancelada,
     pendiente:  s.statusPendiente,
+    no_asistio: s.statusCancelada,
+    completada: s.statusConfirmada,
   }
-  const labels = { confirmada: 'Confirmada', cancelada: 'Cancelada', pendiente: 'Pendiente' }
-  return <span className={`${s.statusPill} ${map[status]}`}>{labels[status]}</span>
+  const labels = {
+    confirmada: 'Confirmada',
+    cancelada:  'Cancelada',
+    pendiente:  'Pendiente',
+    no_asistio: 'No asistió',
+    completada: 'Completada',
+  }
+  return <span className={`${s.statusPill} ${map[status] ?? ''}`}>{labels[status] ?? status}</span>
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+// Mapea una reserva al shape interno usado por MisClasesCard / ClassCard
+function toClsShape(r) {
+  return {
+    id:         r.id,
+    title:      r.claseNombre,
+    coach:      r.coachNombre,
+    date:       r.claseDia,
+    time:       r.claseHora,
+    discipline: r.tipo === 'Stride' ? 'STRYDE' : 'SLOW',
+    status:     r.estado,
+    location:   '',
+  }
+}
+
 export default function ClientPanel() {
   const navigate = useNavigate()
   const { usuario } = useAuth()
 
-  const [activeSection, setActiveSection] = useState('inicio')
-  const [myClasses, setMyClasses]         = useState(INITIAL_CLASSES)
-  const [available, setAvailable]         = useState(INITIAL_AVAILABLE)
-  const [weekOff, setWeekOff]             = useState(0)
-  const [dayIdx, setDayIdx]               = useState(0)
-  const [resWeekOff, setResWeekOff]       = useState(0)
-  const [resDayIdx, setResDayIdx]         = useState(0)
+  // ── Stores ────────────────────────────────────────────────────────────────
+  const { reservas } = useReservasStore()
+  const { clases }   = useClasesStore()
 
-  const userName       = usuario?.nombre ?? 'Eduardo'
-  const userInitial    = userName.charAt(0).toUpperCase()
-  const planNombre     = usuario?.paquete ?? 'Esencial'
-  const clasesTotal    = usuario?.clasesPaqueteTotal ?? 10
-  const clasesRestantes = usuario?.clasesPaquete === 999 ? '∞' : (usuario?.clasesPaquete ?? 8)
-  const clasesUsadas   = usuario?.clasesPaquete === 999 ? 0 : (clasesTotal - (usuario?.clasesPaquete ?? 8))
+  // ── Secciones UI ─────────────────────────────────────────────────────────
+  const [activeSection, setActiveSection] = useState('inicio')
+  const [weekOff,    setWeekOff]    = useState(0)
+  const [dayIdx,     setDayIdx]     = useState(0)
+  const [resWeekOff, setResWeekOff] = useState(0)
+  const [resDayIdx,  setResDayIdx]  = useState(0)
+
+  // ── Datos del usuario ────────────────────────────────────────────────────
+  const userName        = usuario?.nombre ?? 'Cliente'
+  const userInitial     = userName.charAt(0).toUpperCase()
+  const planNombre      = usuario?.paquete ?? 'Sin plan'
+  const clasesTotal     = usuario?.clasesPaqueteTotal ?? 0
+  const clasesRestantes = usuario?.clasesPaquete === 999 ? '∞' : (usuario?.clasesPaquete ?? 0)
+  const clasesUsadas    = usuario?.clasesPaquete === 999 ? 0 : (clasesTotal - (usuario?.clasesPaquete ?? 0))
   const weekDays    = buildWeek(weekOff)
   const resWeekDays = buildWeek(resWeekOff)
 
@@ -127,24 +142,57 @@ export default function ClientPanel() {
 
   function goTo(section) { setActiveSection(section) }
 
-  function cancelClass(id) {
-    setMyClasses(prev => prev.map(c => c.id === id ? { ...c, status: 'cancelada' } : c))
+  // ── Reservas del usuario ─────────────────────────────────────────────────
+  const reservasUsuario = usuario?.id
+    ? reservas.filter((r) => r.userId === usuario.id)
+    : []
+
+  const today = new Date().toISOString().split('T')[0]
+  const upcomingReservas = [...reservasUsuario]
+    .filter((r) => r.estado === 'confirmada' && r.fecha >= today)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .slice(0, 2)
+
+  const upcoming  = upcomingReservas.map(toClsShape)
+  const nextClass = upcoming[0] ?? null
+
+  // Métricas reales para el dashboard
+  const confirmadas   = reservasUsuario.filter((r) => r.estado === 'confirmada').length
+  const canceladas    = reservasUsuario.filter((r) => r.estado === 'cancelada').length
+  const noAsistio     = reservasUsuario.filter((r) => r.estado === 'no_asistio').length
+  const clamasTomadas = reservasUsuario.filter(
+    (r) => r.estado === 'completada' || r.estado === 'no_asistio'
+  ).length
+
+  // ── Clases disponibles para reservar ────────────────────────────────────
+  const availableClases = clases.map((c) => ({
+    id:         c.id,
+    title:      c.nombre,
+    coach:      c.coachNombre,
+    date:       c.dia,
+    time:       c.hora,
+    discipline: c.tipo === 'Stride' ? 'STRYDE' : 'SLOW',
+    spots:      Math.max(0, c.cupoMax - c.cupoActual),
+    capacity:   c.cupoMax,
+  }))
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  function handleCancelReserva(reservaId) {
+    const resultado = cancelarReserva(reservaId, usuario.id)
+    if (resultado.ok) toast.success('Reserva cancelada')
+    else toast.error(resultado.error)
   }
 
-  function reserveClass(av) {
-    const alreadyBooked = myClasses.find(c => c.title === av.title && c.status !== 'cancelada')
-    if (alreadyBooked || av.spots === 0) return
-    setAvailable(prev => prev.map(c => c.id === av.id ? { ...c, spots: c.spots - 1 } : c))
-    setMyClasses(prev => [{
-      id: Date.now(), title: av.title, coach: av.coach,
-      date: av.date, time: av.time, discipline: av.discipline,
-      status: 'confirmada', location: '',
-    }, ...prev])
+  function handleReserveClass(av) {
+    if (!usuario?.id) return
+    const resultado = reservarClase(usuario.id, av.id)
+    if (!resultado.ok) {
+      toast.error(resultado.error)
+      return
+    }
+    toast.success('¡Reserva confirmada!')
     goTo('clases')
   }
-
-  const upcoming = myClasses.filter(c => c.status !== 'cancelada').slice(0, 2)
-  const nextClass = upcoming[0]
 
   const navGroups = [
     {
@@ -261,6 +309,28 @@ export default function ClientPanel() {
               </div>
             </div>
 
+            {/* Banner créditos bajos */}
+            {typeof clasesRestantes === 'number' && clasesRestantes <= 2 && (
+              <div style={{
+                background: 'rgba(123,31,46,0.08)', border: '1px solid rgba(123,31,46,0.22)',
+                borderRadius: 12, padding: '10px 16px', marginBottom: 16,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--wine)',
+              }}>
+                <span>⚠️ Solo te quedan <strong>{clasesRestantes}</strong> crédito{clasesRestantes !== 1 ? 's' : ''}. ¡Renueva tu paquete pronto!</span>
+                <button
+                  onClick={() => goTo('pagos')}
+                  style={{
+                    fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600,
+                    padding: '6px 14px', borderRadius: 20, border: '1.5px solid var(--wine)',
+                    background: 'transparent', color: 'var(--wine)', cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  Renovar
+                </button>
+              </div>
+            )}
+
             {/* Stats */}
             <div className={s.statsGrid}>
               <div className={`${s.statCard} ${s.wine}`}>
@@ -275,25 +345,25 @@ export default function ClientPanel() {
                 <div className={`${s.statIcon} ${s.green}`}>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
-                <div className={s.statLabel}>Clases tomadas</div>
-                <div className={s.statValue}>12</div>
-                <div className={s.statSub}>Este mes</div>
+                <div className={s.statLabel}>Confirmadas</div>
+                <div className={s.statValue}>{confirmadas}</div>
+                <div className={s.statSub}>Activas</div>
               </div>
               <div className={`${s.statCard} ${s.amber}`}>
                 <div className={`${s.statIcon} ${s.amber}`}>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 </div>
                 <div className={s.statLabel}>Canceladas</div>
-                <div className={s.statValue}>{myClasses.filter(c => c.status === 'cancelada').length}</div>
-                <div className={s.statSub}>Este mes</div>
+                <div className={s.statValue}>{canceladas}</div>
+                <div className={s.statSub}>Historial</div>
               </div>
               <div className={`${s.statCard} ${s.muted}`}>
                 <div className={`${s.statIcon} ${s.muted}`}>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                 </div>
-                <div className={s.statLabel}>Paquete</div>
-                <div className={s.statValue} style={{ fontSize: 22, marginTop: 4 }}>Esencial</div>
-                <div className={s.statSub}>Vence 15 mayo</div>
+                <div className={s.statLabel}>No asistió</div>
+                <div className={s.statValue}>{noAsistio}</div>
+                <div className={s.statSub}>Historial</div>
               </div>
             </div>
 
@@ -380,7 +450,7 @@ export default function ClientPanel() {
               <div>
                 <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', fontWeight: 400, color: 'var(--ink)', marginBottom: 4 }}>Mis Clases</h1>
                 <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-                  {myClasses.filter(c => c.status !== 'cancelada').length} clases reservadas en total
+                  {reservasUsuario.filter(r => r.estado !== 'cancelada').length} clases reservadas en total
                 </p>
               </div>
               <button className={`${s.btn} ${s.btnPrimary}`} onClick={() => goTo('reservar')}>
@@ -397,7 +467,7 @@ export default function ClientPanel() {
               ><ChevronLeft size={18} /></button>
               <div className={s.dayTabs}>
                 {weekDays.map((day, i) => {
-                  const hasCls = myClasses.some(c => c.date === day.fullName && c.status !== 'cancelada')
+                  const hasCls = reservasUsuario.some(r => r.claseDia === day.fullName && r.estado !== 'cancelada')
                   return (
                     <button
                       key={i}
@@ -421,11 +491,13 @@ export default function ClientPanel() {
             {/* Classes for selected day */}
             {(() => {
               const day = weekDays[dayIdx]
-              const dayClasses = myClasses.filter(c => c.date === day.fullName)
+              const dayClasses = reservasUsuario
+                .filter(r => r.claseDia === day.fullName)
+                .map(toClsShape)
               return dayClasses.length > 0 ? (
                 <div>
                   {dayClasses.map(c => (
-                    <MisClasesCard key={c.id} cls={c} onCancel={() => cancelClass(c.id)} />
+                    <MisClasesCard key={c.id} cls={c} onCancel={() => handleCancelReserva(c.id)} />
                   ))}
                 </div>
               ) : (
@@ -453,7 +525,7 @@ export default function ClientPanel() {
               ><ChevronLeft size={18} /></button>
               <div className={s.dayTabs}>
                 {resWeekDays.map((day, i) => {
-                  const hasCls = available.some(av => av.date === day.fullName)
+                  const hasCls = availableClases.some(av => av.date === day.fullName)
                   return (
                     <button
                       key={i}
@@ -477,11 +549,11 @@ export default function ClientPanel() {
             {/* Filtered class list */}
             {(() => {
               const day      = resWeekDays[resDayIdx]
-              const dayAvail = available.filter(av => av.date === day.fullName)
+              const dayAvail = availableClases.filter(av => av.date === day.fullName)
               return dayAvail.length > 0 ? (
                 <div className={s.pubList}>
                   {dayAvail.map(av => {
-                    const alreadyBooked = myClasses.find(c => c.title === av.title && c.status !== 'cancelada')
+                    const alreadyBooked = reservasUsuario.find(r => r.claseId === av.id && r.estado === 'confirmada')
                     const isFull  = av.spots === 0
                     const isLow   = av.spots > 0 && av.spots <= 3
                     const initials = av.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -520,7 +592,7 @@ export default function ClientPanel() {
                                 <span className={s.pubAvailDot} />
                                 {av.spots} {av.spots === 1 ? 'lugar' : 'lugares'}
                               </span>
-                              <button className={s.pubReservarBtn} onClick={() => reserveClass(av)}>
+                              <button className={s.pubReservarBtn} onClick={() => handleReserveClass(av)}>
                                 RESERVAR
                               </button>
                             </>
