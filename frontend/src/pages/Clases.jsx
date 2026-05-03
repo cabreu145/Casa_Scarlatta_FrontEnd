@@ -14,7 +14,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import ClassTypeFilter from '@/features/clases/ClassTypeFilter'
 import SeatSelector from '@/features/clases/SeatSelector'
-import { useClasesStore } from '@/stores/clasesStore'
+import { useClasesStore }   from '@/stores/clasesStore'
+import { useCoachesStore }  from '@/stores/coachesStore'
 import { useAuth } from '@/context/AuthContext'
 import { getPublicClassesByDate, getPublicAvailability } from '@/services/classService'
 import { ROUTES } from '@/constants/routes'
@@ -78,7 +79,13 @@ function formatHour(time) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Clases() {
   const { clases: allClasses } = useClasesStore()
+  const { coaches }            = useCoachesStore()
   const { isAuthenticated } = useAuth()
+
+  const coachFotoByName = useMemo(
+    () => Object.fromEntries(coaches.map((c) => [c.nombre, c.foto]).filter(([, f]) => f)),
+    [coaches]
+  )
   const navigate = useNavigate()
   const [searchParams]  = useSearchParams()
   const [filter, setFilter]         = useState(searchParams.get('tipo') || 'Stride')
@@ -187,16 +194,25 @@ export default function Clases() {
               const location = cls.ubicacion ?? (cls.tipo === 'Stride' ? 'Studio A' : 'Studio B')
 
               const { bg, text } = avatarStyle(cls.coachNombre)
+              const coachFoto   = coachFotoByName[cls.coachNombre] || null
 
               return (
                 <div key={i} className={`${styles.classCard} ${isFull ? styles.classCardFull : ''}`}>
 
                   {/* AVATAR */}
                   <div className={styles.avatarWrap}>
-                    <div className={styles.avatar} style={{ background: bg }}>
-                      <span className={styles.avatarInitials} style={{ color: text }}>
-                        {getInitials(cls.coachNombre)}
-                      </span>
+                    <div className={styles.avatar} style={{ background: coachFoto ? 'transparent' : bg, overflow: 'hidden', padding: 0 }}>
+                      {coachFoto ? (
+                        <img
+                          src={coachFoto}
+                          alt={cls.coachNombre}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
+                        />
+                      ) : (
+                        <span className={styles.avatarInitials} style={{ color: text }}>
+                          {getInitials(cls.coachNombre)}
+                        </span>
+                      )}
                     </div>
                   </div>
 

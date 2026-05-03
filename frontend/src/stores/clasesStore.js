@@ -130,6 +130,12 @@ export const useClasesStore = create(
       eliminarClase: (id) =>
         set((state) => ({
           clases: state.clases.filter((c) => c.id !== id),
+          // Cancelar todas las reservas de esa clase automáticamente
+          reservas: state.reservas.map((r) =>
+            r.claseId === id && r.estado === 'confirmada'
+              ? { ...r, estado: 'cancelada' }
+              : r
+          ),
         })),
     }),
     { name: 'casa-scarlatta-clases' }

@@ -42,6 +42,12 @@ export const useCoachesStore = create(
         }))
       },
 
+      borrarCoach: (id) => {
+        set((state) => ({
+          coaches: state.coaches.filter((c) => c.id !== id),
+        }))
+      },
+
       getActivos: () => get().coaches.filter((c) => c.activo),
 
       getById: (id) => get().coaches.find((c) => c.id === id),

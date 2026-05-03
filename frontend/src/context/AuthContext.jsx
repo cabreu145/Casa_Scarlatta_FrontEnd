@@ -11,7 +11,8 @@
  * ─────────────────────────────────────────────────────
  */
 import { createContext, useContext, useEffect, useState } from 'react'
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore }   from '@/stores/authStore'
+import { useUsuariosStore } from '@/stores/usuariosStore'
 import { mockUsers } from '@/data/mockUsers'
 
 const AuthContext = createContext(null)
@@ -27,10 +28,18 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     setLocalLoading(true)
     await new Promise((r) => setTimeout(r, 600))
-    const user = mockUsers.find((u) => u.email === email && u.password === password)
+    // Busca primero en mockUsers (seed) y luego en el store (usuarios creados en runtime)
+    const storeUsuarios = useUsuariosStore.getState().usuarios
+    const user =
+      mockUsers.find((u) => u.email === email && u.password === password) ||
+      storeUsuarios.find((u) => u.email === email && u.password === password)
     if (!user) {
       setLocalLoading(false)
       throw new Error('Credenciales incorrectas')
+    }
+    if (user.activo === false) {
+      setLocalLoading(false)
+      throw new Error('Esta cuenta está desactivada')
     }
     const { password: _, ...safeUser } = user
     setUsuario(safeUser)

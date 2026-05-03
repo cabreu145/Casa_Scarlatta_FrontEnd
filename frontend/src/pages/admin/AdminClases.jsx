@@ -10,6 +10,7 @@
  * ─────────────────────────────────────────────────────
  */
 import { useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2, MapPin, User, Clock, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
@@ -17,7 +18,7 @@ import { adminLinks } from './AdminDashboard'
 import { useClasesStore } from '@/stores/clasesStore'
 import { useReservasStore } from '@/stores/reservasStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
-import { mockUsers } from '@/data/mockUsers'
+import { useCoachesStore } from '@/stores/coachesStore'
 import { getAvailability } from '@/services/classService'
 import { marcarNoAsistio } from '@/services/reservasService'
 import { useClasses } from '@/hooks/useClasses'
@@ -29,15 +30,14 @@ const DAYS_ES   = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Vierne
 const DAYS_ABBR = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
-const coaches    = mockUsers.filter((u) => u.rol === 'coach')
-const DIAS_FORM  = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
+const DIAS_FORM   = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
 const UBICACIONES = ['Studio A', 'Studio B', 'Sala Principal']
 
-const claseVacia = {
+const CLASE_VACIA_BASE = {
   nombre:      '',
   tipo:        'Stride',
-  coachId:     coaches[0]?.id || 2,
-  coachNombre: coaches[0]?.nombre || 'Carlos Méndez',
+  coachId:     '',
+  coachNombre: '',
   dia:         'Lunes',
   hora:        '07:00',
   duracion:    50,
@@ -228,6 +228,8 @@ export default function AdminClases() {
   const { clases, agregarClase, editarClase, eliminarClase } = useClasesStore()
   const { reservas } = useReservasStore()
   const { getUsuarioById } = useUsuariosStore()
+  const { coaches: todosCoaches } = useCoachesStore()
+  const coaches = todosCoaches.filter((c) => c.activo !== false)
 
   // View / navigation state
   const [vista,           setVista]           = useState('calendario')
@@ -238,7 +240,7 @@ export default function AdminClases() {
   // Modal state
   const [modalAbierto,  setModalAbierto]  = useState(false)
   const [editando,      setEditando]      = useState(null)
-  const [form,          setForm]          = useState(claseVacia)
+  const [form,          setForm]          = useState(CLASE_VACIA_BASE)
   const [eliminandoId,  setEliminandoId]  = useState(null)
   const [modalAlumnos,  setModalAlumnos]  = useState(null)
 
@@ -262,15 +264,21 @@ export default function AdminClases() {
   // ── Handlers ────────────────────────────────────────────────────
   const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
 
-  const abrirNueva = () => { setEditando(null); setForm(claseVacia); setModalAbierto(true) }
+  const claseVacia = () => ({
+    ...CLASE_VACIA_BASE,
+    coachId:     coaches[0]?.id     ?? '',
+    coachNombre: coaches[0]?.nombre ?? '',
+  })
+
+  const abrirNueva = () => { setEditando(null); setForm(claseVacia()); setModalAbierto(true) }
   const abrirEditar = (clase) => { setEditando(clase.id); setForm({ ...clase }); setModalAbierto(true) }
 
   const handleGuardar = () => {
     if (!form.nombre.trim()) return toast.error('El nombre es obligatorio')
-    const coach = coaches.find((c) => c.id === Number(form.coachId))
+    const coach = coaches.find((c) => String(c.id) === String(form.coachId))
     const datos = {
       ...form,
-      coachId:     Number(form.coachId),
+      coachId:     form.coachId,
       coachNombre: coach?.nombre || form.coachNombre,
       duracion:    Number(form.duracion),
       cupoMax:     Number(form.cupoMax),
@@ -553,9 +561,9 @@ export default function AdminClases() {
         )}
 
         {/* ── Create / Edit modal ── */}
-        {modalAbierto && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modal} style={{ maxWidth: 580 }}>
+        {modalAbierto && createPortal(
+          <div className={styles.modalOverlay} onClick={() => setModalAbierto(false)}>
+            <div className={styles.modal} style={{ maxWidth: 580 }} onClick={(e) => e.stopPropagation()}>
               <h2 className={styles.modalTitle}>{editando ? 'Editar clase' : 'Nueva clase'}</h2>
               <div className={styles.formGrid}>
                 <div className={`${styles.field} ${styles.fieldFull}`}>
@@ -571,9 +579,9 @@ export default function AdminClases() {
                 </div>
                 <div className={styles.field}>
                   <label>Coach</label>
-                  <select value={form.coachId} onChange={set('coachId')}>
+                  <select value={String(form.coachId)} onChange={set('coachId')}>
                     {coaches.map((c) => (
-                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                      <option key={c.id} value={String(c.id)}>{c.nombre}</option>
                     ))}
                   </select>
                 </div>
@@ -611,13 +619,14 @@ export default function AdminClases() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ── Delete confirm modal ── */}
-        {eliminandoId && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modal}>
+        {eliminandoId && createPortal(
+          <div className={styles.modalOverlay} onClick={() => setEliminandoId(null)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <h2 className={styles.modalTitle}>¿Eliminar clase?</h2>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-secondary)' }}>
                 Esta acción no se puede deshacer.
@@ -631,15 +640,16 @@ export default function AdminClases() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ── Alumnos modal ── */}
         {modalAlumnos && (() => {
           const alumnos = reservas.filter((r) => r.claseId === modalAlumnos.id)
-          return (
-            <div className={styles.modalOverlay}>
-              <div className={styles.modal} style={{ maxWidth: 520 }}>
+          return createPortal(
+            <div className={styles.modalOverlay} onClick={() => setModalAlumnos(null)}>
+              <div className={styles.modal} style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
                 <h2 className={styles.modalTitle}>
                   Alumnos — {modalAlumnos.nombre}
                 </h2>
@@ -713,7 +723,8 @@ export default function AdminClases() {
                   </button>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )
         })()}
 

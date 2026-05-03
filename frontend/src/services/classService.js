@@ -45,11 +45,22 @@ export function getAvailability(clase) {
  * @param {Array} classes  - clases del store (formato unificado de mockData.js)
  * @param {Date}  date     - the target day
  */
+/**
+ * Returns true if a class is already published (visible to the public).
+ * A class is visible when:
+ *   - It has no publicarEn date, OR
+ *   - Its publicarEn datetime is in the past (already reached)
+ */
+export function isPublished(cls) {
+  if (!cls.publicarEn) return true
+  return new Date(cls.publicarEn) <= new Date()
+}
+
 export function getPublicClassesByDate(classes, date) {
   const dayName = DIAS[date.getDay()]
   const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
   return [...classes]
-    .filter((c) => c.dia === dayName)
+    .filter((c) => c.dia === dayName && isPublished(c))
     .sort((a, b) => toMin(a.hora) - toMin(b.hora))
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Home, CalendarDays, PlusCircle, User, CreditCard, LogOut, ArrowLeft,
@@ -7,8 +7,13 @@ import {
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import { useReservasStore } from '@/stores/reservasStore'
-import { useClasesStore } from '@/stores/clasesStore'
+import { useClasesStore }   from '@/stores/clasesStore'
+import { useUsuariosStore } from '@/stores/usuariosStore'
+import { useCoachesStore }   from '@/stores/coachesStore'
+import { usePaquetesStore }  from '@/stores/paquetesStore'
 import { reservarClase, cancelarReserva } from '@/services/reservasService'
+import { editarPerfilService }            from '@/services/usuariosService'
+import { isPublished }                    from '@/services/classService'
 import s from './ClientPanel.module.css'
 
 // ── Week helpers ───────────────────────────────────────────────────────────────
@@ -120,6 +125,15 @@ export default function ClientPanel() {
   // ── Stores ────────────────────────────────────────────────────────────────
   const { reservas } = useReservasStore()
   const { clases }   = useClasesStore()
+  const { usuarios } = useUsuariosStore()
+  const { coaches }   = useCoachesStore()
+  const { paquetes }  = usePaquetesStore()
+
+  // Mapa nombre → foto para todos los componentes de esta página
+  const coachFotoByName = useMemo(
+    () => Object.fromEntries(coaches.map((c) => [c.nombre, c.foto]).filter(([, f]) => f)),
+    [coaches]
+  )
 
   // ── Secciones UI ─────────────────────────────────────────────────────────
   const [activeSection, setActiveSection] = useState('inicio')
@@ -133,6 +147,45 @@ export default function ClientPanel() {
   const userInitial     = userName.charAt(0).toUpperCase()
   const planNombre      = usuario?.paquete ?? 'Sin plan'
   const clasesTotal     = usuario?.clasesPaqueteTotal ?? 0
+
+  // Perfil completo desde el store (incluye campos que authStore no persiste)
+  const perfilCompleto  = useMemo(
+    () => usuarios.find((u) => u.id === usuario?.id) ?? usuario,
+    [usuarios, usuario?.id]
+  )
+
+  // Estado del formulario de perfil
+  const [perfilForm, setPerfilForm] = useState(null)   // se inicializa al abrir la sección
+  const [guardandoPerfil, setGuardandoPerfil] = useState(false)
+
+  function initPerfilForm() {
+    if (perfilForm) return
+    const partes = (perfilCompleto?.nombre ?? '').split(' ')
+    setPerfilForm({
+      nombre:         partes[0] ?? '',
+      apellido:       partes.slice(1).join(' '),
+      email:          perfilCompleto?.email ?? '',
+      telefono:       perfilCompleto?.telefono ?? '',
+      genero:         perfilCompleto?.genero ?? 'Prefiero no decir',
+      fechaNacimiento: perfilCompleto?.fechaNacimiento ?? '',
+    })
+  }
+
+  async function handleGuardarPerfil(e) {
+    e.preventDefault()
+    if (!perfilForm || !usuario?.id) return
+    setGuardandoPerfil(true)
+    const nombre = [perfilForm.nombre, perfilForm.apellido].filter(Boolean).join(' ')
+    const resultado = await editarPerfilService(usuario.id, {
+      nombre,
+      telefono:        perfilForm.telefono,
+      genero:          perfilForm.genero,
+      fechaNacimiento: perfilForm.fechaNacimiento,
+    })
+    if (resultado.ok) toast.success(resultado.mensaje)
+    else toast.error(resultado.mensaje)
+    setGuardandoPerfil(false)
+  }
   const clasesRestantes = usuario?.clasesPaquete === 999 ? '∞' : (usuario?.clasesPaquete ?? 0)
   const clasesUsadas    = usuario?.clasesPaquete === 999 ? 0 : (clasesTotal - (usuario?.clasesPaquete ?? 0))
   const weekDays    = buildWeek(weekOff)
@@ -164,8 +217,8 @@ export default function ClientPanel() {
     (r) => r.estado === 'completada' || r.estado === 'no_asistio'
   ).length
 
-  // ── Clases disponibles para reservar ────────────────────────────────────
-  const availableClases = clases.map((c) => ({
+  // ── Clases disponibles para reservar (solo las ya publicadas) ───────────
+  const availableClases = clases.filter(isPublished).map((c) => ({
     id:         c.id,
     title:      c.nombre,
     coach:      c.coachNombre,
@@ -395,7 +448,7 @@ export default function ClientPanel() {
                 </div>
                 <div className={s.cardBody}>
                   {upcoming.length > 0 ? upcoming.map(c => (
-                    <ClassCard key={c.id} cls={c} showCancel={false} />
+                    <ClassCard key={c.id} cls={c} showCancel={false} coachFoto={coachFotoByName[c.coach] || null} />
                   )) : (
                     <div className={s.empty}>
                       <div className={s.emptyIcon}>📅</div>
@@ -497,7 +550,7 @@ export default function ClientPanel() {
               return dayClasses.length > 0 ? (
                 <div>
                   {dayClasses.map(c => (
-                    <MisClasesCard key={c.id} cls={c} onCancel={() => handleCancelReserva(c.id)} />
+                    <MisClasesCard key={c.id} cls={c} onCancel={() => handleCancelReserva(c.id)} coachFoto={coachFotoByName[c.coach] || null} />
                   ))}
                 </div>
               ) : (
@@ -556,13 +609,18 @@ export default function ClientPanel() {
                     const alreadyBooked = reservasUsuario.find(r => r.claseId === av.id && r.estado === 'confirmada')
                     const isFull  = av.spots === 0
                     const isLow   = av.spots > 0 && av.spots <= 3
-                    const initials = av.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+                    const initials  = av.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
                     const { bg, text } = avatarStyle(av.coach)
+                    const coachFoto = coachFotoByName[av.coach] || null
                     return (
                       <div key={av.id} className={`${s.pubCard} ${isFull ? s.pubCardFull : ''}`}>
                         <div className={s.pubAvatarWrap}>
-                          <div className={s.pubAvatar} style={{ background: bg }}>
-                            <span className={s.pubAvatarInitials} style={{ color: text }}>{initials}</span>
+                          <div className={s.pubAvatar} style={{ background: coachFoto ? 'transparent' : bg, overflow: 'hidden', padding: 0 }}>
+                            {coachFoto ? (
+                              <img src={coachFoto} alt={av.coach} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }} />
+                            ) : (
+                              <span className={s.pubAvatarInitials} style={{ color: text }}>{initials}</span>
+                            )}
                           </div>
                         </div>
                         <div className={s.pubTime}>
@@ -613,7 +671,11 @@ export default function ClientPanel() {
           </div>
 
           {/* ═══ PERFIL ═══ */}
-          <div className={`${s.section} ${activeSection === 'perfil' ? s.active : ''}`}>
+          <div
+            className={`${s.section} ${activeSection === 'perfil' ? s.active : ''}`}
+            onFocus={initPerfilForm}
+            onClick={initPerfilForm}
+          >
             <div style={{ marginBottom: 28 }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', fontWeight: 400, color: 'var(--ink)' }}>Mi Perfil</h1>
               <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>Gestiona tu información personal</p>
@@ -621,26 +683,28 @@ export default function ClientPanel() {
             <div className={s.grid2} style={{ alignItems: 'start' }}>
               <div className={s.card}>
                 <div className={s.profileAvatarWrap}>
-                  <div className={s.profileAvatarLg}>E</div>
-                  <div className={s.profileNameDisplay}>Eduardo Santini</div>
+                  <div className={s.profileAvatarLg}>{userInitial}</div>
+                  <div className={s.profileNameDisplay}>{userName}</div>
                   <span className={s.profilePlanTag}>
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M5 0L6.12 3.45H9.76L6.82 5.57L7.94 9.02L5 6.9L2.06 9.02L3.18 5.57L0.24 3.45H3.88L5 0Z"/></svg>
-                    Paquete Esencial
+                    {planNombre}
                   </span>
                   <div className={s.miniStats}>
                     <div>
-                      <div className={s.miniStatNum}>12</div>
+                      <div className={s.miniStatNum}>
+                        {reservasUsuario.filter((r) => r.estado === 'confirmada' || r.estado === 'completada').length}
+                      </div>
                       <div className={s.miniStatLabel}>Clases tomadas</div>
                     </div>
                     <div className={s.miniStatDivider} />
                     <div>
-                      <div className={s.miniStatNum}>8</div>
+                      <div className={s.miniStatNum}>{clasesRestantes}</div>
                       <div className={s.miniStatLabel}>Disponibles</div>
                     </div>
                     <div className={s.miniStatDivider} />
                     <div>
-                      <div className={s.miniStatNum}>3</div>
-                      <div className={s.miniStatLabel}>Meses activo</div>
+                      <div className={s.miniStatNum}>{reservasUsuario.length}</div>
+                      <div className={s.miniStatLabel}>Reservas totales</div>
                     </div>
                   </div>
                 </div>
@@ -651,38 +715,74 @@ export default function ClientPanel() {
                   <div className={s.cardTitle}>Información personal</div>
                 </div>
                 <div className={s.cardBody}>
-                  <div className={s.formRow}>
-                    <div className={s.formGroup}>
-                      <label className={s.formLabel}>Nombre</label>
-                      <input className={s.formInput} type="text" defaultValue="Eduardo" />
+                  <form onSubmit={handleGuardarPerfil}>
+                    <div className={s.formRow}>
+                      <div className={s.formGroup}>
+                        <label className={s.formLabel}>Nombre</label>
+                        <input
+                          className={s.formInput}
+                          type="text"
+                          value={perfilForm?.nombre ?? ''}
+                          onChange={(e) => setPerfilForm((p) => ({ ...p, nombre: e.target.value }))}
+                        />
+                      </div>
+                      <div className={s.formGroup}>
+                        <label className={s.formLabel}>Apellido</label>
+                        <input
+                          className={s.formInput}
+                          type="text"
+                          value={perfilForm?.apellido ?? ''}
+                          onChange={(e) => setPerfilForm((p) => ({ ...p, apellido: e.target.value }))}
+                        />
+                      </div>
                     </div>
                     <div className={s.formGroup}>
-                      <label className={s.formLabel}>Apellido</label>
-                      <input className={s.formInput} type="text" defaultValue="Santini" />
+                      <label className={s.formLabel}>Correo electrónico</label>
+                      <input className={s.formInput} type="email" value={perfilForm?.email ?? ''} readOnly
+                        style={{ opacity: 0.6, cursor: 'not-allowed' }} />
                     </div>
-                  </div>
-                  <div className={s.formGroup}>
-                    <label className={s.formLabel}>Correo electrónico</label>
-                    <input className={s.formInput} type="email" defaultValue="eduardo.santini@mail.com" />
-                  </div>
-                  <div className={s.formRow}>
-                    <div className={s.formGroup}>
-                      <label className={s.formLabel}>Teléfono</label>
-                      <input className={s.formInput} type="tel" defaultValue="+52 555 123 4567" />
+                    <div className={s.formRow}>
+                      <div className={s.formGroup}>
+                        <label className={s.formLabel}>Teléfono</label>
+                        <input
+                          className={s.formInput}
+                          type="tel"
+                          value={perfilForm?.telefono ?? ''}
+                          onChange={(e) => setPerfilForm((p) => ({ ...p, telefono: e.target.value }))}
+                        />
+                      </div>
+                      <div className={s.formGroup}>
+                        <label className={s.formLabel}>Género</label>
+                        <select
+                          className={s.formInput}
+                          value={perfilForm?.genero ?? 'Prefiero no decir'}
+                          onChange={(e) => setPerfilForm((p) => ({ ...p, genero: e.target.value }))}
+                        >
+                          <option>Masculino</option>
+                          <option>Femenino</option>
+                          <option>Prefiero no decir</option>
+                        </select>
+                      </div>
                     </div>
-                    <div className={s.formGroup}>
-                      <label className={s.formLabel}>Género</label>
-                      <select className={s.formInput}>
-                        <option>Masculino</option>
-                        <option>Femenino</option>
-                        <option>Prefiero no decir</option>
-                      </select>
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
+                      <button
+                        type="button"
+                        className={`${s.btn} ${s.btnOutline}`}
+                        style={{ fontSize: 12, padding: '9px 20px' }}
+                        onClick={initPerfilForm}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        className={`${s.btn} ${s.btnPrimary}`}
+                        style={{ fontSize: 12, padding: '9px 20px' }}
+                        disabled={guardandoPerfil}
+                      >
+                        {guardandoPerfil ? 'Guardando…' : 'Guardar cambios'}
+                      </button>
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 6 }}>
-                    <button className={`${s.btn} ${s.btnOutline}`} style={{ fontSize: 12, padding: '9px 20px' }}>Cancelar</button>
-                    <button className={`${s.btn} ${s.btnPrimary}`} style={{ fontSize: 12, padding: '9px 20px' }}>Guardar cambios</button>
-                  </div>
+                  </form>
                 </div>
               </div>
             </div>
@@ -714,47 +814,28 @@ export default function ClientPanel() {
             </div>
 
             <div className={`${s.grid3}`} style={{ marginBottom: 28 }}>
-              <div className={s.pricingCard}>
-                <div className={s.pricingName}>Básico</div>
-                <div className={s.pricingClasses}>4 clases al mes</div>
-                <div className={s.pricingPrice}>$650</div>
-                <div className={s.pricingPeriod}>pago mensual</div>
-                <div className={s.pricingFeatures}>
-                  <div className={s.pricingFeature}>4 clases por mes</div>
-                  <div className={s.pricingFeature}>Acceso a STRYDE y SLOW</div>
-                  <div className={s.pricingFeature}>Reservación con 48h</div>
-                </div>
-                <button className={`${s.btnPricing} ${s.btnPricingOutline}`}>Seleccionar</button>
-              </div>
-
-              <div className={`${s.pricingCard} ${s.featured}`}>
-                <span className={s.pricingTag}>Popular</span>
-                <div className={s.pricingName}>Esencial</div>
-                <div className={s.pricingClasses}>10 clases al mes</div>
-                <div className={s.pricingPrice}>$1,250</div>
-                <div className={s.pricingPeriod}>pago mensual</div>
-                <div className={s.pricingFeatures}>
-                  <div className={s.pricingFeature}>10 clases por mes</div>
-                  <div className={s.pricingFeature}>Acceso a STRYDE y SLOW</div>
-                  <div className={s.pricingFeature}>Reservación con 24h</div>
-                  <div className={s.pricingFeature}>Cancelación flexible</div>
-                </div>
-                <button className={`${s.btnPricing} ${s.btnPricingPrimary}`}>Plan actual</button>
-              </div>
-
-              <div className={s.pricingCard}>
-                <div className={s.pricingName}>Premium</div>
-                <div className={s.pricingClasses}>Clases ilimitadas</div>
-                <div className={s.pricingPrice}>$2,100</div>
-                <div className={s.pricingPeriod}>pago mensual</div>
-                <div className={s.pricingFeatures}>
-                  <div className={s.pricingFeature}>Clases ilimitadas</div>
-                  <div className={s.pricingFeature}>Acceso a todas las modalidades</div>
-                  <div className={s.pricingFeature}>Reservación prioritaria</div>
-                  <div className={s.pricingFeature}>Clase de bienvenida 1:1</div>
-                </div>
-                <button className={`${s.btnPricing} ${s.btnPricingOutline}`}>Seleccionar</button>
-              </div>
+              {paquetes.filter(p => p.categoria === 'mensual').map(p => {
+                const esPlanActual = usuario?.paquete === p.nombre
+                return (
+                  <div key={p.id} className={`${s.pricingCard} ${p.destacado ? s.featured : ''}`}>
+                    {p.destacado && <span className={s.pricingTag}>Popular</span>}
+                    <div className={s.pricingName}>{p.nombre}</div>
+                    <div className={s.pricingClasses}>
+                      {p.clases === 0 ? 'Clases ilimitadas' : `${p.clases} clases al mes`}
+                    </div>
+                    <div className={s.pricingPrice}>${p.precio.toLocaleString()}</div>
+                    <div className={s.pricingPeriod}>pago mensual</div>
+                    <div className={s.pricingFeatures}>
+                      {(p.beneficios || []).map((b, i) => (
+                        <div key={i} className={s.pricingFeature}>{b}</div>
+                      ))}
+                    </div>
+                    <button className={`${s.btnPricing} ${esPlanActual ? s.btnPricingPrimary : s.btnPricingOutline}`}>
+                      {esPlanActual ? 'Plan actual' : 'Seleccionar'}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
 
             <div className={s.card}>
@@ -784,12 +865,19 @@ export default function ClientPanel() {
 }
 
 // ── MisClasesCard sub-component ───────────────────────────────────────────────
-function MisClasesCard({ cls, onCancel }) {
+function MisClasesCard({ cls, onCancel, coachFoto }) {
   const initials = cls.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const { bg, text } = avatarStyle(cls.coach)
   return (
     <div className={s.mcCard}>
       <div className={s.mcAvatarCol}>
-        <div className={s.mcAvatar}>{initials}</div>
+        <div className={s.mcAvatar} style={{ background: coachFoto ? 'transparent' : bg, overflow: 'hidden', padding: 0 }}>
+          {coachFoto ? (
+            <img src={coachFoto} alt={cls.coach} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }} />
+          ) : (
+            <span style={{ color: text }}>{initials}</span>
+          )}
+        </div>
       </div>
       <div className={s.mcTimeCol}>
         <div className={s.mcTimeVal}>{formatHour(cls.time)}</div>
@@ -811,7 +899,9 @@ function MisClasesCard({ cls, onCancel }) {
 }
 
 // ── ClassCard sub-component ───────────────────────────────────────────────────
-function ClassCard({ cls, showCancel, onCancel }) {
+function ClassCard({ cls, showCancel, onCancel, coachFoto }) {
+  const initials  = cls.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  const { bg, text } = avatarStyle(cls.coach)
   return (
     <div className={s.classCard}>
       <div className={s.classDateBlock}>
@@ -820,7 +910,14 @@ function ClassCard({ cls, showCancel, onCancel }) {
       </div>
       <div className={s.classInfo}>
         <div className={s.classTitle}>{cls.title}</div>
-        <div className={s.classCoach}>{cls.coach}{cls.location ? ` · ${cls.location}` : ''}</div>
+        <div className={s.classCoach} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: coachFoto ? 'transparent' : bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: text }}>
+            {coachFoto
+              ? <img src={coachFoto} alt={cls.coach} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }} />
+              : initials}
+          </div>
+          {cls.coach}{cls.location ? ` · ${cls.location}` : ''}
+        </div>
         <div style={{ marginTop: 5 }}><DisciplinePill d={cls.discipline} /></div>
       </div>
       <div className={s.classRight}>

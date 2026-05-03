@@ -146,9 +146,22 @@ export const usePaquetesStore = create(
           paquetes: state.paquetes.map((p) => ({ ...p, destacado: p.id === id })),
         })),
 
-      agregarPaquete: (nuevoPaquete) =>
+      agregarPaquete: (datos) => {
+        const nuevo = { ...datos, id: Date.now() }
+        set((state) => ({ paquetes: [...state.paquetes, nuevo] }))
+        return nuevo
+      },
+
+      editarPaquete: (id, datos) =>
         set((state) => ({
-          paquetes: [...state.paquetes, { ...nuevoPaquete, id: Date.now() }],
+          paquetes: state.paquetes.map((p) =>
+            p.id === id ? { ...p, ...datos } : p
+          ),
+        })),
+
+      eliminarPaquete: (id) =>
+        set((state) => ({
+          paquetes: state.paquetes.filter((p) => p.id !== id),
         })),
 
       resetearPaquetes: () => set({ paquetes: paquetesIniciales }),

@@ -28,6 +28,9 @@ export const useUsuariosStore = create(
       getUsuarioById: (id) =>
         get().usuarios.find((u) => u.id === id),
 
+      getById: (id) =>
+        get().usuarios.find((u) => u.id === id),
+
       getClientes: () =>
         get().usuarios.filter((u) => u.rol === 'cliente'),
 
@@ -38,6 +41,13 @@ export const useUsuariosStore = create(
         set((state) => ({
           usuarios: state.usuarios.map((u) =>
             u.id === id ? { ...u, ...cambios } : u
+          ),
+        })),
+
+      editarUsuario: (id, datos) =>
+        set((state) => ({
+          usuarios: state.usuarios.map((u) =>
+            u.id === id ? { ...u, ...datos } : u
           ),
         })),
 
@@ -62,9 +72,15 @@ export const useUsuariosStore = create(
           ),
         })),
 
-      agregarUsuario: (nuevoUsuario) =>
+      agregarUsuario: (nuevoUsuario) => {
+        const nuevo = { ...nuevoUsuario, id: Date.now() }
+        set((state) => ({ usuarios: [...state.usuarios, nuevo] }))
+        return nuevo
+      },
+
+      eliminarUsuario: (id) =>
         set((state) => ({
-          usuarios: [...state.usuarios, { ...nuevoUsuario, id: Date.now() }],
+          usuarios: state.usuarios.filter((u) => u.id !== id),
         })),
 
       // Asigna un nuevo paquete y reinicia el contador de créditos.

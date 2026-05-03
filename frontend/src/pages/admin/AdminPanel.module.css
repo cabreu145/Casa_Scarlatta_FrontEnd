@@ -622,7 +622,8 @@
 .coachStatLabel { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
 
 .coachActions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-top: 12px;
   padding-top: 12px;
@@ -630,8 +631,7 @@
 }
 
 .coachBtn {
-  flex: 1;
-  padding: 7px;
+  padding: 7px 4px;
   border-radius: 8px;
   border: 1px solid var(--muted-2);
   background: none;
@@ -640,6 +640,8 @@
   font-family: var(--font-body);
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
+  text-align: center;
 }
 
 .coachBtn:hover { background: var(--wine); border-color: var(--wine); color: #fff; }

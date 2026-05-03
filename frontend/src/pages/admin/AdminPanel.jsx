@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import styles from './AdminPanel.module.css'
@@ -7,6 +7,8 @@ import { useProductosStore } from '@/stores/productosStore'
 import { useClasesStore }    from '@/stores/clasesStore'
 import { usePaquetesStore }  from '@/stores/paquetesStore'
 import { useUsuariosStore }  from '@/stores/usuariosStore'
+import { borrarCoachService } from '@/services/coachesService'
+import { useDisciplinasStore } from '@/stores/disciplinasStore'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign } from 'lucide-react'
@@ -92,12 +94,13 @@ export default function AdminPanel() {
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('dashboard')
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
-  const { coaches, agregarCoach }                         = useCoachesStore()
+  const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
   const { productos, agregarProducto,
           editarProducto, eliminarProducto }               = useProductosStore()
-  const { clases, agregarClase }                          = useClasesStore()
-  const { paquetes, agregarPaquete }                      = usePaquetesStore()
-  const { usuarios, agregarUsuario }                      = useUsuariosStore()
+  const { clases, agregarClase, editarClase, eliminarClase } = useClasesStore()
+  const { paquetes, agregarPaquete, editarPaquete, eliminarPaquete, marcarDestacado } = usePaquetesStore()
+  const { usuarios, agregarUsuario, editarUsuario }       = useUsuariosStore()
+  const { disciplinas, agregarDisciplina, eliminarDisciplina } = useDisciplinasStore()
 
   const [cart, setCart]                   = useState([])
   const [posFilter, setPosFilter]         = useState('Todos')
@@ -109,12 +112,38 @@ export default function AdminPanel() {
   const [prodForm, setProdForm]                 = useState({ nombre: '', categoria: 'Accesorios', precio: '', stock: '', emoji: '' })
   const [confirmarEliminarProd, setConfirmarEliminarProd] = useState(null)
 
+  // Coach foto — crear
+  const [coachFotoPreview, setCoachFotoPreview] = useState(null)
+  const [coachFotoPath,    setCoachFotoPath]    = useState(null)
+  const fotoCreateRef = useRef(null)
+
+  // Coach — editar modal
+  const [modalEditCoach,  setModalEditCoach]  = useState(null)
+  const [editCoachForm,   setEditCoachForm]   = useState({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '' })
+  const [editFotoPreview, setEditFotoPreview] = useState(null)
+  const [editFotoPath,    setEditFotoPath]    = useState(null)
+  const fotoEditRef = useRef(null)
+
+  // Disciplinas modal
+  const [modalDisciplinas, setModalDisciplinas] = useState(false)
+  const [nuevaDisciplina,  setNuevaDisciplina]  = useState('')
+
+  // Coach — horario modal
+  const [modalHorarioCoach, setModalHorarioCoach] = useState(null)
+
   // Coach form
   const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: '', email: '', telefono: '', bio: '', estado: 'activo' })
-  // Clase form
-  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: 'Stride', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '' })
-  // Paquete form
+  // Clase form — publicarEn: ISO datetime string o '' (publicar inmediatamente)
+  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '' })
+  // Clase — editar
+  const [modalEditClase,  setModalEditClase]  = useState(null)  // clase | null
+  const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '' })
+  // Paquete form (crear)
   const [paqueteForm, setPaqueteForm] = useState({ nombre: '', tipo: 'mensual', numClases: '', precio: '', vigencia: '', descripcion: '', destacado: false })
+  // Paquete — editar
+  const [modalEditPaquete, setModalEditPaquete] = useState(null)
+  const [editPaqueteForm,  setEditPaqueteForm]  = useState({ nombre: '', precio: '', clases: '', vigencia: '', categoria: 'mensual', destacado: false, beneficios: [] })
+  const [nuevoBeneficio,   setNuevoBeneficio]   = useState('')
   // Usuario form
   const [usuarioForm, setUsuarioForm] = useState({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
 
@@ -172,6 +201,29 @@ export default function AdminPanel() {
 
   function showSection(name) {
     setActiveSection(name)
+  }
+
+  async function uploadFoto(file, setPreview, setPath) {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const base64 = ev.target.result
+      setPreview(base64) // preview inmediato
+      try {
+        const ext      = file.name.split('.').pop().toLowerCase()
+        const filename = `coach-${Date.now()}.${ext}`
+        const res  = await fetch('/api/upload-foto', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ base64, filename }),
+        })
+        const data = await res.json()
+        setPath(data.path || base64) // path del servidor o base64 como fallback
+      } catch {
+        setPath(base64) // fallback: guardar base64 en el store
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   const sec = SECTIONS[activeSection]
@@ -459,27 +511,81 @@ export default function AdminPanel() {
                 const iniciales = c.nombre.split(' ').slice(0, 2).map((w) => w[0]).join('')
                 return (
                   <div key={c.id} className={styles.coachCard}>
-                    <div className={styles.coachPhoto}>{iniciales}</div>
+                    <div className={styles.coachPhoto} style={{ overflow: 'hidden', padding: 0 }}>
+                      {c.foto
+                        ? <img src={c.foto} alt={c.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', borderRadius: '50%' }} />
+                        : iniciales}
+                    </div>
                     <div className={styles.coachInfo}>
                       <div className={styles.coachName}>{c.nombre}</div>
                       <div className={styles.coachSpec}>{c.especialidad}</div>
                       <div className={styles.coachStats}>
                         <div className={styles.coachStat}>
-                          <div className={styles.coachStatVal}>{c.clases}</div>
+                          <div className={styles.coachStatVal}>{c.clases ?? 0}</div>
                           <div className={styles.coachStatLabel}>Clases</div>
                         </div>
                         <div className={styles.coachStat}>
-                          <div className={styles.coachStatVal}>{c.rating}</div>
+                          <div className={styles.coachStatVal}>{c.rating ?? '—'}</div>
                           <div className={styles.coachStatLabel}>Rating</div>
                         </div>
                         <div className={styles.coachStat}>
-                          <div className={styles.coachStatVal}>{c.asist}</div>
+                          <div className={styles.coachStatVal}>{c.asist ?? '—'}</div>
                           <div className={styles.coachStatLabel}>Asistencia</div>
                         </div>
                       </div>
                       <div className={styles.coachActions}>
-                        <button className={styles.coachBtn}>✏️ Editar</button>
-                        <button className={styles.coachBtn}>📅 Horario</button>
+                        <button
+                          className={styles.coachBtn}
+                          onClick={() => {
+                            setModalEditCoach(c)
+                            const parts = (c.especialidad || '').split(' · ')
+                            const disc  = disciplinas.includes(parts[0]) ? parts[0] : ''
+                            const esp   = disc ? parts.slice(1).join(' · ') : (c.especialidad || '')
+                            setEditCoachForm({
+                              nombre:       c.nombre,
+                              disciplina:   disc,
+                              especialidad: esp,
+                              email:        c.email || '',
+                              telefono:     c.telefono || '',
+                              bio:          c.bio || '',
+                            })
+                            setEditFotoPreview(c.foto || null)
+                            setEditFotoPath(c.foto || null)
+                          }}
+                        >Editar</button>
+                        <button
+                          className={styles.coachBtn}
+                          onClick={() => setModalHorarioCoach(c)}
+                        >Horario</button>
+                        {c.activo === false ? (
+                          <button
+                            className={styles.coachBtn}
+                            style={{ color: '#4CAF50', borderColor: '#4CAF50' }}
+                            onClick={() => {
+                              editarCoach(c.id, { activo: true })
+                              toast.success(`${c.nombre} reactivado`)
+                            }}
+                          >Reactivar</button>
+                        ) : (
+                          <button
+                            className={styles.coachBtn}
+                            style={{ color: '#b45309', borderColor: '#b45309' }}
+                            onClick={() => {
+                              eliminarCoach(c.id)
+                              toast.success(`${c.nombre} dado de baja`)
+                            }}
+                          >Dar de baja</button>
+                        )}
+                        <button
+                          className={styles.coachBtn}
+                          style={{ color: '#ef4444', borderColor: '#ef4444' }}
+                          onClick={async () => {
+                            if (!window.confirm(`¿Eliminar permanentemente a ${c.nombre}? Esta acción no se puede deshacer.`)) return
+                            const resultado = await borrarCoachService(c.id)
+                            if (resultado.ok) toast.success(resultado.mensaje)
+                            else toast.error(resultado.mensaje)
+                          }}
+                        >Eliminar</button>
                       </div>
                     </div>
                   </div>
@@ -506,17 +612,25 @@ export default function AdminPanel() {
                   ? clases
                   : clases.filter((c) => c.tipo === clasesFilter)
                 ).map((c) => {
-                  const pct = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
-                  const statusTag   = pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
-                  const statusLabel = pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
+                  const pct          = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
+                  const statusTag    = pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
+                  const statusLabel  = pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
+                  const isProgramada = c.publicarEn && new Date(c.publicarEn) > new Date()
                   return (
-                    <div key={c.id} className={styles.claseItem}>
+                    <div key={c.id} className={styles.claseItem} style={{ opacity: isProgramada ? 0.75 : 1 }}>
                       <div className={styles.claseDay}>
                         <span style={{ fontSize: 9 }}>{ABBR_DIA[c.dia] || c.dia}</span>
                         <span className={styles.dayNum}>—</span>
                       </div>
-                      <div>
-                        <div className={styles.claseName}>{c.nombre}</div>
+                      <div style={{ flex: 1 }}>
+                        <div className={styles.claseName}>
+                          {c.nombre}
+                          {isProgramada && (
+                            <span style={{ marginLeft: 8, fontSize: 10, background: 'rgba(217,119,6,0.18)', color: '#d97706', padding: '2px 8px', borderRadius: 10, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+                              🕐 Prog. {new Date(c.publicarEn).toLocaleString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
                         <div className={styles.claseMeta}>{c.hora} · {c.duracion} min · {c.coachNombre}</div>
                       </div>
                       <Tag color={c.tipo === 'Stride' ? 'pink' : 'blue'}>{c.tipo}</Tag>
@@ -526,10 +640,43 @@ export default function AdminPanel() {
                           <div className={styles.spotsFill} style={{ width: `${pct}%` }} />
                         </div>
                       </div>
-                      <Tag color={statusTag}>{statusLabel}</Tag>
-                      <button className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '6px 12px', fontSize: 12 }}>
-                        Editar
-                      </button>
+                      {!isProgramada && <Tag color={statusTag}>{statusLabel}</Tag>}
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          style={{ padding: '6px 12px', fontSize: 12 }}
+                          onClick={() => {
+                            setModalEditClase(c)
+                            const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
+                            setEditClaseForm({
+                              nombre:      c.nombre,
+                              tipo:        c.tipo,
+                              coach:       coachNombre,
+                              dia:         c.dia,
+                              hora:        c.hora,
+                              duracion:    String(c.duracion || 50),
+                              cupoMax:     String(c.cupoMax || 15),
+                              descripcion: c.descripcion || '',
+                              publicarEn:  c.publicarEn
+                                ? new Date(c.publicarEn).toISOString().slice(0, 16)
+                                : '',
+                            })
+                          }}
+                        >
+                          ✏️ Editar
+                        </button>
+                        <button
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
+                          onClick={() => {
+                            if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
+                            eliminarClase(c.id)
+                            toast.success('Clase eliminada')
+                          }}
+                        >
+                          🗑
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
@@ -560,6 +707,40 @@ export default function AdminPanel() {
                   <div className={styles.paqueteStats}>
                     <div className={styles.paqueteStat}><strong>{p.beneficios.length}</strong>beneficios</div>
                     <div className={styles.paqueteStat}><strong>{p.categoria}</strong></div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                    <button
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      style={{ fontSize: 11, padding: '6px' }}
+                      onClick={() => {
+                        setModalEditPaquete(p)
+                        setEditPaqueteForm({
+                          nombre:    p.nombre,
+                          precio:    String(p.precio),
+                          clases:    String(p.clases),
+                          vigencia:  p.vigencia || '',
+                          categoria: p.categoria,
+                          destacado: p.destacado || false,
+                          beneficios: [...(p.beneficios || [])],
+                        })
+                      }}
+                    >✏️ Editar</button>
+                    <button
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      style={{ fontSize: 11, padding: '6px', color: '#ef4444' }}
+                      onClick={() => {
+                        if (!window.confirm(`¿Eliminar el paquete "${p.nombre}"?`)) return
+                        eliminarPaquete(p.id)
+                        toast.success(`Paquete "${p.nombre}" eliminado`)
+                      }}
+                    >🗑 Eliminar</button>
+                    {!p.destacado && (
+                      <button
+                        className={`${styles.btn} ${styles.btnGhost}`}
+                        style={{ fontSize: 11, padding: '6px', gridColumn: '1/-1', color: '#d97706' }}
+                        onClick={() => { marcarDestacado(p.id); toast.success(`"${p.nombre}" marcado como popular`) }}
+                      >⭐ Marcar popular</button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -927,6 +1108,33 @@ export default function AdminPanel() {
               <div className={styles.modalTitle}>Agregar Coach</div>
               <button className={styles.modalClose} onClick={closeModal}>×</button>
             </div>
+
+            {/* Foto upload */}
+            <input
+              ref={fotoCreateRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => uploadFoto(e.target.files?.[0], setCoachFotoPreview, setCoachFotoPath)}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
+              <div
+                onClick={() => fotoCreateRef.current?.click()}
+                style={{ cursor: 'pointer', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              >
+                {coachFotoPreview
+                  ? <img src={coachFotoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 28 }}>📷</span>}
+              </div>
+              <button
+                type="button"
+                style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                onClick={() => fotoCreateRef.current?.click()}
+              >
+                {coachFotoPreview ? 'Cambiar foto' : 'Subir foto (opcional)'}
+              </button>
+            </div>
+
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Nombre completo</label>
@@ -947,17 +1155,18 @@ export default function AdminPanel() {
                   onChange={e => setCoachForm(f => ({ ...f, especialidad: e.target.value }))} />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Disciplina principal</label>
+                <label className={styles.formLabel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  Disciplina principal
+                  <button
+                    type="button"
+                    style={{ fontSize: 10, color: 'rgba(232,164,173,0.7)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => setModalDisciplinas(true)}
+                  >Gestionar lista</button>
+                </label>
                 <select className={styles.formSelect} value={coachForm.disciplina}
                   onChange={e => setCoachForm(f => ({ ...f, disciplina: e.target.value }))}>
                   <option value="">Seleccionar…</option>
-                  <option>Stride</option>
-                  <option>Slow</option>
-                  <option>Flow</option>
-                  <option>Pilates</option>
-                  <option>Yoga</option>
-                  <option>Funcional</option>
-                  <option>Meditación</option>
+                  {disciplinas.map((d) => <option key={d}>{d}</option>)}
                 </select>
               </div>
               <div className={styles.formGroup}>
@@ -990,10 +1199,12 @@ export default function AdminPanel() {
                     bio:          coachForm.bio,
                     email:        coachForm.email,
                     telefono:     coachForm.telefono,
-                    foto:         null,
+                    foto:         coachFotoPath || null,
                   })
                   toast.success(`${coachForm.nombre} agregado`)
                   setCoachForm({ nombre: '', especialidad: '', disciplina: '', email: '', telefono: '', bio: '', estado: 'activo' })
+                  setCoachFotoPreview(null)
+                  setCoachFotoPath(null)
                   closeModal()
                 }}
               >
@@ -1017,14 +1228,11 @@ export default function AdminPanel() {
                   onChange={e => setClaseForm(f => ({ ...f, nombre: e.target.value }))} />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Tipo</label>
+                <label className={styles.formLabel}>Tipo / Disciplina</label>
                 <select className={styles.formSelect} value={claseForm.tipo}
                   onChange={e => setClaseForm(f => ({ ...f, tipo: e.target.value }))}>
-                  <option>Stride</option>
-                  <option>Slow</option>
-                  <option>Flow</option>
-                  <option>Pilates</option>
-                  <option>Funcional</option>
+                  <option value="">Seleccionar…</option>
+                  {disciplinas.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div className={styles.formGroup}>
@@ -1032,11 +1240,9 @@ export default function AdminPanel() {
                 <select className={styles.formSelect} value={claseForm.coach}
                   onChange={e => setClaseForm(f => ({ ...f, coach: e.target.value }))}>
                   <option value="">Seleccionar coach…</option>
-                  <option>Mafer García</option>
-                  <option>Majo Reyes</option>
-                  <option>Mali Torres</option>
-                  <option>Daya López</option>
-                  <option>Coste Méndez</option>
+                  {coaches.filter(c => c.activo !== false).map(c => (
+                    <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                  ))}
                 </select>
               </div>
               <div className={styles.formGroup}>
@@ -1067,6 +1273,27 @@ export default function AdminPanel() {
                   value={claseForm.descripcion} onChange={e => setClaseForm(f => ({ ...f, descripcion: e.target.value }))}
                   style={{ resize: 'vertical' }} />
               </div>
+
+              {/* ── Programar publicación ── */}
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>🕐 Programar publicación</span>
+                  <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)', marginLeft: 4 }}>
+                    — dejar vacío para publicar ahora
+                  </span>
+                </label>
+                <input
+                  className={styles.formInput}
+                  type="datetime-local"
+                  value={claseForm.publicarEn}
+                  onChange={e => setClaseForm(f => ({ ...f, publicarEn: e.target.value }))}
+                />
+                {claseForm.publicarEn && (
+                  <p style={{ fontSize: 11, color: 'rgba(232,164,173,0.7)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
+                    La clase se publicará el {new Date(claseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })}
+                  </p>
+                )}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
@@ -1074,9 +1301,11 @@ export default function AdminPanel() {
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={() => {
                   if (!claseForm.nombre.trim()) return
+                  const coachObj = coaches.find(c => c.nombre === claseForm.coach)
                   agregarClase({
                     nombre:      claseForm.nombre,
                     tipo:        claseForm.tipo,
+                    coachId:     coachObj?.id ?? null,
                     coachNombre: claseForm.coach || 'Sin asignar',
                     dia:         claseForm.dia,
                     hora:        claseForm.hora,
@@ -1084,13 +1313,17 @@ export default function AdminPanel() {
                     cupoMax:     Number(claseForm.cupoMax) || 15,
                     cupoActual:  0,
                     descripcion: claseForm.descripcion,
+                    publicarEn:  claseForm.publicarEn || null,
                   })
-                  toast.success(`Clase "${claseForm.nombre}" agregada`)
-                  setClaseForm({ nombre: '', tipo: 'Stride', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '' })
+                  const msg = claseForm.publicarEn
+                    ? `Clase programada para ${new Date(claseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}`
+                    : `Clase "${claseForm.nombre}" publicada`
+                  toast.success(msg)
+                  setClaseForm({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '' })
                   closeModal()
                 }}
               >
-                Agregar al Calendario
+                {claseForm.publicarEn ? '📅 Programar' : 'Publicar ahora'}
               </button>
             </div>
           </div>
@@ -1326,6 +1559,322 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {/* ── EDITAR COACH ── */}
+      {modalEditCoach && (
+        <div
+          className={`${styles.modalOverlay} ${styles.open}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setModalEditCoach(null) }}
+        >
+          <div className={styles.modal}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Editar coach — {modalEditCoach.nombre}</div>
+              <button className={styles.modalClose} onClick={() => setModalEditCoach(null)}>×</button>
+            </div>
+
+            {/* Foto upload */}
+            <input
+              ref={fotoEditRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={(e) => uploadFoto(e.target.files?.[0], setEditFotoPreview, setEditFotoPath)}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
+              <div
+                onClick={() => fotoEditRef.current?.click()}
+                style={{ cursor: 'pointer', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              >
+                {editFotoPreview
+                  ? <img src={editFotoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 28, fontWeight: 700 }}>{modalEditCoach.nombre.charAt(0).toUpperCase()}</span>}
+              </div>
+              <button
+                type="button"
+                style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                onClick={() => fotoEditRef.current?.click()}
+              >
+                {editFotoPreview ? 'Cambiar foto' : 'Subir foto'}
+              </button>
+            </div>
+
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Nombre completo</label>
+                <input
+                  className={styles.formInput}
+                  placeholder="Ej: Mafer García"
+                  value={editCoachForm.nombre}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, nombre: e.target.value }))}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  Disciplina principal
+                  <button
+                    type="button"
+                    style={{ fontSize: 10, color: 'rgba(232,164,173,0.7)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => setModalDisciplinas(true)}
+                  >Gestionar lista</button>
+                </label>
+                <select
+                  className={styles.formSelect}
+                  value={editCoachForm.disciplina}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, disciplina: e.target.value }))}
+                >
+                  <option value="">Seleccionar…</option>
+                  {disciplinas.map((d) => <option key={d}>{d}</option>)}
+                </select>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Especialidad / descripción</label>
+                <input
+                  className={styles.formInput}
+                  placeholder="Ej: Funcional · Hiit"
+                  value={editCoachForm.especialidad}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, especialidad: e.target.value }))}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Teléfono</label>
+                <input
+                  className={styles.formInput}
+                  type="tel"
+                  placeholder="+52 55 0000 0000"
+                  value={editCoachForm.telefono}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, telefono: e.target.value }))}
+                />
+              </div>
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel}>Email</label>
+                <input
+                  className={styles.formInput}
+                  type="email"
+                  value={editCoachForm.email}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel}>Biografía / Descripción</label>
+                <textarea
+                  className={styles.formInput}
+                  rows={3}
+                  placeholder="Breve descripción del coach y su experiencia…"
+                  value={editCoachForm.bio}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, bio: e.target.value }))}
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalEditCoach(null)}>
+                Cancelar
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  if (!editCoachForm.nombre.trim()) return
+                  const spec = [editCoachForm.disciplina, editCoachForm.especialidad].filter(Boolean).join(' · ') || 'Stride'
+                  editarCoach(modalEditCoach.id, {
+                    nombre:       editCoachForm.nombre,
+                    especialidad: spec,
+                    bio:          editCoachForm.bio,
+                    email:        editCoachForm.email,
+                    telefono:     editCoachForm.telefono,
+                    foto:         editFotoPath || modalEditCoach.foto || null,
+                  })
+                  // Sincronizar usuario de login asociado
+                  const userLogin = usuarios.find(
+                    (u) => u.email === modalEditCoach.email && u.rol === 'coach'
+                  )
+                  if (userLogin && editCoachForm.email !== modalEditCoach.email) {
+                    editarUsuario(userLogin.id, { email: editCoachForm.email, nombre: editCoachForm.nombre })
+                  } else if (userLogin) {
+                    editarUsuario(userLogin.id, { nombre: editCoachForm.nombre })
+                  }
+                  toast.success(`${editCoachForm.nombre} actualizado`)
+                  setModalEditCoach(null)
+                }}
+              >
+                Guardar cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDITAR CLASE ── */}
+      {modalEditClase && (
+        <div
+          className={`${styles.modalOverlay} ${styles.open}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setModalEditClase(null) }}
+        >
+          <div className={styles.modal} style={{ maxWidth: 560 }}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Editar clase</div>
+              <button className={styles.modalClose} onClick={() => setModalEditClase(null)}>×</button>
+            </div>
+
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Nombre de la clase</label>
+                <input className={styles.formInput} placeholder="Ej: Stride Power"
+                  value={editClaseForm.nombre}
+                  onChange={e => setEditClaseForm(f => ({ ...f, nombre: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Tipo / Disciplina</label>
+                <select className={styles.formSelect} value={editClaseForm.tipo}
+                  onChange={e => setEditClaseForm(f => ({ ...f, tipo: e.target.value }))}>
+                  <option value="">Seleccionar…</option>
+                  {disciplinas.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Coach</label>
+                <select className={styles.formSelect} value={editClaseForm.coach}
+                  onChange={e => setEditClaseForm(f => ({ ...f, coach: e.target.value }))}>
+                  <option value="">Sin asignar</option>
+                  {coaches.filter(c => c.activo !== false).map(c => (
+                    <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Día de la semana</label>
+                <select className={styles.formSelect} value={editClaseForm.dia}
+                  onChange={e => setEditClaseForm(f => ({ ...f, dia: e.target.value }))}>
+                  {['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => <option key={d}>{d}</option>)}
+                </select>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Hora de inicio</label>
+                <input className={styles.formInput} type="time" value={editClaseForm.hora}
+                  onChange={e => setEditClaseForm(f => ({ ...f, hora: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Duración (minutos)</label>
+                <input className={styles.formInput} type="number" min="30" max="120"
+                  value={editClaseForm.duracion}
+                  onChange={e => setEditClaseForm(f => ({ ...f, duracion: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Cupo máximo</label>
+                <input className={styles.formInput} type="number" min="1" max="50"
+                  value={editClaseForm.cupoMax}
+                  onChange={e => setEditClaseForm(f => ({ ...f, cupoMax: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel}>Descripción</label>
+                <textarea className={styles.formInput} rows={2}
+                  value={editClaseForm.descripcion}
+                  onChange={e => setEditClaseForm(f => ({ ...f, descripcion: e.target.value }))}
+                  style={{ resize: 'vertical' }} />
+              </div>
+
+              {/* ── Programar publicación ── */}
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>🕐 Programar publicación</span>
+                  <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)' }}>
+                    — dejar vacío para publicar de inmediato
+                  </span>
+                </label>
+                <input
+                  className={styles.formInput}
+                  type="datetime-local"
+                  value={editClaseForm.publicarEn}
+                  onChange={e => setEditClaseForm(f => ({ ...f, publicarEn: e.target.value }))}
+                />
+                {editClaseForm.publicarEn && (
+                  <p style={{ fontSize: 11, color: 'rgba(232,164,173,0.7)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
+                    Se publicará el {new Date(editClaseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalEditClase(null)}>
+                Cancelar
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  if (!editClaseForm.nombre.trim()) return
+                  const coachObj = coaches.find(c => c.nombre === editClaseForm.coach)
+                  editarClase(modalEditClase.id, {
+                    nombre:      editClaseForm.nombre,
+                    tipo:        editClaseForm.tipo,
+                    coachId:     coachObj?.id ?? modalEditClase.coachId ?? null,
+                    coachNombre: editClaseForm.coach || 'Sin asignar',
+                    dia:         editClaseForm.dia,
+                    hora:        editClaseForm.hora,
+                    duracion:    Number(editClaseForm.duracion) || 50,
+                    cupoMax:     Number(editClaseForm.cupoMax) || 15,
+                    descripcion: editClaseForm.descripcion,
+                    publicarEn:  editClaseForm.publicarEn || null,
+                  })
+                  toast.success(`Clase "${editClaseForm.nombre}" actualizada`)
+                  setModalEditClase(null)
+                }}
+              >
+                Guardar cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── HORARIO COACH ── */}
+      {modalHorarioCoach && (
+        <div
+          className={`${styles.modalOverlay} ${styles.open}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setModalHorarioCoach(null) }}
+        >
+          <div className={styles.modal} style={{ maxWidth: 560 }}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Horario — {modalHorarioCoach.nombre}</div>
+              <button className={styles.modalClose} onClick={() => setModalHorarioCoach(null)}>×</button>
+            </div>
+            {(() => {
+              const clasesCoach = clases.filter(
+                (c) => String(c.coachId) === String(modalHorarioCoach.id) || c.coachNombre === modalHorarioCoach.nombre
+              )
+              return clasesCoach.length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--muted)', padding: '24px 0', fontSize: 14 }}>
+                  Este coach no tiene clases asignadas
+                </p>
+              ) : (
+                <div className={styles.tableWrap}>
+                  <table>
+                    <thead>
+                      <tr><th>Clase</th><th>Tipo</th><th>Día</th><th>Hora</th><th>Cupo</th></tr>
+                    </thead>
+                    <tbody>
+                      {clasesCoach.map((c) => (
+                        <tr key={c.id}>
+                          <td style={{ fontWeight: 500 }}>{c.nombre}</td>
+                          <td><Tag color={c.tipo === 'Stride' ? 'pink' : 'blue'}>{c.tipo}</Tag></td>
+                          <td>{c.dia}</td>
+                          <td>{c.hora}</td>
+                          <td style={{ color: 'var(--muted)', fontSize: 12 }}>{c.cupoActual}/{c.cupoMax}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            })()}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalHorarioCoach(null)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── CONFIRMAR ELIMINAR PRODUCTO ── */}
       {confirmarEliminarProd && (
         <div
@@ -1347,6 +1896,188 @@ export default function AdminPanel() {
                 style={{ background: '#ef4444', borderColor: '#ef4444' }}
                 onClick={handleEliminarProducto}
               >Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDITAR PAQUETE ── */}
+      {modalEditPaquete && (
+        <div
+          className={`${styles.modalOverlay} ${styles.open}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setModalEditPaquete(null) }}
+        >
+          <div className={styles.modal} style={{ maxWidth: 520 }}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Editar paquete</div>
+              <button className={styles.modalClose} onClick={() => setModalEditPaquete(null)}>×</button>
+            </div>
+
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Nombre</label>
+                <input className={styles.formInput} value={editPaqueteForm.nombre}
+                  onChange={e => setEditPaqueteForm(f => ({ ...f, nombre: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Precio ($)</label>
+                <input className={styles.formInput} type="number" min="0" value={editPaqueteForm.precio}
+                  onChange={e => setEditPaqueteForm(f => ({ ...f, precio: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Clases (0 = ilimitadas)</label>
+                <input className={styles.formInput} type="number" min="0" value={editPaqueteForm.clases}
+                  onChange={e => setEditPaqueteForm(f => ({ ...f, clases: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Vigencia</label>
+                <input className={styles.formInput} placeholder="Ej: Mensual, 30 días" value={editPaqueteForm.vigencia}
+                  onChange={e => setEditPaqueteForm(f => ({ ...f, vigencia: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Categoría</label>
+                <select className={styles.formSelect} value={editPaqueteForm.categoria}
+                  onChange={e => setEditPaqueteForm(f => ({ ...f, categoria: e.target.value }))}>
+                  <option value="mensual">Mensual</option>
+                  <option value="pack">Pack de clases</option>
+                </select>
+              </div>
+              <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" id="destEdit" checked={editPaqueteForm.destacado}
+                  onChange={e => setEditPaqueteForm(f => ({ ...f, destacado: e.target.checked }))} />
+                <label htmlFor="destEdit" className={styles.formLabel} style={{ margin: 0 }}>Marcar como popular</label>
+              </div>
+
+              {/* Beneficios */}
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel}>Beneficios</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                  {editPaqueteForm.beneficios.map((b, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        className={styles.formInput}
+                        value={b}
+                        onChange={e => setEditPaqueteForm(f => {
+                          const bs = [...f.beneficios]; bs[i] = e.target.value; return { ...f, beneficios: bs }
+                        })}
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        onClick={() => setEditPaqueteForm(f => ({ ...f, beneficios: f.beneficios.filter((_, j) => j !== i) }))}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 18, lineHeight: 1 }}
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className={styles.formInput}
+                    placeholder="Nuevo beneficio…"
+                    value={nuevoBeneficio}
+                    onChange={e => setNuevoBeneficio(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && nuevoBeneficio.trim()) {
+                        setEditPaqueteForm(f => ({ ...f, beneficios: [...f.beneficios, nuevoBeneficio.trim()] }))
+                        setNuevoBeneficio('')
+                      }
+                    }}
+                    style={{ flex: 1 }}
+                  />
+                  <button className={`${styles.btn} ${styles.btnGhost}`}
+                    onClick={() => {
+                      if (!nuevoBeneficio.trim()) return
+                      setEditPaqueteForm(f => ({ ...f, beneficios: [...f.beneficios, nuevoBeneficio.trim()] }))
+                      setNuevoBeneficio('')
+                    }}>+ Agregar</button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalEditPaquete(null)}>Cancelar</button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  if (!editPaqueteForm.nombre.trim()) return
+                  editarPaquete(modalEditPaquete.id, {
+                    nombre:     editPaqueteForm.nombre,
+                    precio:     Number(editPaqueteForm.precio) || 0,
+                    clases:     Number(editPaqueteForm.clases) || 0,
+                    vigencia:   editPaqueteForm.vigencia,
+                    categoria:  editPaqueteForm.categoria,
+                    destacado:  editPaqueteForm.destacado,
+                    beneficios: editPaqueteForm.beneficios,
+                  })
+                  toast.success(`Paquete "${editPaqueteForm.nombre}" actualizado`)
+                  setModalEditPaquete(null)
+                  setNuevoBeneficio('')
+                }}
+              >Guardar cambios</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── GESTIONAR DISCIPLINAS ── */}
+      {modalDisciplinas && (
+        <div
+          className={`${styles.modalOverlay} ${styles.open}`}
+          onClick={(e) => { if (e.target === e.currentTarget) setModalDisciplinas(false) }}
+        >
+          <div className={styles.modal} style={{ maxWidth: 400 }}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Gestionar disciplinas</div>
+              <button className={styles.modalClose} onClick={() => setModalDisciplinas(false)}>×</button>
+            </div>
+
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, fontFamily: 'var(--font-body)' }}>
+              Estas disciplinas aparecen en los formularios de coaches. Agrega o elimina las que necesites.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+              {disciplinas.map((d) => (
+                <div key={d} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, border: '1px solid var(--muted-2)' }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'rgba(255,255,255,0.85)' }}>{d}</span>
+                  <button
+                    onClick={() => eliminarDisciplina(d)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 20, lineHeight: 1, padding: '0 4px' }}
+                    title="Eliminar"
+                  >×</button>
+                </div>
+              ))}
+              {disciplinas.length === 0 && (
+                <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '16px 0', fontFamily: 'var(--font-body)' }}>
+                  No hay disciplinas. Agrega una abajo.
+                </p>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className={styles.formInput}
+                placeholder="Nueva disciplina… (ej: Pilates)"
+                value={nuevaDisciplina}
+                onChange={(e) => setNuevaDisciplina(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && nuevaDisciplina.trim()) {
+                    agregarDisciplina(nuevaDisciplina.trim())
+                    setNuevaDisciplina('')
+                  }
+                }}
+                style={{ flex: 1 }}
+              />
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => {
+                  if (!nuevaDisciplina.trim()) return
+                  agregarDisciplina(nuevaDisciplina.trim())
+                  setNuevaDisciplina('')
+                }}
+              >+ Agregar</button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalDisciplinas(false)}>Cerrar</button>
             </div>
           </div>
         </div>
