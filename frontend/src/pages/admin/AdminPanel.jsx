@@ -654,7 +654,16 @@ export default function AdminPanel() {
                     <div key={c.id} className={styles.claseItem} style={{ opacity: isProgramada ? 0.75 : 1 }}>
                       <div className={styles.claseDay}>
                         <span style={{ fontSize: 9 }}>{ABBR_DIA[c.dia] || c.dia}</span>
-                        <span className={styles.dayNum}>—</span>
+                        <span className={styles.dayNum}>
+                          {(() => {
+                            const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(c.dia)
+                            const hoy = new Date()
+                            const diff = idx - hoy.getDay()
+                            const fecha = new Date(hoy)
+                            fecha.setDate(hoy.getDate() + (diff >= 0 ? diff : diff + 7))
+                            return fecha.getDate()
+                          })()}
+                        </span>
                       </div>
                       <div style={{ flex: 1 }}>
                         <div className={styles.claseName}>
@@ -1254,7 +1263,7 @@ export default function AdminPanel() {
                   value={coachForm.password || ''}
                   onChange={e => setCoachForm(f => ({ ...f, password: e.target.value }))} />
                 </div>
-                
+
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                 <label className={styles.formLabel}>Biografía / Descripción</label>
                 <textarea className={styles.formInput} rows={3} placeholder="Breve descripción del coach y su experiencia…"

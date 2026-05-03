@@ -10,7 +10,11 @@ const coachLinks = [
   { to: '/coach/mis-clases', icon: BookOpen, label: 'Mis Clases' },
 ]
 
-const DIA_HOY = 'Jueves'
+const DIAS_SEMANA = [
+  'Domingo', 'Lunes', 'Martes', 'Miércoles',
+  'Jueves', 'Viernes', 'Sábado',
+]
+const DIA_HOY = DIAS_SEMANA[new Date().getDay()]
 
 export default function CoachDashboard() {
   const { usuario } = useAuth()

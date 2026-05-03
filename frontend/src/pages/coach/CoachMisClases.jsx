@@ -3,7 +3,8 @@ import { LayoutDashboard, BookOpen } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
 import { useClasesStore } from '@/stores/clasesStore'
-import { alumnosMockClase } from '@/data/mockReservas'
+import { useReservasStore } from '@/stores/reservasStore'
+import { useUsuariosStore } from '@/stores/usuariosStore'
 import styles from '@/styles/dashboard.module.css'
 import localStyles from './CoachMisClases.module.css'
 
@@ -15,6 +16,8 @@ const coachLinks = [
 export default function CoachMisClases() {
   const { usuario } = useAuth()
   const { getClasesByCoach } = useClasesStore()
+  const { getReservasByClase } = useReservasStore()
+  const { usuarios } = useUsuariosStore()
   const misClases = getClasesByCoach(usuario?.id)
   const [claseSeleccionada, setClaseSeleccionada] = useState(null)
 
@@ -79,16 +82,28 @@ export default function CoachMisClases() {
                 {claseSeleccionada.dia} · {claseSeleccionada.hora} · {claseSeleccionada.cupoActual} / {claseSeleccionada.cupoMax} inscritos
               </p>
 
-              <ul className={localStyles.alumnosList}>
-                {alumnosMockClase.map((alumno) => (
-                  <li key={alumno.id} className={localStyles.alumnoItem}>
-                    <div className={localStyles.alumnoAvatar}>
-                      {alumno.nombre.charAt(0)}
-                    </div>
-                    <span className={localStyles.alumnoNombre}>{alumno.nombre}</span>
-                  </li>
-                ))}
-              </ul>
+              {(() => {
+                const alumnos = getReservasByClase(claseSeleccionada.id).map((r) => {
+                  const u = usuarios.find((u) => u.id === r.userId)
+                  return { id: r.id, nombre: u?.nombre ?? `Usuario #${r.userId}` }
+                })
+                return alumnos.length > 0 ? (
+                  <ul className={localStyles.alumnosList}>
+                    {alumnos.map((alumno) => (
+                      <li key={alumno.id} className={localStyles.alumnoItem}>
+                        <div className={localStyles.alumnoAvatar}>
+                          {alumno.nombre.charAt(0).toUpperCase()}
+                        </div>
+                        <span className={localStyles.alumnoNombre}>{alumno.nombre}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-muted)', padding: '12px 0' }}>
+                    No hay alumnos inscritos en esta clase.
+                  </p>
+                )
+              })()}
 
               <div className={styles.modalActions}>
                 <button

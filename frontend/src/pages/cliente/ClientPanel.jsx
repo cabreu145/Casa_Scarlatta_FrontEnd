@@ -7,11 +7,12 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
-import { useReservasStore } from '@/stores/reservasStore'
-import { useClasesStore }   from '@/stores/clasesStore'
-import { useUsuariosStore } from '@/stores/usuariosStore'
-import { useCoachesStore }   from '@/stores/coachesStore'
-import { usePaquetesStore }  from '@/stores/paquetesStore'
+import { useReservasStore }      from '@/stores/reservasStore'
+import { useClasesStore }        from '@/stores/clasesStore'
+import { useUsuariosStore }      from '@/stores/usuariosStore'
+import { useCoachesStore }       from '@/stores/coachesStore'
+import { usePaquetesStore }      from '@/stores/paquetesStore'
+import { useTransaccionesStore } from '@/stores/transaccionesStore'
 import { reservarClase, cancelarReserva } from '@/services/reservasService'
 import { editarPerfilService }            from '@/services/usuariosService'
 import { isPublished }                    from '@/services/classService'
@@ -63,13 +64,12 @@ function avatarStyle(name) {
   return AVATAR_COLORS[idx]
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-const PAYMENTS = [
-  { id: 1, desc: 'Paquete Esencial', date: '1 abril 2025',    amount: '$1,250' },
-  { id: 2, desc: 'Paquete Esencial', date: '1 marzo 2025',    amount: '$1,250' },
-  { id: 3, desc: 'Paquete Básico',   date: '1 febrero 2025',  amount: '$650'   },
-  { id: 4, desc: 'Paquete Básico',   date: '1 enero 2025',    amount: '$650'   },
-]
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function formatFechaISO(iso) {
+  if (!iso) return null
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${d} de ${MONTHS_ES[m - 1]} de ${y}`
+}
 
 const SECTION_META = {
   inicio:   { title: 'Inicio',             sub: 'Jueves, 24 de abril · Casa Scarlatta' },
@@ -129,6 +129,10 @@ export default function ClientPanel() {
   const { usuarios } = useUsuariosStore()
   const { coaches }   = useCoachesStore()
   const { paquetes }  = usePaquetesStore()
+  const { getTransaccionesByUsuario } = useTransaccionesStore()
+
+  // Historial real de pagos del usuario
+  const historialPagos = usuario?.id ? getTransaccionesByUsuario(usuario.id) : []
 
   // Mapa nombre → foto para todos los componentes de esta página
   const coachFotoByName = useMemo(
@@ -799,15 +803,32 @@ export default function ClientPanel() {
 
             <div className={s.planCurrent}>
               <div className={s.planNameTag}>Plan activo</div>
-              <div className={s.planName}>Paquete Esencial</div>
+              <div className={s.planName}>{planNombre}</div>
               <div className={s.planClassesRow}>
-                <div className={s.planClassesNum}>8</div>
+                <div className={s.planClassesNum}>{clasesRestantes}</div>
                 <div className={s.planClassesSub}>clases restantes</div>
               </div>
-              <div className={s.planProgressBar}>
-                <div className={s.planProgressFill} style={{ width: '20%' }} />
-              </div>
-              <div className={s.planProgressLabel}>2 de 10 clases usadas · Vence 15 de mayo 2025</div>
+              {clasesRestantes !== '∞' && clasesTotal > 0 && (
+                <>
+                  <div className={s.planProgressBar}>
+                    <div
+                      className={s.planProgressFill}
+                      style={{ width: `${Math.round((clasesUsadas / clasesTotal) * 100)}%` }}
+                    />
+                  </div>
+                  <div className={s.planProgressLabel}>
+                    {clasesUsadas} de {clasesTotal} clases usadas
+                    {usuario?.paqueteInfo?.fechaVencimiento
+                      ? ` · Vence ${formatFechaISO(usuario.paqueteInfo.fechaVencimiento)}`
+                      : ''}
+                  </div>
+                </>
+              )}
+              {planNombre === 'Sin plan' && (
+                <div className={s.planProgressLabel} style={{ color: 'var(--muted)' }}>
+                  No tienes un paquete activo
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: 20 }}>
@@ -850,16 +871,31 @@ export default function ClientPanel() {
                 <div className={s.cardSubtitle}>Últimas transacciones</div>
               </div>
               <div className={s.cardBody}>
-                {PAYMENTS.map(p => (
-                  <div key={p.id} className={s.historyRow}>
-                    <div className={s.historyIcon}>💳</div>
-                    <div style={{ flex: 1 }}>
-                      <div className={s.historyDesc}>{p.desc}</div>
-                      <div className={s.historyDate}>{p.date}</div>
-                    </div>
-                    <div className={s.historyAmount}>{p.amount}</div>
+                {historialPagos.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>
+                    No hay transacciones registradas.
                   </div>
-                ))}
+                ) : (
+                  [...historialPagos]
+                    .sort((a, b) => b.fecha.localeCompare(a.fecha))
+                    .map(tx => (
+                      <div key={tx.id} className={s.historyRow}>
+                        <div className={s.historyIcon}>
+                          {tx.tipo === 'reembolso' ? '↩️' : tx.tipo === 'producto' ? '🛍️' : '💳'}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div className={s.historyDesc}>{tx.concepto}</div>
+                          <div className={s.historyDate}>{formatFechaISO(tx.fecha)}</div>
+                        </div>
+                        <div
+                          className={s.historyAmount}
+                          style={tx.monto < 0 ? { color: '#e53e3e' } : undefined}
+                        >
+                          {tx.monto < 0 ? '-' : ''}${Math.abs(tx.monto).toLocaleString()}
+                        </div>
+                      </div>
+                    ))
+                )}
               </div>
             </div>
           </div>

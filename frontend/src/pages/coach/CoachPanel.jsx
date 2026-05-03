@@ -10,44 +10,6 @@ import {
 import s from './CoachPanel.module.css'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
-const ALL_STUDENTS = [
-  { id: 1,  name: 'Eduardo Santini',  status: 'confirmed' },
-  { id: 2,  name: 'Laura Jiménez',    status: 'confirmed' },
-  { id: 3,  name: 'Marcos Delgado',   status: 'confirmed' },
-  { id: 4,  name: 'Gabriela Vega',    status: 'confirmed' },
-  { id: 5,  name: 'Roberto Flores',   status: 'pending'   },
-  { id: 6,  name: 'Diana Morales',    status: 'confirmed' },
-  { id: 7,  name: 'Héctor Ruiz',      status: 'confirmed' },
-  { id: 8,  name: 'Ana Torres',       status: 'confirmed' },
-  { id: 9,  name: 'Luis Ramírez',     status: 'confirmed' },
-  { id: 10, name: 'Sofía Hernández',  status: 'confirmed' },
-  { id: 11, name: 'Miguel Castillo',  status: 'pending'   },
-  { id: 12, name: 'Valentina Cruz',   status: 'confirmed' },
-  { id: 13, name: 'Andrés Medina',    status: 'confirmed' },
-  { id: 14, name: 'Camila Ortega',    status: 'confirmed' },
-  { id: 15, name: 'Fernando Soto',    status: 'confirmed' },
-  { id: 16, name: 'Patricia Lima',    status: 'confirmed' },
-  { id: 17, name: 'Jesús Guerrero',   status: 'pending'   },
-  { id: 18, name: 'Natalia Rios',     status: 'confirmed' },
-]
-
-const CLASSES = [
-  { id: 'power',   name: 'Stride Power',   day: 'Lunes',   hora: '07:00', booked: 18, cap: 20, today: false },
-  { id: 'hiit',    name: 'Stride HIIT',    day: 'Martes',  hora: '19:00', booked: 15, cap: 20, today: false },
-  { id: 'fuerza',  name: 'Stride Fuerza',  day: 'Jueves',  hora: '07:00', booked: 11, cap: 20, today: true  },
-  { id: 'weekend', name: 'Stride Weekend', day: 'Sábado',  hora: '09:00', booked:  6, cap: 20, today: false },
-]
-
-const WEEK_DAYS = [
-  { key: 'lun', name: 'Lun', num: 21, count: '1 clase' },
-  { key: 'mar', name: 'Mar', num: 22, count: '1 clase' },
-  { key: 'mie', name: 'Mié', num: 23, count: '—'       },
-  { key: 'jue', name: 'Jue', num: 24, count: '1 clase' },
-  { key: 'vie', name: 'Vie', num: 25, count: '—'       },
-  { key: 'sab', name: 'Sáb', num: 26, count: '1 clase' },
-  { key: 'dom', name: 'Dom', num: 27, count: '—'       },
-]
-
 const DAY_KEY_TO_NAME = {
   lun: 'Lunes', mar: 'Martes', mie: 'Miércoles',
   jue: 'Jueves', vie: 'Viernes', sab: 'Sábado', dom: 'Domingo',
@@ -60,9 +22,25 @@ const PERF_BARS = [
   { label: 'Stride Weekend', pct: 30 },
 ]
 
+const hoyFecha = new Date()
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+
+// Calcular inicio y fin de semana actual (lunes a domingo)
+const inicioSemana = new Date(hoyFecha)
+inicioSemana.setDate(hoyFecha.getDate() - (hoyFecha.getDay() === 0 ? 6 : hoyFecha.getDay() - 1))
+const finSemana = new Date(inicioSemana)
+finSemana.setDate(inicioSemana.getDate() + 6)
+
 const SECTION_META = {
-  dashboard:    { title: 'Dashboard',  sub: 'Jueves, 24 de abril · Casa Scarlatta' },
-  'mis-clases': { title: 'Mis Clases', sub: 'Semana del 21 al 27 de abril'         },
+  dashboard:    { 
+    title: 'Dashboard',  
+    sub: `${DIAS_SEMANA[hoyFecha.getDay()]}, ${hoyFecha.getDate()} de ${MESES[hoyFecha.getMonth()]} · Casa Scarlatta` 
+  },
+  'mis-clases': { 
+    title: 'Mis Clases', 
+    sub: `Semana del ${inicioSemana.getDate()} al ${finSemana.getDate()} de ${MESES[finSemana.getMonth()]}` 
+  },
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -90,7 +68,8 @@ function statusColor(cls) {
 export default function CoachPanel() {
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('dashboard')
-  const [selectedDay, setSelectedDay]     = useState('jue')
+  const KEYS = ['dom','lun','mar','mie','jue','vie','sab']
+  const [selectedDay, setSelectedDay] = useState(KEYS[new Date().getDay()])
   const [modalClass, setModalClass]       = useState(null)  // class object | null
   const { usuario } = useAuth()
   const { clases } = useClasesStore()
@@ -102,6 +81,19 @@ export default function CoachPanel() {
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
   const clasesHoy = misClases.filter(c => c.dia === diaHoy)
+  const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date(inicioSemana)
+  d.setDate(inicioSemana.getDate() + i)
+  const keys = ['lun','mar','mie','jue','vie','sab','dom']
+  const names = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
+  const clasesDelDia = misClases.filter(c => c.dia === DIAS_SEMANA[d.getDay()])
+  return {
+    key:   keys[i],
+    name:  names[i],
+    num:   d.getDate(),
+    count: clasesDelDia.length > 0 ? `${clasesDelDia.length} clase${clasesDelDia.length > 1 ? 's' : ''}` : '—',
+  }
+})
   // ESC closes modal
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') setModalClass(null) }
@@ -116,7 +108,7 @@ export default function CoachPanel() {
 
   const navLinks = [
     { key: 'dashboard',  icon: LayoutDashboard, label: 'Dashboard',  badge: null },
-    { key: 'mis-clases', icon: CalendarDays,    label: 'Mis Clases', badge: '9'  },
+    { key: 'mis-clases', icon: CalendarDays, label: 'Mis Clases', badge: misClases.length > 0 ? String(misClases.length) : null },
   ]
 
   return (
@@ -353,7 +345,16 @@ function WeekTable({ classes, onOpen }) {
               <td>
                 {esHoy
                    ? <strong style={{ color:'var(--blush)' }}>{cls.dia} · hoy</strong>
-                  : cls.dia
+                  : (() => {
+                    const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(cls.dia)
+                    const d = new Date()
+                    const hoyIdx = d.getDay()
+                    const diff = idx - hoyIdx
+                    const fecha = new Date(d)
+                    fecha.setDate(d.getDate() + (diff >= 0 ? diff : diff + 7))
+                    const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+                    return `${cls.dia} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`
+                  })()
                 }
               </td>
               <td><span className={s2.mono} style={{ color:'var(--blush)' }}>{cls.hora}</span></td>
@@ -415,7 +416,16 @@ function MisClasesTable({ classes, onOpen }) {
               <td>
                 {esHoy
                   ? <strong style={{ color: 'var(--blush)' }}>{cls.dia} · hoy</strong>
-                  : cls.dia
+                  : (() => {
+                  const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(cls.dia)
+                  const d = new Date()
+                  const hoyIdx = d.getDay()
+                  const diff = idx - hoyIdx
+                  const fecha = new Date(d)
+                  fecha.setDate(d.getDate() + (diff >= 0 ? diff : diff + 7))
+                  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+                  return `${cls.dia} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`
+                })()
                 }
               </td>
               <td><span className={s2.mono} style={{ color: 'var(--blush)' }}>{cls.hora}</span></td>
