@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { crearCoachService } from '@/services/coachesService'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import styles from './AdminPanel.module.css'
@@ -1242,7 +1243,18 @@ export default function AdminPanel() {
                 <label className={styles.formLabel}>Teléfono</label>
                 <input className={styles.formInput} type="tel" placeholder="+52 55 0000 0000" value={coachForm.telefono}
                   onChange={e => setCoachForm(f => ({ ...f, telefono: e.target.value }))} />
-              </div>
+                </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Contraseña inicial</label>
+                <input
+                  className={styles.formInput}
+                  type="password"
+                  placeholder="Por defecto: 123456"
+                  value={coachForm.password || ''}
+                  onChange={e => setCoachForm(f => ({ ...f, password: e.target.value }))} />
+                </div>
+                
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                 <label className={styles.formLabel}>Biografía / Descripción</label>
                 <textarea className={styles.formInput} rows={3} placeholder="Breve descripción del coach y su experiencia…"
@@ -1254,22 +1266,26 @@ export default function AdminPanel() {
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => {
+                onClick={async () => {
                   if (!coachForm.nombre.trim()) return
                   const spec = [coachForm.disciplina, coachForm.especialidad].filter(Boolean).join(' · ') || 'Stride'
-                  agregarCoach({
+                  const resultado = await crearCoachService({
                     nombre:       coachForm.nombre,
+                    email:        coachForm.email,
+                    password:     coachForm.password || '123456',
                     especialidad: spec,
                     bio:          coachForm.bio,
-                    email:        coachForm.email,
-                    telefono:     coachForm.telefono,
-                    foto:         coachFotoPath || null,
+                     foto:         coachFotoPath || null,
                   })
+                  if (resultado.ok) {
                   toast.success(`${coachForm.nombre} agregado`)
-                  setCoachForm({ nombre: '', especialidad: '', disciplina: '', email: '', telefono: '', bio: '', estado: 'activo' })
+                  setCoachForm({ nombre: '', especialidad: '', disciplina: '', email: '', telefono: '', bio: '', estado: 'activo', password: '' })
                   setCoachFotoPreview(null)
                   setCoachFotoPath(null)
                   closeModal()
+                  } else {
+                    toast.error(resultado.mensaje)
+                  }
                 }}
               >
                 Guardar Coach

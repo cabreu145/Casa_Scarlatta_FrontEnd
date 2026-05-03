@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePaquetesStore } from '@/stores/paquetesStore'
 import { useAuth } from '@/context/AuthContext'
-import CompraModal from '@/components/ui/CompraModal'
+import PagoModal from '@/features/pagos/PagoModal'
 
 export default function PricingSection() {
   const { paquetes } = usePaquetesStore()
@@ -59,11 +59,10 @@ export default function PricingSection() {
       </div>
 
       {modalPaquete && (
-        <CompraModal
+        <PagoModal
           paquete={modalPaquete}
-          compartido={false}
-          partnerNombre={null}
           onClose={() => setModalPaquete(null)}
+          onSuccess={() => setModalPaquete(null)}
         />
       )}
     </section>

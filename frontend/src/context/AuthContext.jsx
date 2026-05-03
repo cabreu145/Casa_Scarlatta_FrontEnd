@@ -28,7 +28,6 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     setLocalLoading(true)
     await new Promise((r) => setTimeout(r, 600))
-    // Busca primero en mockUsers (seed) y luego en el store (usuarios creados en runtime)
     const storeUsuarios = useUsuariosStore.getState().usuarios
     const user =
       mockUsers.find((u) => u.email === email && u.password === password) ||
@@ -66,6 +65,7 @@ export function AuthProvider({ children }) {
       fechaRegistro: new Date().toISOString().split('T')[0],
     }
     mockUsers.push(nuevoUsuario)
+    useUsuariosStore.getState().agregarUsuario(nuevoUsuario)
     const { password: _, ...safeUser } = nuevoUsuario
     setUsuario(safeUser)
     setLocalLoading(false)

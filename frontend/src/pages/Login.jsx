@@ -108,7 +108,7 @@ function LoginForm({ from }) {
     try {
       const user = await login(email, password)
       toast.success(`Bienvenido, ${user.nombre.split(' ')[0]}`)
-      navigate('/', { replace: true })
+      navigate(rolDashboard[user.rol] ?? '/', { replace: true })
     } catch (err) {
       toast.error(err.message || 'Error al iniciar sesión')
     } finally {

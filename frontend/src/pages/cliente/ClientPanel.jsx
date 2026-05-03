@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import PagoModal from '@/features/pagos/PagoModal'
 import { useNavigate } from 'react-router-dom'
 import {
   Home, CalendarDays, PlusCircle, User, CreditCard, LogOut, ArrowLeft,
@@ -141,6 +142,7 @@ export default function ClientPanel() {
   const [dayIdx,     setDayIdx]     = useState(0)
   const [resWeekOff, setResWeekOff] = useState(0)
   const [resDayIdx,  setResDayIdx]  = useState(0)
+  const [pagoModal, setPagoModal] = useState(null)
 
   // ── Datos del usuario ────────────────────────────────────────────────────
   const userName        = usuario?.nombre ?? 'Cliente'
@@ -830,7 +832,11 @@ export default function ClientPanel() {
                         <div key={i} className={s.pricingFeature}>{b}</div>
                       ))}
                     </div>
-                    <button className={`${s.btnPricing} ${esPlanActual ? s.btnPricingPrimary : s.btnPricingOutline}`}>
+                    <button
+                      className={`${s.btnPricing} ${esPlanActual ? s.btnPricingPrimary : s.btnPricingOutline}`}
+                      onClick={() => !esPlanActual && setPagoModal(p)}
+                      disabled={esPlanActual}
+                     >
                       {esPlanActual ? 'Plan actual' : 'Seleccionar'}
                     </button>
                   </div>
@@ -857,7 +863,13 @@ export default function ClientPanel() {
               </div>
             </div>
           </div>
-
+          {pagoModal && (
+          <PagoModal
+          paquete={pagoModal}
+          onClose={() => setPagoModal(null)}
+          onSuccess={() => { setPagoModal(null); goTo('inicio') }}
+          />
+        )}
         </div>{/* /content */}
       </main>
     </div>
