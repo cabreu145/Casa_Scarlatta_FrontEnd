@@ -9,7 +9,7 @@ import styles from './Reservar.module.css'
 
 const salas = [
   {
-    key: 'Stride',
+    key: 'Stryde X',
     logo: '/brand/STRYDE_X_T.png',
     logoAlt: 'STRYDE X',
     subtexto: 'Alta intensidad',
@@ -97,7 +97,7 @@ export default function Reservar() {
                 ← Cambiar sala
               </button>
               <span className={styles.calendarType}>
-                {selectedType === 'Stride' ? 'STRIDE' : 'SLOW'}
+                {selectedType === 'Stryde X' ? 'STRYDE X' : 'SLOW'}
               </span>
             </div>
             <WeeklyCalendar

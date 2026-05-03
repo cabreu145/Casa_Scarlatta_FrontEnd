@@ -12,7 +12,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-const DEFAULT_DISCIPLINAS = ['Stride', 'Slow']
+const DEFAULT_DISCIPLINAS = ['Stryde X', 'Slow']
 
 export const useDisciplinasStore = create(
   persist(

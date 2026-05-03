@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import PagoModal from '@/features/pagos/PagoModal'
+import SeatSelector from '@/features/clases/SeatSelector'
 import { useNavigate } from 'react-router-dom'
 import {
   Home, CalendarDays, PlusCircle, User, CreditCard, LogOut, ArrowLeft,
@@ -28,12 +29,16 @@ function buildWeek(off) {
   base.setDate(base.getDate() + off * 7)
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(base); d.setDate(base.getDate() + i)
+    const y  = d.getFullYear()
+    const m  = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
     return {
       fullName: DAYS_ES[d.getDay()],
       abbr:     DAYS_ABBR[d.getDay()],
       num:      d.getDate(),
       month:    d.getMonth(),
       year:     d.getFullYear(),
+      isoDate:  `${y}-${m}-${dd}`,
     }
   })
 }
@@ -113,7 +118,7 @@ function toClsShape(r) {
     coach:      r.coachNombre,
     date:       r.claseDia,
     time:       r.claseHora,
-    discipline: r.tipo === 'Stride' ? 'STRYDE' : 'SLOW',
+    discipline: !r.tipo?.toLowerCase().includes('slow') ? 'STRYDE' : 'SLOW',
     status:     r.estado,
     location:   '',
   }
@@ -147,6 +152,7 @@ export default function ClientPanel() {
   const [resWeekOff, setResWeekOff] = useState(0)
   const [resDayIdx,  setResDayIdx]  = useState(0)
   const [pagoModal, setPagoModal] = useState(null)
+  const [seatSelectorClass, setSeatSelectorClass] = useState(null)
 
   // ── Datos del usuario ────────────────────────────────────────────────────
   const userName        = usuario?.nombre ?? 'Cliente'
@@ -229,8 +235,9 @@ export default function ClientPanel() {
     title:      c.nombre,
     coach:      c.coachNombre,
     date:       c.dia,
+    fecha:      c.fecha ?? null,   // YYYY-MM-DD si clase de fecha específica, null si recurrente
     time:       c.hora,
-    discipline: c.tipo === 'Stride' ? 'STRYDE' : 'SLOW',
+    discipline: !c.tipo?.toLowerCase().includes('slow') ? 'STRYDE' : 'SLOW',
     spots:      Math.max(0, c.cupoMax - c.cupoActual),
     capacity:   c.cupoMax,
   }))
@@ -584,7 +591,9 @@ export default function ClientPanel() {
               ><ChevronLeft size={18} /></button>
               <div className={s.dayTabs}>
                 {resWeekDays.map((day, i) => {
-                  const hasCls = availableClases.some(av => av.date === day.fullName)
+                  const hasCls = availableClases.some(av =>
+                    av.fecha ? av.fecha === day.isoDate : av.date === day.fullName
+                  )
                   return (
                     <button
                       key={i}
@@ -608,7 +617,9 @@ export default function ClientPanel() {
             {/* Filtered class list */}
             {(() => {
               const day      = resWeekDays[resDayIdx]
-              const dayAvail = availableClases.filter(av => av.date === day.fullName)
+              const dayAvail = availableClases.filter(av =>
+                av.fecha ? av.fecha === day.isoDate : av.date === day.fullName
+              )
               return dayAvail.length > 0 ? (
                 <div className={s.pubList}>
                   {dayAvail.map(av => {
@@ -656,7 +667,13 @@ export default function ClientPanel() {
                                 <span className={s.pubAvailDot} />
                                 {av.spots} {av.spots === 1 ? 'lugar' : 'lugares'}
                               </span>
-                              <button className={s.pubReservarBtn} onClick={() => handleReserveClass(av)}>
+                              <button
+                                className={s.pubReservarBtn}
+                                onClick={() => {
+                                  const raw = clases.find(c => c.id === av.id)
+                                  setSeatSelectorClass(raw ?? null)
+                                }}
+                              >
                                 RESERVAR
                               </button>
                             </>
@@ -908,6 +925,13 @@ export default function ClientPanel() {
         )}
         </div>{/* /content */}
       </main>
+
+      {seatSelectorClass && (
+        <SeatSelector
+          cls={seatSelectorClass}
+          onClose={() => setSeatSelectorClass(null)}
+        />
+      )}
     </div>
   )
 }

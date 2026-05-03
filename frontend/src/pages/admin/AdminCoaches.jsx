@@ -22,7 +22,7 @@ const FORM_VACIO = {
   nombre:       '',
   email:        '',
   password:     '123456',
-  especialidad: 'Stride',
+  especialidad: 'Stryde X',
   bio:          '',
   foto:         null,
 }
@@ -416,7 +416,7 @@ function ModalHorario({ coach, onClose }) {
                   <tr key={c.id}>
                     <td style={{ fontWeight: 500 }}>{c.nombre}</td>
                     <td>
-                      <span className={`${styles.badge} ${c.tipo === 'Stride' ? styles.badgeStride : styles.badgeSlow}`}>
+                      <span className={`${styles.badge} ${!c.tipo?.toLowerCase().includes('slow') ? styles.badgeStride : styles.badgeSlow}`}>
                         {c.tipo}
                       </span>
                     </td>

@@ -6,10 +6,13 @@ import styles from './AdminPanel.module.css'
 import { useCoachesStore }   from '@/stores/coachesStore'
 import { useProductosStore } from '@/stores/productosStore'
 import { useClasesStore }    from '@/stores/clasesStore'
+import { useReservasStore }  from '@/stores/reservasStore'
 import { usePaquetesStore }  from '@/stores/paquetesStore'
 import { useUsuariosStore }  from '@/stores/usuariosStore'
+import { reservarClase as reservarClaseService, cancelarReserva as cancelarReservaService } from '@/services/reservasService'
 import { borrarCoachService } from '@/services/coachesService'
 import { useDisciplinasStore } from '@/stores/disciplinasStore'
+import SeatSelector from '@/features/clases/SeatSelector'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign } from 'lucide-react'
@@ -99,6 +102,7 @@ export default function AdminPanel() {
   const { productos, agregarProducto,
           editarProducto, eliminarProducto }               = useProductosStore()
   const { clases, reservas, agregarClase, editarClase, eliminarClase } = useClasesStore()
+  const { reservas: todasReservas, getReservasByClase } = useReservasStore()
   const { paquetes, agregarPaquete, editarPaquete, eliminarPaquete, marcarDestacado } = usePaquetesStore()
   const { usuarios, agregarUsuario, editarUsuario }       = useUsuariosStore()
   const { disciplinas, agregarDisciplina, eliminarDisciplina } = useDisciplinasStore()
@@ -136,10 +140,18 @@ export default function AdminPanel() {
   // Coach form
   const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: '', email: '', telefono: '', bio: '', estado: 'activo' })
   // Clase form — publicarEn: ISO datetime string o '' (publicar inmediatamente)
-  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '' })
+  //              fecha:      YYYY-MM-DD o '' (si vacío → clase recurrente cada semana)
+  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+  // Clase — ver alumnos
+  const [modalAlumnosClase, setModalAlumnosClase] = useState(null) // clase | null
+  const [alumnoAgregarId,   setAlumnoAgregarId]   = useState('')
+  const [adminSeatSelector, setAdminSeatSelector] = useState(null) // { cls, userId } | null
+  // Clase — selección múltiple
+  const [selectMode,     setSelectMode]     = useState(false)
+  const [selectedIds,    setSelectedIds]    = useState(new Set())
   // Clase — editar
   const [modalEditClase,  setModalEditClase]  = useState(null)  // clase | null
-  const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '' })
+  const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
   // Paquete form (crear)
   const [paqueteForm, setPaqueteForm] = useState({ nombre: '', tipo: 'mensual', numClases: '', precio: '', vigencia: '', descripcion: '', destacado: false })
   // Paquete — editar
@@ -446,9 +458,9 @@ export default function AdminPanel() {
                   <div className={styles.cardSub} style={{ marginBottom: 10 }}>Top coaches por clases</div>
                   <div className={styles.miniList}>
                     {[
-                      { i: 'M', name: 'Mafer', sub: 'Stride · Flow', val: '24' },
-                      { i: 'D', name: 'Daya',  sub: 'Flow',          val: '19' },
-                      { i: 'C', name: 'Coste', sub: 'Stride',        val: '17' },
+                      { i: 'M', name: 'Mafer', sub: 'Stryde X · Flow', val: '24' },
+                      { i: 'D', name: 'Daya',  sub: 'Flow',           val: '19' },
+                      { i: 'C', name: 'Coste', sub: 'Stryde X',       val: '17' },
                     ].map(({ i, name, sub, val }) => (
                       <div key={name} className={styles.miniItem}>
                         <div className={styles.miniAvatar}>{i}</div>
@@ -632,26 +644,122 @@ export default function AdminPanel() {
           <section className={`${styles.section}${activeSection === 'clases' ? ' ' + styles.active : ''}`}>
             <div className={styles.sectionTopRow}>
               <FilterChips
-                options={['Todas', 'Stride', 'Slow', 'Esta semana']}
+                options={['Todas', 'Stryde X', 'Slow', 'Esta semana']}
                 active={clasesFilter}
                 onChange={setClasesFilter}
               />
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('clase')}>
-                + Nueva Clase
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {selectMode && selectedIds.size > 0 && (
+                  <button
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                    style={{ background: '#ef4444', borderColor: '#ef4444' }}
+                    onClick={() => {
+                      if (!window.confirm(`¿Eliminar ${selectedIds.size} clase${selectedIds.size > 1 ? 's' : ''}?`)) return
+                      selectedIds.forEach(id => eliminarClase(id))
+                      toast.success(`${selectedIds.size} clase${selectedIds.size > 1 ? 's eliminadas' : ' eliminada'}`)
+                      setSelectedIds(new Set())
+                      setSelectMode(false)
+                    }}
+                  >
+                    🗑 Eliminar ({selectedIds.size})
+                  </button>
+                )}
+                <button
+                  className={`${styles.btn} ${selectMode ? styles.btnSecondary : styles.btnGhost}`}
+                  onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
+                >
+                  {selectMode ? '✕ Cancelar' : '☑ Seleccionar'}
+                </button>
+                {!selectMode && (
+                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('clase')}>
+                    + Nueva Clase
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Toolbar de selección */}
+            {selectMode && (() => {
+              const listaVisible = clasesFilter === 'Todas' || clasesFilter === 'Esta semana'
+                ? clases
+                : clases.filter(c => clasesFilter === 'Stryde X'
+                    ? !c.tipo?.toLowerCase().includes('slow')
+                    : c.tipo?.toLowerCase().includes('slow'))
+              const todosSeleccionados = listaVisible.length > 0 && listaVisible.every(c => selectedIds.has(c.id))
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', marginBottom: 8, fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={todosSeleccionados}
+                    onChange={() => {
+                      if (todosSeleccionados) {
+                        setSelectedIds(new Set())
+                      } else {
+                        setSelectedIds(new Set(listaVisible.map(c => c.id)))
+                      }
+                    }}
+                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
+                  />
+                  <span style={{ color: 'var(--muted)' }}>
+                    {selectedIds.size === 0
+                      ? 'Selecciona las clases que deseas eliminar'
+                      : `${selectedIds.size} de ${listaVisible.length} seleccionada${selectedIds.size > 1 ? 's' : ''}`}
+                  </span>
+                  {selectedIds.size > 0 && (
+                    <button
+                      style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                      onClick={() => setSelectedIds(new Set())}
+                    >
+                      Deseleccionar todo
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
+
             <div className={styles.card}>
               <div className={styles.clasesList}>
                 {(clasesFilter === 'Todas' || clasesFilter === 'Esta semana'
                   ? clases
-                  : clases.filter((c) => c.tipo === clasesFilter)
+                  : clases.filter((c) =>
+                      clasesFilter === 'Stryde X'
+                        ? !c.tipo?.toLowerCase().includes('slow')
+                        : c.tipo?.toLowerCase().includes('slow')
+                    )
                 ).map((c) => {
                   const pct          = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
                   const statusTag    = pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
                   const statusLabel  = pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
                   const isProgramada = c.publicarEn && new Date(c.publicarEn) > new Date()
+                  const isSelected  = selectedIds.has(c.id)
                   return (
-                    <div key={c.id} className={styles.claseItem} style={{ opacity: isProgramada ? 0.75 : 1 }}>
+                    <div
+                      key={c.id}
+                      className={styles.claseItem}
+                      style={{
+                        opacity: isProgramada ? 0.75 : 1,
+                        background: isSelected ? 'rgba(239,68,68,0.08)' : undefined,
+                        outline: isSelected ? '1px solid rgba(239,68,68,0.3)' : undefined,
+                        borderRadius: isSelected ? 'var(--radius-md)' : undefined,
+                        cursor: selectMode ? 'pointer' : undefined,
+                      }}
+                      onClick={selectMode ? () => {
+                        setSelectedIds(prev => {
+                          const next = new Set(prev)
+                          next.has(c.id) ? next.delete(c.id) : next.add(c.id)
+                          return next
+                        })
+                      } : undefined}
+                    >
+                      {selectMode && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          onClick={e => e.stopPropagation()}
+                          style={{ width: 16, height: 16, flexShrink: 0, accentColor: '#ef4444', cursor: 'pointer' }}
+                        />
+                      )}
                       <div className={styles.claseDay}>
                         <span style={{ fontSize: 9 }}>{ABBR_DIA[c.dia] || c.dia}</span>
                         <span className={styles.dayNum}>
@@ -676,7 +784,7 @@ export default function AdminPanel() {
                         </div>
                         <div className={styles.claseMeta}>{c.hora} · {c.duracion} min · {c.coachNombre}</div>
                       </div>
-                      <Tag color={c.tipo === 'Stride' ? 'pink' : 'blue'}>{c.tipo}</Tag>
+                      <Tag color={!c.tipo?.toLowerCase().includes('slow') ? 'pink' : 'blue'}>{c.tipo}</Tag>
                       <div className={styles.claseSpots}>
                         <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.cupoActual}/{c.cupoMax} lugares</div>
                         <div className={styles.spotsBar}>
@@ -684,7 +792,14 @@ export default function AdminPanel() {
                         </div>
                       </div>
                       {!isProgramada && <Tag color={statusTag}>{statusLabel}</Tag>}
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      {!selectMode && <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          className={`${styles.btn} ${styles.btnSecondary}`}
+                          style={{ padding: '6px 12px', fontSize: 12 }}
+                          onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
+                        >
+                          👥 {c.cupoActual}
+                        </button>
                         <button
                           className={`${styles.btn} ${styles.btnGhost}`}
                           style={{ padding: '6px 12px', fontSize: 12 }}
@@ -703,6 +818,7 @@ export default function AdminPanel() {
                               publicarEn:  c.publicarEn
                                 ? new Date(c.publicarEn).toISOString().slice(0, 16)
                                 : '',
+                              fecha:       c.fecha ?? '',
                             })
                           }}
                         >
@@ -719,7 +835,7 @@ export default function AdminPanel() {
                         >
                           🗑
                         </button>
-                      </div>
+                      </div>}
                     </div>
                   )
                 })}
@@ -1277,7 +1393,7 @@ export default function AdminPanel() {
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={async () => {
                   if (!coachForm.nombre.trim()) return
-                  const spec = [coachForm.disciplina, coachForm.especialidad].filter(Boolean).join(' · ') || 'Stride'
+                  const spec = [coachForm.disciplina, coachForm.especialidad].filter(Boolean).join(' · ') || 'Stryde X'
                   const resultado = await crearCoachService({
                     nombre:       coachForm.nombre,
                     email:        coachForm.email,
@@ -1335,11 +1451,44 @@ export default function AdminPanel() {
                 </select>
               </div>
               <div className={styles.formGroup}>
+                <label className={styles.formLabel}>
+                  Fecha específica
+                  <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)', marginLeft: 6 }}>
+                    — vacío = clase recurrente
+                  </span>
+                </label>
+                <input
+                  className={styles.formInput}
+                  type="date"
+                  value={claseForm.fecha}
+                  onChange={e => {
+                    const fecha = e.target.value
+                    if (fecha) {
+                      const DIAS_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+                      const dia = DIAS_ES[new Date(fecha + 'T12:00:00').getDay()]
+                      setClaseForm(f => ({ ...f, fecha, dia }))
+                    } else {
+                      setClaseForm(f => ({ ...f, fecha: '' }))
+                    }
+                  }}
+                />
+                {claseForm.fecha && (
+                  <p style={{ fontSize: 11, color: 'rgba(232,164,173,0.7)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
+                    Clase única para el {new Date(claseForm.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </p>
+                )}
+              </div>
+              <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Día de la semana</label>
                 <select className={styles.formSelect} value={claseForm.dia}
                   onChange={e => setClaseForm(f => ({ ...f, dia: e.target.value }))}>
                   {['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => <option key={d}>{d}</option>)}
                 </select>
+                {claseForm.fecha && (
+                  <p style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3, fontFamily: 'var(--font-body)' }}>
+                    Auto-calculado desde la fecha
+                  </p>
+                )}
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Hora de inicio</label>
@@ -1403,16 +1552,19 @@ export default function AdminPanel() {
                     cupoActual:  0,
                     descripcion: claseForm.descripcion,
                     publicarEn:  claseForm.publicarEn || null,
+                    fecha:       claseForm.fecha || null,
                   })
-                  const msg = claseForm.publicarEn
-                    ? `Clase programada para ${new Date(claseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}`
-                    : `Clase "${claseForm.nombre}" publicada`
+                  const msg = claseForm.fecha
+                    ? `Clase "${claseForm.nombre}" creada para el ${new Date(claseForm.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                    : claseForm.publicarEn
+                      ? `Clase programada para ${new Date(claseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}`
+                      : `Clase "${claseForm.nombre}" publicada`
                   toast.success(msg)
-                  setClaseForm({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '' })
+                  setClaseForm({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
                   closeModal()
                 }}
               >
-                {claseForm.publicarEn ? '📅 Programar' : 'Publicar ahora'}
+                {claseForm.fecha ? '📅 Crear para esta fecha' : claseForm.publicarEn ? '📅 Programar' : 'Publicar ahora'}
               </button>
             </div>
           </div>
@@ -1780,7 +1932,7 @@ export default function AdminPanel() {
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={() => {
                   if (!editCoachForm.nombre.trim()) return
-                  const spec = [editCoachForm.disciplina, editCoachForm.especialidad].filter(Boolean).join(' · ') || 'Stride'
+                  const spec = [editCoachForm.disciplina, editCoachForm.especialidad].filter(Boolean).join(' · ') || 'Stryde X'
                   editarCoach(modalEditCoach.id, {
                     nombre:       editCoachForm.nombre,
                     especialidad: spec,
@@ -1845,6 +1997,34 @@ export default function AdminPanel() {
                     <option key={c.id} value={c.nombre}>{c.nombre}</option>
                   ))}
                 </select>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>
+                  Fecha específica
+                  <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)', marginLeft: 6 }}>
+                    — vacío = recurrente
+                  </span>
+                </label>
+                <input
+                  className={styles.formInput}
+                  type="date"
+                  value={editClaseForm.fecha}
+                  onChange={e => {
+                    const fecha = e.target.value
+                    if (fecha) {
+                      const DIAS_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+                      const dia = DIAS_ES[new Date(fecha + 'T12:00:00').getDay()]
+                      setEditClaseForm(f => ({ ...f, fecha, dia }))
+                    } else {
+                      setEditClaseForm(f => ({ ...f, fecha: '' }))
+                    }
+                  }}
+                />
+                {editClaseForm.fecha && (
+                  <p style={{ fontSize: 11, color: 'rgba(232,164,173,0.7)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
+                    Clase única — {new Date(editClaseForm.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </p>
+                )}
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Día de la semana</label>
@@ -1920,6 +2100,7 @@ export default function AdminPanel() {
                     cupoMax:     Number(editClaseForm.cupoMax) || 15,
                     descripcion: editClaseForm.descripcion,
                     publicarEn:  editClaseForm.publicarEn || null,
+                    fecha:       editClaseForm.fecha || null,
                   })
                   toast.success(`Clase "${editClaseForm.nombre}" actualizada`)
                   setModalEditClase(null)
@@ -1931,6 +2112,168 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* ── ALUMNOS DE CLASE ── */}
+      {modalAlumnosClase && (() => {
+        const cls      = modalAlumnosClase
+        const inscritos = getReservasByClase(cls.id)   // solo confirmadas
+        const inscrUser = inscritos.map(r => ({
+          ...r,
+          nombreUsuario: usuarios.find(u => u.id === r.userId)?.nombre ?? `Usuario #${r.userId}`,
+        }))
+        // Usuarios que NO están inscritos ya
+        const idsInscritos = new Set(inscritos.map(r => r.userId))
+        const disponibles  = usuarios.filter(u => !idsInscritos.has(u.id) && u.rol === 'cliente')
+
+        function handleCancelar(r) {
+          const res = cancelarReservaService(r.id, r.userId)
+          if (res.ok) toast.success(`Reserva de ${r.nombreUsuario} cancelada`)
+          else toast.error(res.error)
+        }
+
+        function handleAgregar() {
+          if (!alumnoAgregarId) return
+          const userId = Number(alumnoAgregarId)
+          const usuario = usuarios.find(u => u.id === userId)
+          // Admin override: si el usuario no tiene créditos, igual lo metemos directo
+          const res = reservarClaseService(userId, cls.id)
+          if (res.ok) {
+            toast.success(`${usuario?.nombre} inscrito en ${cls.nombre}`)
+            setAlumnoAgregarId('')
+          } else if (res.error === 'Sin créditos disponibles') {
+            // Force: agregar sin descontar crédito
+            const { agregarReserva } = useReservasStore.getState()
+            const { actualizarCupo } = useClasesStore.getState()
+            agregarReserva({
+              userId,
+              claseId:     cls.id,
+              claseNombre: cls.nombre,
+              claseHora:   cls.hora,
+              claseDia:    cls.dia,
+              coachNombre: cls.coachNombre,
+              tipo:        cls.tipo,
+              asiento:     null,
+              estado:      'confirmada',
+              fecha:       cls.fecha ?? new Date().toISOString().split('T')[0],
+            })
+            actualizarCupo(cls.id, 1)
+            toast.success(`${usuario?.nombre} inscrito manualmente (sin créditos descontados)`)
+            setAlumnoAgregarId('')
+          } else {
+            toast.error(res.error)
+          }
+        }
+
+        return (
+          <div
+            className={`${styles.modalOverlay} ${styles.open}`}
+            onClick={e => { if (e.target === e.currentTarget) setModalAlumnosClase(null) }}
+          >
+            <div className={styles.modal} style={{ maxWidth: 520 }}>
+              <div className={styles.modalHeader}>
+                <div>
+                  <div className={styles.modalTitle}>Alumnos — {cls.nombre}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--font-body)' }}>
+                    {cls.dia} · {cls.hora} · {cls.cupoActual}/{cls.cupoMax} inscritos
+                  </div>
+                </div>
+                <button className={styles.modalClose} onClick={() => setModalAlumnosClase(null)}>×</button>
+              </div>
+
+              {/* Lista de inscritos */}
+              <div style={{ marginBottom: 20 }}>
+                {inscrUser.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px 0', fontSize: 13, fontFamily: 'var(--font-body)' }}>
+                    Nadie inscrito aún
+                  </p>
+                ) : (
+                  <table className={styles.table} style={{ marginBottom: 0 }}>
+                    <thead>
+                      <tr>
+                        <th>Alumno</th>
+                        <th>Estado</th>
+                        <th style={{ textAlign: 'right' }}>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inscrUser.map(r => (
+                        <tr key={r.id}>
+                          <td style={{ fontWeight: 500 }}>{r.nombreUsuario}</td>
+                          <td>
+                            <span className={`${styles.miniTag} ${styles.tagGreen}`}>Confirmado</span>
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button
+                              className={`${styles.btn} ${styles.btnGhost}`}
+                              style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
+                              onClick={() => handleCancelar(r)}
+                            >
+                              Cancelar reserva
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Agregar alumno manualmente */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 10, fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Inscribir alumno manualmente
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select
+                    className={styles.formSelect}
+                    style={{ flex: 1, fontSize: 13 }}
+                    value={alumnoAgregarId}
+                    onChange={e => setAlumnoAgregarId(e.target.value)}
+                  >
+                    <option value="">Seleccionar usuario…</option>
+                    {disponibles.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.nombre} {u.paquete ? `· ${u.paquete}` : '· Sin paquete'}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className={`${styles.btn} ${styles.btnSecondary}`}
+                    style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
+                    onClick={handleAgregar}
+                    disabled={!alumnoAgregarId}
+                  >
+                    + Inscribir
+                  </button>
+                  <button
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                    style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
+                    onClick={() => alumnoAgregarId && setAdminSeatSelector({ cls, userId: Number(alumnoAgregarId) })}
+                    disabled={!alumnoAgregarId}
+                  >
+                    🪑 Elegir asiento
+                  </button>
+                </div>
+                {alumnoAgregarId && (() => {
+                  const u = usuarios.find(uu => uu.id === Number(alumnoAgregarId))
+                  if (!u) return null
+                  return (
+                    <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6, fontFamily: 'var(--font-body)' }}>
+                      {u.clasesPaquete === 999 ? 'Clases ilimitadas' : u.clasesPaquete > 0 ? `${u.clasesPaquete} crédito(s) disponibles` : '⚠️ Sin créditos — se inscribirá sin descontar'}
+                    </p>
+                  )
+                })()}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+                <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalAlumnosClase(null)}>
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── HORARIO COACH ── */}
       {modalHorarioCoach && (
@@ -1961,7 +2304,7 @@ export default function AdminPanel() {
                       {clasesCoach.map((c) => (
                         <tr key={c.id}>
                           <td style={{ fontWeight: 500 }}>{c.nombre}</td>
-                          <td><Tag color={c.tipo === 'Stride' ? 'pink' : 'blue'}>{c.tipo}</Tag></td>
+                          <td><Tag color={!c.tipo?.toLowerCase().includes('slow') ? 'pink' : 'blue'}>{c.tipo}</Tag></td>
                           <td>{c.dia}</td>
                           <td>{c.hora}</td>
                           <td style={{ color: 'var(--muted)', fontSize: 12 }}>{c.cupoActual}/{c.cupoMax}</td>
@@ -2385,6 +2728,22 @@ export default function AdminPanel() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── SEAT SELECTOR (admin: inscribir con asiento) ── */}
+      {adminSeatSelector && (
+        <SeatSelector
+          cls={adminSeatSelector.cls}
+          targetUserId={adminSeatSelector.userId}
+          adminForce
+          onSuccess={() => {
+            const u = usuarios.find(u => u.id === adminSeatSelector.userId)
+            toast.success(`${u?.nombre ?? 'Alumno'} inscrito correctamente`)
+            setAdminSeatSelector(null)
+            setAlumnoAgregarId('')
+          }}
+          onClose={() => setAdminSeatSelector(null)}
+        />
       )}
 
     </div>

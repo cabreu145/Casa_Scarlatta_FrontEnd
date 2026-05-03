@@ -22,8 +22,12 @@ const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', '
  */
 export function getClassesByDate(classes, date) {
   const dayName = DIAS[date.getDay()]
+  const y  = date.getFullYear()
+  const mo = String(date.getMonth() + 1).padStart(2, '0')
+  const d  = String(date.getDate()).padStart(2, '0')
+  const isoDate = `${y}-${mo}-${d}`
   return [...classes]
-    .filter((c) => c.dia === dayName)
+    .filter((c) => c.fecha ? c.fecha === isoDate : c.dia === dayName)
     .sort((a, b) => a.hora.localeCompare(b.hora))
 }
 
@@ -58,9 +62,17 @@ export function isPublished(cls) {
 
 export function getPublicClassesByDate(classes, date) {
   const dayName = DIAS[date.getDay()]
+  const y  = date.getFullYear()
+  const mo = String(date.getMonth() + 1).padStart(2, '0')
+  const d  = String(date.getDate()).padStart(2, '0')
+  const isoDate = `${y}-${mo}-${d}`
   const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
   return [...classes]
-    .filter((c) => c.dia === dayName && isPublished(c))
+    .filter((c) => {
+      // Specific-date class → match isoDate; recurring class → match day name
+      const matchDay = c.fecha ? c.fecha === isoDate : c.dia === dayName
+      return matchDay && isPublished(c)
+    })
     .sort((a, b) => toMin(a.hora) - toMin(b.hora))
 }
 

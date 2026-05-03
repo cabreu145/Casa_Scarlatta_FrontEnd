@@ -33,7 +33,7 @@ export async function crearCoachService(datos) {
   const nuevoCoach = coachesStore.agregarCoach({
     nombre:       datos.nombre,
     email:        datos.email,
-    especialidad: datos.especialidad || 'Stride',
+    especialidad: datos.especialidad || 'Stryde X',
     bio:          datos.bio || '',
     foto:         datos.foto || null,
     rating:       5.0,

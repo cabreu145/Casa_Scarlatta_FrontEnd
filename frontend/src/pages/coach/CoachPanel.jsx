@@ -5,8 +5,10 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import {
   LayoutDashboard, CalendarDays,
-  LogOut, ArrowLeft, X
+  LogOut, ArrowLeft, X, ChevronLeft, ChevronRight
 } from 'lucide-react'
+import { useReservasStore } from '@/stores/reservasStore'
+import { useUsuariosStore } from '@/stores/usuariosStore'
 import s from './CoachPanel.module.css'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -26,21 +28,20 @@ const hoyFecha = new Date()
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
 
-// Calcular inicio y fin de semana actual (lunes a domingo)
-const inicioSemana = new Date(hoyFecha)
-inicioSemana.setDate(hoyFecha.getDate() - (hoyFecha.getDay() === 0 ? 6 : hoyFecha.getDay() - 1))
-const finSemana = new Date(inicioSemana)
-finSemana.setDate(inicioSemana.getDate() + 6)
-
 const SECTION_META = {
-  dashboard:    { 
-    title: 'Dashboard',  
-    sub: `${DIAS_SEMANA[hoyFecha.getDay()]}, ${hoyFecha.getDate()} de ${MESES[hoyFecha.getMonth()]} · Casa Scarlatta` 
+  dashboard:    {
+    title: 'Dashboard',
+    sub: `${DIAS_SEMANA[hoyFecha.getDay()]}, ${hoyFecha.getDate()} de ${MESES[hoyFecha.getMonth()]} · Casa Scarlatta`
   },
-  'mis-clases': { 
-    title: 'Mis Clases', 
-    sub: `Semana del ${inicioSemana.getDate()} al ${finSemana.getDate()} de ${MESES[finSemana.getMonth()]}` 
-  },
+  'mis-clases': { title: 'Mis Clases', sub: '' },
+}
+
+// Helper: inicio de semana (lunes) dado un offset en semanas
+function calcInicioSemana(offsetSemanas) {
+  const base = new Date()
+  base.setDate(base.getDate() - (base.getDay() === 0 ? 6 : base.getDay() - 1) + offsetSemanas * 7)
+  base.setHours(0, 0, 0, 0)
+  return base
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -70,6 +71,7 @@ export default function CoachPanel() {
   const [activeSection, setActiveSection] = useState('dashboard')
   const KEYS = ['dom','lun','mar','mie','jue','vie','sab']
   const [selectedDay, setSelectedDay] = useState(KEYS[new Date().getDay()])
+  const [weekOffset, setWeekOffset]   = useState(0)
   const [modalClass, setModalClass]       = useState(null)  // class object | null
   const { usuario } = useAuth()
   const { clases } = useClasesStore()
@@ -81,19 +83,36 @@ export default function CoachPanel() {
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
   const clasesHoy = misClases.filter(c => c.dia === diaHoy)
+
+  // ── Semana dinámica ────────────────────────────────────────────────────────
+  const inicioSem = calcInicioSemana(weekOffset)
+  const finSem    = new Date(inicioSem); finSem.setDate(inicioSem.getDate() + 6)
+  const semanaLabel = inicioSem.getMonth() === finSem.getMonth()
+    ? `Semana del ${inicioSem.getDate()} al ${finSem.getDate()} de ${MESES[finSem.getMonth()]}`
+    : `Semana del ${inicioSem.getDate()} de ${MESES[inicioSem.getMonth()]} al ${finSem.getDate()} de ${MESES[finSem.getMonth()]}`
+
+  const WEEK_DAY_KEYS  = ['lun','mar','mie','jue','vie','sab','dom']
+  const WEEK_DAY_NAMES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
   const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date(inicioSemana)
-  d.setDate(inicioSemana.getDate() + i)
-  const keys = ['lun','mar','mie','jue','vie','sab','dom']
-  const names = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
-  const clasesDelDia = misClases.filter(c => c.dia === DIAS_SEMANA[d.getDay()])
-  return {
-    key:   keys[i],
-    name:  names[i],
-    num:   d.getDate(),
-    count: clasesDelDia.length > 0 ? `${clasesDelDia.length} clase${clasesDelDia.length > 1 ? 's' : ''}` : '—',
-  }
-})
+    const d    = new Date(inicioSem)
+    d.setDate(inicioSem.getDate() + i)
+    const diaNombre = DIAS_SEMANA[d.getDay()]
+    const y  = d.getFullYear()
+    const m  = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    const isoDate = `${y}-${m}-${dd}`
+    const clasesDelDia = misClases.filter(c =>
+      c.fecha ? c.fecha === isoDate : c.dia === diaNombre
+    )
+    return {
+      key:     WEEK_DAY_KEYS[i],
+      name:    WEEK_DAY_NAMES[i],
+      num:     d.getDate(),
+      isoDate,
+      isToday: d.toDateString() === hoy.toDateString(),
+      count:   clasesDelDia.length > 0 ? `${clasesDelDia.length} clase${clasesDelDia.length > 1 ? 's' : ''}` : '—',
+    }
+  })
   // ESC closes modal
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') setModalClass(null) }
@@ -153,7 +172,7 @@ export default function CoachPanel() {
         <div className={s.topbar}>
           <div className={s.topbarLeft}>
             <h1>{meta.title}</h1>
-            <p>{meta.sub}</p>
+            <p>{activeSection === 'mis-clases' ? semanaLabel : meta.sub}</p>
           </div>
           <div className={s.topbarRight}>
             <div className={s.topbarProfile}>
@@ -263,13 +282,53 @@ export default function CoachPanel() {
               <p style={{ fontSize:13, color:'var(--muted)', marginTop:4 }}>Alumnos inscritos en tus clases</p>
             </div>
 
-            {/* Week nav */}
+            {/* Week navigation header */}
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+              <button
+                onClick={() => { setWeekOffset(w => w - 1); setSelectedDay('lun') }}
+                style={{
+                  background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
+                  borderRadius:8, width:32, height:32, display:'flex', alignItems:'center',
+                  justifyContent:'center', cursor:'pointer', color:'var(--blush)', flexShrink:0,
+                  transition:'background 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
+              >
+                <ChevronLeft size={16} strokeWidth={2} />
+              </button>
+
+              <span style={{
+                flex:1, textAlign:'center', fontFamily:'var(--font-body)',
+                fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.45)',
+                letterSpacing:'0.1em', textTransform:'uppercase',
+              }}>
+                {semanaLabel}
+              </span>
+
+              <button
+                onClick={() => { setWeekOffset(w => w + 1); setSelectedDay('lun') }}
+                style={{
+                  background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
+                  borderRadius:8, width:32, height:32, display:'flex', alignItems:'center',
+                  justifyContent:'center', cursor:'pointer', color:'var(--blush)', flexShrink:0,
+                  transition:'background 0.2s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'}
+                onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
+              >
+                <ChevronRight size={16} strokeWidth={2} />
+              </button>
+            </div>
+
+            {/* Week day tabs */}
             <div className={s.weekNav}>
               {WEEK_DAYS.map(d => (
                 <button
                   key={d.key}
                   className={`${s.weekDayBtn} ${selectedDay === d.key ? s.active : ''}`}
                   onClick={() => setSelectedDay(d.key)}
+                  style={d.isToday && selectedDay !== d.key ? { outline:'1px solid rgba(194,107,122,0.4)' } : undefined}
                 >
                   <div className={s.wdbName}>{d.name}</div>
                   <div className={s.wdbNum}>{d.num}</div>
@@ -280,8 +339,11 @@ export default function CoachPanel() {
 
             {/* All classes table */}
             {(() => {
-              const dayName = DAY_KEY_TO_NAME[selectedDay]
-              const filtered = misClases.filter(c => c.dia === dayName)
+              const dayName  = DAY_KEY_TO_NAME[selectedDay]
+              const dayData  = WEEK_DAYS.find(d => d.key === selectedDay)
+              const filtered = misClases.filter(c =>
+                c.fecha ? c.fecha === dayData?.isoDate : c.dia === dayName
+              )
               return filtered.length > 0 ? (
                 <div className={s.card}>
                   <MisClasesTable classes={filtered} onOpen={openModal} />
@@ -359,7 +421,7 @@ function WeekTable({ classes, onOpen }) {
               </td>
               <td><span className={s2.mono} style={{ color:'var(--blush)' }}>{cls.hora}</span></td>
               <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
-              <td><span className={`${s2.pill} ${cls.tipo === 'Stride' ? s2.pillStride : s2.pillSlow}`}>{cls.tipo}</span></td>
+              <td><span className={`${s2.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s2.pillStride : s2.pillSlow}`}>{cls.tipo}</span></td>
               <td><span className={`${s2.mono} ${s2[color]}`} style={{ fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
               <td>
                 <div className={s2.availBar} style={{ width:60 }}>
@@ -430,7 +492,7 @@ function MisClasesTable({ classes, onOpen }) {
               </td>
               <td><span className={s2.mono} style={{ color: 'var(--blush)' }}>{cls.hora}</span></td>
               <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
-              <td><span className={`${s2.pill} ${cls.tipo === 'Stride' ? s2.pillStride : s2.pillSlow}`}>{cls.tipo}</span></td>
+              <td><span className={`${s2.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s2.pillStride : s2.pillSlow}`}>{cls.tipo}</span></td>
               <td><span className={s2.mono} style={{ color: color === 'red' ? '#E85A5A' : color === 'orange' ? '#E8924A' : '#5CB97A', fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
               <td><span className={s2.pill} style={stStyle}>{label}</span></td>
               <td>
@@ -451,8 +513,13 @@ function MisClasesTable({ classes, onOpen }) {
 
 function ClassModal({ cls, onClose }) {
   const s2 = s
-  const { reservas } = useClasesStore()
-  const alumnos = reservas.filter(r => r.claseId === cls.id && r.estado === 'confirmada')
+  const { getReservasByClase } = useReservasStore()
+  const { usuarios }           = useUsuariosStore()
+  const reservasClase = getReservasByClase(cls.id)
+  const alumnos = reservasClase.map(r => ({
+    ...r,
+    nombreUsuario: usuarios.find(u => u.id === r.userId)?.nombre ?? `Usuario #${r.userId}`,
+  }))
   const avail = cls.cupoMax - cls.cupoActual
   const availColor2 = avail === 0 ? 'var(--danger)' : avail <= cls.cupoMax * 0.5 ? 'var(--warning)' : 'var(--success)'
   const { label: statusLabel, cls: stCls } = classStatusLabel(cls.cupoActual, cls.cupoMax)

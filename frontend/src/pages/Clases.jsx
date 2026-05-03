@@ -88,7 +88,7 @@ export default function Clases() {
   )
   const navigate = useNavigate()
   const [searchParams]  = useSearchParams()
-  const [filter, setFilter]         = useState(searchParams.get('tipo') || 'Stride')
+  const [filter, setFilter]         = useState(searchParams.get('tipo') || 'Stryde X')
   const [selectedClass, setSelectedClass] = useState(null)
   const [weekOffset, setWeekOffset] = useState(0)
   const [selectedDate, setSelectedDate]   = useState(new Date())
@@ -97,11 +97,16 @@ export default function Clases() {
   const monthLabel = useMemo(() => getMonthLabel(days),     [days])
   const selectedIdx = days.findIndex((d) => isSameDay(d, selectedDate))
 
-  // Classes for the selected day, filtered by discipline, via service
+  // Classes for the selected day, filtered by discipline.
+  // Uses slow-based detection: anything that doesn't contain 'slow' is Stryde.
+  // This handles 'Stryde X', 'Slow', and any custom variant.
+  const isSlow = (tipo) => tipo?.toLowerCase().includes('slow')
   const dayClasses = useMemo(() => {
     const forDay = getPublicClassesByDate(allClasses, selectedDate)
-    return filter ? forDay.filter((c) => c.tipo === filter) : forDay
-  }, [selectedDate, filter])
+    return filter
+      ? forDay.filter((c) => isSlow(filter) ? isSlow(c.tipo) : !isSlow(c.tipo))
+      : forDay
+  }, [selectedDate, filter, allClasses])
 
   const handlePrevWeek = () => {
     if (weekOffset === 0) return
@@ -191,7 +196,7 @@ export default function Clases() {
               const { available, status } = getPublicAvailability(cls)
               const isFull  = status === 'full'
               const isLow   = status === 'low'
-              const location = cls.ubicacion ?? (cls.tipo === 'Stride' ? 'Studio A' : 'Studio B')
+              const location = cls.ubicacion ?? (!isSlow(cls.tipo) ? 'Studio A' : 'Studio B')
 
               const { bg, text } = avatarStyle(cls.coachNombre)
               const coachFoto   = coachFotoByName[cls.coachNombre] || null
@@ -229,8 +234,8 @@ export default function Clases() {
                   <div className={styles.classBody}>
                     <div className={styles.classTitleRow}>
                       <span className={styles.className}>{cls.nombre}</span>
-                      <span className={`${styles.typeBadge} ${cls.tipo === 'Stride' ? styles.typeBadgeStride : styles.typeBadgeSlow}`}>
-                        {cls.tipo === 'Stride' ? 'STRYDE' : 'SLOW'}
+                      <span className={`${styles.typeBadge} ${!isSlow(cls.tipo) ? styles.typeBadgeStride : styles.typeBadgeSlow}`}>
+                        {!isSlow(cls.tipo) ? 'STRYDE' : 'SLOW'}
                       </span>
                     </div>
                     <div className={styles.classMeta}>

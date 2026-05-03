@@ -1,7 +1,7 @@
 import styles from './ClassTypeFilter.module.css'
 
 const filters = [
-  { value: 'Stride', img: '/brand/Isotipo_SX.png', alt: 'STRYDE X' },
+  { value: 'Stryde X', img: '/brand/Isotipo_SX.png', alt: 'STRYDE X' },
   { value: 'Slow', img: '/brand/SLOW_ISOTIPO.png', alt: 'slow.' },
 ]
 

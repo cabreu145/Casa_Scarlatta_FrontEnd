@@ -48,7 +48,7 @@ export default function CoachMisClases() {
                   <td style={{ fontWeight: 600 }}>{c.hora}</td>
                   <td>{c.nombre}</td>
                   <td>
-                    <span className={`${styles.badge} ${c.tipo === 'Stride' ? styles.badgeStride : styles.badgeSlow}`}>
+                    <span className={`${styles.badge} ${!c.tipo?.toLowerCase().includes('slow') ? styles.badgeStride : styles.badgeSlow}`}>
                       {c.tipo}
                     </span>
                   </td>

@@ -35,7 +35,7 @@ const UBICACIONES = ['Studio A', 'Studio B', 'Sala Principal']
 
 const CLASE_VACIA_BASE = {
   nombre:      '',
-  tipo:        'Stride',
+  tipo:        'Stryde X',
   coachId:     '',
   coachNombre: '',
   dia:         'Lunes',
@@ -165,8 +165,8 @@ function ClassRow({ clase, onEdit, onDelete, onAlumnos }) {
           <span style={{
             fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700,
             letterSpacing: '0.1em', textTransform: 'uppercase',
-            color: clase.tipo === 'Stride' ? '#CC1A1A' : 'var(--brand-wine)',
-            background: clase.tipo === 'Stride' ? 'rgba(204,26,26,0.1)' : 'rgba(123,31,46,0.1)',
+            color: !clase.tipo?.toLowerCase().includes('slow') ? '#CC1A1A' : 'var(--brand-wine)',
+            background: !clase.tipo?.toLowerCase().includes('slow') ? 'rgba(204,26,26,0.1)' : 'rgba(123,31,46,0.1)',
             borderRadius: 'var(--radius-pill)', padding: '2px 9px',
           }}>
             {clase.tipo}
@@ -252,7 +252,11 @@ export default function AdminClases() {
   const { classes: clasesDelDia } = useClasses(selectedDate)
   const clasesFiltradas = useMemo(() => {
     if (disciplina === 'TODAS') return clasesDelDia
-    return clasesDelDia.filter((c) => c.tipo === disciplina)
+    return clasesDelDia.filter((c) =>
+      disciplina === 'Stryde X'
+        ? !c.tipo?.toLowerCase().includes('slow')
+        : c.tipo?.toLowerCase().includes('slow')
+    )
   }, [clasesDelDia, disciplina])
 
   // Selected day index in current week strip
@@ -360,7 +364,7 @@ export default function AdminClases() {
             }}>
               {/* Discipline filter */}
               <div style={{ display: 'flex', gap: 6 }}>
-                {[['TODAS', 'Todas'], ['Stride', 'STRYDE'], ['Slow', 'SLOW']].map(([val, label]) => (
+                {[['TODAS', 'Todas'], ['Stryde X', 'STRYDE'], ['Slow', 'SLOW']].map(([val, label]) => (
                   <button
                     key={val}
                     onClick={() => setDisciplina(val)}
@@ -532,7 +536,7 @@ export default function AdminClases() {
                     <td style={{ fontWeight: 600 }}>{c.hora}</td>
                     <td>{c.nombre}</td>
                     <td>
-                      <span className={`${styles.badge} ${c.tipo === 'Stride' ? styles.badgeStride : styles.badgeSlow}`}>
+                      <span className={`${styles.badge} ${!c.tipo?.toLowerCase().includes('slow') ? styles.badgeStride : styles.badgeSlow}`}>
                         {c.tipo}
                       </span>
                     </td>

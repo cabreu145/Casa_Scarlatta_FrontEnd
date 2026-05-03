@@ -25,7 +25,7 @@
  * @typedef {Object} Clase
  * @property {number}  id           - Identificador único
  * @property {string}  nombre       - Nombre de la clase
- * @property {string}  tipo         - 'Stride' | 'Slow'
+ * @property {string}  tipo         - 'Stryde X' | 'Slow'
  * @property {string}  dia          - 'Lunes' | 'Martes' | 'Miércoles' | 'Jueves' | 'Viernes' | 'Sábado' | 'Domingo'
  * @property {string}  hora         - Formato "HH:MM" — ej: "07:00"
  * @property {number}  duracion     - Duración en minutos
@@ -38,7 +38,7 @@
  */
 export const CLASES_MOCK = [
   {
-    id: 1, nombre: 'Stride Power', tipo: 'Stride', dia: 'Lunes', hora: '07:00',
+    id: 1, nombre: 'Stride Power', tipo: 'Stryde X', dia: 'Lunes', hora: '07:00',
     duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 18,
     descripcion: 'Sesión de potencia que combina fuerza funcional y cardio explosivo.',
@@ -50,7 +50,7 @@ export const CLASES_MOCK = [
     descripcion: 'Pilates de base consciente para fortalecer el core y mejorar la postura.',
   },
   {
-    id: 3, nombre: 'Stride Cardio', tipo: 'Stride', dia: 'Lunes', hora: '18:00',
+    id: 3, nombre: 'Stride Cardio', tipo: 'Stryde X', dia: 'Lunes', hora: '18:00',
     duracion: 45, coachId: 6, coachNombre: 'Ana Torres', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 3,
     descripcion: 'Cardio de alta intensidad con intervalos diseñados para quemar calorías.',
@@ -62,7 +62,7 @@ export const CLASES_MOCK = [
     descripcion: 'Meditación guiada con movimiento suave para comenzar el día con claridad.',
   },
   {
-    id: 5, nombre: 'Stride HIIT', tipo: 'Stride', dia: 'Martes', hora: '19:00',
+    id: 5, nombre: 'Stride HIIT', tipo: 'Stryde X', dia: 'Martes', hora: '19:00',
     duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 15,
     descripcion: 'Entrenamiento por intervalos de alta intensidad para elevar tu rendimiento.',
@@ -74,13 +74,13 @@ export const CLASES_MOCK = [
     descripcion: 'Stretching profundo con respiración consciente para liberar tensiones.',
   },
   {
-    id: 7, nombre: 'Stride Power', tipo: 'Stride', dia: 'Miércoles', hora: '17:00',
+    id: 7, nombre: 'Stride Power', tipo: 'Stryde X', dia: 'Miércoles', hora: '17:00',
     duracion: 50, coachId: 6, coachNombre: 'Ana Torres', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 2,
     descripcion: 'Sesión de potencia que combina fuerza funcional y cardio explosivo.',
   },
   {
-    id: 8, nombre: 'Stride Fuerza', tipo: 'Stride', dia: 'Jueves', hora: '07:00',
+    id: 8, nombre: 'Stride Fuerza', tipo: 'Stryde X', dia: 'Jueves', hora: '07:00',
     duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 12,
     descripcion: 'Entrenamiento de fuerza funcional con énfasis en técnica y progresión.',
@@ -92,7 +92,7 @@ export const CLASES_MOCK = [
     descripcion: 'Práctica de mindfulness en movimiento para conectar cuerpo y mente.',
   },
   {
-    id: 10, nombre: 'Stride Cardio', tipo: 'Stride', dia: 'Viernes', hora: '08:00',
+    id: 10, nombre: 'Stride Cardio', tipo: 'Stryde X', dia: 'Viernes', hora: '08:00',
     duracion: 45, coachId: 6, coachNombre: 'Ana Torres', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 14,
     descripcion: 'Cardio de alta intensidad con intervalos diseñados para quemar calorías.',
@@ -104,7 +104,7 @@ export const CLASES_MOCK = [
     descripcion: 'Pilates de base consciente para fortalecer el core y mejorar la postura.',
   },
   {
-    id: 12, nombre: 'Stride Weekend', tipo: 'Stride', dia: 'Sábado', hora: '09:00',
+    id: 12, nombre: 'Stride Weekend', tipo: 'Stryde X', dia: 'Sábado', hora: '09:00',
     duracion: 60, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 6,
     descripcion: 'Sesión especial de fin de semana: alta energía para cerrar la semana fuerte.',
@@ -129,7 +129,7 @@ export const CLASES_MOCK = [
  */
 export const COACHES_MOCK = [
   {
-    id: 2, nombre: 'Carlos Méndez', especialidad: 'Stride',
+    id: 2, nombre: 'Carlos Méndez', especialidad: 'Stryde X',
     bio: 'Especialista en entrenamiento funcional y cardio de alta intensidad. Más de 8 años de experiencia.',
     foto: null, activo: true,
   },
@@ -139,7 +139,7 @@ export const COACHES_MOCK = [
     foto: null, activo: true,
   },
   {
-    id: 6, nombre: 'Ana Torres', especialidad: 'Stride',
+    id: 6, nombre: 'Ana Torres', especialidad: 'Stryde X',
     bio: 'Entrenadora personal con especialización en cardio y acondicionamiento físico de alto rendimiento.',
     foto: null, activo: true,
   },
@@ -186,7 +186,7 @@ export const ESTADOS_RESERVA = {
  * @property {string}      claseHora   - Hora "HH:MM"
  * @property {string}      claseDia    - Día de la semana
  * @property {string}      coachNombre - Nombre del coach (desnormalizado)
- * @property {string}      tipo        - 'Stride' | 'Slow'
+ * @property {string}      tipo        - 'Stryde X' | 'Slow'
  * @property {string|null} asiento     - Etiqueta del asiento elegido o null
  * @property {string}      estado      - Valor de ESTADOS_RESERVA
  * @property {string}      fecha       - ISO date "YYYY-MM-DD"
@@ -201,7 +201,7 @@ export const RESERVAS_MOCK = [
   {
     id: 2, userId: 1, claseId: 5,
     claseNombre: 'Stride HIIT', claseHora: '19:00', claseDia: 'Martes',
-    coachNombre: 'Carlos Méndez', tipo: 'Stride',
+    coachNombre: 'Carlos Méndez', tipo: 'Stryde X',
     asiento: 'Fila 2, Asiento 4', estado: 'completada', fecha: '2026-04-15',
   },
   {
@@ -213,13 +213,13 @@ export const RESERVAS_MOCK = [
   {
     id: 4, userId: 1, claseId: 8,
     claseNombre: 'Stride Fuerza', claseHora: '07:00', claseDia: 'Jueves',
-    coachNombre: 'Carlos Méndez', tipo: 'Stride',
+    coachNombre: 'Carlos Méndez', tipo: 'Stryde X',
     asiento: 'Fila 3, Asiento 1', estado: 'confirmada', fecha: '2026-04-24',
   },
   {
     id: 5, userId: 4, claseId: 1,
     claseNombre: 'Stride Power', claseHora: '07:00', claseDia: 'Lunes',
-    coachNombre: 'Carlos Méndez', tipo: 'Stride',
+    coachNombre: 'Carlos Méndez', tipo: 'Stryde X',
     asiento: 'Fila 1, Asiento 3', estado: 'completada', fecha: '2026-04-21',
   },
 ]

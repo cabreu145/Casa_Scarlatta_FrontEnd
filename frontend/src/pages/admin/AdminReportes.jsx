@@ -50,8 +50,8 @@ export default function AdminReportes() {
   const clientesActivos = clientes.filter((u) => u.activo)
   const nuevosEsteMes = clientes.filter((u) => u.fechaRegistro >= '2026-04-01')
 
-  const strideClases = clases.filter((c) => c.tipo === 'Stride')
-  const slowClases = clases.filter((c) => c.tipo === 'Slow')
+  const strideClases = clases.filter((c) => !c.tipo?.toLowerCase().includes('slow'))
+  const slowClases   = clases.filter((c) =>  c.tipo?.toLowerCase().includes('slow'))
   const ocupStrideAvg = strideClases.length
     ? Math.round(strideClases.reduce((a, c) => a + (c.cupoActual / c.cupoMax) * 100, 0) / strideClases.length)
     : 0
@@ -129,7 +129,7 @@ export default function AdminReportes() {
                   label={c.nombre}
                   pct={c.porcentaje}
                   value={`${c.reservas}`}
-                  color={c.tipo === 'Slow' ? 'var(--brand-rose)' : undefined}
+                  color={c.tipo?.toLowerCase().includes('slow') ? 'var(--brand-rose)' : undefined}
                 />
               ))}
             </div>
@@ -144,7 +144,7 @@ export default function AdminReportes() {
             </div>
             <div className={styles.panelTitle}>Ocupación promedio por sala</div>
             <div className={styles.barChart}>
-              <BarRow label="Stride" pct={ocupStrideAvg} value={`${ocupStrideAvg}%`} />
+              <BarRow label="Stryde X" pct={ocupStrideAvg} value={`${ocupStrideAvg}%`} />
               <BarRow label="Slow" pct={ocupSlowAvg} value={`${ocupSlowAvg}%`} color="var(--brand-rose)" />
             </div>
           </div>

@@ -13,11 +13,11 @@ import { create } from 'zustand'
 
 export const useReportesStore = create(() => ({
   clasesMasPopulares: [
-    { nombre: 'Stride HIIT', tipo: 'Stride', reservas: 87, porcentaje: 100 },
+    { nombre: 'Stride HIIT', tipo: 'Stryde X', reservas: 87, porcentaje: 100 },
     { nombre: 'Slow Pilates', tipo: 'Slow', reservas: 74, porcentaje: 85 },
-    { nombre: 'Stride Power', tipo: 'Stride', reservas: 68, porcentaje: 78 },
+    { nombre: 'Stride Power', tipo: 'Stryde X', reservas: 68, porcentaje: 78 },
     { nombre: 'Slow Meditación', tipo: 'Slow', reservas: 55, porcentaje: 63 },
-    { nombre: 'Stride Weekend', tipo: 'Stride', reservas: 49, porcentaje: 56 },
+    { nombre: 'Stride Weekend', tipo: 'Stryde X', reservas: 49, porcentaje: 56 },
   ],
 
   asistenciaPorCoach: [

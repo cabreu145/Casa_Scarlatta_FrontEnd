@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import { ROUTES } from '@/constants/routes'
 import { reservarClase } from '@/services/reservasService'
+import { useReservasStore } from '@/stores/reservasStore'
+import { useClasesStore }   from '@/stores/clasesStore'
 import styles from './SeatSelector.module.css'
 
 const LAYOUT = {
@@ -35,7 +37,15 @@ function parseSeat(id) {
   }
 }
 
-export default function SeatSelector({ cls, onClose }) {
+/**
+ * Props:
+ *  cls           – raw class object from clasesStore
+ *  onClose       – called when the modal should be dismissed
+ *  targetUserId  – (optional) reserve for this user instead of the logged-in user (admin use)
+ *  onSuccess     – (optional) called after a successful reservation instead of navigating to client dashboard
+ *  adminForce    – (optional) if true, bypass credit check and force-inscribe when credits are missing
+ */
+export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, adminForce = false }) {
   const navigate = useNavigate()
   const { isAuthenticated, usuario } = useAuth()
 
@@ -58,8 +68,10 @@ export default function SeatSelector({ cls, onClose }) {
     setSelected(prev => (prev === id ? null : id))
   }
 
+  const userId = targetUserId ?? usuario?.id
+
   function confirm() {
-    if (!isAuthenticated) {
+    if (!adminForce && !isAuthenticated) {
       navigate(ROUTES.login, {
         state: { selectedClass: cls, selectedSeat: selected },
       })
@@ -67,11 +79,25 @@ export default function SeatSelector({ cls, onClose }) {
     }
 
     const { row, col } = parseSeat(selected)
-    const resultado = reservarClase(usuario.id, cls.id, seatLabel(row, col))
+    const resultado = reservarClase(userId, cls.id, seatLabel(row, col))
 
     if (!resultado.ok) {
       if (resultado.error === 'Sin créditos disponibles') {
-        setSinClases(true)
+        if (adminForce) {
+          // Force-inscribe bypassing credit check
+          useReservasStore.getState().agregarReserva({
+            id:      Date.now(),
+            userId,
+            claseId: cls.id,
+            asiento: seatLabel(row, col),
+            estado:  'confirmada',
+            fecha:   new Date().toISOString().split('T')[0],
+          })
+          useClasesStore.getState().actualizarCupo(cls.id, 1)
+          setConfirmado(true)
+        } else {
+          setSinClases(true)
+        }
       } else {
         toast.error(resultado.error)
       }
@@ -84,8 +110,12 @@ export default function SeatSelector({ cls, onClose }) {
   function handleCerrar() {
     setConfirmado(false)
     setSelected(null)
-    onClose()
-    navigate(ROUTES.cliente.dashboard)
+    if (onSuccess) {
+      onSuccess()
+    } else {
+      onClose()
+      navigate(ROUTES.cliente.dashboard)
+    }
   }
 
   if (sinClases) {
