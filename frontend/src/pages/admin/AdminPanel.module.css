@@ -492,6 +492,7 @@
   font-size: 10px;
   font-weight: 600;
   margin-top: 2px;
+  white-space: nowrap;
 }
 
 .tagGreen { background: rgba(76,175,80,0.15); color: #4CAF50; }
@@ -562,12 +563,14 @@
   text-transform: uppercase;
   color: var(--muted);
   border-bottom: 1px solid var(--muted-2);
+  white-space: nowrap;
 }
 
 .tableWrap td {
   padding: 12px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.04);
   color: rgba(255,255,255,0.85);
+  white-space: nowrap;
 }
 
 .tableWrap tr:hover td { background: rgba(255,255,255,0.02); }

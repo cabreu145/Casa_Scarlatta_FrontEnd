@@ -97,7 +97,7 @@ export default function AdminPanel() {
   const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
   const { productos, agregarProducto,
           editarProducto, eliminarProducto }               = useProductosStore()
-  const { clases, agregarClase, editarClase, eliminarClase } = useClasesStore()
+  const { clases, reservas, agregarClase, editarClase, eliminarClase } = useClasesStore()
   const { paquetes, agregarPaquete, editarPaquete, eliminarPaquete, marcarDestacado } = usePaquetesStore()
   const { usuarios, agregarUsuario, editarUsuario }       = useUsuariosStore()
   const { disciplinas, agregarDisciplina, eliminarDisciplina } = useDisciplinasStore()
@@ -106,6 +106,7 @@ export default function AdminPanel() {
   const [posFilter, setPosFilter]         = useState('Todos')
   const [clasesFilter, setClasesFilter]   = useState('Todas')
   const [usersFilter, setUsersFilter]     = useState('Todos')
+  const [usersSearch, setUsersSearch]     = useState('')
 
   // Product CRUD state
   const [prodModal, setProdModal]               = useState(null) // null | 'nuevo' | { producto }
@@ -146,6 +147,15 @@ export default function AdminPanel() {
   const [nuevoBeneficio,   setNuevoBeneficio]   = useState('')
   // Usuario form
   const [usuarioForm, setUsuarioForm] = useState({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
+  // Usuario — ver detalle
+  const [modalVerUsuario, setModalVerUsuario] = useState(null)
+  // Usuario — asignar paquete desde modal Ver
+  const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
+  // Asignación pendiente de pago: se aplica al procesar la venta en POS
+  const [pendingAsignacion, setPendingAsignacion] = useState(null)
+  // null | { userId, userName, paqSel, fechaVencimiento, metodoPago }
+  // Notas editables en modal Ver
+  const [editNotas, setEditNotas] = useState('')
 
   function closeModal() { setModalType(null) }
   function openModal(type) { setModalType(type) }
@@ -163,7 +173,10 @@ export default function AdminPanel() {
     setCart((c) => c.filter((_, i) => i !== idx))
   }
 
-  function clearCart() { setCart([]) }
+  function clearCart() {
+    setCart([])
+    setPendingAsignacion(null)
+  }
 
   function handleSaveProducto() {
     if (!prodForm.nombre.trim()) return
@@ -194,8 +207,28 @@ export default function AdminPanel() {
   }
 
   function procesarVenta() {
-    if (cart.length === 0) { alert('Agrega productos a la orden primero'); return }
-    alert('✅ Venta procesada exitosamente')
+    if (cart.length === 0) { toast.error('Agrega productos a la orden primero'); return }
+
+    // Si hay una asignación pendiente, activar el paquete ahora que se cobró
+    if (pendingAsignacion) {
+      const { userId, userName, paqSel, fechaVencimiento, metodoPago } = pendingAsignacion
+      const clasesPaquete = paqSel.clases === 0 ? 999 : paqSel.clases
+      editarUsuario(userId, {
+        paquete:      paqSel.nombre,
+        clasesPaquete,
+        paqueteInfo: {
+          fechaCompra:      new Date().toISOString().split('T')[0],
+          fechaVencimiento,
+          estado:           'Activo',
+          metodoPago,
+          precio:           paqSel.precio,
+        },
+      })
+      toast.success(`✅ Paquete "${paqSel.nombre}" activado para ${userName}`)
+      setPendingAsignacion(null)
+    } else {
+      toast.success('✅ Venta procesada exitosamente')
+    }
     clearCart()
   }
 
@@ -811,9 +844,10 @@ export default function AdminPanel() {
                   )}
                 </div>
                 <div className={styles.productGrid}>
-                  {(posFilter === '📦 Paquetes' ? PAQUETES_POS : productos.filter(
-                      (p) => p.activo && (posFilter === 'Todos' || p.categoria === posFilter)
-                    )).map((p) => {
+                  {(posFilter === '📦 Paquetes'
+                      ? paquetes.map(p => ({ ...p, emoji: p.clases === 0 ? '⭐' : '📦', name: `${p.nombre} — ${p.clases === 0 ? 'Ilimitadas' : p.clases + ' clases'}`, price: p.precio }))
+                      : productos.filter((p) => p.activo && (posFilter === 'Todos' || p.categoria === posFilter))
+                    ).map((p) => {
                     const isPaquete = posFilter === '📦 Paquetes'
                     const emoji  = p.emoji || categoryEmoji(p.categoria)
                     const nombre = p.nombre ?? p.name
@@ -848,6 +882,20 @@ export default function AdminPanel() {
 
               <div className={styles.cartSection}>
                 <div className={styles.cartTitle}>🛒 Orden actual</div>
+                {/* Aviso de asignación pendiente */}
+                {pendingAsignacion && (
+                  <div style={{ margin: '0 0 10px', padding: '10px 12px', background: 'rgba(234,179,8,0.1)', borderRadius: 8, border: '1px solid rgba(234,179,8,0.3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 13 }}>🔒</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#fbbf24', fontFamily: 'var(--font-body)' }}>
+                        Paquete pendiente de cobro
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
+                      👤 <strong style={{ color: 'rgba(255,255,255,0.85)' }}>{pendingAsignacion.userName}</strong> recibirá el paquete <strong style={{ color: 'rgba(255,255,255,0.85)' }}>{pendingAsignacion.paqSel.nombre}</strong> al confirmar el cobro.
+                    </div>
+                  </div>
+                )}
                 <div className={styles.cartItems}>
                   {cart.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 20, color: 'var(--muted)', fontSize: 13 }}>
@@ -856,8 +904,8 @@ export default function AdminPanel() {
                   ) : (
                     cart.map((item, idx) => (
                       <div key={idx} className={styles.cartItem}>
-                        <span>{item.name}</span>
-                        <span className={styles.cartItemPrice}>${item.price}</span>
+                        <span>{item.emoji} {item.name}</span>
+                        <span className={styles.cartItemPrice}>${item.price.toLocaleString()}</span>
                         <button className={styles.cartRemoveBtn} onClick={() => removeFromCart(idx)}>×</button>
                       </div>
                     ))
@@ -906,7 +954,13 @@ export default function AdminPanel() {
             <div className={styles.card}>
               <div className={styles.cardHeader}>
                 <div className={styles.usersFilters}>
-                  <input className={styles.searchInput} placeholder="🔍 Buscar usuario..." type="text" />
+                  <input
+                    className={styles.searchInput}
+                    placeholder="🔍 Buscar usuario..."
+                    type="text"
+                    value={usersSearch}
+                    onChange={e => setUsersSearch(e.target.value)}
+                  />
                   {['Todos', 'Activos', 'Sin paquete', 'Por vencer'].map((f) => (
                     <button
                       key={f}
@@ -933,6 +987,16 @@ export default function AdminPanel() {
                   <tbody>
                     {usuarios
                       .filter((u) => {
+                        // Filtro de búsqueda por texto
+                        if (usersSearch.trim()) {
+                          const q = usersSearch.toLowerCase()
+                          const coincide = u.nombre?.toLowerCase().includes(q)
+                            || u.email?.toLowerCase().includes(q)
+                            || u.paquete?.toLowerCase().includes(q)
+                            || u.telefono?.toLowerCase().includes(q)
+                          if (!coincide) return false
+                        }
+                        // Filtro por chip
                         if (usersFilter === 'Activos')     return u.activo && u.paquete
                         if (usersFilter === 'Sin paquete') return !u.paquete
                         if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
@@ -944,9 +1008,9 @@ export default function AdminPanel() {
                         const label = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
                         return (
                           <tr key={u.id}>
-                            <td>
+                            <td style={{ whiteSpace: 'normal', minWidth: 140 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div className={styles.miniAvatar} style={{ width: 28, height: 28, fontSize: 12 }}>{u.nombre[0]}</div>
+                                <div className={styles.miniAvatar} style={{ width: 28, height: 28, fontSize: 12, flexShrink: 0 }}>{u.nombre[0]}</div>
                                 {u.nombre}
                               </div>
                             </td>
@@ -956,7 +1020,7 @@ export default function AdminPanel() {
                             <td>—</td>
                             <td className={styles.mono}>—</td>
                             <td><Tag color={tag}>{label}</Tag></td>
-                            <td><button className={styles.coachBtn} style={{ width: 60 }}>Ver</button></td>
+                            <td><button className={styles.coachBtn} style={{ width: 60 }} onClick={() => { setModalVerUsuario(u); setAsignarPaqueteForm({ paqueteNombre: u.paquete || '', metodoPago: 'efectivo' }); setEditNotas(u.notas || '') }}>Ver</button></td>
                           </tr>
                         )
                       })}
@@ -1447,9 +1511,11 @@ export default function AdminPanel() {
                 <select className={styles.formSelect} value={usuarioForm.paquete}
                   onChange={e => setUsuarioForm(f => ({ ...f, paquete: e.target.value }))}>
                   <option value="ninguno">Sin paquete por ahora</option>
-                  <option value="individual">Por clase — $120</option>
-                  <option value="10clases">10 clases — $850</option>
-                  <option value="mensual">Mensual — $1,200</option>
+                  {paquetes.map(p => (
+                    <option key={p.id} value={p.nombre}>
+                      {p.nombre} — ${p.precio.toLocaleString()} {p.clases === 0 ? '(ilimitadas)' : `(${p.clases} clases)`}
+                    </option>
+                  ))}
                 </select>
               </div>
               {usuarioForm.paquete !== 'ninguno' && (
@@ -1476,27 +1542,42 @@ export default function AdminPanel() {
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={() => {
                   if (!usuarioForm.nombre.trim() || !usuarioForm.email.trim()) return
-                  const clasesPaquete =
-                    usuarioForm.paquete === 'ninguno'  ? 0   :
-                    usuarioForm.paquete === 'mensual'  ? 999 :
-                    usuarioForm.paquete === '10clases' ? 10  : 1
-                  agregarUsuario({
+                  const paqSel = paquetes.find(p => p.nombre === usuarioForm.paquete)
+                  let fechaVencimiento = null
+                  if (paqSel?.vigencia) {
+                    const dias = parseInt(paqSel.vigencia) || 30
+                    const v = new Date(); v.setDate(v.getDate() + dias)
+                    fechaVencimiento = v.toISOString().split('T')[0]
+                  }
+                  // Crear usuario SIN paquete — se asigna solo al confirmar el cobro en POS
+                  const nuevoUsuario = agregarUsuario({
                     nombre:          usuarioForm.nombre,
                     email:           usuarioForm.email,
                     telefono:        usuarioForm.telefono,
                     fechaNacimiento: usuarioForm.nacimiento,
                     rol:             'cliente',
                     activo:          true,
-                    paquete:         usuarioForm.paquete === 'ninguno' ? null : usuarioForm.paquete,
-                    clasesPaquete,
-                    paqueteInfo: {
-                      fechaCompra: new Date().toISOString().split('T')[0],
-                      estado:      'Activo',
-                      tipo:        'Individual',
-                    },
-                    notas: usuarioForm.notas,
+                    paquete:         null,
+                    clasesPaquete:   0,
+                    paqueteInfo:     null,
+                    notas:           usuarioForm.notas,
                   })
                   toast.success(`${usuarioForm.nombre} dado de alta`)
+                  if (paqSel) {
+                    // Guardar asignación pendiente: se ejecuta al cobrar en POS
+                    setPendingAsignacion({
+                      userId:           nuevoUsuario.id,
+                      userName:         usuarioForm.nombre,
+                      paqSel,
+                      fechaVencimiento,
+                      metodoPago:       usuarioForm.metodoPago,
+                    })
+                    const labelClases = paqSel.clases === 0 ? 'Ilimitadas' : `${paqSel.clases} clases`
+                    setCart([{ name: `${paqSel.nombre} — ${labelClases}`, price: paqSel.precio, emoji: paqSel.clases === 0 ? '⭐' : '📦', cliente: usuarioForm.nombre }])
+                    setPosFilter('📦 Paquetes')
+                    setActiveSection('pos')
+                    toast(`💳 Cobra el paquete para activarlo`, { icon: '🛒', duration: 4000 })
+                  }
                   setUsuarioForm({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
                   closeModal()
                 }}
@@ -2017,6 +2098,204 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* ── VER USUARIO ── */}
+      {modalVerUsuario && (() => {
+        const u = modalVerUsuario
+        const reservasU = reservas.filter(r => String(r.userId) === String(u.id))
+        const paqActivo = paquetes.find(p => p.nombre === u.paquete)
+        const restantes = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
+        const tag   = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
+        const label = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
+        const [vistaVer, setVistaVer] = [null, null] // placeholder, manejado abajo
+
+        return (
+          <div
+            className={`${styles.modalOverlay} ${styles.open}`}
+            onClick={e => { if (e.target === e.currentTarget) setModalVerUsuario(null) }}
+          >
+            <div className={styles.modal} style={{ maxWidth: 580, padding: 0, overflow: 'hidden' }}>
+
+              {/* Header con avatar */}
+              <div style={{ background: 'linear-gradient(135deg, var(--crimson) 0%, #5C1018 100%)', padding: '24px 28px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                  {u.nombre[0]}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: '#fff', fontFamily: 'var(--font-display)' }}>{u.nombre}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', fontFamily: 'var(--font-body)', marginTop: 2 }}>{u.email}</div>
+                </div>
+                <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, fontFamily: 'var(--font-body)', background: u.activo && u.paquete ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)', color: u.activo && u.paquete ? '#4ade80' : '#f87171', border: `1px solid ${u.activo && u.paquete ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.3)'}` }}>
+                  {label}
+                </span>
+                <button className={styles.modalClose} onClick={() => setModalVerUsuario(null)} style={{ color: 'rgba(255,255,255,0.7)', marginLeft: 8 }}>×</button>
+              </div>
+
+              <div style={{ padding: '24px 28px', maxHeight: '70vh', overflowY: 'auto' }}>
+
+                {/* ── DATOS DEL CLIENTE ── */}
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>Datos del cliente</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px' }}>
+                    {[
+                      { label: 'Teléfono',        val: u.telefono || '—' },
+                      { label: 'Nacimiento',       val: u.fechaNacimiento || '—' },
+                      { label: 'Paquete activo',   val: u.paquete || 'Sin paquete' },
+                      { label: 'Clases restantes', val: String(restantes) },
+                      { label: 'Vencimiento',      val: u.paqueteInfo?.fechaVencimiento || '—' },
+                      { label: 'Miembro desde',    val: u.paqueteInfo?.fechaCompra || '—' },
+                    ].map(({ label, val }) => (
+                      <div key={label} style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid var(--muted-2)' }}>
+                        <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{label}</div>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', fontFamily: 'var(--font-body)', fontWeight: 500 }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 6 }}>
+                      📝 Notas / Observaciones
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <textarea
+                        value={editNotas}
+                        onChange={e => setEditNotas(e.target.value)}
+                        placeholder="Lesiones, preferencias, cómo nos encontró…"
+                        rows={2}
+                        style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--muted-2)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'rgba(255,255,255,0.85)', fontFamily: 'var(--font-body)', resize: 'vertical', outline: 'none' }}
+                      />
+                      <button
+                        className={`${styles.btn} ${styles.btnGhost}`}
+                        style={{ alignSelf: 'flex-start', padding: '7px 12px', fontSize: 12 }}
+                        onClick={() => {
+                          editarUsuario(u.id, { notas: editNotas })
+                          setModalVerUsuario({ ...u, notas: editNotas })
+                          toast.success('Notas actualizadas')
+                        }}
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── ASIGNAR / CAMBIAR PAQUETE ── */}
+                <div style={{ marginBottom: 24, padding: '16px 18px', background: 'rgba(123,30,34,0.12)', borderRadius: 10, border: '1px solid rgba(123,30,34,0.25)' }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>
+                    {u.paquete ? 'Cambiar paquete' : 'Asignar paquete'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <select
+                        className={styles.formSelect}
+                        value={asignarPaqueteForm.paqueteNombre}
+                        onChange={e => setAsignarPaqueteForm(f => ({ ...f, paqueteNombre: e.target.value }))}
+                      >
+                        <option value="">Sin paquete</option>
+                        {paquetes.map(p => (
+                          <option key={p.id} value={p.nombre}>
+                            {p.nombre} — ${p.precio.toLocaleString()} {p.clases === 0 ? '(ilimitadas)' : `(${p.clases} clases)`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <select
+                        className={styles.formSelect}
+                        value={asignarPaqueteForm.metodoPago}
+                        onChange={e => setAsignarPaqueteForm(f => ({ ...f, metodoPago: e.target.value }))}
+                      >
+                        <option value="efectivo">Efectivo</option>
+                        <option value="tarjeta">Tarjeta</option>
+                        <option value="transferencia">Transferencia</option>
+                      </select>
+                    </div>
+                    <button
+                      className={`${styles.btn} ${styles.btnPrimary}`}
+                      style={{ whiteSpace: 'nowrap' }}
+                      onClick={() => {
+                        const paqSel = paquetes.find(p => p.nombre === asignarPaqueteForm.paqueteNombre)
+                        if (!paqSel) {
+                          // Quitar paquete — esto sí se aplica de inmediato (sin cobro)
+                          editarUsuario(u.id, { paquete: null, clasesPaquete: 0, paqueteInfo: null })
+                          setModalVerUsuario(null)
+                          toast.success(`Paquete removido de ${u.nombre}`)
+                          return
+                        }
+                        let fechaVencimiento = null
+                        if (paqSel.vigencia) {
+                          const dias = parseInt(paqSel.vigencia) || 30
+                          const v = new Date(); v.setDate(v.getDate() + dias)
+                          fechaVencimiento = v.toISOString().split('T')[0]
+                        }
+                        // Guardar asignación pendiente — se activa al cobrar en POS
+                        setPendingAsignacion({
+                          userId:          u.id,
+                          userName:        u.nombre,
+                          paqSel,
+                          fechaVencimiento,
+                          metodoPago:      asignarPaqueteForm.metodoPago,
+                        })
+                        const labelClases = paqSel.clases === 0 ? 'Ilimitadas' : `${paqSel.clases} clases`
+                        setCart([{ name: `${paqSel.nombre} — ${labelClases}`, price: paqSel.precio, emoji: paqSel.clases === 0 ? '⭐' : '📦', cliente: u.nombre }])
+                        setPosFilter('📦 Paquetes')
+                        setModalVerUsuario(null)
+                        setActiveSection('pos')
+                        toast(`💳 Cobra para activar el paquete`, { icon: '🛒', duration: 4000 })
+                      }}
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── HISTORIAL DE RESERVAS ── */}
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>
+                    Historial de reservas ({reservasU.length})
+                  </div>
+                  {reservasU.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted)', fontSize: 13, fontFamily: 'var(--font-body)' }}>
+                      Este usuario no tiene reservas registradas.
+                    </div>
+                  ) : (
+                    <div style={{ borderRadius: 8, border: '1px solid var(--muted-2)', overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            {['Clase', 'Fecha', 'Hora', 'Estado'].map(h => (
+                              <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.1em', borderBottom: '1px solid var(--muted-2)' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reservasU.slice().reverse().map((r, i) => (
+                            <tr key={r.id} style={{ borderBottom: i < reservasU.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                              <td style={{ padding: '9px 12px', fontSize: 13, fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.85)' }}>{r.claseNombre}</td>
+                              <td style={{ padding: '9px 12px', fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--muted)' }}>{r.fecha || r.claseDia}</td>
+                              <td style={{ padding: '9px 12px', fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--muted)' }}>{r.claseHora}</td>
+                              <td style={{ padding: '9px 12px' }}>
+                                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-body)', background: r.estado === 'confirmada' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)', color: r.estado === 'confirmada' ? '#4ade80' : '#f87171', border: `1px solid ${r.estado === 'confirmada' ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}` }}>
+                                  {r.estado === 'confirmada' ? 'Confirmada' : 'Cancelada'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: '16px 28px', borderTop: '1px solid var(--muted-2)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalVerUsuario(null)}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── GESTIONAR DISCIPLINAS ── */}
       {modalDisciplinas && (

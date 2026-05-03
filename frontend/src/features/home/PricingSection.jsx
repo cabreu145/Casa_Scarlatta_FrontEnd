@@ -8,7 +8,6 @@ export default function PricingSection() {
   const { paquetes } = usePaquetesStore()
   const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
-  const mensuales = paquetes.filter((p) => p.categoria === 'mensual')
   const [modalPaquete, setModalPaquete] = useState(null)
 
   const handleComprar = (p) => {
@@ -36,13 +35,13 @@ export default function PricingSection() {
             Elige tu Paquete
           </h2>
           <p className="font-sans text-sm font-light text-[#A08878] tracking-wide">
-            Suscripciones mensuales sin permanencia. Cancela cuando quieras.
+            Elige el plan que mejor se adapte a ti. Sin permanencia.
           </p>
         </div>
 
         {/* Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-          {mensuales.map((p) => (
+          {paquetes.map((p) => (
             <PaqueteCard key={p.id} p={p} onComprar={() => handleComprar(p)} />
           ))}
         </div>

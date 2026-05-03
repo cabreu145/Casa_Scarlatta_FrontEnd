@@ -814,7 +814,7 @@ export default function ClientPanel() {
             </div>
 
             <div className={`${s.grid3}`} style={{ marginBottom: 28 }}>
-              {paquetes.filter(p => p.categoria === 'mensual').map(p => {
+              {paquetes.map(p => {
                 const esPlanActual = usuario?.paquete === p.nombre
                 return (
                   <div key={p.id} className={`${s.pricingCard} ${p.destacado ? s.featured : ''}`}>
