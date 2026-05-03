@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
+import { useClasesStore } from '@/stores/clasesStore'
+import { useCoachesStore } from '@/stores/coachesStore'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
 import {
   LayoutDashboard, CalendarDays,
   LogOut, ArrowLeft, X
@@ -89,6 +92,16 @@ export default function CoachPanel() {
   const [activeSection, setActiveSection] = useState('dashboard')
   const [selectedDay, setSelectedDay]     = useState('jue')
   const [modalClass, setModalClass]       = useState(null)  // class object | null
+  const { usuario } = useAuth()
+  const { clases } = useClasesStore()
+  const { coaches } = useCoachesStore()
+  // Buscar el coach por email para obtener su id real
+  const coachData = coaches.find(c => c.email === usuario?.email)
+  const misClases = clases.filter(c => c.coachNombre === coachData?.nombre)
+  const hoy = new Date()
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const diaHoy = DIAS[hoy.getDay()]
+  const clasesHoy = misClases.filter(c => c.dia === diaHoy)
   // ESC closes modal
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') setModalClass(null) }
@@ -153,10 +166,14 @@ export default function CoachPanel() {
           <div className={s.topbarRight}>
             <div className={s.topbarProfile}>
               <div>
-                <div className={s.coachName}>Carlos Méndez</div>
-                <div className={s.coachRole}>Coach · STRYDE</div>
+                <div className={s.coachName}>Coach · {usuario?.nombre ?? 'Coach'}</div>
+                <div className={s.coachRole}>{usuario?.especialidad ?? ''}</div>
               </div>
-              <div className={s.coachAvatar} style={{ width:36, height:36, fontSize:15 }}>C</div>
+              <div className={s.coachAvatar} style={{ width:36, height:36, fontSize:15, overflow:'hidden', padding:0 }}> 
+                {usuario?.foto
+                 ? <img src={usuario.foto} alt={usuario.nombre} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                 : usuario?.nombre?.charAt(0).toUpperCase() ?? 'C'}
+              </div>
             </div>
           </div>
         </div>
@@ -168,9 +185,9 @@ export default function CoachPanel() {
           <div className={`${s.section} ${activeSection === 'dashboard' ? s.active : ''}`}>
             {/* Greeting */}
             <div className={s.greeting}>
-              <h1 className={s.greetingTitle}>Hola, Carlos 👋</h1>
+              <h1 className={s.greetingTitle}>Hola, {usuario?.nombre?.split(' ')[0] ?? 'Coach'} 👋</h1>
               <p className={s.greetingSub}>
-                Tienes <strong style={{ color:'var(--blush)' }}>1 clase</strong> hoy · Jueves, 24 de abril
+                Tienes <strong style={{ color:'var(--blush)' }}>{clasesHoy.length} {clasesHoy.length === 1 ? 'clase' : 'clases'}</strong> hoy · {diaHoy}, {hoy.getDate()} de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][hoy.getMonth()]}
               </p>
             </div>
 
@@ -180,13 +197,15 @@ export default function CoachPanel() {
                 <div className={s.cardHeader}>
                   <div>
                     <div className={s.cardTitle}>Clases de hoy</div>
-                    <div className={s.cardSubtitle}>Jueves, 24 de abril</div>
+                    <div className={s.cardSubtitle}>{diaHoy}, {hoy.getDate()} de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][hoy.getMonth()]}</div>
                   </div>
-                  <span className={`${s.pill} ${s.pillStride}`}>1 clase</span>
+                  <span className={`${s.pill} ${s.pillStride}`}>{clasesHoy.length} {clasesHoy.length === 1 ? 'clase' : 'clases'}</span>
                 </div>
                 <div className={s.cardBody}>
-                  {CLASSES.filter(c => c.today).map(cls => {
-                    const color = availColor(cls.booked, cls.cap)
+                  {clasesHoy.map(cls => {
+                    const booked = cls.cupoActual
+                    const cap = cls.cupoMax
+                    const color = availColor(booked, cap)
                     return (
                       <div key={cls.id} className={s.classCardToday} onClick={() => openModal(cls)}>
                         <div className={s.classTimeBlock}>
@@ -195,16 +214,16 @@ export default function CoachPanel() {
                         </div>
                         <div className={s.classDivider} />
                         <div className={s.classInfo}>
-                          <div className={s.className}>{cls.name}</div>
+                          <div className={s.className}>{cls.nombre}</div>
                           <div className={s.classMeta}>
                             <span className={`${s.pill} ${s.pillStride}`}>Stride</span>
                             <span className={s.classLocation}>Sala Principal</span>
                           </div>
                         </div>
                         <div className={s.classAvailability}>
-                          <div className={`${s.availCount} ${s[color]}`}>{cls.booked} / {cls.cap}</div>
+                          <div className={`${s.availCount} ${s[color]}`}>{cls.cupoActual} / {cls.cupoMax}</div>
                           <div className={s.availBar}>
-                            <div className={`${s.availFill} ${s[color]}`} style={{ width: `${cls.booked / cls.cap * 100}%` }} />
+                            <div className={`${s.availFill} ${s[color]}`} style={{ width: `${cls.cupoActual / cls.cupoMax * 100}%` }} />
                           </div>
                         </div>
                       </div>
@@ -241,7 +260,7 @@ export default function CoachPanel() {
                   <div className={s.cardSubtitle}>Semana del 21 al 27 de abril</div>
                 </div>
               </div>
-              <WeekTable classes={CLASSES} onOpen={openModal} />
+              <WeekTable classes={misClases} onOpen={openModal} />
             </div>
           </div>
 
@@ -270,7 +289,7 @@ export default function CoachPanel() {
             {/* All classes table */}
             {(() => {
               const dayName = DAY_KEY_TO_NAME[selectedDay]
-              const filtered = CLASSES.filter(c => c.day === dayName)
+              const filtered = misClases.filter(c => c.dia === dayName)
               return filtered.length > 0 ? (
                 <div className={s.card}>
                   <MisClasesTable classes={filtered} onOpen={openModal} />
@@ -304,6 +323,9 @@ export default function CoachPanel() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 function WeekTable({ classes, onOpen }) {
   const s2 = s
+  const hoy = new Date()
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const diaHoy = DIAS[hoy.getDay()]
   return (
     <table className={s2.weekTable}>
       <thead>
@@ -319,27 +341,28 @@ function WeekTable({ classes, onOpen }) {
       </thead>
       <tbody>
         {classes.map(cls => {
-          const color = availColor(cls.booked, cls.cap)
+          const color = availColor(cls.cupoActual, cls.cupoMax)
+          const esHoy = cls.dia === diaHoy          
           return (
             <tr
               key={cls.id}
-              className={cls.today ? s2.todayRow : ''}
+              className={esHoy ? s2.todayRow : ''}
               style={{ cursor:'pointer' }}
               onClick={() => onOpen(cls)}
             >
               <td>
-                {cls.today
-                  ? <strong style={{ color:'var(--blush)' }}>Jueves · hoy</strong>
-                  : cls.day
+                {esHoy
+                   ? <strong style={{ color:'var(--blush)' }}>{cls.dia} · hoy</strong>
+                  : cls.dia
                 }
               </td>
               <td><span className={s2.mono} style={{ color:'var(--blush)' }}>{cls.hora}</span></td>
-              <td style={{ fontWeight:500, color:'#fff' }}>{cls.name}</td>
-              <td><span className={`${s2.pill} ${s2.pillStride}`}>Stride</span></td>
-              <td><span className={`${s2.mono} ${s2[color]}`} style={{ fontSize:13 }}>{cls.booked} / {cls.cap}</span></td>
+              <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
+              <td><span className={`${s2.pill} ${cls.tipo === 'Stride' ? s2.pillStride : s2.pillSlow}`}>{cls.tipo}</span></td>
+              <td><span className={`${s2.mono} ${s2[color]}`} style={{ fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
               <td>
                 <div className={s2.availBar} style={{ width:60 }}>
-                  <div className={`${s2.availFill} ${s2[color]}`} style={{ width:`${cls.booked/cls.cap*100}%` }} />
+                  <div className={`${s2.availFill} ${s2[color]}`} style={{ width:`${cls.cupoActual/cls.cupoMax*100}%` }} />
                 </div>
               </td>
               <td>
@@ -360,6 +383,9 @@ function WeekTable({ classes, onOpen }) {
 
 function MisClasesTable({ classes, onOpen }) {
   const s2 = s
+  const hoy = new Date()
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const diaHoy = DIAS[hoy.getDay()]
   return (
     <table className={s2.weekTable}>
       <thead>
@@ -375,26 +401,27 @@ function MisClasesTable({ classes, onOpen }) {
       </thead>
       <tbody>
         {classes.map(cls => {
-          const color = availColor(cls.booked, cls.cap)
-          const { label, cls: stCls } = classStatusLabel(cls.booked, cls.cap)
+          const color = availColor(cls.cupoActual, cls.cupoMax)
+          const { label, cls: stCls } = classStatusLabel(cls.cupoActual, cls.cupoMax)
           const stStyle = statusColor(stCls)
+          const esHoy = cls.dia === diaHoy
           return (
             <tr
               key={cls.id}
-              className={cls.today ? s2.todayRow : ''}
+              className={esHoy ? s2.todayRow : ''}
               style={{ cursor:'pointer' }}
               onClick={() => onOpen(cls)}
             >
               <td>
-                {cls.today
-                  ? <strong style={{ color:'var(--blush)' }}>Jueves · hoy</strong>
-                  : cls.day
+                {esHoy
+                  ? <strong style={{ color: 'var(--blush)' }}>{cls.dia} · hoy</strong>
+                  : cls.dia
                 }
               </td>
-              <td><span className={s2.mono} style={{ color:'var(--blush)' }}>{cls.hora}</span></td>
-              <td style={{ fontWeight:500, color:'#fff' }}>{cls.name}</td>
-              <td><span className={`${s2.pill} ${s2.pillStride}`}>Stride</span></td>
-              <td><span className={s2.mono} style={{ color: color === 'red' ? '#E85A5A' : color === 'orange' ? '#E8924A' : '#5CB97A', fontSize:13 }}>{cls.booked} / {cls.cap}</span></td>
+              <td><span className={s2.mono} style={{ color: 'var(--blush)' }}>{cls.hora}</span></td>
+              <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
+              <td><span className={`${s2.pill} ${cls.tipo === 'Stride' ? s2.pillStride : s2.pillSlow}`}>{cls.tipo}</span></td>
+              <td><span className={s2.mono} style={{ color: color === 'red' ? '#E85A5A' : color === 'orange' ? '#E8924A' : '#5CB97A', fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
               <td><span className={s2.pill} style={stStyle}>{label}</span></td>
               <td>
                 <button
@@ -414,41 +441,44 @@ function MisClasesTable({ classes, onOpen }) {
 
 function ClassModal({ cls, onClose }) {
   const s2 = s
-  const avail = cls.cap - cls.booked
-  const availColor2 = avail === 0 ? 'var(--danger)' : avail <= cls.cap * 0.5 ? 'var(--warning)' : 'var(--success)'
-  const { label: statusLabel, cls: stCls } = classStatusLabel(cls.booked, cls.cap)
+  const { reservas } = useClasesStore()
+  const alumnos = reservas.filter(r => r.claseId === cls.id && r.estado === 'confirmada')
+  const avail = cls.cupoMax - cls.cupoActual
+  const availColor2 = avail === 0 ? 'var(--danger)' : avail <= cls.cupoMax * 0.5 ? 'var(--warning)' : 'var(--success)'
+  const { label: statusLabel, cls: stCls } = classStatusLabel(cls.cupoActual, cls.cupoMax)
   const statusClr = stCls === 'danger' ? 'var(--danger)' : stCls === 'warning' ? 'var(--warning)' : 'var(--success)'
-  const dayInfo = `${cls.day} · ${cls.hora} · ${cls.booked}/${cls.cap} inscritos`
-  const subset = ALL_STUDENTS.slice(0, cls.booked)
+  const dayInfo = `${cls.dia} · ${cls.hora} · ${cls.cupoActual}/${cls.cupoMax} inscritos`
 
   return (
     <div className={s2.modal}>
       <div className={s2.modalHeader}>
         <div>
-          <div className={s2.modalTitle}>{cls.name}</div>
+          <div className={s2.modalTitle}>{cls.nombre}</div>
           <div className={s2.modalSub}>{dayInfo}</div>
         </div>
         <button className={s2.modalClose} onClick={onClose}><X size={14} strokeWidth={2} /></button>
       </div>
       <div className={s2.modalStats}>
-        <div className={s2.modalStat}>Capacidad: <strong>{cls.cap}</strong></div>
-        <div className={s2.modalStat}>Inscritos: <strong>{cls.booked}</strong></div>
+        <div className={s2.modalStat}>Capacidad: <strong>{cls.cupoMax}</strong></div>
+        <div className={s2.modalStat}>Inscritos: <strong>{cls.cupoActual}</strong></div>
         <div className={s2.modalStat}>Disponibles: <strong style={{ color: availColor2 }}>{avail}</strong></div>
         <div className={s2.modalStat}>Estado: <strong style={{ color: statusClr }}>{statusLabel}</strong></div>
       </div>
       <div className={s2.modalBody}>
-        {subset.map(st => (
-          <div key={st.id} className={s2.studentRow} style={{ borderRadius: 'var(--radius-sm)', marginBottom: 0 }}>
-            <div className={s2.studentAvatar}>{st.name.charAt(0)}</div>
-            <div className={s2.studentName}>{st.name}</div>
-            <span className={`${s2.statusBadge} ${st.status === 'confirmed' ? s2.statusConfirmed : s2.statusPending}`}>
-              {st.status === 'confirmed' ? 'Confirmado' : 'Pendiente'}
-            </span>
+        {alumnos.length === 0 ? (
+          <p style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
+            No hay alumnos inscritos aún
+          </p>
+        ) : alumnos.map(r => (
+          <div key={r.id} className={s2.studentRow}>
+            <div className={s2.studentAvatar}>{r.nombreUsuario?.charAt(0) ?? '?'}</div>
+            <div className={s2.studentName}>{r.nombreUsuario ?? `Usuario #${r.userId}`}</div>
+            <span className={`${s2.statusBadge} ${s2.statusConfirmed}`}>Confirmado</span>
           </div>
         ))}
       </div>
       <div className={s2.modalFooter}>
-        <span style={{ fontSize:12, color:'var(--muted)' }}>{cls.booked} alumnos inscritos</span>
+        <span style={{ fontSize:12, color:'var(--muted)' }}>{cls.cupoActual} alumnos inscritos</span>
         <button className={`${s2.btn} ${s2.btnGhost}`} onClick={onClose}>Cerrar</button>
       </div>
     </div>
