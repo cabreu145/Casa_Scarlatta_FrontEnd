@@ -68,21 +68,14 @@ export const useGastosStore = create(
        * // [BACKEND] → GET /api/gastos?rango=mes
        */
       getGastosByRango: (rango) => {
-        const ahora = new Date()
+        const hoy    = new Date().toISOString().split('T')[0]
+        const semana = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        const mes    = hoy.slice(0, 7) // 'YYYY-MM'
         return get().gastos.filter(g => {
-          const fecha = new Date(g.fecha)
-          if (rango === 'dia') {
-            return fecha.toDateString() === ahora.toDateString()
-          }
-          if (rango === 'semana') {
-            const hace7 = new Date(ahora)
-            hace7.setDate(ahora.getDate() - 7)
-            return fecha >= hace7
-          }
-          return (
-            fecha.getMonth()    === ahora.getMonth() &&
-            fecha.getFullYear() === ahora.getFullYear()
-          )
+          const f = g.fecha ?? ''
+          if (rango === 'dia')    return f === hoy
+          if (rango === 'semana') return f >= semana
+          return f.slice(0, 7) === mes
         })
       },
 

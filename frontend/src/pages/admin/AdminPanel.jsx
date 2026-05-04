@@ -123,7 +123,7 @@ export default function AdminPanel() {
   const { transacciones }                                               = useTransaccionesStore()
   const { cortes, ejecutarCorte }                                       = useCortesStore()
   const { usuario }                                                     = useAuthStore()
-  const { gastos, registrarGasto, getGastosByRango, eliminarGasto }    = useGastosStore()
+  const { gastos, registrarGasto, eliminarGasto }                       = useGastosStore()
 
   // ── Finanzas state ───────────────────────────────────────────────────────────
   const [rangoFin,   setRangoFin]   = useState('mes')
@@ -131,25 +131,33 @@ export default function AdminPanel() {
   const [formGasto,  setFormGasto]  = useState({ concepto: '', monto: '', tipo: TIPOS_GASTO.OPERATIVO })
 
   // ── Finanzas computed ────────────────────────────────────────────────────────
-  const txFin = useMemo(() => {
-    const ahora = new Date()
-    return transacciones
-      .filter(tx => {
-        const fecha = new Date(tx.fecha)
-        if (rangoFin === 'dia')    return fecha.toDateString() === ahora.toDateString()
-        if (rangoFin === 'semana') { const h = new Date(ahora); h.setDate(ahora.getDate()-7); return fecha >= h }
-        return fecha.getMonth() === ahora.getMonth() && fecha.getFullYear() === ahora.getFullYear()
-      })
-      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-  }, [transacciones, rangoFin])
+  const finHoy = new Date().toISOString().split('T')[0]   // 'YYYY-MM-DD' UTC
+
+  // Filtra por rango usando comparación de strings para evitar problemas de zona horaria
+  function filtrarPorRango(arr, rango, campo = 'fecha') {
+    const hoy     = finHoy
+    const semana  = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const mesActual = hoy.slice(0, 7) // 'YYYY-MM'
+    return arr.filter(item => {
+      const f = item[campo] ?? ''
+      if (rango === 'dia')    return f === hoy
+      if (rango === 'semana') return f >= semana
+      return f.slice(0, 7) === mesActual
+    })
+  }
+
+  const txFin = useMemo(() =>
+    filtrarPorRango(transacciones, rangoFin)
+      .sort((a, b) => (b.fecha > a.fecha ? 1 : -1)),
+    [transacciones, rangoFin, finHoy]
+  )
 
   const finTotalIngresos = useMemo(() => txFin.filter(tx => tx.monto > 0).reduce((s, tx) => s + tx.monto, 0), [txFin])
   const finTicketProm    = txFin.length > 0 ? Math.round(finTotalIngresos / txFin.length) : 0
-  const finIngresosDia   = useMemo(() => getDailyIncome(),               [transacciones])
-  const finGastosRango   = useMemo(() => getGastosByRango(rangoFin),     [gastos, rangoFin])
+  const finIngresosDia   = useMemo(() => getDailyIncome(),                             [transacciones])
+  const finGastosRango   = useMemo(() => filtrarPorRango(gastos, rangoFin),            [gastos, rangoFin, finHoy])
   const finGastosTotales = useMemo(() => finGastosRango.reduce((s, g) => s + g.monto, 0), [finGastosRango])
   const finUtilidad      = finTotalIngresos - finGastosTotales
-  const finHoy           = new Date().toISOString().split('T')[0]
   const yaHayCorteHoy    = cortes.some(c => c.fecha === finHoy)
 
   const [cart, setCart]                   = useState([])

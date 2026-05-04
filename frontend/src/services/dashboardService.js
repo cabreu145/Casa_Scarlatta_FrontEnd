@@ -26,24 +26,15 @@ import { usePaquetesStore }      from '../stores/paquetesStore'
  * @param {'dia'|'semana'|'mes'} rango
  * @returns {object[]}
  */
-function filtrarPorRango(transacciones, rango) {
-  const ahora = new Date()
-  return transacciones.filter(tx => {
-    const fecha = new Date(tx.fecha)
-    if (rango === 'dia') {
-      return fecha.toDateString() === ahora.toDateString()
-    }
-    if (rango === 'semana') {
-      const hace7 = new Date(ahora)
-      hace7.setDate(ahora.getDate() - 7)
-      return fecha >= hace7
-    }
-    if (rango === 'mes') {
-      return (
-        fecha.getMonth()    === ahora.getMonth() &&
-        fecha.getFullYear() === ahora.getFullYear()
-      )
-    }
+function filtrarPorRango(arr, rango, campo = 'fecha') {
+  const hoy    = new Date().toISOString().split('T')[0]
+  const semana = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const mes    = hoy.slice(0, 7) // 'YYYY-MM'
+  return arr.filter(item => {
+    const f = (item[campo] ?? item.creadaEn ?? '').slice(0, 10)
+    if (rango === 'dia')    return f === hoy
+    if (rango === 'semana') return f >= semana
+    if (rango === 'mes')    return f.slice(0, 7) === mes
     return true
   })
 }
@@ -64,7 +55,7 @@ export function getDashboardMetrics(rango = 'mes') {
   const { clases }        = useClasesStore.getState()
   const { paquetes }      = usePaquetesStore.getState()
 
-  const txRango = filtrarPorRango(transacciones, rango)
+  const txRango = filtrarPorRango(transacciones, rango, 'fecha')
 
   // Ingresos totales del rango (excluye reembolsos/montos negativos)
   const ingresosTotales = txRango
@@ -86,26 +77,8 @@ export function getDashboardMetrics(rango = 'mes') {
       )
     : 0
 
-  // Reservas del rango
-  const reservasRango = reservas.filter(r => {
-    const fecha = new Date(r.fecha ?? r.creadaEn)
-    const ahora = new Date()
-    if (rango === 'dia') {
-      return fecha.toDateString() === ahora.toDateString()
-    }
-    if (rango === 'semana') {
-      const hace7 = new Date(ahora)
-      hace7.setDate(ahora.getDate() - 7)
-      return fecha >= hace7
-    }
-    if (rango === 'mes') {
-      return (
-        fecha.getMonth()    === ahora.getMonth() &&
-        fecha.getFullYear() === ahora.getFullYear()
-      )
-    }
-    return true
-  })
+  // Reservas del rango  (usa campo 'fecha', cae en 'creadaEn' como fallback via filtrarPorRango)
+  const reservasRango = filtrarPorRango(reservas, rango, 'fecha')
 
   const totalReservas       = reservasRango.length
   const reservasConfirmadas = reservasRango.filter(r => r.estado === 'confirmada').length
