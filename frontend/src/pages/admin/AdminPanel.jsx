@@ -1,8 +1,16 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
+import { getDashboardMetrics } from '@/services/dashboardService'
+import ModalPago from '../../features/pagos/ModalPago'
+import { procesarVentaService, getDailyIncome, getIncomeByCategory } from '../../services/ventaService'
 import { crearCoachService } from '@/services/coachesService'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import styles from './AdminPanel.module.css'
+import { useTransaccionesStore }       from '@/stores/transaccionesStore'
+import { useGastosStore, TIPOS_GASTO } from '@/stores/gastosStore'
+import { useCortesStore }              from '@/stores/cortesStore'
+import { useAuthStore }                from '@/stores/authStore'
 import { useCoachesStore }   from '@/stores/coachesStore'
 import { useProductosStore } from '@/stores/productosStore'
 import { useClasesStore }    from '@/stores/clasesStore'
@@ -34,7 +42,7 @@ const SECTIONS = {
   paquetes:  { title: 'Paquetes',         sub: 'Gestión y venta de paquetes'         },
   pos:       { title: 'Punto de Venta',   sub: 'Venta de productos en estudio'       },
   usuarios:  { title: 'Usuarios',         sub: 'Gestión de miembros activos'         },
-  finanzas:  { title: 'Finanzas',         sub: 'Análisis financiero mensual'         },
+  finanzas:  { title: 'Finanzas',         sub: 'Resumen financiero del estudio'       },
   reportes:  { title: 'Reportes',         sub: 'Descarga y análisis de datos'        },
 }
 
@@ -98,6 +106,10 @@ export default function AdminPanel() {
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('dashboard')
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
+  const [rangoDash, setRangoDash]         = useState('mes')
+  const [modalPago, setModalPago]         = useState(false)
+  const metricas = useMemo(() => getDashboardMetrics(rangoDash), [rangoDash])
+
   const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
   const { productos, agregarProducto,
           editarProducto, eliminarProducto }               = useProductosStore()
@@ -106,6 +118,39 @@ export default function AdminPanel() {
   const { paquetes, agregarPaquete, editarPaquete, eliminarPaquete, marcarDestacado } = usePaquetesStore()
   const { usuarios, agregarUsuario, editarUsuario }       = useUsuariosStore()
   const { disciplinas, agregarDisciplina, eliminarDisciplina } = useDisciplinasStore()
+
+  // ── Finanzas stores ──────────────────────────────────────────────────────────
+  const { transacciones }                                               = useTransaccionesStore()
+  const { cortes, ejecutarCorte }                                       = useCortesStore()
+  const { usuario }                                                     = useAuthStore()
+  const { gastos, registrarGasto, getGastosByRango, eliminarGasto }    = useGastosStore()
+
+  // ── Finanzas state ───────────────────────────────────────────────────────────
+  const [rangoFin,   setRangoFin]   = useState('mes')
+  const [modalGasto, setModalGasto] = useState(false)
+  const [formGasto,  setFormGasto]  = useState({ concepto: '', monto: '', tipo: TIPOS_GASTO.OPERATIVO })
+
+  // ── Finanzas computed ────────────────────────────────────────────────────────
+  const txFin = useMemo(() => {
+    const ahora = new Date()
+    return transacciones
+      .filter(tx => {
+        const fecha = new Date(tx.fecha)
+        if (rangoFin === 'dia')    return fecha.toDateString() === ahora.toDateString()
+        if (rangoFin === 'semana') { const h = new Date(ahora); h.setDate(ahora.getDate()-7); return fecha >= h }
+        return fecha.getMonth() === ahora.getMonth() && fecha.getFullYear() === ahora.getFullYear()
+      })
+      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+  }, [transacciones, rangoFin])
+
+  const finTotalIngresos = useMemo(() => txFin.filter(tx => tx.monto > 0).reduce((s, tx) => s + tx.monto, 0), [txFin])
+  const finTicketProm    = txFin.length > 0 ? Math.round(finTotalIngresos / txFin.length) : 0
+  const finIngresosDia   = useMemo(() => getDailyIncome(),               [transacciones])
+  const finGastosRango   = useMemo(() => getGastosByRango(rangoFin),     [gastos, rangoFin])
+  const finGastosTotales = useMemo(() => finGastosRango.reduce((s, g) => s + g.monto, 0), [finGastosRango])
+  const finUtilidad      = finTotalIngresos - finGastosTotales
+  const finHoy           = new Date().toISOString().split('T')[0]
+  const yaHayCorteHoy    = cortes.some(c => c.fecha === finHoy)
 
   const [cart, setCart]                   = useState([])
   const [posFilter, setPosFilter]         = useState('Todos')
@@ -219,6 +264,11 @@ export default function AdminPanel() {
     setConfirmarEliminarProd(null)
   }
 
+  function handleCobrar() {
+    if (cart.length === 0) { toast.error('Agrega productos a la orden primero'); return }
+    setModalPago(true)
+  }
+
   function procesarVenta() {
     if (cart.length === 0) { toast.error('Agrega productos a la orden primero'); return }
 
@@ -247,6 +297,46 @@ export default function AdminPanel() {
 
   function showSection(name) {
     setActiveSection(name)
+  }
+
+  // ── Finanzas handlers ────────────────────────────────────────────────────────
+  function handleCerrarDia() {
+    const now = new Date()
+    const mes = now.toLocaleString('es-MX', { month: 'long' })
+    const año = now.getFullYear()
+    const ingresosCat = getIncomeByCategory('dia')
+    ejecutarCorte({
+      fecha:              finHoy,
+      periodo:            `${mes.charAt(0).toUpperCase() + mes.slice(1)} ${año}`,
+      tipo:               'diario',
+      ingresosPaquetes:   ingresosCat.paquetes,
+      ingresosProductos:  ingresosCat.productos,
+      totalIngresos:      finIngresosDia.total,
+      totalEfectivo:      finIngresosDia.efectivo,
+      totalTarjeta:       finIngresosDia.tarjeta,
+      totalTransferencia: finIngresosDia.transferencia,
+      totalReservas:      0,
+      totalCancelaciones: 0,
+      ejecutadoPor:       usuario?.id ?? null,
+      estado:             'cerrado',
+    })
+    toast.success('¡Corte de caja realizado!')
+  }
+
+  function handleGuardarGasto() {
+    if (!formGasto.concepto.trim() || !formGasto.monto) {
+      toast.error('Completa concepto y monto.')
+      return
+    }
+    registrarGasto({
+      concepto: formGasto.concepto.trim(),
+      monto:    parseFloat(formGasto.monto),
+      tipo:     formGasto.tipo,
+      adminId:  usuario?.id ?? null,
+    })
+    toast.success('Gasto registrado.')
+    setModalGasto(false)
+    setFormGasto({ concepto: '', monto: '', tipo: TIPOS_GASTO.OPERATIVO })
   }
 
   async function uploadFoto(file, setPreview, setPath) {
@@ -341,13 +431,6 @@ export default function AdminPanel() {
         </div>
 
         <div className={styles.sidebarFooter}>
-          <div className={styles.adminProfile}>
-            <div className={styles.adminAvatar}>A</div>
-            <div>
-              <div className={styles.adminName}>Administrador</div>
-              <div className={styles.adminRole}>Casa Scarlatta</div>
-            </div>
-          </div>
           <button className={styles.backBtn} onClick={() => navigate('/')}>
             ← Volver al sitio
           </button>
@@ -366,6 +449,13 @@ export default function AdminPanel() {
               🔔
               <span className={styles.notifDot} />
             </button>
+            <div className={styles.adminProfile} style={{ padding: '6px 10px', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ textAlign: 'right' }}>
+                <div className={styles.adminName}>Administrador</div>
+                <div className={styles.adminRole}>Casa Scarlatta</div>
+              </div>
+              <div className={styles.adminAvatar}>A</div>
+            </div>
           </div>
         </header>
 
@@ -373,29 +463,58 @@ export default function AdminPanel() {
 
           {/* ── DASHBOARD ── */}
           <section className={`${styles.section}${activeSection === 'dashboard' ? ' ' + styles.active : ''}`}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {[
+                { value: 'dia',    label: 'Hoy'    },
+                { value: 'semana', label: 'Semana' },
+                { value: 'mes',    label: 'Mes'    },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setRangoDash(value)}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: 6,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 13,
+                    background: rangoDash === value
+                      ? 'var(--wine, #7B1E22)'
+                      : 'rgba(255,255,255,0.07)',
+                    color: rangoDash === value
+                      ? '#fff'
+                      : 'rgba(255,255,255,0.5)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className={styles.kpiGrid}>
               <div className={styles.kpiCard}>
                 <div className={styles.kpiIcon}>👥</div>
                 <div className={styles.kpiLabel}>Usuarios activos</div>
-                <div className={styles.kpiValue}>142</div>
+                <div className={styles.kpiValue}>{metricas.totalUsuarios}</div>
                 <div className={`${styles.kpiChange} ${styles.up}`}>↑ 12% vs mes anterior</div>
               </div>
               <div className={styles.kpiCard}>
                 <div className={styles.kpiIcon}>📦</div>
                 <div className={styles.kpiLabel}>Paquetes vendidos</div>
-                <div className={styles.kpiValue}>38</div>
+                <div className={styles.kpiValue}>{metricas.paquetesVendidos}</div>
                 <div className={`${styles.kpiChange} ${styles.up}`}>↑ 8% vs mes anterior</div>
               </div>
               <div className={styles.kpiCard}>
                 <div className={styles.kpiIcon}>💰</div>
                 <div className={styles.kpiLabel}>Ingresos del mes</div>
-                <div className={styles.kpiValue}>$47K</div>
+                <div className={styles.kpiValue}>${metricas.ingresosTotales.toLocaleString()}</div>
                 <div className={`${styles.kpiChange} ${styles.up}`}>↑ 15% vs mes anterior</div>
               </div>
               <div className={styles.kpiCard}>
                 <div className={styles.kpiIcon}>🔄</div>
                 <div className={styles.kpiLabel}>Tasa renovación</div>
-                <div className={styles.kpiValue}>78%</div>
+                <div className={styles.kpiValue}>{metricas.ocupacionPromedio}%</div>
                 <div className={`${styles.kpiChange} ${styles.down}`}>↓ 3% vs mes anterior</div>
               </div>
             </div>
@@ -1045,7 +1164,7 @@ export default function AdminPanel() {
                 <button
                   className={`${styles.btn} ${styles.btnPrimary}`}
                   style={{ width: '100%', justifyContent: 'center', padding: 12 }}
-                  onClick={procesarVenta}
+                  onClick={handleCobrar}
                 >
                   💳 Cobrar
                 </button>
@@ -1158,82 +1277,188 @@ export default function AdminPanel() {
 
           {/* ── FINANZAS ── */}
           <section className={`${styles.section}${activeSection === 'finanzas' ? ' ' + styles.active : ''}`}>
-            <div className={styles.monthSelector}>
-              <button className={styles.monthBtn}>‹</button>
-              <div className={styles.monthName}>Abril 2026</div>
-              <button className={styles.monthBtn}>›</button>
+
+            {/* Selector de rango */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <div />
+              <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 8 }}>
+                {[{ v: 'dia', l: 'Hoy' }, { v: 'semana', l: 'Semana' }, { v: 'mes', l: 'Mes' }].map(({ v, l }) => (
+                  <button key={v} onClick={() => setRangoFin(v)} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, background: rangoFin === v ? 'var(--brand-wine)' : 'transparent', color: rangoFin === v ? '#fff' : 'var(--text-muted)', transition: 'all 0.15s' }}>{l}</button>
+                ))}
+              </div>
             </div>
 
+            {/* KPI cards */}
             <div className={styles.financeSummary}>
-              <div className={`${styles.financeCard} ${styles.highlight}`}>
-                <div className={styles.financeLabel}>Ingresos totales</div>
-                <div className={styles.financeAmount}>$47,280</div>
-                <div className={styles.financeChange}>↑ 15% vs marzo</div>
+              <div className={styles.financeCard}>
+                <div className={styles.financeLabel}>Ingresos — {rangoFin === 'dia' ? 'hoy' : rangoFin === 'semana' ? 'semana' : 'mes'}</div>
+                <div className={styles.financeAmount}>${finTotalIngresos.toLocaleString()}</div>
+                <div className={styles.financeChange}>{txFin.length} transacciones</div>
               </div>
               <div className={styles.financeCard}>
-                <div className={styles.financeLabel}>Paquetes vendidos</div>
-                <div className={styles.financeAmount}>38</div>
-                <div style={{ fontSize: 12, color: '#4CAF50', marginTop: 6 }}>↑ 8% vs marzo</div>
+                <div className={styles.financeLabel}>Gastos</div>
+                <div className={styles.financeAmount} style={{ color: finGastosTotales > 0 ? '#C83232' : undefined }}>${finGastosTotales.toLocaleString()}</div>
+                <div className={styles.financeChange}>{finGastosRango.length} registros</div>
               </div>
               <div className={styles.financeCard}>
-                <div className={styles.financeLabel}>Punto de venta</div>
-                <div className={styles.financeAmount}>$3,840</div>
-                <div style={{ fontSize: 12, color: '#4CAF50', marginTop: 6 }}>↑ 22% vs marzo</div>
+                <div className={styles.financeLabel}>Utilidad neta</div>
+                <div className={styles.financeAmount} style={{ color: finUtilidad >= 0 ? '#4CAF50' : '#C83232' }}>${finUtilidad.toLocaleString()}</div>
+                <div className={styles.financeChange}>Ingresos − Gastos</div>
+              </div>
+              <div className={styles.financeCard}>
+                <div className={styles.financeLabel}>Ticket promedio</div>
+                <div className={styles.financeAmount}>${finTicketProm.toLocaleString()}</div>
+                <div className={styles.financeChange}>Por transacción</div>
+              </div>
+            </div>
+
+            {/* Desglose método de pago — hoy */}
+            <div className={styles.card} style={{ marginBottom: 20 }}>
+              <div className={styles.cardHeader}>
+                <div className={styles.cardTitle}>Desglose por método de pago — hoy</div>
+              </div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {[
+                  { key: 'efectivo',      label: '💵 Efectivo',      color: '#4CAF50', bg: 'rgba(76,175,80,0.08)'  },
+                  { key: 'tarjeta',       label: '💳 Tarjeta',       color: '#5B9BD5', bg: 'rgba(91,155,213,0.08)' },
+                  { key: 'transferencia', label: '📱 Transferencia', color: '#E8A020', bg: 'rgba(232,160,32,0.08)' },
+                ].map(({ key, label, color, bg }) => (
+                  <div key={key} style={{ flex: '1 1 130px', background: bg, borderRadius: 8, padding: '12px 16px', border: `1px solid ${color}33` }}>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color }}>${(finIngresosDia[key] ?? 0).toLocaleString()}</div>
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className={styles.dashGrid}>
+              {/* Corte de caja */}
               <div className={styles.card}>
                 <div className={styles.cardHeader}>
-                  <div className={styles.cardTitle}>Desglose por categoría</div>
+                  <div className={styles.cardTitle}>Corte de caja — Hoy</div>
+                  <button
+                    onClick={handleCerrarDia}
+                    disabled={yaHayCorteHoy}
+                    className={styles.coachBtn}
+                    style={{ opacity: yaHayCorteHoy ? 0.5 : 1, cursor: yaHayCorteHoy ? 'not-allowed' : 'pointer', minWidth: 120 }}
+                  >
+                    {yaHayCorteHoy ? '✓ Realizado' : '🔒 Cerrar día'}
+                  </button>
                 </div>
-                <div className={styles.tableWrap}>
-                  <table>
-                    <thead>
-                      <tr><th>Categoría</th><th>Unidades</th><th>Ingresos</th><th>% del total</th></tr>
-                    </thead>
-                    <tbody>
-                      <tr><td>Paquete Mensual</td><td>18</td><td className={styles.mono}>$21,600</td><td><Tag color="pink">45.7%</Tag></td></tr>
-                      <tr><td>Paquete 10 clases</td><td>14</td><td className={styles.mono}>$11,900</td><td><Tag color="blue">25.2%</Tag></td></tr>
-                      <tr><td>Clases individuales</td><td>98</td><td className={styles.mono}>$9,940</td><td><Tag color="yellow">21.0%</Tag></td></tr>
-                      <tr><td>Punto de venta</td><td>—</td><td className={styles.mono}>$3,840</td><td><Tag color="green">8.1%</Tag></td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardTitle}>Métricas clave</div>
-                </div>
-                <div className={styles.miniList}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
                   {[
-                    { icon: '👥', name: 'Nuevos usuarios',  sub: 'Este mes',          val: '+12'   },
-                    { icon: '🔄', name: 'Renovaciones',     sub: 'Tasa este mes',     val: '78%'   },
-                    { icon: '💸', name: 'Ticket promedio',  sub: 'Por transacción',   val: '$1,244'},
-                    { icon: '📈', name: 'LTV promedio',     sub: 'Por usuario',       val: '$4,200'},
-                  ].map(({ icon, name, sub, val }) => (
-                    <div key={name} className={styles.miniItem}>
-                      <div style={{ fontSize: 20 }}>{icon}</div>
-                      <div><div className={styles.miniName}>{name}</div><div className={styles.miniSub}>{sub}</div></div>
-                      <div className={styles.miniRight}><div className={styles.miniVal}>{val}</div></div>
+                    { label: '💵 Efectivo',      val: finIngresosDia.efectivo      },
+                    { label: '💳 Tarjeta',       val: finIngresosDia.tarjeta       },
+                    { label: '📱 Transferencia', val: finIngresosDia.transferencia },
+                    { label: '📊 Total',         val: finIngresosDia.total, bold: true },
+                  ].map(({ label, val, bold }) => (
+                    <div key={label} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: '8px 12px' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: bold ? 'var(--brand-rose)' : 'var(--text-primary)', fontWeight: bold ? 600 : 400 }}>${(val ?? 0).toLocaleString()}</div>
                     </div>
                   ))}
                 </div>
+                {cortes.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontFamily: 'var(--font-body)' }}>Cortes anteriores</div>
+                    <div className={styles.tableWrap}>
+                      <table>
+                        <thead><tr><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead>
+                        <tbody>
+                          {[...cortes].reverse().slice(0, 5).map(c => (
+                            <tr key={c.id}>
+                              <td style={{ fontSize: 12 }}>{c.fecha}</td>
+                              <td className={styles.mono}>${(c.totalIngresos ?? 0).toLocaleString()}</td>
+                              <td><Tag color="green">{c.estado}</Tag></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Gastos */}
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <div className={styles.cardTitle}>Gastos</div>
+                  <button className={styles.coachBtn} onClick={() => setModalGasto(true)}>+ Registrar</button>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                  {[
+                    { l: 'Ingresos', v: finTotalIngresos,  c: '#4CAF50' },
+                    { l: 'Gastos',   v: -finGastosTotales, c: '#C83232' },
+                    { l: 'Utilidad', v: finUtilidad,        c: finUtilidad >= 0 ? '#4CAF50' : '#C83232' },
+                  ].map(({ l, v, c }) => (
+                    <div key={l} style={{ flex: '1 1 80px', background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: '8px 10px' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{l}</div>
+                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: c }}>{v < 0 ? '-' : ''}${Math.abs(v).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+                {finGastosRango.length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: 16, color: 'var(--text-muted)', fontSize: 13, fontFamily: 'var(--font-body)' }}>Sin gastos en este período</p>
+                ) : (
+                  <div className={styles.tableWrap}>
+                    <table>
+                      <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th></th></tr></thead>
+                      <tbody>
+                        {finGastosRango.map(g => (
+                          <tr key={g.id}>
+                            <td style={{ fontSize: 12 }}>{g.fecha}</td>
+                            <td>{g.concepto}</td>
+                            <td style={{ color: '#C83232', fontWeight: 600 }}>−${g.monto.toLocaleString()}</td>
+                            <td><button onClick={() => eliminarGasto(g.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 15 }}>×</button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Transacciones */}
+            <div className={styles.card} style={{ marginTop: 20 }}>
+              <div className={styles.cardHeader}>
+                <div className={styles.cardTitle}>Transacciones</div>
+                <Tag color="blue">{txFin.length}</Tag>
+              </div>
+              {txFin.length === 0 ? (
+                <p style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: 13, fontFamily: 'var(--font-body)' }}>Sin transacciones en este período</p>
+              ) : (
+                <div className={styles.tableWrap}>
+                  <table>
+                    <thead><tr><th>Fecha</th><th>Concepto</th><th>Método</th><th>Tipo</th><th>Monto</th></tr></thead>
+                    <tbody>
+                      {txFin.map(tx => (
+                        <tr key={tx.id}>
+                          <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{tx.fecha}</td>
+                          <td>{tx.concepto}</td>
+                          <td><Tag color={tx.metodoPago === 'tarjeta' ? 'blue' : tx.metodoPago === 'transferencia' ? 'yellow' : 'green'}>{tx.metodoPago ?? 'efectivo'}</Tag></td>
+                          <td><Tag color={tx.tipo === 'paquete' ? 'pink' : 'green'}>{tx.tipo}</Tag></td>
+                          <td style={{ fontWeight: 600, color: 'var(--brand-wine)' }}>${(tx.monto ?? 0).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
           </section>
 
           {/* ── REPORTES ── */}
           <section className={`${styles.section}${activeSection === 'reportes' ? ' ' + styles.active : ''}`}>
             <div className={styles.reportCards}>
               {[
-                { icon: '💰', name: 'Reporte financiero',       desc: 'Ingresos, egresos, desglose por categoría y comparativa mensual.'         },
-                { icon: '👥', name: 'Reporte de usuarios',      desc: 'Lista completa, paquetes activos, historial de clases y gasto total.'       },
-                { icon: '🗓', name: 'Reporte de clases',        desc: 'Asistencia por clase, ocupación promedio y clases más populares.'           },
-                { icon: '📦', name: 'Reporte de paquetes',      desc: 'Ventas por tipo de paquete, renovaciones y cancelaciones.'                  },
-                { icon: '🛒', name: 'Reporte punto de venta',   desc: 'Ventas de productos, inventario y productos más vendidos.'                  },
-                { icon: '👤', name: 'Reporte de coaches',       desc: 'Clases impartidas, asistencia, rating y desempeño mensual.'                 },
+                { icon: '💰', name: 'Reporte financiero',     desc: 'Ingresos, egresos, desglose por categoría y comparativa mensual.'   },
+                { icon: '👥', name: 'Reporte de usuarios',    desc: 'Lista completa, paquetes activos, historial de clases y gasto total.' },
+                { icon: '🗓', name: 'Reporte de clases',      desc: 'Asistencia por clase, ocupación promedio y clases más populares.'     },
+                { icon: '📦', name: 'Reporte de paquetes',    desc: 'Ventas por tipo de paquete, renovaciones y cancelaciones.'            },
+                { icon: '🛒', name: 'Reporte punto de venta', desc: 'Ventas de productos, inventario y productos más vendidos.'            },
+                { icon: '👤', name: 'Reporte de coaches',     desc: 'Clases impartidas, asistencia, rating y desempeño mensual.'           },
               ].map(({ icon, name, desc }) => (
                 <div key={name} className={styles.reportCard}>
                   <div className={styles.reportIcon}>{icon}</div>
@@ -1246,39 +1471,6 @@ export default function AdminPanel() {
                   </div>
                 </div>
               ))}
-            </div>
-
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div className={styles.cardTitle}>Historial de reportes descargados</div>
-              </div>
-              <div className={styles.tableWrap}>
-                <table>
-                  <thead>
-                    <tr><th>Reporte</th><th>Período</th><th>Formato</th><th>Generado</th><th></th></tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Financiero</td><td>Marzo 2026</td>
-                      <td><Tag color="green">Excel</Tag></td>
-                      <td>01 Abr 2026</td>
-                      <td><button className={styles.coachBtn} style={{ width: 80 }}>↓ Descargar</button></td>
-                    </tr>
-                    <tr>
-                      <td>Usuarios</td><td>Q1 2026</td>
-                      <td><Tag color="blue">CSV</Tag></td>
-                      <td>15 Mar 2026</td>
-                      <td><button className={styles.coachBtn} style={{ width: 80 }}>↓ Descargar</button></td>
-                    </tr>
-                    <tr>
-                      <td>Clases</td><td>Febrero 2026</td>
-                      <td><Tag color="pink">PDF</Tag></td>
-                      <td>01 Mar 2026</td>
-                      <td><button className={styles.coachBtn} style={{ width: 80 }}>↓ Descargar</button></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
             </div>
           </section>
 
@@ -2744,6 +2936,82 @@ export default function AdminPanel() {
           }}
           onClose={() => setAdminSeatSelector(null)}
         />
+      )}
+
+      {modalPago && (
+        <ModalPago
+          total={cartTotal}
+          items={cart}
+          onCerrar={() => setModalPago(false)}
+          onPagar={async ({ metodoPago, montoPagado, cambio }) => {
+            const resultado = await procesarVentaService({
+              items:             cart,
+              subtotal:          cartSubtotal,
+              total:             cartTotal,
+              metodoPago,
+              montoPagado,
+              cambio,
+              pendingAsignacion,
+              adminId:           null,
+            })
+            if (resultado.ok) {
+              setModalPago(false)
+              clearCart()
+              toast.success(resultado.mensaje)
+            } else {
+              toast.error(resultado.mensaje)
+            }
+          }}
+        />
+      )}
+
+      {/* ── MODAL GASTO ── */}
+      {modalGasto && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setModalGasto(false)}
+        >
+          <div
+            style={{ background: '#1E1014', borderRadius: 16, padding: 32, width: '90%', maxWidth: 400, border: '1px solid #3C2A2E' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, color: 'var(--text-primary)', fontSize: 20, margin: '0 0 24px' }}>Registrar gasto</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', marginBottom: 6 }}>Concepto</label>
+                <input type="text" placeholder="Ej. Pago de luz, Sueldo coach..." value={formGasto.concepto} onChange={e => setFormGasto(p => ({ ...p, concepto: e.target.value }))} autoFocus
+                  style={{ width: '100%', padding: '10px 12px', background: '#2C1A1E', border: '1px solid #3C2A2E', borderRadius: 8, color: 'white', fontFamily: 'var(--font-body)', fontSize: 14, boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', marginBottom: 6 }}>Monto ($)</label>
+                <input type="number" placeholder="0" min="0" value={formGasto.monto} onChange={e => setFormGasto(p => ({ ...p, monto: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 12px', background: '#2C1A1E', border: '1px solid #3C2A2E', borderRadius: 8, color: 'white', fontFamily: 'var(--font-body)', fontSize: 18, boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', marginBottom: 6 }}>Tipo</label>
+                <select value={formGasto.tipo} onChange={e => setFormGasto(p => ({ ...p, tipo: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 12px', background: '#2C1A1E', border: '1px solid #3C2A2E', borderRadius: 8, color: 'white', fontFamily: 'var(--font-body)', fontSize: 14, boxSizing: 'border-box' }}>
+                  <option value="operativo">Operativo</option>
+                  <option value="sueldo">Sueldo</option>
+                  <option value="servicio">Servicio</option>
+                  <option value="insumo">Insumo</option>
+                  <option value="inventario">Inventario</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
+              <button onClick={handleGuardarGasto}
+                style={{ padding: 14, borderRadius: 8, border: 'none', background: 'var(--brand-wine)', color: '#fff', fontFamily: 'var(--font-body)', fontSize: 15, cursor: 'pointer' }}>
+                Guardar gasto
+              </button>
+              <button onClick={() => setModalGasto(false)}
+                style={{ padding: 10, borderRadius: 8, border: '1px solid #3C2A2E', background: 'transparent', color: '#A69A93', fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer' }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
     </div>

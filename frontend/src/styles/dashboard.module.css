@@ -9,6 +9,50 @@
   margin-bottom: var(--space-2xl);
 }
 
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.selectorRango {
+  display: flex;
+  gap: 4px;
+  background: #1E1014;
+  padding: 4px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.rango {
+  padding: 6px 16px;
+  border-radius: 6px;
+  background: transparent;
+  color: #A69A93;
+  cursor: pointer;
+  border: none;
+  font-size: 13px;
+  font-family: var(--font-body);
+  transition: color 0.15s;
+}
+
+.rango:hover {
+  color: var(--text-primary);
+}
+
+.rangoActivo {
+  padding: 6px 16px;
+  border-radius: 6px;
+  background: #7B1E22;
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  font-size: 13px;
+  font-family: var(--font-body);
+}
+
 .greeting {
   font-family: var(--font-display);
   font-size: clamp(24px, 3vw, 32px);

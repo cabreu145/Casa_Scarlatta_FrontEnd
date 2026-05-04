@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react'
 import {
   LayoutDashboard, Users, UserCheck, CalendarDays,
   Package, BarChart2, DollarSign, RefreshCw,
@@ -13,8 +14,8 @@ import {
 } from 'chart.js'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { useClasesStore } from '@/stores/clasesStore'
-import { mockUsers } from '@/data/mockUsers'
 import { mockTransacciones, ingresosUltimosMeses } from '@/data/mockTransacciones'
+import { getDashboardMetrics } from '@/services/dashboardService'
 import styles from '@/styles/dashboard.module.css'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip)
@@ -121,17 +122,14 @@ export const adminLinks = [
 
 // ── Component ────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
-  const { clases, reservas } = useClasesStore()
-  const clientes    = mockUsers.filter((u) => u.rol === 'cliente')
-  const ingresosMes = mockTransacciones.reduce((acc, t) => acc + t.monto, 0)
-  const ocupacionPromedio = clases.length
-    ? Math.round(clases.reduce((acc, c) => acc + (c.cupoActual / c.cupoMax) * 100, 0) / clases.length)
-    : 0
+  const { clases } = useClasesStore()
+  const [rango, setRango] = useState('mes')
+  const metricas = useMemo(() => getDashboardMetrics(rango), [rango])
 
-  const clasesHoy    = clases.slice(0, 3)
+  const clasesHoy     = clases.slice(0, 3)
   const ultimasVentas = [...mockTransacciones].reverse().slice(0, 3)
 
-  const today = new Date()
+  const today  = new Date()
   const dayNum = today.getDate()
 
   return (
@@ -140,39 +138,58 @@ export default function AdminDashboard() {
 
         {/* ── Page header ── */}
         <div className={styles.pageHeader}>
-          <h1 className={styles.greeting}>Panel de Administración</h1>
-          <p className={styles.subtitle}>Resumen general del estudio · Abril 2026</p>
+          <div className={styles.headerRow}>
+            <div>
+              <h1 className={styles.greeting}>Panel de Administración</h1>
+              <p className={styles.subtitle}>Resumen general del estudio</p>
+            </div>
+            <div className={styles.selectorRango}>
+              {[
+                { value: 'dia',    label: 'Hoy'    },
+                { value: 'semana', label: 'Semana' },
+                { value: 'mes',    label: 'Mes'    },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  className={rango === value ? styles.rangoActivo : styles.rango}
+                  onClick={() => setRango(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* ── KPI stat cards ── */}
         <div className={styles.statsGrid}>
           <div className={styles.statCard}>
             <div className={styles.kpiIcon}><DollarSign size={18} /></div>
-            <div className={styles.statLabel}>Ingresos este mes</div>
-            <div className={styles.statValue}>${ingresosMes.toLocaleString()}</div>
-            <div className={`${styles.kpiChange} ${styles.kpiChangeUp}`}>↑ 12% vs mes anterior</div>
+            <div className={styles.statLabel}>Ingresos del período</div>
+            <div className={styles.statValue}>${metricas.ingresosTotales.toLocaleString()}</div>
+            <div className={`${styles.kpiChange} ${styles.kpiChangeUp}`}>↑ 12% vs período anterior</div>
           </div>
 
           <div className={styles.statCard}>
-            <div className={styles.kpiIcon}><CalendarDays size={18} /></div>
-            <div className={styles.statLabel}>Clases esta semana</div>
-            <div className={styles.statValue}>{clases.length}</div>
-            <div className={`${styles.kpiChange} ${styles.kpiChangeUp}`}>↑ 4 vs semana anterior</div>
+            <div className={styles.kpiIcon}><Package size={18} /></div>
+            <div className={styles.statLabel}>Paquetes vendidos</div>
+            <div className={styles.statValue}>{metricas.paquetesVendidos}</div>
+            <div className={`${styles.kpiChange} ${styles.kpiChangeUp}`}>↑ 8% vs período anterior</div>
           </div>
 
           <div className={styles.statCard}>
             <div className={styles.kpiIcon}><Users size={18} /></div>
             <div className={styles.statLabel}>Clientes activos</div>
-            <div className={styles.statValue}>{clientes.filter((c) => c.activo).length}</div>
+            <div className={styles.statValue}>{metricas.totalUsuarios}</div>
             <div className={`${styles.kpiChange} ${styles.kpiChangeUp}`}>↑ 8% vs mes anterior</div>
           </div>
 
           <div className={styles.statCard}>
             <div className={styles.kpiIcon}><RefreshCw size={18} /></div>
             <div className={styles.statLabel}>Ocupación promedio</div>
-            <div className={styles.statValue}>{ocupacionPromedio}%</div>
-            <div className={`${styles.kpiChange} ${ocupacionPromedio >= 70 ? styles.kpiChangeUp : styles.kpiChangeDown}`}>
-              {ocupacionPromedio >= 70 ? '↑' : '↓'} vs meta 70%
+            <div className={styles.statValue}>{metricas.ocupacionPromedio}%</div>
+            <div className={`${styles.kpiChange} ${metricas.ocupacionPromedio >= 70 ? styles.kpiChangeUp : styles.kpiChangeDown}`}>
+              {metricas.ocupacionPromedio >= 70 ? '↑' : '↓'} vs meta 70%
             </div>
           </div>
         </div>
