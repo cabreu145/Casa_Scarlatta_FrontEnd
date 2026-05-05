@@ -1,0 +1,255 @@
+/* finanzas.module.css
+   ─────────────────────────────────────────────────────
+   Estilos específicos del módulo de Finanzas
+   Usado en: AdminFinanzas.jsx
+   ───────────────────────────────────────────────────── */
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kpiCard {
+  background: var(--neutral-card);
+  border: 1px solid var(--neutral-border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-wine);
+}
+
+.kpiCardActivo {
+  background: rgba(123, 30, 34, 0.15);
+  border-color: #7B1E22;
+}
+
+.kpiCardActivo::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #7B1E22;
+}
+
+.kpiLabel {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.kpiValor {
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.kpiSub {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.kpiCrecimiento {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── Panel genérico ── */
+.panel {
+  background: var(--neutral-card);
+  border: 1px solid var(--neutral-border);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+
+.panelTitulo {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+/* ── Gráfica mini ── */
+.chartWrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 60px;
+  padding: 0 4px;
+}
+
+.chartBar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.chartBarFill {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  transition: height 0.4s ease;
+}
+
+.chartBarLabel {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+
+/* ── Método de pago ── */
+.metodoPagoTrack {
+  height: 6px;
+  background: var(--neutral-border);
+  border-radius: 3px;
+  margin-top: 4px;
+}
+
+.metodoPagoFill {
+  height: 100%;
+  background: #7B1E22;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* ── Alertas ── */
+.alerta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.alertaWarning {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid #eab308;
+  color: #eab308;
+}
+
+.alertaDanger {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+}
+
+.alertaInfo {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+}
+
+/* ── Corte de caja ── */
+.corteGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.corteItem {
+  background: #2C1A1E;
+  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1px solid #3C2A2E;
+}
+
+.corteItemDestacado {
+  border-color: #7B1E22;
+}
+
+.corteItemLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.corteItemValor {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.corteItemValorDestacado {
+  color: #E8A4AD;
+  font-weight: 600;
+}
+
+/* ── Botón cerrar día ── */
+.btnCorte {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.btnCorteActivo {
+  background: #7B1E22;
+  color: #fff;
+}
+
+.btnCorteRealizado {
+  background: #2C1A1E;
+  color: #A69A93;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* ── Filtro activo badge ── */
+.filtroBadge {
+  margin-left: 10px;
+  font-size: 11px;
+  font-family: var(--font-body);
+  background: rgba(123, 30, 34, 0.2);
+  border: 1px solid #7B1E22;
+  color: #E8A4AD;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .kpiGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .panel {
+    padding: 14px 16px;
+  }
+
+  .kpiValor {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -296,6 +296,12 @@
 .content {
   padding: 32px;
   flex: 1;
+  --text-primary:    #E8E2DB;
+  --text-secondary:  #C4B5AD;
+  --text-muted:      #A69A93;
+  --neutral-card:    #2C1A1E;
+  --neutral-border:  #3C2A2E;
+  --bg-elevated:     rgba(255,255,255,0.06);
 }
 
 /* ── SECTION ───────────────────────────────────────────────────────────────── */

@@ -21,6 +21,8 @@ import { reservarClase as reservarClaseService, cancelarReserva as cancelarReser
 import { borrarCoachService } from '@/services/coachesService'
 import { useDisciplinasStore } from '@/stores/disciplinasStore'
 import SeatSelector from '@/features/clases/SeatSelector'
+import { FinanzasSection } from './AdminFinanzas'
+import { ReportesSection } from './AdminReportes'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign } from 'lucide-react'
@@ -116,7 +118,7 @@ export default function AdminPanel() {
   const { clases, reservas, agregarClase, editarClase, eliminarClase } = useClasesStore()
   const { reservas: todasReservas, getReservasByClase } = useReservasStore()
   const { paquetes, agregarPaquete, editarPaquete, eliminarPaquete, marcarDestacado } = usePaquetesStore()
-  const { usuarios, agregarUsuario, editarUsuario }       = useUsuariosStore()
+  const { usuarios, agregarUsuario, editarUsuario, eliminarUsuario } = useUsuariosStore()
   const { disciplinas, agregarDisciplina, eliminarDisciplina } = useDisciplinasStore()
 
   // ── Finanzas stores ──────────────────────────────────────────────────────────
@@ -200,8 +202,10 @@ export default function AdminPanel() {
   const [alumnoAgregarId,   setAlumnoAgregarId]   = useState('')
   const [adminSeatSelector, setAdminSeatSelector] = useState(null) // { cls, userId } | null
   // Clase — selección múltiple
-  const [selectMode,     setSelectMode]     = useState(false)
-  const [selectedIds,    setSelectedIds]    = useState(new Set())
+  const [selectMode,         setSelectMode]         = useState(false)
+  const [selectedIds,        setSelectedIds]        = useState(new Set())
+  const [userSelectMode,     setUserSelectMode]     = useState(false)
+  const [userSelectedIds,    setUserSelectedIds]    = useState(new Set())
   // Clase — editar
   const [modalEditClase,  setModalEditClase]  = useState(null)  // clase | null
   const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
@@ -1224,14 +1228,82 @@ export default function AdminPanel() {
                     </button>
                   ))}
                 </div>
-                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('usuario')}>
-                  + Nuevo usuario
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {userSelectMode && userSelectedIds.size > 0 && (
+                    <button
+                      className={`${styles.btn} ${styles.btnPrimary}`}
+                      style={{ background: '#ef4444', borderColor: '#ef4444' }}
+                      onClick={() => {
+                        if (!window.confirm(`¿Eliminar ${userSelectedIds.size} usuario${userSelectedIds.size > 1 ? 's' : ''}?`)) return
+                        userSelectedIds.forEach(id => eliminarUsuario(id))
+                        toast.success(`${userSelectedIds.size} usuario${userSelectedIds.size > 1 ? 's eliminados' : ' eliminado'}`)
+                        setUserSelectedIds(new Set())
+                        setUserSelectMode(false)
+                      }}
+                    >
+                      🗑 Eliminar ({userSelectedIds.size})
+                    </button>
+                  )}
+                  <button
+                    className={`${styles.btn} ${userSelectMode ? styles.btnSecondary : styles.btnGhost}`}
+                    onClick={() => { setUserSelectMode(v => !v); setUserSelectedIds(new Set()) }}
+                  >
+                    {userSelectMode ? '✕ Cancelar' : '☑ Seleccionar'}
+                  </button>
+                  {!userSelectMode && (
+                    <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('usuario')}>
+                      + Nuevo usuario
+                    </button>
+                  )}
+                </div>
               </div>
+
+              {/* Toolbar de selección */}
+              {userSelectMode && (() => {
+                const listaVisible = usuarios.filter((u) => {
+                  if (usersSearch.trim()) {
+                    const q = usersSearch.toLowerCase()
+                    if (!u.nombre?.toLowerCase().includes(q) && !u.email?.toLowerCase().includes(q)) return false
+                  }
+                  if (usersFilter === 'Activos')     return u.activo && u.paquete
+                  if (usersFilter === 'Sin paquete') return !u.paquete
+                  if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
+                  return true
+                })
+                const todosSeleccionados = listaVisible.length > 0 && listaVisible.every(u => userSelectedIds.has(u.id))
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', marginBottom: 8, fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                    <input
+                      type="checkbox"
+                      checked={todosSeleccionados}
+                      onChange={() => {
+                        if (todosSeleccionados) setUserSelectedIds(new Set())
+                        else setUserSelectedIds(new Set(listaVisible.map(u => u.id)))
+                      }}
+                      style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
+                    />
+                    <span style={{ color: 'var(--muted)' }}>
+                      {userSelectedIds.size === 0
+                        ? 'Selecciona los usuarios que deseas eliminar'
+                        : `${userSelectedIds.size} de ${listaVisible.length} seleccionado${userSelectedIds.size > 1 ? 's' : ''}`}
+                    </span>
+                    {userSelectedIds.size > 0 && (
+                      <button
+                        style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                        onClick={() => setUserSelectedIds(new Set())}
+                      >
+                        Deseleccionar todo
+                      </button>
+                    )}
+                  </div>
+                )
+              })()}
+
               <div className={styles.tableWrap}>
                 <table>
                   <thead>
                     <tr>
+                      {userSelectMode && <th style={{ width: 36 }}></th>}
                       <th>Usuario</th><th>Paquete</th><th>Clases restantes</th>
                       <th>Vencimiento</th><th>Última clase</th><th>Total gastado</th>
                       <th>Estado</th><th></th>
@@ -1240,7 +1312,6 @@ export default function AdminPanel() {
                   <tbody>
                     {usuarios
                       .filter((u) => {
-                        // Filtro de búsqueda por texto
                         if (usersSearch.trim()) {
                           const q = usersSearch.toLowerCase()
                           const coincide = u.nombre?.toLowerCase().includes(q)
@@ -1249,18 +1320,44 @@ export default function AdminPanel() {
                             || u.telefono?.toLowerCase().includes(q)
                           if (!coincide) return false
                         }
-                        // Filtro por chip
                         if (usersFilter === 'Activos')     return u.activo && u.paquete
                         if (usersFilter === 'Sin paquete') return !u.paquete
                         if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
                         return true
                       })
                       .map((u) => {
-                        const restantes = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
-                        const tag   = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
-                        const label = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
+                        const restantes  = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
+                        const tag        = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
+                        const label      = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
+                        const isSelected = userSelectedIds.has(u.id)
                         return (
-                          <tr key={u.id}>
+                          <tr
+                            key={u.id}
+                            style={{ cursor: userSelectMode ? 'pointer' : undefined, background: isSelected ? 'rgba(239,68,68,0.08)' : undefined }}
+                            onClick={userSelectMode ? () => {
+                              setUserSelectedIds(prev => {
+                                const next = new Set(prev)
+                                next.has(u.id) ? next.delete(u.id) : next.add(u.id)
+                                return next
+                              })
+                            } : undefined}
+                          >
+                            {userSelectMode && (
+                              <td onClick={e => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setUserSelectedIds(prev => {
+                                      const next = new Set(prev)
+                                      next.has(u.id) ? next.delete(u.id) : next.add(u.id)
+                                      return next
+                                    })
+                                  }}
+                                  style={{ width: 15, height: 15, accentColor: '#ef4444', cursor: 'pointer' }}
+                                />
+                              </td>
+                            )}
                             <td style={{ whiteSpace: 'normal', minWidth: 140 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <div className={styles.miniAvatar} style={{ width: 28, height: 28, fontSize: 12, flexShrink: 0 }}>{u.nombre[0]}</div>
@@ -1273,7 +1370,7 @@ export default function AdminPanel() {
                             <td>—</td>
                             <td className={styles.mono}>—</td>
                             <td><Tag color={tag}>{label}</Tag></td>
-                            <td><button className={styles.coachBtn} style={{ width: 60 }} onClick={() => { setModalVerUsuario(u); setAsignarPaqueteForm({ paqueteNombre: u.paquete || '', metodoPago: 'efectivo' }); setEditNotas(u.notas || '') }}>Ver</button></td>
+                            <td>{!userSelectMode && <button className={styles.coachBtn} style={{ width: 60 }} onClick={() => { setModalVerUsuario(u); setAsignarPaqueteForm({ paqueteNombre: u.paquete || '', metodoPago: 'efectivo' }); setEditNotas(u.notas || '') }}>Ver</button>}</td>
                           </tr>
                         )
                       })}
@@ -1285,201 +1382,12 @@ export default function AdminPanel() {
 
           {/* ── FINANZAS ── */}
           <section className={`${styles.section}${activeSection === 'finanzas' ? ' ' + styles.active : ''}`}>
-
-            {/* Selector de rango */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <div />
-              <div style={{ display: 'flex', gap: 4, background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 8 }}>
-                {[{ v: 'dia', l: 'Hoy' }, { v: 'semana', l: 'Semana' }, { v: 'mes', l: 'Mes' }].map(({ v, l }) => (
-                  <button key={v} onClick={() => setRangoFin(v)} style={{ padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)', fontSize: 13, background: rangoFin === v ? 'var(--brand-wine)' : 'transparent', color: rangoFin === v ? '#fff' : 'var(--text-muted)', transition: 'all 0.15s' }}>{l}</button>
-                ))}
-              </div>
-            </div>
-
-            {/* KPI cards */}
-            <div className={styles.financeSummary}>
-              <div className={styles.financeCard}>
-                <div className={styles.financeLabel}>Ingresos — {rangoFin === 'dia' ? 'hoy' : rangoFin === 'semana' ? 'semana' : 'mes'}</div>
-                <div className={styles.financeAmount}>${finTotalIngresos.toLocaleString()}</div>
-                <div className={styles.financeChange}>{txFin.length} transacciones</div>
-              </div>
-              <div className={styles.financeCard}>
-                <div className={styles.financeLabel}>Gastos</div>
-                <div className={styles.financeAmount} style={{ color: finGastosTotales > 0 ? '#C83232' : undefined }}>${finGastosTotales.toLocaleString()}</div>
-                <div className={styles.financeChange}>{finGastosRango.length} registros</div>
-              </div>
-              <div className={styles.financeCard}>
-                <div className={styles.financeLabel}>Utilidad neta</div>
-                <div className={styles.financeAmount} style={{ color: finUtilidad >= 0 ? '#4CAF50' : '#C83232' }}>${finUtilidad.toLocaleString()}</div>
-                <div className={styles.financeChange}>Ingresos − Gastos</div>
-              </div>
-              <div className={styles.financeCard}>
-                <div className={styles.financeLabel}>Ticket promedio</div>
-                <div className={styles.financeAmount}>${finTicketProm.toLocaleString()}</div>
-                <div className={styles.financeChange}>Por transacción</div>
-              </div>
-            </div>
-
-            {/* Desglose método de pago — hoy */}
-            <div className={styles.card} style={{ marginBottom: 20 }}>
-              <div className={styles.cardHeader}>
-                <div className={styles.cardTitle}>Desglose por método de pago — hoy</div>
-              </div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                {[
-                  { key: 'efectivo',      label: '💵 Efectivo',      color: '#4CAF50', bg: 'rgba(76,175,80,0.08)'  },
-                  { key: 'tarjeta',       label: '💳 Tarjeta',       color: '#5B9BD5', bg: 'rgba(91,155,213,0.08)' },
-                  { key: 'transferencia', label: '📱 Transferencia', color: '#E8A020', bg: 'rgba(232,160,32,0.08)' },
-                ].map(({ key, label, color, bg }) => (
-                  <div key={key} style={{ flex: '1 1 130px', background: bg, borderRadius: 8, padding: '12px 16px', border: `1px solid ${color}33` }}>
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color }}>${(finIngresosDia[key] ?? 0).toLocaleString()}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className={styles.dashGrid}>
-              {/* Corte de caja */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardTitle}>Corte de caja — Hoy</div>
-                  <button
-                    onClick={handleCerrarDia}
-                    disabled={yaHayCorteHoy}
-                    className={styles.coachBtn}
-                    style={{ opacity: yaHayCorteHoy ? 0.5 : 1, cursor: yaHayCorteHoy ? 'not-allowed' : 'pointer', minWidth: 120 }}
-                  >
-                    {yaHayCorteHoy ? '✓ Realizado' : '🔒 Cerrar día'}
-                  </button>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-                  {[
-                    { label: '💵 Efectivo',      val: finIngresosDia.efectivo      },
-                    { label: '💳 Tarjeta',       val: finIngresosDia.tarjeta       },
-                    { label: '📱 Transferencia', val: finIngresosDia.transferencia },
-                    { label: '📊 Total',         val: finIngresosDia.total, bold: true },
-                  ].map(({ label, val, bold }) => (
-                    <div key={label} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: '8px 12px' }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: bold ? 'var(--brand-rose)' : 'var(--text-primary)', fontWeight: bold ? 600 : 400 }}>${(val ?? 0).toLocaleString()}</div>
-                    </div>
-                  ))}
-                </div>
-                {cortes.length > 0 && (
-                  <>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontFamily: 'var(--font-body)' }}>Cortes anteriores</div>
-                    <div className={styles.tableWrap}>
-                      <table>
-                        <thead><tr><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead>
-                        <tbody>
-                          {[...cortes].reverse().slice(0, 5).map(c => (
-                            <tr key={c.id}>
-                              <td style={{ fontSize: 12 }}>{c.fecha}</td>
-                              <td className={styles.mono}>${(c.totalIngresos ?? 0).toLocaleString()}</td>
-                              <td><Tag color="green">{c.estado}</Tag></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Gastos */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardTitle}>Gastos</div>
-                  <button className={styles.coachBtn} onClick={() => setModalGasto(true)}>+ Registrar</button>
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                  {[
-                    { l: 'Ingresos', v: finTotalIngresos,  c: '#4CAF50' },
-                    { l: 'Gastos',   v: -finGastosTotales, c: '#C83232' },
-                    { l: 'Utilidad', v: finUtilidad,        c: finUtilidad >= 0 ? '#4CAF50' : '#C83232' },
-                  ].map(({ l, v, c }) => (
-                    <div key={l} style={{ flex: '1 1 80px', background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: '8px 10px' }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{l}</div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: c }}>{v < 0 ? '-' : ''}${Math.abs(v).toLocaleString()}</div>
-                    </div>
-                  ))}
-                </div>
-                {finGastosRango.length === 0 ? (
-                  <p style={{ textAlign: 'center', padding: 16, color: 'var(--text-muted)', fontSize: 13, fontFamily: 'var(--font-body)' }}>Sin gastos en este período</p>
-                ) : (
-                  <div className={styles.tableWrap}>
-                    <table>
-                      <thead><tr><th>Fecha</th><th>Concepto</th><th>Monto</th><th></th></tr></thead>
-                      <tbody>
-                        {finGastosRango.map(g => (
-                          <tr key={g.id}>
-                            <td style={{ fontSize: 12 }}>{g.fecha}</td>
-                            <td>{g.concepto}</td>
-                            <td style={{ color: '#C83232', fontWeight: 600 }}>−${g.monto.toLocaleString()}</td>
-                            <td><button onClick={() => eliminarGasto(g.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 15 }}>×</button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Transacciones */}
-            <div className={styles.card} style={{ marginTop: 20 }}>
-              <div className={styles.cardHeader}>
-                <div className={styles.cardTitle}>Transacciones</div>
-                <Tag color="blue">{txFin.length}</Tag>
-              </div>
-              {txFin.length === 0 ? (
-                <p style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: 13, fontFamily: 'var(--font-body)' }}>Sin transacciones en este período</p>
-              ) : (
-                <div className={styles.tableWrap}>
-                  <table>
-                    <thead><tr><th>Fecha</th><th>Concepto</th><th>Método</th><th>Tipo</th><th>Monto</th></tr></thead>
-                    <tbody>
-                      {txFin.map(tx => (
-                        <tr key={tx.id}>
-                          <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{tx.fecha}</td>
-                          <td>{tx.concepto}</td>
-                          <td><Tag color={tx.metodoPago === 'tarjeta' ? 'blue' : tx.metodoPago === 'transferencia' ? 'yellow' : 'green'}>{tx.metodoPago ?? 'efectivo'}</Tag></td>
-                          <td><Tag color={tx.tipo === 'paquete' ? 'pink' : 'green'}>{tx.tipo}</Tag></td>
-                          <td style={{ fontWeight: 600, color: 'var(--brand-wine)' }}>${(tx.monto ?? 0).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
+            <FinanzasSection inPanel />
           </section>
 
           {/* ── REPORTES ── */}
           <section className={`${styles.section}${activeSection === 'reportes' ? ' ' + styles.active : ''}`}>
-            <div className={styles.reportCards}>
-              {[
-                { icon: '💰', name: 'Reporte financiero',     desc: 'Ingresos, egresos, desglose por categoría y comparativa mensual.'   },
-                { icon: '👥', name: 'Reporte de usuarios',    desc: 'Lista completa, paquetes activos, historial de clases y gasto total.' },
-                { icon: '🗓', name: 'Reporte de clases',      desc: 'Asistencia por clase, ocupación promedio y clases más populares.'     },
-                { icon: '📦', name: 'Reporte de paquetes',    desc: 'Ventas por tipo de paquete, renovaciones y cancelaciones.'            },
-                { icon: '🛒', name: 'Reporte punto de venta', desc: 'Ventas de productos, inventario y productos más vendidos.'            },
-                { icon: '👤', name: 'Reporte de coaches',     desc: 'Clases impartidas, asistencia, rating y desempeño mensual.'           },
-              ].map(({ icon, name, desc }) => (
-                <div key={name} className={styles.reportCard}>
-                  <div className={styles.reportIcon}>{icon}</div>
-                  <div className={styles.reportName}>{name}</div>
-                  <div className={styles.reportDesc}>{desc}</div>
-                  <div className={styles.reportActions}>
-                    <button className={styles.reportBtn}>📊 Excel</button>
-                    <button className={styles.reportBtn}>📄 CSV</button>
-                    <button className={styles.reportBtn}>📑 PDF</button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ReportesSection inPanel />
           </section>
 
         </div>
