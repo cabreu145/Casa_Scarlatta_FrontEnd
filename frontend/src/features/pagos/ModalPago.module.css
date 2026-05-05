@@ -1,0 +1,210 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  position: relative;
+  z-index: 10000;
+  background: #1E1014;
+  border-radius: 16px;
+  padding: 32px;
+  width: 90%;
+  max-width: 440px;
+  border: 1px solid #3C2A2E;
+}
+
+.modal h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.totalLabel {
+  font-size: 18px;
+  text-align: center;
+  margin: 16px 0;
+  color: var(--text-secondary, #A69A93);
+}
+
+.totalLabel strong {
+  color: #7B1E22;
+  font-size: 32px;
+  display: block;
+  margin-top: 4px;
+}
+
+.metodos {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.metodo {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  background: #2C1A1E;
+  border: 1px solid #3C2A2E;
+  color: #A69A93;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.metodo:hover {
+  border-color: #7B1E22;
+  color: var(--text-primary);
+}
+
+.metodoActivo {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  background: #7B1E22;
+  border: 1px solid #7B1E22;
+  color: white;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+}
+
+.efectivoWrap {
+  margin: 16px 0;
+}
+
+.efectivoWrap label {
+  display: block;
+  font-size: 13px;
+  color: #A69A93;
+  margin-bottom: 8px;
+}
+
+.efectivoWrap input {
+  width: 100%;
+  padding: 12px;
+  background: #2C1A1E;
+  border: 1px solid #3C2A2E;
+  border-radius: 8px;
+  color: white;
+  font-size: 18px;
+  font-family: var(--font-body);
+  box-sizing: border-box;
+}
+
+.efectivoWrap input:focus {
+  outline: none;
+  border-color: #7B1E22;
+}
+
+.cambio {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #1A2E1A;
+  border-radius: 8px;
+  color: #4CAF50;
+  font-size: 16px;
+}
+
+.cambio strong {
+  font-size: 20px;
+}
+
+.errorMonto {
+  color: #C0152A;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.instrucciones {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-primary);
+}
+
+.instrucciones p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.iconTerminal {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.datosTransf {
+  background: #2C1A1E;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+  text-align: left;
+}
+
+.datosTransf span {
+  display: block;
+  margin: 4px 0;
+  color: #A69A93;
+  font-size: 13px;
+}
+
+.sub {
+  color: #A69A93;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.btnConfirmar {
+  background: #7B1E22;
+  color: white;
+  padding: 14px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  font-family: var(--font-body);
+  transition: opacity 0.15s;
+}
+
+.btnConfirmar:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btnConfirmar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnCancelar {
+  background: transparent;
+  border: 1px solid #3C2A2E;
+  color: #A69A93;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 14px;
+  transition: border-color 0.15s;
+}
+
+.btnCancelar:hover {
+  border-color: #A69A93;
+}

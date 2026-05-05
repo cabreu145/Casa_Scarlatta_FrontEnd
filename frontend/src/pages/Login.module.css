@@ -1,0 +1,206 @@
+.page {
+  min-height: calc(100vh - 72px);
+  background: var(--bg-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.blob {
+  top: -60px;
+  right: -80px;
+  width: 460px;
+  height: 460px;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: var(--space-4xl) var(--space-lg);
+}
+
+/* ── Toggle ── */
+.toggle {
+  display: flex;
+  background: var(--bg-surface);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  margin-top: var(--space-2xl);
+  margin-bottom: var(--space-xl);
+}
+
+.toggleBtn {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 9px 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--duration-fast), color var(--duration-fast);
+}
+
+.toggleActive {
+  background: var(--brand-wine);
+  color: var(--bg-base);
+}
+
+/* ── Card ── */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-2xl);
+}
+
+/* ── Form ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.field input {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1.5px solid var(--neutral-border);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--brand-wine);
+}
+
+.field select {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1.5px solid var(--neutral-border);
+  border-radius: var(--radius-md);
+  padding: 11px 14px;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.legales {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--neutral-border);
+}
+
+.checkLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.checkLabel input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  min-width: 15px;
+  accent-color: var(--brand-wine);
+  cursor: pointer;
+  margin-top: 3px;
+}
+
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--brand-wine);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  display: inline;
+}
+
+.linkBtn:hover {
+  color: var(--brand-rose);
+}
+
+.submitBtn {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bg-base);
+  background: var(--brand-wine);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 13px 28px;
+  cursor: pointer;
+  margin-top: var(--space-sm);
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.submitBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(123, 31, 46, 0.28);
+}
+
+.forgotLink {
+  text-align: center;
+  font-size: 13px;
+}
+
+.forgotLink a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--duration-fast);
+}
+
+.forgotLink a:hover {
+  color: var(--brand-wine);
+}
+
+.hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+@media (max-width: 480px) {
+  .formRow { grid-template-columns: 1fr; }
+}

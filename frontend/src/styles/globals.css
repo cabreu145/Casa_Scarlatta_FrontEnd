@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ── DESIGN SYSTEM — Casa Scarlatta Wellness Studio ── */
 
 :root {

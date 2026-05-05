@@ -1,0 +1,63 @@
+.liquidBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 40px;
+  border: none;
+  padding: 10px 22px;
+  background: var(--brand-wine);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
+}
+
+.liquidBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 6px rgba(0,0,0,0.03),
+              0 2px 6px rgba(0,0,0,0.08),
+              inset 3px 3px 0.5px -3px rgba(0,0,0,0.9),
+              inset -3px -3px 0.5px -3px rgba(0,0,0,0.85),
+              inset 0 0 6px 6px rgba(0,0,0,0.12),
+              0 0 12px rgba(255,255,255,0.15);
+}
+
+.glassLayer {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border-radius: 40px;
+  transition: all 0.3s ease;
+}
+
+.liquidBtn:hover .glassLayer {
+  box-shadow: 0 0 6px rgba(0,0,0,0.03),
+              0 2px 6px rgba(0,0,0,0.08),
+              inset 3px 3px 0.5px -3px rgba(0,0,0,0.9),
+              inset 0 0 6px 6px rgba(0,0,0,0.12),
+              0 0 12px rgba(255,255,255,0.15);
+}
+
+.backdropLayer {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  border-radius: 40px;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.content {
+  position: relative;
+  z-index: 10;
+  color: var(--bg-base);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  pointer-events: none;
+}
+
+.hiddenSvg {
+  display: none;
+}

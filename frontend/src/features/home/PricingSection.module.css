@@ -1,0 +1,398 @@
+/* ── PRICING SECTION — Casa Scarlatta ── */
+
+.section {
+  background: linear-gradient(160deg, #FAF5F2 0%, #F5EDE8 45%, #EFE3DC 100%);
+  padding: 112px 0 96px;
+  position: relative;
+  overflow: hidden;
+}
+
+.section::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(194, 107, 122, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+  position: relative;
+}
+
+/* ── Header ── */
+.header {
+  text-align: center;
+  margin-bottom: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.label {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: #B8947E;
+}
+
+.labelLine {
+  width: 32px;
+  height: 1px;
+  background: rgba(123, 31, 46, 0.25);
+  margin: 0 auto;
+}
+
+.title {
+  font-family: var(--font-body);
+  font-style: normal;
+  font-weight: 400;
+  font-size: clamp(36px, 4.5vw, 52px);
+  color: #5A1520;
+  line-height: 1.15;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 300;
+  color: #A08878;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+/* ── Cards grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  align-items: center;
+}
+
+/* ── Card base ── */
+.card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(194, 107, 122, 0.12);
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.03),
+    0 8px 24px rgba(123, 31, 46, 0.07),
+    0 24px 56px rgba(123, 31, 46, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(145deg, rgba(255,255,255,0.6) 0%, rgba(240,228,224,0.3) 100%);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.04),
+    0 16px 40px rgba(123, 31, 46, 0.12),
+    0 40px 80px rgba(123, 31, 46, 0.09);
+}
+
+/* ── Featured card ── */
+.cardFeatured {
+  background: linear-gradient(150deg, #7B1E22 0%, #5C1018 100%);
+  border-color: transparent;
+  transform: translateY(-12px);
+  box-shadow:
+    0 4px 8px rgba(0, 0, 0, 0.08),
+    0 20px 48px rgba(92, 16, 24, 0.35),
+    0 48px 96px rgba(92, 16, 24, 0.2);
+}
+
+.cardFeatured::before {
+  background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, transparent 60%);
+}
+
+.cardFeatured:hover {
+  transform: translateY(-18px) scale(1.02);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    0 28px 60px rgba(92, 16, 24, 0.42),
+    0 56px 100px rgba(92, 16, 24, 0.25);
+}
+
+/* ── Badge ── */
+.badge {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #F5EDE8;
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+}
+
+/* ── Class count block ── */
+.countBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 44px 32px 32px;
+  gap: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.countNum {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: clamp(72px, 9vw, 96px);
+  font-weight: 300;
+  line-height: 1;
+  color: #7B1E22;
+  letter-spacing: -0.02em;
+}
+
+.cardFeatured .countNum {
+  color: #F5EDE8;
+}
+
+.countLabel {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(123, 31, 46, 0.4);
+}
+
+.cardFeatured .countLabel {
+  color: rgba(245, 237, 232, 0.5);
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(123, 31, 46, 0.1), transparent);
+  margin: 0 28px;
+  position: relative;
+  z-index: 1;
+}
+
+.cardFeatured .divider {
+  background: linear-gradient(to right, transparent, rgba(245, 237, 232, 0.15), transparent);
+}
+
+/* ── Plan name + price ── */
+.planName {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  color: #3D1A20;
+  padding: 28px 32px 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.cardFeatured .planName {
+  color: rgba(245, 237, 232, 0.9);
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  padding: 0 32px 24px;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.price {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 36px;
+  font-weight: 400;
+  color: #7B1E22;
+  line-height: 1;
+}
+
+.cardFeatured .price {
+  color: #F5EDE8;
+}
+
+.priceSuffix {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 300;
+  color: #A08878;
+  letter-spacing: 0.02em;
+}
+
+.cardFeatured .priceSuffix {
+  color: rgba(245, 237, 232, 0.55);
+}
+
+/* ── Benefits ── */
+.beneficios {
+  list-style: none;
+  margin: 0 0 32px;
+  padding: 0 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.beneficio {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 300;
+  color: #7A6560;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+}
+
+.cardFeatured .beneficio {
+  color: rgba(245, 237, 232, 0.78);
+}
+
+.check {
+  color: #C26B7A;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.cardFeatured .check {
+  color: rgba(245, 237, 232, 0.7);
+}
+
+/* ── CTA button ── */
+.cta {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 14px 28px;
+  margin: 0 28px 32px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(123, 31, 46, 0.3);
+  cursor: pointer;
+  background: transparent;
+  color: #7B1E22;
+  text-align: center;
+  display: block;
+  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.cta:hover {
+  background: #7B1E22;
+  color: #F5EDE8;
+  border-color: #7B1E22;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(123, 31, 46, 0.25);
+}
+
+.ctaFeatured {
+  background: rgba(245, 237, 232, 0.15);
+  color: #F5EDE8;
+  border-color: rgba(245, 237, 232, 0.35);
+}
+
+.ctaFeatured:hover {
+  background: #F5EDE8;
+  color: #7B1E22;
+  border-color: #F5EDE8;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Footer ── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 56px;
+  flex-wrap: wrap;
+}
+
+.footerText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 300;
+  color: #A08878;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.footerLink {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: #7B1E22;
+  background: none;
+  border: none;
+  border-bottom: 1px solid rgba(123, 31, 46, 0.25);
+  padding: 0 0 1px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: border-color 0.2s, opacity 0.2s;
+}
+
+.footerLink:hover {
+  border-color: #7B1E22;
+  opacity: 0.8;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .cardFeatured {
+    transform: none;
+  }
+
+  .cardFeatured:hover {
+    transform: translateY(-6px) scale(1.01);
+  }
+}

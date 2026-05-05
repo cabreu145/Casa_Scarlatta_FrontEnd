@@ -1,0 +1,31 @@
+.motionBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  border: none;
+  background: var(--brand-wine);
+  padding: 0;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.icon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg-base);
+}
+
+.btnText {
+  color: var(--bg-base);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}

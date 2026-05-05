@@ -1,5 +1,20 @@
+/**
+ * Footer.jsx
+ * ─────────────────────────────────────────────────────
+ * Pie de página con links de navegación, horarios, redes
+ * sociales y shader animado de fondo (Dithering, lazy).
+ *
+ * Usado en: App.jsx (solo en rutas públicas)
+ * Depende de: react-router-dom, @paper-design/shaders-react
+ * ─────────────────────────────────────────────────────
+ */
+import { lazy, Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './Footer.module.css'
+
+const Dithering = lazy(() =>
+  import('@paper-design/shaders-react').then(mod => ({ default: mod.Dithering }))
+)
 
 const IconInstagram = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -24,12 +39,32 @@ export default function Footer() {
 
   return (
     <footer className={styles.footer}>
-      <div className={styles.inner}>
+      <Suspense fallback={null}>
+        <div style={{
+          position: 'absolute', top: 0, left: 0,
+          width: '100%', height: '100%',
+          pointerEvents: 'none', zIndex: 0, opacity: 0.15,
+        }}>
+          <Dithering
+            colorBack="#00000000"
+            colorFront="#C0392B"
+            shape="warp"
+            type="4x4"
+            speed={0.15}
+            style={{ width: '100%', height: '100%' }}
+          />
+        </div>
+      </Suspense>
+      <div className={styles.inner} style={{ position: 'relative', zIndex: 1 }}>
         <div className={styles.grid}>
           <div className={styles.brand}>
             <Link to="/">
-              <span className={styles.logoCasa}>casa</span>
-              <span className={styles.logoScarlatta}>Scarlatta</span>
+              <img
+                src="/brand/CASA_SCARLATTA_ISOTIPO.png"
+                alt="Casa Scarlatta"
+                draggable="false"
+                className={styles.footerLogo}
+              />
             </Link>
             <p className={styles.tagline}>
               Estudio de movimiento enfocado en el bienestar integral.<br />
@@ -40,8 +75,8 @@ export default function Footer() {
           <div>
             <p className={styles.colTitle}>Estudio</p>
             <ul className={styles.colLinks}>
-              <li><Link to="/suet">Suet Fitroom</Link></li>
-              <li><Link to="/flow">Flow Method</Link></li>
+              <li><Link to="/suet">Stryde X </Link></li>
+              <li><Link to="/flow">Slow </Link></li>
               <li><Link to="/clases">Clases</Link></li>
               <li><Link to="/nosotros">Nosotros</Link></li>
             </ul>
@@ -52,7 +87,7 @@ export default function Footer() {
             <ul className={styles.colLinks}>
               <li><Link to="/reservar">Reservar clase</Link></li>
               <li><Link to="/contacto">Contacto</Link></li>
-              <li><a href="#membresias">Membresías</a></li>
+              <li><a href="#membresias">Paquetes</a></li>
             </ul>
           </div>
 

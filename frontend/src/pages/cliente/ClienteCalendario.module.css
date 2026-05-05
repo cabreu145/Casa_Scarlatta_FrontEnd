@@ -1,0 +1,111 @@
+.filtros {
+  display: flex;
+  gap: 8px;
+  margin-bottom: var(--space-xl);
+}
+
+.filtroBtn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 18px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--neutral-border);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.filtroBtnActive {
+  background: var(--brand-wine);
+  border-color: var(--brand-wine);
+  color: #F5EDE8;
+}
+
+.diaSection {
+  margin-bottom: var(--space-2xl);
+}
+
+.diaTitulo {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--neutral-border);
+}
+
+.clasesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-md);
+}
+
+.claseCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  transition: box-shadow var(--duration-fast);
+}
+
+.claseCard:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.claseCardReservada {
+  border-color: rgba(123, 31, 46, 0.3);
+  background: rgba(123, 31, 46, 0.04);
+}
+
+.claseHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.claseHora {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.claseNombre {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.claseInfo {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.claseCupo {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: auto;
+}
+
+.reservadaTag {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: #228B22;
+  font-weight: 500;
+}
+
+.llenaTag {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-muted);
+}

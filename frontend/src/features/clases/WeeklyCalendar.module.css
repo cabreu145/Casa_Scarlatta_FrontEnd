@@ -1,0 +1,301 @@
+.wrapper {
+  width: 100%;
+  background: transparent;
+}
+
+/* ── Month nav ── */
+.monthNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 12px;
+}
+
+.monthLabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(44, 24, 16, 0.6);
+}
+
+.navBtn {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(123, 31, 46, 0.8);
+  background: transparent;
+  border: 1.5px solid rgba(123, 31, 46, 0.2);
+  border-radius: 999px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.navBtn:hover {
+  background: rgba(123, 31, 46, 0.06);
+  border-color: rgba(123, 31, 46, 0.4);
+}
+
+.navBtnDisabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ── Desktop grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border-top: 1px solid rgba(123, 31, 46, 0.1);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(123, 31, 46, 0.1);
+  background: transparent;
+}
+
+.column:last-child { border-right: none; }
+
+.columnToday { background: rgba(123, 31, 46, 0.04); }
+
+/* ── Column header ── */
+.colHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 14px 8px;
+  border-bottom: 1px solid rgba(42, 34, 32, 0.15);
+  background: #2A2220;
+}
+
+.colDate {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: rgba(245, 237, 232, 0.6);
+  letter-spacing: 0.05em;
+}
+
+.colDay {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #F5EDE8;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.colHeaderToday .colDay {
+  background: rgba(255, 255, 255, 0.28);
+  color: #F5EDE8;
+}
+
+/* ── Slots ── */
+.slots {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 8px;
+  flex: 1;
+}
+
+.emptySlot { min-height: 40px; }
+
+/* ── Class block ── */
+.block {
+  width: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(237, 210, 210, 0.45) 100%
+  );
+  border: 1px solid rgba(123, 31, 46, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    0 2px 10px rgba(123, 31, 46, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  padding: 10px 10px 9px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.block:hover:not(:disabled) {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(237, 210, 210, 0.65) 100%
+  );
+  border-color: rgba(123, 31, 46, 0.28);
+  box-shadow:
+    0 4px 18px rgba(123, 31, 46, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transform: translateY(-2px);
+}
+
+.blockFull {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.blockPast {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ── Type badge ── */
+.typeTag {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-bottom: 2px;
+}
+
+.type_stride {
+  background: rgba(123, 31, 46, 0.12);
+  color: rgba(123, 31, 46, 0.9);
+}
+
+.type_slow {
+  background: rgba(194, 107, 122, 0.18);
+  color: rgba(123, 31, 46, 0.85);
+}
+
+.blockName {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: #2C1810;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.blockMeta {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: rgba(44, 24, 16, 0.6);
+}
+
+.blockInstructor {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: rgba(44, 24, 16, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.spots {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.spotsOk  { color: #2A8C47; }
+.spotsLow { color: #C0392B; }
+
+.spotsFull {
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(44, 24, 16, 0.3);
+  margin-top: 1px;
+}
+
+/* ── Mobile tabs (hidden on desktop) ── */
+.mobileTabs {
+  display: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid rgba(123, 31, 46, 0.1);
+}
+
+.mobileTabs::-webkit-scrollbar { display: none; }
+
+.mobileTab {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.mobileTabDate {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: rgba(44, 24, 16, 0.35);
+}
+
+.mobileTabDay {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(44, 24, 16, 0.5);
+  background: rgba(123, 31, 46, 0.07);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.mobileTabActive .mobileTabDay {
+  background: var(--brand-wine);
+  color: #F5EDE8;
+}
+
+/* ── Mobile single day ── */
+.mobileDay { display: none; }
+
+.emptyText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: rgba(44, 24, 16, 0.3);
+  text-align: center;
+  padding: 40px 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .grid      { display: none; }
+  .mobileTabs { display: flex; }
+  .mobileDay {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px 24px;
+    min-height: 180px;
+  }
+  .mobileDay .block {
+    padding: 13px 14px 11px;
+  }
+  .mobileDay .blockName      { font-size: 13px; white-space: normal; }
+  .mobileDay .blockMeta      { font-size: 11px; }
+  .mobileDay .blockInstructor { font-size: 11px; }
+  .mobileDay .spots          { font-size: 11px; }
+}

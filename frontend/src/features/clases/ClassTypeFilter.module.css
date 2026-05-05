@@ -1,30 +1,53 @@
 .wrap {
   display: flex;
-  gap: var(--space-sm);
+  gap: 10px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .btn {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  padding: 9px 22px;
-  border-radius: var(--radius-pill);
-  border: 1.5px solid var(--neutral-border);
-  background: transparent;
-  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 52px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(123, 31, 46, 0.2);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
-  letter-spacing: 0.03em;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(123, 31, 46, 0.06);
 }
 
 .btn:hover {
-  border-color: var(--brand-wine);
-  color: var(--brand-wine);
+  border-color: rgba(123, 31, 46, 0.4);
+  box-shadow: 0 4px 14px rgba(123, 31, 46, 0.12);
+  transform: translateY(-1px);
 }
 
-.btn.active {
+.active {
   background: var(--brand-wine);
   border-color: var(--brand-wine);
-  color: var(--text-on-dark);
+  box-shadow: 0 4px 16px rgba(123, 31, 46, 0.35);
+}
+
+.isotipo {
+  width: 52px;
+  height: 32px;
+  object-fit: contain;
+  mix-blend-mode: multiply;
+  transition: filter 0.15s, mix-blend-mode 0.15s;
+}
+
+.isotipoSlow {
+  width: 76px;
+  height: 40px;
+}
+
+.active .isotipo {
+  mix-blend-mode: normal;
+  filter: brightness(0) invert(1);
 }

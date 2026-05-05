@@ -8,7 +8,7 @@ export default function SuetPreview() {
       <div className={styles.inner}>
         <div className={styles.content}>
           <span className={styles.label}>Alta intensidad</span>
-          <h2 className={styles.title}>Suet</h2>
+          <h2 className={styles.title}>STRIDE</h2>
           <p className={styles.desc}>
             Entrenamiento que fusiona cardio y fuerza en bloques de alta
             intensidad con música envolvente. DJ en vivo, LED rojo, energía total.
@@ -22,7 +22,7 @@ export default function SuetPreview() {
             ))}
           </div>
           <div style={{ marginTop: 'var(--space-md)', display: 'flex', gap: 'var(--space-md)' }}>
-            <Button to="/suet" variant="primary">Conocer Suet</Button>
+            <Button to="/suet" variant="primary">Conocer STRIDE</Button>
             <Button to="/reservar" variant="ghostLight">Reservar</Button>
           </div>
         </div>
@@ -31,7 +31,7 @@ export default function SuetPreview() {
           <div className={styles.imgWrap}>
             <img
               src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80"
-              alt="Sala Suet — treadmills con iluminación roja"
+              alt="Sala STRIDE — treadmills con iluminación roja"
               loading="lazy"
             />
           </div>
