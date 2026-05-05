@@ -10,20 +10,8 @@ import { useClasesStore }   from '@/stores/clasesStore'
 import styles from './SeatSelector.module.css'
 
 const LAYOUT = {
-  Stride: { rows: 4, cols: 5 },
-  Slow: { rows: 3, cols: 5 },
-}
-
-function generateOccupied(rows, cols, totalSpots) {
-  const total = rows * cols
-  const taken = total - totalSpots
-  const ids = new Set()
-  while (ids.size < taken) {
-    const r = Math.floor(Math.random() * rows) + 1
-    const c = Math.floor(Math.random() * cols) + 1
-    ids.add(`R${r}-S${c}`)
-  }
-  return ids
+  'Stryde X': { rows: 4, cols: 5 },
+  'Slow':     { rows: 3, cols: 5 },
 }
 
 function seatLabel(row, col) {
@@ -37,6 +25,11 @@ function parseSeat(id) {
   }
 }
 
+function seatIdFromLabel(label) {
+  const match = label?.match(/Fila (\d+), Asiento (\d+)/)
+  return match ? `R${match[1]}-S${match[2]}` : null
+}
+
 /**
  * Props:
  *  cls           – raw class object from clasesStore
@@ -48,16 +41,27 @@ function parseSeat(id) {
 export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, adminForce = false }) {
   const navigate = useNavigate()
   const { isAuthenticated, usuario } = useAuth()
+  const { reservas } = useReservasStore()
 
-  const spotsDisponibles = cls.cupoMax - cls.cupoActual
   const { rows, cols } = LAYOUT[cls.tipo] ?? { rows: 4, cols: 5 }
+  const userId = targetUserId ?? usuario?.id
 
-  const occupied = useMemo(
-    () => generateOccupied(rows, cols, spotsDisponibles),
-    [rows, cols, spotsDisponibles]
-  )
+  // Asientos ocupados según reservas reales confirmadas para esta clase
+  const occupied = useMemo(() => new Set(
+    reservas
+      .filter(r => r.claseId === cls.id && r.estado === 'confirmada')
+      .map(r => seatIdFromLabel(r.asiento))
+      .filter(Boolean)
+  ), [reservas, cls.id])
 
-  const [selected, setSelected] = useState(null)
+  // Si el usuario ya tiene un asiento reservado, pre-seleccionarlo
+  const [selected, setSelected] = useState(() => {
+    const myReserva = reservas.find(
+      r => r.claseId === cls.id && r.userId === userId && r.estado === 'confirmada'
+    )
+    return myReserva ? seatIdFromLabel(myReserva.asiento) : null
+  })
+
   const [confirmado, setConfirmado] = useState(false)
   const [sinClases, setSinClases] = useState(false)
 
@@ -67,8 +71,6 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
   function toggle(id) {
     setSelected(prev => (prev === id ? null : id))
   }
-
-  const userId = targetUserId ?? usuario?.id
 
   function confirm() {
     if (!adminForce && !isAuthenticated) {
