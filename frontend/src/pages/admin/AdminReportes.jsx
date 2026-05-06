@@ -46,8 +46,47 @@ async function exportarExcel(datos, nombre) {
   exportarCSV(datos, nombre) // Fallback a CSV directo (compatible sin librería externa)
 }
 
-function exportarPDF(nombre) {
-  toast('PDF: Usa Ctrl+P → Guardar como PDF en el navegador', { icon: 'ℹ️' })
+function exportarPDF(datos, nombre, titulo = 'Reporte') {
+  if (!datos?.length) { toast.error('Sin datos para exportar'); return }
+  const columnas = Object.keys(datos[0])
+  const filas = datos
+    .map((row) => `<tr>${columnas.map((col) => `<td>${row[col] ?? ''}</td>`).join('')}</tr>`)
+    .join('')
+
+  const html = `
+    <!doctype html>
+    <html lang="es">
+      <head>
+        <meta charset="utf-8" />
+        <title>${titulo}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
+          h1 { margin: 0 0 6px; font-size: 22px; }
+          p { margin: 0 0 18px; color: #555; font-size: 12px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background: #f5f5f5; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <h1>${titulo}</h1>
+        <p>Generado: ${new Date().toLocaleString('es-MX')}</p>
+        <table>
+          <thead><tr>${columnas.map((col) => `<th>${col}</th>`).join('')}</tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </body>
+    </html>
+  `
+
+  const w = window.open('', '_blank')
+  if (!w) { toast.error('No se pudo abrir la ventana de impresión'); return }
+  w.document.open()
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  setTimeout(() => w.print(), 250)
+  toast.success(`Vista PDF lista: ${nombre}`)
 }
 
 // ── Datos para cada reporte ───────────────────────────────────────────────────
@@ -537,35 +576,35 @@ export function ReportesSection({ inPanel = false }) {
             descripcion="Ingresos, gastos, desglose por categoría y período"
             onCSV={() => exportarCSV(financiero, `financiero_${new Date().toISOString().split('T')[0]}`)}
             onExcel={() => exportarExcel(financiero, `financiero_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF('financiero')}
+            onPDF={() => exportarPDF(financiero, 'financiero', 'Reporte financiero')}
           />
           <ReportCard
             icono="👥" titulo="Reporte de usuarios"
             descripcion="Lista completa, paquetes activos e historial"
             onCSV={() => exportarCSV(usuarios, `usuarios_${new Date().toISOString().split('T')[0]}`)}
             onExcel={() => exportarExcel(usuarios, `usuarios_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF('usuarios')}
+            onPDF={() => exportarPDF(usuarios, 'usuarios', 'Reporte de usuarios')}
           />
           <ReportCard
             icono="🏃" titulo="Reporte de clases"
             descripcion="Asistencia por clase, ocupación y horarios pico"
             onCSV={() => exportarCSV(clasesData, `clases_${new Date().toISOString().split('T')[0]}`)}
             onExcel={() => exportarExcel(clasesData, `clases_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF('clases')}
+            onPDF={() => exportarPDF(clasesData, 'clases', 'Reporte de clases')}
           />
           <ReportCard
             icono="📦" titulo="Reporte de paquetes"
             descripcion="Ventas por tipo de paquete y renovaciones"
             onCSV={() => exportarCSV(paquetes, `paquetes_${new Date().toISOString().split('T')[0]}`)}
             onExcel={() => exportarExcel(paquetes, `paquetes_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF('paquetes')}
+            onPDF={() => exportarPDF(paquetes, 'paquetes', 'Reporte de paquetes')}
           />
           <ReportCard
             icono="🛒" titulo="Reporte punto de venta"
             descripcion="Ventas de productos e inventario"
             onCSV={() => exportarCSV(pdv, `pdv_${new Date().toISOString().split('T')[0]}`)}
             onExcel={() => exportarExcel(pdv, `pdv_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF('pdv')}
+            onPDF={() => exportarPDF(pdv, 'pdv', 'Reporte punto de venta')}
           />
         </div>
 
@@ -586,7 +625,7 @@ export function ReportesSection({ inPanel = false }) {
           Métricas generales
         </h2>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 16 }}>
           {/* Ingresos históricos */}
           <div style={panelStyle}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
@@ -633,7 +672,7 @@ export function ReportesSection({ inPanel = false }) {
         </div>
 
         {/* Ocupación por disciplina */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
           <div style={panelStyle}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>
               Ocupación por disciplina

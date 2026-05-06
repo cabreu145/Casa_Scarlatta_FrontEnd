@@ -30,6 +30,7 @@ export default function CoachMisClases() {
         </div>
 
         <div className={styles.panel}>
+          <div className={styles.tableContainer}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -72,6 +73,7 @@ export default function CoachMisClases() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {claseSeleccionada && (

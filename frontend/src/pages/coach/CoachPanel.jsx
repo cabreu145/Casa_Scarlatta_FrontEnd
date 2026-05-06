@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import {
   LayoutDashboard, CalendarDays,
-  LogOut, ArrowLeft, X, ChevronLeft, ChevronRight
+  LogOut, ArrowLeft, X, ChevronLeft, ChevronRight, Menu
 } from 'lucide-react'
 import { useReservasStore } from '@/stores/reservasStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
@@ -69,6 +69,7 @@ function statusColor(cls) {
 export default function CoachPanel() {
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('dashboard')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const KEYS = ['dom','lun','mar','mie','jue','vie','sab']
   const [selectedDay, setSelectedDay] = useState(KEYS[new Date().getDay()])
   const [weekOffset, setWeekOffset]   = useState(0)
@@ -120,6 +121,11 @@ export default function CoachPanel() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  useEffect(() => {
+    document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [isSidebarOpen])
+
   const meta = SECTION_META[activeSection]
 
   function openModal(cls) { setModalClass(cls) }
@@ -133,7 +139,7 @@ export default function CoachPanel() {
   return (
     <div className={s.root}>
       {/* ── SIDEBAR ── */}
-      <aside className={s.sidebar}>
+      <aside id="coach-sidebar" className={`${s.sidebar} ${isSidebarOpen ? s.sidebarOpen : ''}`}>
         <div className={s.sidebarLogo}>
           <span className={s.logoBrand}>casa</span>
           <span className={s.logoStudio}>Scarlatta</span>
@@ -146,7 +152,7 @@ export default function CoachPanel() {
             <button
               key={key}
               className={`${s.navItem} ${activeSection === key ? s.active : ''}`}
-              onClick={() => setActiveSection(key)}
+              onClick={() => { setActiveSection(key); setIsSidebarOpen(false) }}
             >
               <span className={s.navIcon}><Icon size={16} strokeWidth={1.8} /></span>
               {label}
@@ -171,8 +177,19 @@ export default function CoachPanel() {
         {/* TOPBAR */}
         <div className={s.topbar}>
           <div className={s.topbarLeft}>
-            <h1>{meta.title}</h1>
-            <p>{activeSection === 'mis-clases' ? semanaLabel : meta.sub}</p>
+            <button
+              className={s.menuBtn}
+              onClick={() => setIsSidebarOpen((v) => !v)}
+              aria-label="Abrir menu"
+              aria-expanded={isSidebarOpen}
+              aria-controls="coach-sidebar"
+            >
+              <Menu size={18} strokeWidth={2} />
+            </button>
+            <div className={s.topbarHeading}>
+              <h1>{meta.title}</h1>
+              <p>{activeSection === 'mis-clases' ? semanaLabel : meta.sub}</p>
+            </div>
           </div>
           <div className={s.topbarRight}>
             <div className={s.topbarProfile}>
@@ -363,6 +380,11 @@ export default function CoachPanel() {
         </div>{/* /content */}
       </main>
 
+      <div
+        className={`${s.sidebarBackdrop} ${isSidebarOpen ? s.open : ''}`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
+
       {/* ── MODAL ── */}
       <div
         className={`${s.modalOverlay} ${modalClass ? s.open : ''}`}
@@ -381,6 +403,7 @@ function WeekTable({ classes, onOpen }) {
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
   return (
+    <div className={s2.tableContainer}>
     <table className={s2.weekTable}>
       <thead>
         <tr>
@@ -441,6 +464,7 @@ function WeekTable({ classes, onOpen }) {
         })}
       </tbody>
     </table>
+    </div>
   )
 }
 
@@ -450,6 +474,7 @@ function MisClasesTable({ classes, onOpen }) {
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
   return (
+    <div className={s2.tableContainer}>
     <table className={s2.weekTable}>
       <thead>
         <tr>
@@ -508,6 +533,7 @@ function MisClasesTable({ classes, onOpen }) {
         })}
       </tbody>
     </table>
+    </div>
   )
 }
 

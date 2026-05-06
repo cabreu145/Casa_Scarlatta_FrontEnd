@@ -9,33 +9,40 @@
  * Depende de: Sidebar
  * ─────────────────────────────────────────────────────
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Menu, X } from 'lucide-react'
 import Sidebar from './Sidebar'
 import styles from './DashboardLayout.module.css'
 
 export default function DashboardLayout({ children, links }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isSidebarOpen])
 
   return (
     <div className={styles.root}>
       {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div className={styles.overlay} onClick={() => setSidebarOpen(false)} />
+      {isSidebarOpen && (
+        <div className={styles.sidebarBackdrop} onClick={() => setIsSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`}>
-        <button className={styles.closeBtn} onClick={() => setSidebarOpen(false)}>
+      <aside className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
+        <button className={styles.closeBtn} onClick={() => setIsSidebarOpen(false)}>
           <X size={20} />
         </button>
-        <Sidebar links={links} onNavigate={() => setSidebarOpen(false)} />
+        <Sidebar links={links} onNavigate={() => setIsSidebarOpen(false)} />
       </aside>
 
       {/* Main content */}
       <div className={styles.main}>
         <header className={styles.mobileHeader}>
-          <button className={styles.menuBtn} onClick={() => setSidebarOpen(true)}>
+          <button className={styles.menuBtn} onClick={() => setIsSidebarOpen(true)}>
             <Menu size={22} />
           </button>
           <span className={styles.mobileTitle}>Casa Scarlatt</span>

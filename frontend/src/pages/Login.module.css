@@ -43,6 +43,7 @@
   color: var(--text-muted);
   cursor: pointer;
   transition: background var(--duration-fast), color var(--duration-fast);
+  user-select: none;
 }
 
 .toggleActive {
@@ -153,6 +154,7 @@
   text-decoration: underline;
   text-underline-offset: 2px;
   display: inline;
+  user-select: none;
 }
 
 .linkBtn:hover {
@@ -172,6 +174,12 @@
   margin-top: var(--space-sm);
   transition: transform var(--duration-fast) var(--ease-out),
               box-shadow var(--duration-fast) var(--ease-out);
+  user-select: none;
+}
+
+.modal {
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .submitBtn:hover {

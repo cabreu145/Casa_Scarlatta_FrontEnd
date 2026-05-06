@@ -1,15 +1,4 @@
-/**
- * Navbar.jsx
- * ─────────────────────────────────────────────────────
- * Barra de navegación principal. Incluye menú desktop,
- * menú móvil con overlay, avatar con dropdown de usuario
- * y shader animado de fondo (Dithering, cargado lazy).
- *
- * Usado en: App.jsx (todas las rutas)
- * Depende de: AuthContext, ROUTES, LiquidButton, react-hot-toast
- * ─────────────────────────────────────────────────────
- */
-import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+﻿import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import LiquidButton from '@/components/ui/LiquidButton'
@@ -33,8 +22,8 @@ const links = [
 
 const rolDashboard = {
   cliente: ROUTES.cliente.dashboard,
-  coach:   ROUTES.coach.dashboard,
-  admin:   ROUTES.admin.dashboard,
+  coach: ROUTES.coach.dashboard,
+  admin: ROUTES.admin.dashboard,
 }
 
 const rolLabel = {
@@ -75,8 +64,12 @@ export default function Navbar() {
   const handleLogout = () => {
     logout()
     setDropdownOpen(false)
-    toast.success('Sesión cerrada')
+    toast.success('Sesion cerrada')
     navigate('/')
+  }
+
+  const handleMenuToggle = () => {
+    setOpen((prev) => !prev)
   }
 
   return (
@@ -128,7 +121,7 @@ export default function Navbar() {
               <button
                 className={styles.avatar}
                 onClick={() => setDropdownOpen((v) => !v)}
-                aria-label="Menú de usuario"
+                aria-label="Menu de usuario"
               >
                 {usuario.nombre.charAt(0).toUpperCase()}
               </button>
@@ -151,30 +144,38 @@ export default function Navbar() {
                     className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`}
                     onClick={handleLogout}
                   >
-                    Cerrar sesión
+                    Cerrar sesion
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <LiquidButton onClick={() => navigate(ROUTES.login)}>Iniciar sesión</LiquidButton>
+            <LiquidButton onClick={() => navigate(ROUTES.login)}>Iniciar sesion</LiquidButton>
           )}
 
           <button
             className={styles.menuBtn}
-            onClick={() => setOpen(true)}
-            aria-label="Abrir menú"
+            onClick={handleMenuToggle}
+            aria-label="Abrir menu"
+            aria-expanded={open}
+            aria-controls="mobile-navigation"
           >
             <Menu size={24} />
           </button>
         </div>
       </nav>
 
-      <div className={`${styles.mobileNav} ${open ? styles.open : ''}`}>
+      <div
+        id="mobile-navigation"
+        className={`${styles.mobileNav} ${open ? styles.open : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-hidden={!open}
+      >
         <button
           className={styles.mobileClose}
           onClick={() => setOpen(false)}
-          aria-label="Cerrar menú"
+          aria-label="Cerrar menu"
         >
           <X size={28} />
         </button>
@@ -208,7 +209,7 @@ export default function Navbar() {
                   style={{ fontSize: 18, color: 'var(--text-muted)' }}
                   onClick={() => { setOpen(false); handleLogout() }}
                 >
-                  Cerrar sesión
+                  Cerrar sesion
                 </button>
               </li>
             </>

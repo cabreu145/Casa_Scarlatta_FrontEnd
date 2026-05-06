@@ -22,11 +22,12 @@ function LegalModal({ titulo, children, onClose }) {
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div style={{
+      <div className={styles.modal} style={{
         background: 'var(--bg-base)', borderRadius: 'var(--radius-xl)',
         padding: '32px', maxWidth: 460, width: '100%',
         boxShadow: '0 24px 64px rgba(0,0,0,0.2)',
         display: 'flex', flexDirection: 'column', gap: '16px',
+        maxHeight: '90vh', overflowY: 'auto',
       }}>
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, color: 'var(--text-primary)', margin: 0 }}>
           {titulo}

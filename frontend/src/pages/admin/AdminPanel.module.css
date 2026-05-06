@@ -236,6 +236,17 @@
   gap: 12px;
 }
 
+.topbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.topbarHeading {
+  min-width: 0;
+}
+
 /* ── BUTTONS ───────────────────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -1097,4 +1108,135 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+}
+
+.mobileMenuBtn {
+  display: none;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--muted-2);
+  background: rgba(255,255,255,0.04);
+  color: var(--blush);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sidebarBackdrop {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 85vw;
+    max-width: 320px;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .main,
+  .content {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  .sidebarBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
+
+  .mobileMenuBtn {
+    display: inline-flex;
+    margin-right: 10px;
+  }
+
+  .topbar {
+    padding: 0 16px;
+  }
+
+  .topbarHeading h1,
+  .topbarHeading p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbarRight {
+    min-width: 0;
+    flex-shrink: 0;
+  }
+
+  .adminProfile {
+    min-width: 0;
+  }
+
+  .kpiGrid,
+  .dashGrid,
+  .fullGrid,
+  .coachesGrid,
+  .paquetesGrid,
+  .financeSummary,
+  .reportCards,
+  .posGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .productGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sidebar * {
+    user-select: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    height: auto;
+    min-height: 64px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .topbarHeading p {
+    display: none;
+  }
+
+  .adminRole {
+    display: none;
+  }
+
+  .notifBtn {
+    display: none;
+  }
+
+  .content {
+    padding: 20px 16px;
+  }
+
+  .productGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sectionTopRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
 }
