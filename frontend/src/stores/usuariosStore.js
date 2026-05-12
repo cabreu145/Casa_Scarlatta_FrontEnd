@@ -107,27 +107,29 @@ export const useUsuariosStore = create(
       // participantesIds: array de IDs (incluye al comprador).
       // clasesTotales: total del paquete antes de dividir.
       asignarPaqueteCompartido: (participantesIds, paquete, clasesTotales) => {
-        const grupoId = `grupo_${Date.now()}`
-        const clasesPorPersona = Math.floor(clasesTotales / participantesIds.length)
+        const grupoId          = `grupo_${Date.now()}`
+        const base             = Math.floor(clasesTotales / participantesIds.length)
+        const resto            = clasesTotales % participantesIds.length
+        const titularId        = participantesIds[0]
         set((state) => ({
-          usuarios: state.usuarios.map((u) =>
-            participantesIds.includes(u.id)
-              ? {
-                  ...u,
-                  paquete,
-                  clasesPaquete:      clasesPorPersona,
-                  clasesPaqueteTotal: clasesPorPersona,
-                  paqueteInfo: {
-                    fechaCompra:        new Date().toISOString().split('T')[0],
-                    estado:             'Activo',
-                    tipo:               'Compartido',
-                    grupoId,
-                    participantes:      participantesIds,
-                    totalClasesOriginal: clasesTotales,
-                  },
-                }
-              : u
-          ),
+          usuarios: state.usuarios.map((u) => {
+            if (!participantesIds.includes(u.id)) return u
+            const clases = u.id === titularId ? base + resto : base
+            return {
+              ...u,
+              paquete,
+              clasesPaquete:      clases,
+              clasesPaqueteTotal: clases,
+              paqueteInfo: {
+                fechaCompra:         new Date().toISOString().split('T')[0],
+                estado:              'Activo',
+                tipo:                'Compartido',
+                grupoId,
+                participantes:       participantesIds,
+                totalClasesOriginal: clasesTotales,
+              },
+            }
+          }),
         }))
       },
     }),

@@ -24,10 +24,12 @@ export default function CompartirPaquete({
   const [participantes, setParticipantes] = useState([])
   const [error, setError]             = useState('')
 
-  const esIlimitado = !paquete?.clases || paquete.clases === 0
-  const totalPersonas    = participantes.length + 1
-  const clasesPorPersona = esIlimitado ? null : Math.floor(paquete.clases / totalPersonas)
-  const clasesBase       = paquete?.clases ?? 0
+  const esIlimitado    = !paquete?.clases || paquete.clases === 0
+  const totalPersonas  = participantes.length + 1
+  const clasesBase     = paquete?.clases ?? 0
+  const clasesPorPersona = esIlimitado ? null : Math.floor(clasesBase / totalPersonas)
+  const resto            = esIlimitado ? 0 : clasesBase % totalPersonas
+  const clasesTotular    = clasesPorPersona !== null ? clasesPorPersona + resto : null
 
   function toggleActivo() {
     if (esIlimitado) return
@@ -147,10 +149,9 @@ export default function CompartirPaquete({
               {' '}divididas entre <strong>{totalPersonas} persona{totalPersonas !== 1 ? 's' : ''}</strong>
               {' '}= <strong>{clasesPorPersona} clases por persona</strong>
             </div>
-            {clasesBase % totalPersonas !== 0 && (
+            {resto > 0 && (
               <p className={s.divisionWarning}>
-                ⚠ La división no es exacta — se asignan {clasesPorPersona} clases por persona
-                ({clasesBase % totalPersonas} clase{clasesBase % totalPersonas !== 1 ? 's' : ''} se descarta{clasesBase % totalPersonas !== 1 ? 'n' : ''}).
+                +{resto} clase{resto !== 1 ? 's' : ''} restante{resto !== 1 ? 's' : ''} se asigna{resto !== 1 ? 'n' : ''} al titular.
               </p>
             )}
           </div>
@@ -159,8 +160,10 @@ export default function CompartirPaquete({
           <div className={s.memberList}>
             <div className={s.memberRow}>
               <span className={s.memberDot} />
-              <span className={s.memberName}>Tú (titular)</span>
-              <span className={s.memberClases}>{clasesPorPersona} clases</span>
+              <span className={s.memberName}>
+                Tú (titular){resto > 0 && <span style={{ fontSize: 10, marginLeft: 6, opacity: 0.7 }}>+{resto} extra</span>}
+              </span>
+              <span className={s.memberClases}>{clasesTotular} clases</span>
             </div>
             {participantes.map((p) => (
               <div key={p.id} className={s.memberRow}>
