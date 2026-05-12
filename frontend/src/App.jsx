@@ -31,6 +31,7 @@ import AdminClases from '@/pages/admin/AdminClases'
 import AdminPaquetes from '@/pages/admin/AdminPaquetes'
 import AdminFinanzas from '@/pages/admin/AdminFinanzas'
 import AdminReportes from '@/pages/admin/AdminReportes'
+import NotFound from '@/pages/NotFound'
 
 const DASHBOARD_PREFIXES = ['/cliente/', '/coach/', '/admin/']
 
@@ -63,6 +64,7 @@ function AnimatedRoutes() {
         <Route path="/admin/paquetes" element={<ProtectedRoute rolRequerido="admin"><AdminPaquetes /></ProtectedRoute>} />
         <Route path="/admin/finanzas" element={<ProtectedRoute rolRequerido="admin"><AdminFinanzas /></ProtectedRoute>} />
         <Route path="/admin/reportes" element={<ProtectedRoute rolRequerido="admin"><AdminReportes /></ProtectedRoute>} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       </>
     )
@@ -82,6 +84,7 @@ function AnimatedRoutes() {
           <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
           <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
           <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>
       <Footer />

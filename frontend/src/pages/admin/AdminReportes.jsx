@@ -25,6 +25,7 @@ import { useTabuladorStore }   from '@/stores/tabuladorStore'
 import { getReporteCoaches }   from '@/services/finanzasService'
 import { mockUsers }           from '@/data/mockUsers'
 import { ingresosUltimosMeses } from '@/data/mockTransacciones'
+import { abrirReportePDF }     from '@/utils/reportePDF'
 import styles from '@/styles/dashboard.module.css'
 
 // ── Helpers de exportación ────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ function exportarCSV(datos, nombre) {
 
 async function exportarExcel(datos, nombre) {
   if (!datos?.length) { toast.error('Sin datos para exportar'); return }
-  exportarCSV(datos, nombre) // Fallback a CSV directo (compatible sin librería externa)
+  exportarCSV(datos, nombre)
 }
 
 function exportarPDF(datos, nombre, titulo = 'Reporte') {
@@ -342,22 +343,32 @@ function TablaCoaches({ periodo, setPeriodo }) {
   const reporte = useMemo(() => getReporteCoaches(periodo, true), [periodo])
   const [expandido, setExpandido] = useState(null)
 
+  const datosCoachesPlanos = useMemo(() => reporte.flatMap(coach =>
+    coach.detalleClases.map(c => ({
+      Coach:         coach.nombre,
+      Especialidad:  coach.especialidad,
+      Clase:         c.nombre,
+      Tipo:          c.tipo,
+      Día:           c.dia,
+      Hora:          c.hora,
+      Asistentes:    c.asistentes,
+      Capacidad:     c.cupoMax,
+      'Ocupación %': c.ocupPct,
+      'Pago clase':  c.pagoClase,
+    }))
+  ), [reporte])
+
   const exportarCoaches = () => {
-    const datos = reporte.flatMap(coach =>
-      coach.detalleClases.map(c => ({
-        Coach:         coach.nombre,
-        Especialidad:  coach.especialidad,
-        Clase:         c.nombre,
-        Tipo:          c.tipo,
-        Día:           c.dia,
-        Hora:          c.hora,
-        Asistentes:    c.asistentes,
-        Capacidad:     c.cupoMax,
-        'Ocupación %': c.ocupPct,
-        'Pago clase':  c.pagoClase,
-      }))
-    )
-    exportarCSV(datos, `reporte_coaches_${periodo}_${new Date().toISOString().split('T')[0]}`)
+    exportarCSV(datosCoachesPlanos, `reporte_coaches_${periodo}_${new Date().toISOString().split('T')[0]}`)
+  }
+
+  const exportarCoachesPDF = () => {
+    abrirReportePDF({
+      tipo:    'coaches',
+      titulo:  'Reporte de Coaches',
+      datos:   datosCoachesPlanos,
+      periodo: periodo === 'quincena' ? 'Quincena actual' : periodoActual(),
+    })
   }
 
   return (
@@ -393,7 +404,14 @@ function TablaCoaches({ periodo, setPeriodo }) {
             background: '#1a472a', color: '#22c55e', fontFamily: 'var(--font-body)', fontSize: 12,
             cursor: 'pointer', fontWeight: 600,
           }}>
-            📊 Exportar
+            📊 CSV
+          </button>
+          <button onClick={exportarCoachesPDF} style={{
+            padding: '7px 14px', borderRadius: 8, border: '1px solid #ef444444',
+            background: '#2d1b1b', color: '#ef4444', fontFamily: 'var(--font-body)', fontSize: 12,
+            cursor: 'pointer', fontWeight: 600,
+          }}>
+            📋 PDF
           </button>
         </div>
       </div>
