@@ -12,15 +12,19 @@
 import { useState } from 'react'
 import { asignarPaqueteService } from '@/services/usuariosService'
 import { useAuth } from '@/context/AuthContext'
+import { useUsuariosStore } from '@/stores/usuariosStore'
+import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
 import s from './PagoModal.module.css'
 
 const STEPS = ['resumen', 'pago', 'procesando', 'exito']
 
 export default function PagoModal({ paquete, onClose, onSuccess }) {
   const { usuario, actualizarClasesPaquete, actualizarPerfil } = useAuth()
+  const { asignarPaqueteCompartido } = useUsuariosStore()
   const [step, setStep]       = useState('resumen')
   const [metodo, setMetodo]   = useState('tarjeta')
   const [error, setError]     = useState('')
+  const [compartirData, setCompartirData] = useState({ activo: false, participantes: [] })
   const [form, setForm]       = useState({
     numero: '',
     nombre: '',
@@ -86,7 +90,17 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
 
     // Asignar paquete al usuario en los stores
     const resultado = await asignarPaqueteService(usuario.id, paquete, 'online')
-    actualizarClasesPaquete(paquete.clases === 0 ? 999 : paquete.clases)
+
+    if (compartirData.activo && compartirData.participantes.length > 0 && paquete.clases > 0) {
+      // Paquete compartido: dividir entre todos los participantes + el comprador
+      const todosIds = [usuario.id, ...compartirData.participantes.map((p) => p.id)]
+      asignarPaqueteCompartido(todosIds, paquete.nombre, paquete.clases)
+      const clasesPorPersona = Math.floor(paquete.clases / todosIds.length)
+      actualizarClasesPaquete(clasesPorPersona)
+    } else {
+      actualizarClasesPaquete(paquete.clases === 0 ? 999 : paquete.clases)
+    }
+
     actualizarPerfil({ paquete: paquete.nombre })
     console.log('resultado pago:', resultado)
     console.log('usuario.id:', usuario.id)
@@ -142,12 +156,26 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
               </div>
             </div>
 
+            {/* Compartir paquete */}
+            <CompartirPaquete
+              paquete={paquete}
+              usuarioActualId={usuario?.id}
+              variant="light"
+              onChange={setCompartirData}
+            />
+
             <div className={s.divider} />
 
             <div className={s.totalRow}>
               <span>Total a pagar</span>
               <span className={s.totalNum}>${paquete.precio.toLocaleString()} MXN</span>
             </div>
+
+            {compartirData.activo && compartirData.participantes.length > 0 && (
+              <div style={{ fontSize: 12, color: '#7A5C58', fontFamily: 'var(--font-body)', textAlign: 'center', marginBottom: 4 }}>
+                Se pagarán las {paquete.clases} clases completas. La división se aplica después del pago.
+              </div>
+            )}
 
             <button className={s.btnPrimary} onClick={() => setStep('pago')}>
               Continuar al pago
@@ -297,12 +325,19 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
               <div className={s.exitoTitle}>¡Pago exitoso!</div>
               <div className={s.exitoSub}>
                 Tu paquete <strong>{paquete.nombre}</strong> ya está activo.
-                {paquete.clases === 0
-                  ? ' Tienes clases ilimitadas.'
-                  : ` Tienes ${paquete.clases} clases disponibles.`}
+                {compartirData.activo && compartirData.participantes.length > 0 && paquete.clases > 0
+                  ? (() => {
+                      const total = compartirData.participantes.length + 1
+                      const porPersona = Math.floor(paquete.clases / total)
+                      return ` Compartido con ${compartirData.participantes.length} persona${compartirData.participantes.length !== 1 ? 's' : ''} — tienes ${porPersona} clases.`
+                    })()
+                  : paquete.clases === 0
+                    ? ' Tienes clases ilimitadas.'
+                    : ` Tienes ${paquete.clases} clases disponibles.`
+                }
               </div>
-              <button className={s.btnPrimary} onClick={onClose}>
-                Ir a reservar clases
+              <button className={s.btnPrimary} onClick={() => onSuccess ? onSuccess() : onClose()}>
+                Ir a reservar clases →
               </button>
             </div>
           </div>

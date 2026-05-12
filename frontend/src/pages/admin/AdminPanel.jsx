@@ -23,6 +23,7 @@ import { useDisciplinasStore } from '@/stores/disciplinasStore'
 import SeatSelector from '@/features/clases/SeatSelector'
 import { FinanzasSection } from './AdminFinanzas'
 import { ReportesSection } from './AdminReportes'
+import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
@@ -125,7 +126,7 @@ export default function AdminPanel() {
   // ── Finanzas stores ──────────────────────────────────────────────────────────
   const { transacciones }                                               = useTransaccionesStore()
   const { cortes, ejecutarCorte }                                       = useCortesStore()
-  const { usuario }                                                     = useAuthStore()
+  const { usuario, logout }                                             = useAuthStore()
   const { gastos, registrarGasto, eliminarGasto }                       = useGastosStore()
 
   // ── Finanzas state ───────────────────────────────────────────────────────────
@@ -222,6 +223,7 @@ export default function AdminPanel() {
   const [modalVerUsuario, setModalVerUsuario] = useState(null)
   // Usuario — asignar paquete desde modal Ver
   const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
+  const [compartirAdminData, setCompartirAdminData] = useState({ activo: false, participantes: [] })
   // Asignación pendiente de pago: se aplica al procesar la venta en POS
   const [pendingAsignacion, setPendingAsignacion] = useState(null)
   // null | { userId, userName, paqSel, fechaVencimiento, metodoPago }
@@ -460,6 +462,13 @@ export default function AdminPanel() {
           <button className={styles.backBtn} onClick={() => { setIsSidebarOpen(false); navigate('/') }}>
             ← Volver al sitio
           </button>
+          <button
+            className={styles.backBtn}
+            style={{ color: '#E8A4AD', borderColor: 'rgba(232,164,173,0.2)', marginTop: 8 }}
+            onClick={() => { logout(); navigate('/login') }}
+          >
+            Cerrar sesión
+          </button>
         </div>
       </aside>
 
@@ -481,10 +490,6 @@ export default function AdminPanel() {
             </div>
           </div>
           <div className={styles.topbarRight}>
-            <button className={styles.notifBtn}>
-              🔔
-              <span className={styles.notifDot} />
-            </button>
             <div className={styles.adminProfile} style={{ padding: '6px 10px', borderRadius: 'var(--radius-md)' }}>
               <div style={{ textAlign: 'right' }}>
                 <div className={styles.adminName}>Administrador</div>
@@ -2688,7 +2693,10 @@ export default function AdminPanel() {
                       <select
                         className={styles.formSelect}
                         value={asignarPaqueteForm.paqueteNombre}
-                        onChange={e => setAsignarPaqueteForm(f => ({ ...f, paqueteNombre: e.target.value }))}
+                        onChange={e => {
+                          setAsignarPaqueteForm(f => ({ ...f, paqueteNombre: e.target.value }))
+                          setCompartirAdminData({ activo: false, participantes: [] })
+                        }}
                       >
                         <option value="">Sin paquete</option>
                         {paquetes.map(p => (
@@ -2715,10 +2723,20 @@ export default function AdminPanel() {
                       onClick={() => {
                         const paqSel = paquetes.find(p => p.nombre === asignarPaqueteForm.paqueteNombre)
                         if (!paqSel) {
-                          // Quitar paquete — esto sí se aplica de inmediato (sin cobro)
                           editarUsuario(u.id, { paquete: null, clasesPaquete: 0, paqueteInfo: null })
                           setModalVerUsuario(null)
                           toast.success(`Paquete removido de ${u.nombre}`)
+                          return
+                        }
+                        // Si hay compartir activo, asignar el paquete dividido a todos de inmediato
+                        if (compartirAdminData.activo && compartirAdminData.participantes.length > 0 && paqSel.clases > 0) {
+                          const todosIds = [u.id, ...compartirAdminData.participantes.map(p => p.id)]
+                          useUsuariosStore.getState().asignarPaqueteCompartido(todosIds, paqSel.nombre, paqSel.clases)
+                          const clasesPorPersona = Math.floor(paqSel.clases / todosIds.length)
+                          const nombres = compartirAdminData.participantes.map(p => p.nombre ?? p.name).join(', ')
+                          setModalVerUsuario(null)
+                          setCompartirAdminData({ activo: false, participantes: [] })
+                          toast.success(`✅ Paquete compartido: ${clasesPorPersona} clases para ${u.nombre}, ${nombres}`)
                           return
                         }
                         let fechaVencimiento = null
@@ -2727,7 +2745,6 @@ export default function AdminPanel() {
                           const v = new Date(); v.setDate(v.getDate() + dias)
                           fechaVencimiento = v.toISOString().split('T')[0]
                         }
-                        // Guardar asignación pendiente — se activa al cobrar en POS
                         setPendingAsignacion({
                           userId:          u.id,
                           userName:        u.nombre,
@@ -2746,6 +2763,16 @@ export default function AdminPanel() {
                       Guardar
                     </button>
                   </div>
+
+                  {/* Compartir paquete */}
+                  {asignarPaqueteForm.paqueteNombre && (
+                    <CompartirPaquete
+                      paquete={paquetes.find(p => p.nombre === asignarPaqueteForm.paqueteNombre)}
+                      usuarioActualId={u.id}
+                      variant="dark"
+                      onChange={setCompartirAdminData}
+                    />
+                  )}
                 </div>
 
                 {/* ── HISTORIAL DE RESERVAS ── */}

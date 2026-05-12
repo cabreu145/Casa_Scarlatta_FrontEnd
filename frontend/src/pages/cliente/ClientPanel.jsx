@@ -941,7 +941,7 @@ export default function ClientPanel() {
           <PagoModal
           paquete={pagoModal}
           onClose={() => setPagoModal(null)}
-          onSuccess={() => { setPagoModal(null); goTo('inicio') }}
+          onSuccess={() => { setPagoModal(null); goTo('reservar') }}
           />
         )}
         </div>{/* /content */}

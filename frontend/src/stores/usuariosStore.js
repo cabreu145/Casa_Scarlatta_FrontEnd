@@ -102,6 +102,34 @@ export const useUsuariosStore = create(
               : u
           ),
         })),
+
+      // Divide un paquete equitativamente entre varios usuarios.
+      // participantesIds: array de IDs (incluye al comprador).
+      // clasesTotales: total del paquete antes de dividir.
+      asignarPaqueteCompartido: (participantesIds, paquete, clasesTotales) => {
+        const grupoId = `grupo_${Date.now()}`
+        const clasesPorPersona = Math.floor(clasesTotales / participantesIds.length)
+        set((state) => ({
+          usuarios: state.usuarios.map((u) =>
+            participantesIds.includes(u.id)
+              ? {
+                  ...u,
+                  paquete,
+                  clasesPaquete:      clasesPorPersona,
+                  clasesPaqueteTotal: clasesPorPersona,
+                  paqueteInfo: {
+                    fechaCompra:        new Date().toISOString().split('T')[0],
+                    estado:             'Activo',
+                    tipo:               'Compartido',
+                    grupoId,
+                    participantes:      participantesIds,
+                    totalClasesOriginal: clasesTotales,
+                  },
+                }
+              : u
+          ),
+        }))
+      },
     }),
     { name: 'casa-scarlatta-usuarios' }
   )
