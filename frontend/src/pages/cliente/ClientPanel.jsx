@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import PagoModal from '@/features/pagos/PagoModal'
 import SeatSelector from '@/features/clases/SeatSelector'
 import { useNavigate } from 'react-router-dom'
 import {
   Home, CalendarDays, PlusCircle, User, CreditCard, LogOut, ArrowLeft,
-  MapPin, ChevronLeft, ChevronRight
+  MapPin, ChevronLeft, ChevronRight, Menu, X
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
@@ -153,6 +153,12 @@ export default function ClientPanel() {
   const [resDayIdx,  setResDayIdx]  = useState(0)
   const [pagoModal, setPagoModal] = useState(null)
   const [seatSelectorClass, setSeatSelectorClass] = useState(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+
+  useEffect(() => {
+    document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [isSidebarOpen])
 
   // ── Datos del usuario ────────────────────────────────────────────────────
   const userName        = usuario?.nombre ?? 'Cliente'
@@ -206,6 +212,10 @@ export default function ClientPanel() {
   const meta = SECTION_META[activeSection]
 
   function goTo(section) { setActiveSection(section) }
+  function goToAndClose(section) {
+    setActiveSection(section)
+    setIsSidebarOpen(false)
+  }
 
   // ── Reservas del usuario ─────────────────────────────────────────────────
   const reservasUsuario = usuario?.id
@@ -280,8 +290,11 @@ export default function ClientPanel() {
 
   return (
     <div className={s.root}>
+      {isSidebarOpen && (
+        <div className={s.sidebarBackdrop} onClick={() => setIsSidebarOpen(false)} />
+      )}
       {/* ── SIDEBAR ── */}
-      <aside className={s.sidebar}>
+      <aside className={`${s.sidebar} ${isSidebarOpen ? s.sidebarOpen : ''}`}>
         <div className={s.sidebarLogo}>
           <span className={s.brandTag}>casa</span>
           <span className={s.brandName}>Scarlatta</span>
@@ -298,7 +311,7 @@ export default function ClientPanel() {
               <button
                 key={key}
                 className={`${s.navLink} ${activeSection === key ? s.active : ''}`}
-                onClick={() => goTo(key)}
+                onClick={() => goToAndClose(key)}
               >
                 <span className={s.navIcon}><Icon size={16} strokeWidth={1.8} /></span>
                 {label}
@@ -309,11 +322,11 @@ export default function ClientPanel() {
         ))}
 
         <div className={s.sidebarFooter}>
-          <button className={s.logoutLink} onClick={() => navigate('/login')}>
+          <button className={s.logoutLink} onClick={() => { setIsSidebarOpen(false); navigate('/login') }}>
             <LogOut size={14} strokeWidth={2} />
             Cerrar sesión
           </button>
-          <button className={s.backBtn} onClick={() => navigate('/')}>
+          <button className={s.backBtn} onClick={() => { setIsSidebarOpen(false); navigate('/') }}>
             <ArrowLeft size={13} /> Volver al sitio
           </button>
         </div>
@@ -323,6 +336,14 @@ export default function ClientPanel() {
       <main className={s.main}>
         {/* TOPBAR */}
         <div className={s.topbar}>
+          <button
+            className={s.mobileMenuBtn}
+            onClick={() => setIsSidebarOpen((v) => !v)}
+            aria-label={isSidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={isSidebarOpen}
+          >
+            {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
           <div>
             <div className={s.topbarTitle}>{meta.title}</div>
             <div className={s.topbarSub}>{meta.sub}</div>

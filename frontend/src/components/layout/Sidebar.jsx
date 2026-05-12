@@ -20,6 +20,7 @@ export default function Sidebar({ links, onNavigate }) {
   const navigate = useNavigate()
 
   const handleLogout = () => {
+    onNavigate?.()
     logout()
     toast.success('Sesión cerrada')
     navigate('/')
@@ -74,3 +75,4 @@ export default function Sidebar({ links, onNavigate }) {
     </nav>
   )
 }
+

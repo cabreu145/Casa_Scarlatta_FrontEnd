@@ -79,6 +79,9 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: background var(--duration-fast), color var(--duration-fast);
+  min-width: 44px;
+  min-height: 44px;
+  user-select: none;
 }
 
 .navBtn:hover {
@@ -116,6 +119,7 @@
   background: transparent;
   cursor: pointer;
   transition: all var(--duration-fast);
+  user-select: none;
 }
 
 .dayBtn:hover:not(.dayBtnActive) {
@@ -190,6 +194,7 @@
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(123,31,46,0.06), 0 8px 24px rgba(123,31,46,0.04);
   transition: box-shadow var(--duration-fast), transform var(--duration-fast);
+  user-select: none;
 }
 
 .classCard:hover {
@@ -384,6 +389,7 @@
   cursor: pointer;
   white-space: nowrap;
   transition: transform var(--duration-fast), box-shadow var(--duration-fast), opacity var(--duration-fast);
+  user-select: none;
 }
 
 .reservarBtn:hover:not(:disabled) {

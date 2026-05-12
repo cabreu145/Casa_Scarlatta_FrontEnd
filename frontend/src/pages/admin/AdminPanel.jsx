@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { getDashboardMetrics } from '@/services/dashboardService'
 import ModalPago from '../../features/pagos/ModalPago'
@@ -25,7 +25,7 @@ import { FinanzasSection } from './AdminFinanzas'
 import { ReportesSection } from './AdminReportes'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
-import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign } from 'lucide-react'
+import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
 export const adminLinks = [
   { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/admin/paquetes',  icon: Package,         label: 'Paquetes'  },
@@ -107,6 +107,7 @@ function categoryEmoji(categoria) {
 export default function AdminPanel() {
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('dashboard')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
   const [rangoDash, setRangoDash]         = useState('mes')
   const [modalPago, setModalPago]         = useState(false)
@@ -309,7 +310,13 @@ export default function AdminPanel() {
 
   function showSection(name) {
     setActiveSection(name)
+    setIsSidebarOpen(false)
   }
+
+  useEffect(() => {
+    document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [isSidebarOpen])
 
   // ── Finanzas handlers ────────────────────────────────────────────────────────
   function handleCerrarDia() {
@@ -378,9 +385,16 @@ export default function AdminPanel() {
 
   return (
     <div className={styles.root}>
+      {isSidebarOpen && (
+        <div
+          className={styles.sidebarBackdrop}
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
 
       {/* ── SIDEBAR ── */}
-      <aside className={styles.sidebar}>
+      <aside className={`${styles.sidebar} ${isSidebarOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.sidebarLogo}>
           <span className={styles.logoBrand}>Casa Scarlatta</span>
           <div className={styles.logoStudio}>Admin</div>
@@ -443,7 +457,7 @@ export default function AdminPanel() {
         </div>
 
         <div className={styles.sidebarFooter}>
-          <button className={styles.backBtn} onClick={() => navigate('/')}>
+          <button className={styles.backBtn} onClick={() => { setIsSidebarOpen(false); navigate('/') }}>
             ← Volver al sitio
           </button>
         </div>
@@ -453,8 +467,18 @@ export default function AdminPanel() {
       <main className={styles.main}>
         <header className={styles.topbar}>
           <div className={styles.topbarLeft}>
-            <h1>{sec.title}</h1>
-            <p>{sec.sub}</p>
+            <button
+              className={styles.mobileMenuBtn}
+              onClick={() => setIsSidebarOpen((v) => !v)}
+              aria-label={isSidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+              aria-expanded={isSidebarOpen}
+            >
+              {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+            <div className={styles.topbarHeading}>
+              <h1>{sec.title}</h1>
+              <p>{sec.sub}</p>
+            </div>
           </div>
           <div className={styles.topbarRight}>
             <button className={styles.notifBtn}>

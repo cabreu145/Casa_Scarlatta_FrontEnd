@@ -45,4 +45,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setupTests.js',
+    css: true,
+    globals: true,
+  },
 })

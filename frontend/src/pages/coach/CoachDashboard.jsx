@@ -59,6 +59,7 @@ export default function CoachDashboard() {
               No tienes clases hoy.
             </p>
           ) : (
+            <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -106,11 +107,13 @@ export default function CoachDashboard() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
         <div className={styles.panel} style={{ marginTop: 'var(--space-lg)' }}>
           <div className={styles.panelTitle}>Todas mis clases esta semana</div>
+          <div className={styles.tableContainer}>
           <table className={styles.table}>
             <thead>
               <tr>
@@ -137,6 +140,7 @@ export default function CoachDashboard() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </DashboardLayout>
