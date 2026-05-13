@@ -226,7 +226,7 @@ function btnStyle(bg, color) {
 
 // ── Tabulador editable ────────────────────────────────────────────────────────
 function TabuladorEditor() {
-  const { tabulador, actualizarRango, resetear } = useTabuladorStore()
+  const { tabulador, agregarDisciplina, resetear } = useTabuladorStore()
   const [editMode, setEditMode]   = useState(false)
   const [tempTab, setTempTab]     = useState(null)
 
@@ -237,7 +237,7 @@ function TabuladorEditor() {
 
   const guardarCambios = () => {
     Object.entries(tempTab).forEach(([disc, rangos]) => {
-      rangos.forEach((r, i) => actualizarRango(disc, i, r))
+      agregarDisciplina(disc, rangos)
     })
     setEditMode(false)
     toast.success('Tabulador actualizado')
@@ -248,6 +248,21 @@ function TabuladorEditor() {
       ...prev,
       [disc]: prev[disc].map((r, i) => i === idx ? { ...r, [campo]: Number(val) } : r),
     }))
+  }
+
+  const handleAgregarFila = (disc) => {
+    setTempTab(prev => {
+      const rangos = prev[disc]
+      const ultimo = rangos[rangos.length - 1]
+      return { ...prev, [disc]: [...rangos, { min: (ultimo?.max ?? 0) + 1, max: (ultimo?.max ?? 0) + 5, pago: 0 }] }
+    })
+  }
+
+  const handleEliminarFila = (disc, idx) => {
+    setTempTab(prev => {
+      if (prev[disc].length <= 1) return prev
+      return { ...prev, [disc]: prev[disc].filter((_, i) => i !== idx) }
+    })
   }
 
   const tab = editMode ? tempTab : tabulador
@@ -305,7 +320,7 @@ function TabuladorEditor() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {rangos.map((r, i) => (
                 <div key={i} style={{
-                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+                  display: 'grid', gridTemplateColumns: editMode ? '1fr 1fr 1fr auto' : '1fr 1fr 1fr',
                   gap: 8, alignItems: 'center',
                   background: '#2C1A1E', borderRadius: 8, padding: '10px 12px',
                 }}>
@@ -341,8 +356,24 @@ function TabuladorEditor() {
                       </span>
                     )}
                   </div>
+                  {editMode && (
+                    <button onClick={() => handleEliminarFila(disciplina, i)} title="Eliminar fila" style={{
+                      width: 26, height: 26, borderRadius: 6, border: '1px solid #7B1E22',
+                      background: 'transparent', color: '#E8A4AD', cursor: 'pointer',
+                      fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      opacity: rangos.length <= 1 ? 0.3 : 1,
+                    }}>×</button>
+                  )}
                 </div>
               ))}
+              {editMode && (
+                <button onClick={() => handleAgregarFila(disciplina)} style={{
+                  width: '100%', padding: '7px 0', borderRadius: 8, marginTop: 4,
+                  border: '1px dashed #7B1E22', background: 'transparent',
+                  color: '#E8A4AD', fontFamily: 'var(--font-body)', fontSize: 13,
+                  cursor: 'pointer',
+                }}>+ Agregar fila</button>
+              )}
             </div>
           </div>
         ))}

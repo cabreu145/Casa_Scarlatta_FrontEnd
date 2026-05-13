@@ -26,11 +26,13 @@ const TABULADOR_INICIAL = {
     { min: 1,  max: 6,  pago: 200 },
     { min: 7,  max: 12, pago: 350 },
     { min: 13, max: 18, pago: 500 },
+    { min: 19, max: 20, pago: 650 },
   ],
   'Slow': [
     { min: 1,  max: 5,  pago: 200 },
     { min: 6,  max: 10, pago: 350 },
     { min: 11, max: 15, pago: 500 },
+    { min: 16, max: 20, pago: 650 },
   ],
 }
 

@@ -25,6 +25,9 @@ export const useCortesStore = create(
         return cortes[cortes.length - 1] ?? null
       },
 
+      yaHayTurno: (fecha, turno) =>
+        get().cortes.some(c => c.fecha === fecha && c.turno === turno),
+
       ejecutarCorte: (datosCorte) =>
         set((state) => ({
           cortes: [

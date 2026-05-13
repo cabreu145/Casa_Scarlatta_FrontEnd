@@ -7,6 +7,7 @@
  */
 import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { adminLinks } from './AdminDashboard'
@@ -15,7 +16,11 @@ import { useCortesStore }              from '@/stores/cortesStore'
 import { useAuthStore }                from '@/stores/authStore'
 import { useGastosStore, TIPOS_GASTO } from '@/stores/gastosStore'
 import { getKpisFinanzas, getDatosCorteHoy, getTransaccionesParaExportar } from '@/services/finanzasService'
+import { abrirReportePDF } from '@/utils/reportePDF'
 import styles from '@/styles/dashboard.module.css'
+
+const DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+function diaDesdefecha(f) { return f ? DIAS_ES[new Date(f + 'T00:00:00').getDay()] ?? '—' : '—' }
 
 const TIPO_GASTO_LABELS = {
   operativo:  'Operativo',
@@ -31,32 +36,17 @@ const METODO_ICONS = {
   transferencia: '📱',
 }
 
-function exportarCSV(datos, nombre) {
+function exportarExcelLocal(datos, nombre, hoja = 'Reporte') {
   if (!datos.length) { toast.error('Sin datos para exportar'); return }
-  const headers = Object.keys(datos[0])
-  const rows    = datos.map(r => headers.map(h => `"${r[h] ?? ''}"`).join(','))
-  const csv     = [headers.join(','), ...rows].join('\n')
-  const blob    = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url     = URL.createObjectURL(blob)
-  const a       = document.createElement('a')
-  a.href = url; a.download = nombre; a.click()
-  URL.revokeObjectURL(url)
-  toast.success('CSV exportado')
-}
-
-async function exportarExcel(datos, nombre) {
-  if (!datos.length) { toast.error('Sin datos para exportar'); return }
-  try {
-    const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs').catch(() => null)
-    if (!XLSX) { exportarCSV(datos, nombre.replace('.xlsx', '.csv')); return }
-    const ws = XLSX.utils.json_to_sheet(datos)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Finanzas')
-    XLSX.writeFile(wb, nombre)
-    toast.success('Excel exportado')
-  } catch {
-    exportarCSV(datos, nombre.replace('.xlsx', '.csv'))
-  }
+  const cols = Object.keys(datos[0])
+  const ws   = XLSX.utils.json_to_sheet(datos, { header: cols })
+  ws['!cols'] = cols.map(col => ({
+    wch: Math.min(Math.max(col.length, ...datos.map(r => String(r[col] ?? '').length)) + 2, 40)
+  }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, hoja)
+  XLSX.writeFile(wb, nombre)
+  toast.success('Excel exportado')
 }
 
 function MiniChart({ serie, color = '#7B1E22' }) {
@@ -145,6 +135,8 @@ export function FinanzasSection({ inPanel = false }) {
   const [filtroActivo, setFiltroActivo] = useState(null)
   const [busqueda, setBusqueda]         = useState('')
   const [modalGasto, setModalGasto]     = useState(false)
+  const [modalCorte, setModalCorte]     = useState(false)
+  const [formCorte, setFormCorte]       = useState({ turno: 'mañana', montoInicial: '' })
   const [tick, setTick]                 = useState(0)
   const [formGasto, setFormGasto]       = useState({ concepto: '', monto: '', tipo: TIPOS_GASTO.OPERATIVO })
 
@@ -203,24 +195,61 @@ export function FinanzasSection({ inPanel = false }) {
     [gastos, rango, getGastosByRango]
   )
 
-  const hoy           = new Date().toISOString().split('T')[0]
-  const yaHayCorteHoy = cortes.some(c => c.fecha === hoy)
+  const hoy              = new Date().toISOString().split('T')[0]
+  const yaHayManana      = cortes.some(c => c.fecha === hoy && c.turno === 'mañana')
+  const yaHayNoche       = cortes.some(c => c.fecha === hoy && (c.turno === 'tarde' || c.turno === 'noche'))
+  const ambosCompletos   = yaHayManana && yaHayNoche
 
-  const handleCerrarDia = () => {
-    const now = new Date()
-    const mes = now.toLocaleString('es-MX', { month: 'long' })
+  const abrirModalCorte = (turno) => {
+    setFormCorte({ turno, montoInicial: '' })
+    setModalCorte(true)
+  }
+
+  const handleConfirmarCorte = () => {
+    const montoInicial = parseFloat(formCorte.montoInicial) || 0
+    const now  = new Date()
+    const hora = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const mes  = now.toLocaleString('es-MX', { month: 'long' })
     ejecutarCorte({
       fecha:              hoy,
+      dia:                diaDesdefecha(hoy),
+      hora,
+      turno:              formCorte.turno,
       periodo:            `${mes.charAt(0).toUpperCase() + mes.slice(1)} ${now.getFullYear()}`,
       tipo:               'diario',
+      montoInicial,
       totalIngresos:      datosCorte.total,
       totalEfectivo:      datosCorte.efectivo,
       totalTarjeta:       datosCorte.tarjeta,
       totalTransferencia: datosCorte.transferencia,
+      montoCierre:        montoInicial + datosCorte.efectivo,
       ejecutadoPor:       usuario?.id ?? null,
       estado:             'cerrado',
     })
-    toast.success('¡Corte de caja realizado!')
+    setModalCorte(false)
+    toast.success(`¡Corte de ${formCorte.turno} realizado!`)
+  }
+
+  const handleExportarCortes = (formato) => {
+    const datos = [...cortes].reverse().map(c => ({
+      Fecha:          c.fecha,
+      Día:            c.dia ?? diaDesdefecha(c.fecha),
+      Hora:           c.hora ?? '—',
+      Turno:          c.turno ? (c.turno.charAt(0).toUpperCase() + c.turno.slice(1)) : '—',
+      'Monto inicial': c.montoInicial ?? 0,
+      Efectivo:       c.totalEfectivo ?? 0,
+      Tarjeta:        c.totalTarjeta ?? 0,
+      Transferencia:  c.totalTransferencia ?? 0,
+      'Total ingresos': c.totalIngresos ?? 0,
+      'Monto cierre': c.montoCierre ?? 0,
+      Estado:         c.estado ?? '—',
+    }))
+    const nombre = `cortes_${hoy}`
+    if (formato === 'pdf') {
+      abrirReportePDF({ tipo: 'financiero', titulo: 'Cortes de Caja', datos: datos.map(d => ({ ...d, Monto: d['Total ingresos'] })) })
+    } else {
+      exportarExcelLocal(datos, `${nombre}.xlsx`, 'Cortes')
+    }
   }
 
   const handleGuardarGasto = () => {
@@ -241,8 +270,7 @@ export function FinanzasSection({ inPanel = false }) {
   const handleExportar = (formato) => {
     const datos  = getTransaccionesParaExportar(rango)
     const nombre = `finanzas_casascarlatta_${rango}_${hoy}`
-    if (formato === 'excel') exportarExcel(datos, `${nombre}.xlsx`)
-    else exportarCSV(datos, `${nombre}.csv`)
+    exportarExcelLocal(datos, `${nombre}.xlsx`, 'Finanzas')
   }
 
   const panel = {
@@ -365,20 +393,30 @@ export function FinanzasSection({ inPanel = false }) {
 
         {/* Corte de caja */}
         <div style={panel}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-primary)' }}>
               Corte de caja — Hoy
             </div>
-            <button onClick={handleCerrarDia} disabled={yaHayCorteHoy} style={{
-              padding: '8px 20px', borderRadius: 8, border: 'none',
-              cursor: yaHayCorteHoy ? 'not-allowed' : 'pointer',
-              fontFamily: 'var(--font-body)', fontSize: 13,
-              background: yaHayCorteHoy ? '#2C1A1E' : '#7B1E22',
-              color:      yaHayCorteHoy ? '#A69A93' : '#fff',
-              opacity:    yaHayCorteHoy ? 0.7 : 1,
-            }}>
-              {yaHayCorteHoy ? '✓ Realizado' : '🔒 Cerrar día'}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => abrirModalCorte('mañana')} disabled={yaHayManana} style={{
+                padding: '8px 16px', borderRadius: 8, border: 'none',
+                cursor: yaHayManana ? 'not-allowed' : 'pointer',
+                fontFamily: 'var(--font-body)', fontSize: 13,
+                background: yaHayManana ? '#2C1A1E' : '#7B1E22',
+                color: yaHayManana ? '#A69A93' : '#fff', opacity: yaHayManana ? 0.7 : 1,
+              }}>
+                {yaHayManana ? '✓ Mañana' : '☀️ Turno mañana'}
+              </button>
+              <button onClick={() => abrirModalCorte('tarde')} disabled={yaHayNoche} style={{
+                padding: '8px 16px', borderRadius: 8, border: 'none',
+                cursor: yaHayNoche ? 'not-allowed' : 'pointer',
+                fontFamily: 'var(--font-body)', fontSize: 13,
+                background: yaHayNoche ? '#2C1A1E' : '#4A1A3A',
+                color: yaHayNoche ? '#A69A93' : '#fff', opacity: yaHayNoche ? 0.7 : 1,
+              }}>
+                {yaHayNoche ? '✓ Tarde' : '🌙 Turno tarde'}
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
@@ -402,20 +440,35 @@ export function FinanzasSection({ inPanel = false }) {
 
           {cortes.length > 0 && (
             <>
-              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Cortes anteriores
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Historial de cortes
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => handleExportarCortes('excel')} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #22c55e44', background: '#1a472a', color: '#22c55e', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>📊 Excel</button>
+                  <button onClick={() => handleExportarCortes('pdf')}   style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #ef444444', background: '#2d1b1b', color: '#ef4444', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>📋 PDF</button>
+                </div>
               </div>
               <table className={styles.table}>
                 <thead>
-                  <tr><th>Fecha</th><th>Período</th><th>Efectivo</th><th>Total</th><th>Estado</th></tr>
+                  <tr><th>Fecha</th><th>Día</th><th>Hora</th><th>Turno</th><th>Inicio</th><th>Efectivo</th><th>Tarjeta</th><th>Total</th><th>Cierre</th><th>Estado</th></tr>
                 </thead>
                 <tbody>
-                  {[...cortes].reverse().slice(0, 5).map(c => (
+                  {[...cortes].reverse().map(c => (
                     <tr key={c.id}>
-                      <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.fecha}</td>
-                      <td>{c.periodo}</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.fecha}</td>
+                      <td style={{ fontSize: 12 }}>{c.dia ?? diaDesdefecha(c.fecha)}</td>
+                      <td style={{ fontSize: 12 }}>{c.hora ?? '—'}</td>
+                      <td>
+                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: (c.turno === 'tarde' || c.turno === 'noche') ? '#1A1A3A' : '#2A1A1A', color: (c.turno === 'tarde' || c.turno === 'noche') ? '#818CF8' : '#F59E0B' }}>
+                          {(c.turno === 'tarde' || c.turno === 'noche') ? '🌙 Tarde' : '☀️ Mañana'}
+                        </span>
+                      </td>
+                      <td>${(c.montoInicial ?? 0).toLocaleString()}</td>
                       <td>${(c.totalEfectivo ?? 0).toLocaleString()}</td>
+                      <td>${(c.totalTarjeta ?? 0).toLocaleString()}</td>
                       <td style={{ fontWeight: 600, color: '#22c55e' }}>${(c.totalIngresos ?? 0).toLocaleString()}</td>
+                      <td style={{ fontWeight: 600, color: '#E8A4AD' }}>${(c.montoCierre ?? 0).toLocaleString()}</td>
                       <td><span className={`${styles.badge} ${styles.badgeCompletada}`}>{c.estado}</span></td>
                     </tr>
                   ))}
@@ -545,6 +598,74 @@ export function FinanzasSection({ inPanel = false }) {
         </div>
 
       </div>
+
+      {/* Modal corte de caja */}
+      {modalCorte && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setModalCorte(false)}
+        >
+          <div
+            style={{ background: '#1E1014', borderRadius: 16, padding: 32, width: '90%', maxWidth: 400, border: '1px solid #3C2A2E' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 20, margin: '0 0 6px', color: '#F5EDE8' }}>
+              Corte de caja
+            </h2>
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', margin: '0 0 24px' }}>
+              {formCorte.turno === 'mañana' ? '☀️ Turno mañana' : '🌙 Turno tarde'} — {hoy}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', marginBottom: 6 }}>Turno</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {['mañana', 'tarde'].map(t => (
+                    <button key={t} onClick={() => setFormCorte(p => ({ ...p, turno: t }))} style={{
+                      flex: 1, padding: '10px 0', borderRadius: 8,
+                      border: `1px solid ${formCorte.turno === t ? '#7B1E22' : '#3C2A2E'}`,
+                      background: formCorte.turno === t ? '#7B1E22' : '#2C1A1E',
+                      color: formCorte.turno === t ? '#fff' : '#A69A93',
+                      fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer',
+                    }}>
+                      {t === 'mañana' ? '☀️ Mañana' : '🌙 Tarde'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', marginBottom: 6 }}>
+                  Monto inicial en caja ($)
+                </label>
+                <input
+                  type="number" placeholder="0" value={formCorte.montoInicial} autoFocus
+                  onChange={e => setFormCorte(p => ({ ...p, montoInicial: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 12px', background: '#2C1A1E', border: '1px solid #3C2A2E', borderRadius: 8, color: 'white', fontFamily: 'var(--font-body)', fontSize: 14, boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ background: '#2C1A1E', borderRadius: 8, padding: '12px 14px', border: '1px solid #7B1E22' }}>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#A69A93', marginBottom: 4 }}>Monto de cierre</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: '#E8A4AD' }}>
+                  ${((parseFloat(formCorte.montoInicial) || 0) + datosCorte.efectivo).toLocaleString()}
+                </div>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#A69A93', marginTop: 4 }}>
+                  ${(parseFloat(formCorte.montoInicial) || 0).toLocaleString()} inicial + ${datosCorte.efectivo.toLocaleString()} efectivo registrado hoy
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
+              <button onClick={handleConfirmarCorte}
+                style={{ padding: 14, borderRadius: 8, border: 'none', background: '#7B1E22', color: '#fff', fontFamily: 'var(--font-body)', fontSize: 15, cursor: 'pointer' }}>
+                Confirmar corte
+              </button>
+              <button onClick={() => setModalCorte(false)}
+                style={{ padding: 10, borderRadius: 8, border: '1px solid #3C2A2E', background: 'transparent', color: '#A69A93', fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer' }}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Modal gasto */}
       {modalGasto && createPortal(

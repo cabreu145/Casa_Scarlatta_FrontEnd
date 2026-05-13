@@ -297,15 +297,25 @@ export const TRANSACCIONES_MOCK = [
 export const CORTES_MOCK = [
   {
     id: 'corte-1',
-    fecha: '2026-03-31',
+    fecha: '2026-03-31', dia: 'Martes', hora: '14:00', turno: 'mañana',
     periodo: 'Marzo 2026',
-    ingresosPaquetes: 15480,
-    ingresosProductos: 2340,
-    totalIngresos: 17820,
-    totalReservas: 67,
-    totalCancelaciones: 8,
-    ejecutadoPor: 3,
-    estado: 'cerrado',
+    montoInicial: 500,
+    ingresosPaquetes: 9800, ingresosProductos: 1240,
+    totalIngresos: 11040, totalEfectivo: 11040, totalTarjeta: 0, totalTransferencia: 0,
+    montoCierre: 11540,
+    totalReservas: 67, totalCancelaciones: 8,
+    ejecutadoPor: 3, estado: 'cerrado',
+  },
+  {
+    id: 'corte-2',
+    fecha: '2026-03-31', dia: 'Martes', hora: '21:30', turno: 'tarde',
+    periodo: 'Marzo 2026',
+    montoInicial: 0,
+    ingresosPaquetes: 5680, ingresosProductos: 1100,
+    totalIngresos: 6780, totalEfectivo: 5100, totalTarjeta: 1680, totalTransferencia: 0,
+    montoCierre: 5100,
+    totalReservas: 31, totalCancelaciones: 3,
+    ejecutadoPor: 3, estado: 'cerrado',
   },
 ]
 
