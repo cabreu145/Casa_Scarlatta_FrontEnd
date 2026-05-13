@@ -75,12 +75,15 @@ export async function asignarPaqueteService(clienteId, paquete, origen = 'estudi
   const clases = paquete.clases === 0 ? 999 : paquete.clases
   usuariosStore.asignarPaquete(clienteId, paquete.nombre, clases)
 
+  const ahora = new Date()
   transaccionesStore.registrarTransaccion({
     userId:     clienteId,
     tipo:       TIPOS_TRANSACCION.PAQUETE,
     concepto:   `${paquete.nombre} — ${origen}`,
     monto:      paquete.precio,
-    fecha:      new Date().toISOString().split('T')[0],
+    fecha:      ahora.toISOString().split('T')[0],
+    hora:       ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }),
+    canal:      origen === 'online' ? 'en línea' : 'recepción',
     metodoPago: origen === 'estudio' ? 'efectivo' : null,
     referencia: null,
   })

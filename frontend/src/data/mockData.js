@@ -38,79 +38,79 @@
  */
 export const CLASES_MOCK = [
   {
-    id: 1, nombre: 'Stride Power', tipo: 'Stryde X', dia: 'Lunes', hora: '07:00',
+    id: 1, nombre: 'Stride Power', tipo: 'Stryde X', fecha: '2026-05-12', dia: 'Lunes', hora: '07:00',
     duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 18,
     descripcion: 'Sesión de potencia que combina fuerza funcional y cardio explosivo.',
   },
   {
-    id: 2, nombre: 'Slow Pilates', tipo: 'Slow', dia: 'Lunes', hora: '09:00',
+    id: 2, nombre: 'Slow Pilates', tipo: 'Slow', fecha: '2026-05-12', dia: 'Lunes', hora: '09:00',
     duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
     cupoMax: 15, cupoActual: 12,
     descripcion: 'Pilates de base consciente para fortalecer el core y mejorar la postura.',
   },
   {
-    id: 3, nombre: 'Stride Cardio', tipo: 'Stryde X', dia: 'Lunes', hora: '18:00',
+    id: 3, nombre: 'Stride Cardio', tipo: 'Stryde X', fecha: '2026-05-12', dia: 'Lunes', hora: '18:00',
     duracion: 45, coachId: 6, coachNombre: 'Ana Torres', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 3,
     descripcion: 'Cardio de alta intensidad con intervalos diseñados para quemar calorías.',
   },
   {
-    id: 4, nombre: 'Slow Meditación', tipo: 'Slow', dia: 'Martes', hora: '08:00',
+    id: 4, nombre: 'Slow Meditación', tipo: 'Slow', fecha: '2026-05-13', dia: 'Martes', hora: '08:00',
     duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
     cupoMax: 15, cupoActual: 10,
     descripcion: 'Meditación guiada con movimiento suave para comenzar el día con claridad.',
   },
   {
-    id: 5, nombre: 'Stride HIIT', tipo: 'Stryde X', dia: 'Martes', hora: '19:00',
+    id: 5, nombre: 'Stride HIIT', tipo: 'Stryde X', fecha: '2026-05-13', dia: 'Martes', hora: '19:00',
     duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 15,
     descripcion: 'Entrenamiento por intervalos de alta intensidad para elevar tu rendimiento.',
   },
   {
-    id: 6, nombre: 'Slow Stretch', tipo: 'Slow', dia: 'Miércoles', hora: '07:30',
+    id: 6, nombre: 'Slow Stretch', tipo: 'Slow', fecha: '2026-05-14', dia: 'Miércoles', hora: '07:30',
     duracion: 55, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
     cupoMax: 15, cupoActual: 7,
     descripcion: 'Stretching profundo con respiración consciente para liberar tensiones.',
   },
   {
-    id: 7, nombre: 'Stride Power', tipo: 'Stryde X', dia: 'Miércoles', hora: '17:00',
+    id: 7, nombre: 'Stride Power', tipo: 'Stryde X', fecha: '2026-05-14', dia: 'Miércoles', hora: '17:00',
     duracion: 50, coachId: 6, coachNombre: 'Ana Torres', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 2,
     descripcion: 'Sesión de potencia que combina fuerza funcional y cardio explosivo.',
   },
   {
-    id: 8, nombre: 'Stride Fuerza', tipo: 'Stryde X', dia: 'Jueves', hora: '07:00',
+    id: 8, nombre: 'Stride Fuerza', tipo: 'Stryde X', fecha: '2026-05-15', dia: 'Jueves', hora: '07:00',
     duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 12,
     descripcion: 'Entrenamiento de fuerza funcional con énfasis en técnica y progresión.',
   },
   {
-    id: 9, nombre: 'Slow Mindfulness', tipo: 'Slow', dia: 'Jueves', hora: '10:00',
+    id: 9, nombre: 'Slow Mindfulness', tipo: 'Slow', fecha: '2026-05-15', dia: 'Jueves', hora: '10:00',
     duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
     cupoMax: 15, cupoActual: 5,
     descripcion: 'Práctica de mindfulness en movimiento para conectar cuerpo y mente.',
   },
   {
-    id: 10, nombre: 'Stride Cardio', tipo: 'Stryde X', dia: 'Viernes', hora: '08:00',
+    id: 10, nombre: 'Stride Cardio', tipo: 'Stryde X', fecha: '2026-05-16', dia: 'Viernes', hora: '08:00',
     duracion: 45, coachId: 6, coachNombre: 'Ana Torres', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 14,
     descripcion: 'Cardio de alta intensidad con intervalos diseñados para quemar calorías.',
   },
   {
-    id: 11, nombre: 'Slow Pilates', tipo: 'Slow', dia: 'Viernes', hora: '18:00',
+    id: 11, nombre: 'Slow Pilates', tipo: 'Slow', fecha: '2026-05-16', dia: 'Viernes', hora: '18:00',
     duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
     cupoMax: 15, cupoActual: 9,
     descripcion: 'Pilates de base consciente para fortalecer el core y mejorar la postura.',
   },
   {
-    id: 12, nombre: 'Stride Weekend', tipo: 'Stryde X', dia: 'Sábado', hora: '09:00',
+    id: 12, nombre: 'Stride Weekend', tipo: 'Stryde X', fecha: '2026-05-17', dia: 'Sábado', hora: '09:00',
     duracion: 60, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
     cupoMax: 20, cupoActual: 6,
     descripcion: 'Sesión especial de fin de semana: alta energía para cerrar la semana fuerte.',
   },
   {
-    id: 13, nombre: 'Slow Weekend', tipo: 'Slow', dia: 'Sábado', hora: '11:00',
+    id: 13, nombre: 'Slow Weekend', tipo: 'Slow', fecha: '2026-05-17', dia: 'Sábado', hora: '11:00',
     duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
     cupoMax: 15, cupoActual: 4,
     descripcion: 'Sesión especial de fin de semana: flujo restaurativo para recargar energías.',
@@ -266,16 +266,18 @@ export const TIPOS_TRANSACCION = {
  * @property {string}      concepto    - Descripción legible del movimiento
  * @property {number}      monto       - Monto en MXN (negativo = reembolso/cargo)
  * @property {string}      fecha       - ISO date "YYYY-MM-DD"
- * @property {string|null} metodoPago  - 'efectivo' | 'tarjeta' | null
+ * @property {string}      hora        - Hora local "HH:MM"
+ * @property {string}      canal       - 'en línea' | 'recepción'
+ * @property {string|null} metodoPago  - 'efectivo' | 'tarjeta' | 'transferencia' | null
  * @property {string|null} referencia  - Últimos 4 dígitos de tarjeta o null
  */
 export const TRANSACCIONES_MOCK = [
-  { id: 'tx-1', userId: 1, tipo: 'paquete',   concepto: 'Paquete Básico — 8 clases',           monto: 999,   fecha: '2025-11-10', metodoPago: 'efectivo', referencia: null },
-  { id: 'tx-2', userId: 4, tipo: 'paquete',   concepto: 'Paquete Esencial — 16 clases',        monto: 1499,  fecha: '2025-12-05', metodoPago: 'tarjeta',  referencia: '3721' },
-  { id: 'tx-3', userId: 7, tipo: 'paquete',   concepto: 'Paquete Premium — Ilimitadas',        monto: 1999,  fecha: '2026-01-15', metodoPago: 'tarjeta',  referencia: '8904' },
-  { id: 'tx-4', userId: 1, tipo: 'producto',  concepto: 'Botella Casa Scarlatta',              monto: 350,   fecha: '2026-02-03', metodoPago: 'efectivo', referencia: null },
-  { id: 'tx-5', userId: 4, tipo: 'producto',  concepto: 'Toalla de microfibra × 2',            monto: 360,   fecha: '2026-03-12', metodoPago: 'tarjeta',  referencia: '3721' },
-  { id: 'tx-6', userId: 1, tipo: 'reembolso', concepto: 'Reembolso Slow Stretch cancelada',    monto: -120,  fecha: '2026-04-17', metodoPago: null,       referencia: null },
+  { id: 'tx-1', userId: 1, tipo: 'paquete',   concepto: 'Paquete Básico — 8 clases',        monto: 999,   fecha: '2025-11-10', hora: '10:15', canal: 'recepción', metodoPago: 'efectivo',      referencia: null },
+  { id: 'tx-2', userId: 4, tipo: 'paquete',   concepto: 'Paquete Esencial — 16 clases',     monto: 1499,  fecha: '2025-12-05', hora: '09:42', canal: 'en línea',  metodoPago: 'tarjeta',       referencia: '3721' },
+  { id: 'tx-3', userId: 7, tipo: 'paquete',   concepto: 'Paquete Premium — Ilimitadas',     monto: 1999,  fecha: '2026-01-15', hora: '11:30', canal: 'en línea',  metodoPago: 'tarjeta',       referencia: '8904' },
+  { id: 'tx-4', userId: 1, tipo: 'producto',  concepto: 'Botella Casa Scarlatta',           monto: 350,   fecha: '2026-02-03', hora: '12:05', canal: 'recepción', metodoPago: 'efectivo',      referencia: null },
+  { id: 'tx-5', userId: 4, tipo: 'producto',  concepto: 'Toalla de microfibra × 2',         monto: 360,   fecha: '2026-03-12', hora: '16:48', canal: 'recepción', metodoPago: 'tarjeta',       referencia: '3721' },
+  { id: 'tx-6', userId: 1, tipo: 'reembolso', concepto: 'Reembolso Slow Stretch cancelada', monto: -120,  fecha: '2026-04-17', hora: '14:20', canal: 'recepción', metodoPago: null,            referencia: null },
 ]
 
 // ── Cortes de caja ────────────────────────────────────────────────────────────

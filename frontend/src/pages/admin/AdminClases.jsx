@@ -30,15 +30,20 @@ const DAYS_ES   = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Vierne
 const DAYS_ABBR = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
-const DIAS_FORM   = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
+const DIAS_ES_IDX = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const UBICACIONES = ['Studio A', 'Studio B', 'Sala Principal']
+
+function diaDesdefecha(fechaStr) {
+  if (!fechaStr) return ''
+  return DIAS_ES_IDX[new Date(fechaStr + 'T00:00:00').getDay()] ?? ''
+}
 
 const CLASE_VACIA_BASE = {
   nombre:      '',
   tipo:        'Stryde X',
   coachId:     '',
   coachNombre: '',
-  dia:         'Lunes',
+  fecha:       '',
   hora:        '07:00',
   duracion:    50,
   cupoMax:     20,
@@ -270,6 +275,7 @@ export default function AdminClases() {
 
   const claseVacia = () => ({
     ...CLASE_VACIA_BASE,
+    fecha:       new Date().toISOString().split('T')[0],
     coachId:     coaches[0]?.id     ?? '',
     coachNombre: coaches[0]?.nombre ?? '',
   })
@@ -279,9 +285,11 @@ export default function AdminClases() {
 
   const handleGuardar = () => {
     if (!form.nombre.trim()) return toast.error('El nombre es obligatorio')
+    if (!form.fecha)         return toast.error('La fecha es obligatoria')
     const coach = coaches.find((c) => String(c.id) === String(form.coachId))
     const datos = {
       ...form,
+      dia:         diaDesdefecha(form.fecha),
       coachId:     form.coachId,
       coachNombre: coach?.nombre || form.coachNombre,
       duracion:    Number(form.duracion),
@@ -590,10 +598,8 @@ export default function AdminClases() {
                   </select>
                 </div>
                 <div className={styles.field}>
-                  <label>Día</label>
-                  <select value={form.dia} onChange={set('dia')}>
-                    {DIAS_FORM.map((d) => <option key={d}>{d}</option>)}
-                  </select>
+                  <label>Fecha</label>
+                  <input type="date" value={form.fecha} onChange={set('fecha')} />
                 </div>
                 <div className={styles.field}>
                   <label>Hora</label>

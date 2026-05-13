@@ -15,6 +15,7 @@
  * ─────────────────────────────────────────────────────
  */
 import { useState, useMemo } from 'react'
+import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { adminLinks }          from './AdminDashboard'
@@ -29,66 +30,67 @@ import { abrirReportePDF }     from '@/utils/reportePDF'
 import styles from '@/styles/dashboard.module.css'
 
 // ── Helpers de exportación ────────────────────────────────────────────────────
-function exportarCSV(datos, nombre) {
-  if (!datos?.length) { toast.error('Sin datos para exportar'); return }
-  const headers = Object.keys(datos[0])
-  const rows    = datos.map(r => headers.map(h => `"${r[h] ?? ''}"`).join(','))
-  const csv     = [headers.join(','), ...rows].join('\n')
-  const blob    = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url     = URL.createObjectURL(blob)
-  const a       = document.createElement('a')
-  a.href = url; a.download = `${nombre}.csv`; a.click()
-  URL.revokeObjectURL(url)
-  toast.success('CSV exportado')
+function diaSemana(fecha) {
+  if (!fecha) return '—'
+  const d = new Date(fecha + 'T00:00:00')
+  const s = d.toLocaleDateString('es-MX', { weekday: 'long' })
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-async function exportarExcel(datos, nombre) {
-  if (!datos?.length) { toast.error('Sin datos para exportar'); return }
-  exportarCSV(datos, nombre)
+function fechaDesdeDia(dia) {
+  if (!dia) return '—'
+  const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+  const idx = DIAS.indexOf(dia)
+  if (idx === -1) return '—'
+  const hoy = new Date()
+  const hoySemana = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1
+  const diff = idx - hoySemana
+  const fecha = new Date(hoy)
+  fecha.setDate(hoy.getDate() + (diff >= 0 ? diff : diff + 7))
+  return fecha.toISOString().split('T')[0]
 }
 
-function exportarPDF(datos, nombre, titulo = 'Reporte') {
-  if (!datos?.length) { toast.error('Sin datos para exportar'); return }
-  const columnas = Object.keys(datos[0])
-  const filas = datos
-    .map((row) => `<tr>${columnas.map((col) => `<td>${row[col] ?? ''}</td>`).join('')}</tr>`)
-    .join('')
-
-  const html = `
-    <!doctype html>
-    <html lang="es">
-      <head>
-        <meta charset="utf-8" />
-        <title>${titulo}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 24px; color: #111; }
-          h1 { margin: 0 0 6px; font-size: 22px; }
-          p { margin: 0 0 18px; color: #555; font-size: 12px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background: #f5f5f5; font-weight: 700; }
-        </style>
-      </head>
-      <body>
-        <h1>${titulo}</h1>
-        <p>Generado: ${new Date().toLocaleString('es-MX')}</p>
-        <table>
-          <thead><tr>${columnas.map((col) => `<th>${col}</th>`).join('')}</tr></thead>
-          <tbody>${filas}</tbody>
-        </table>
-      </body>
-    </html>
-  `
-
-  const w = window.open('', '_blank')
-  if (!w) { toast.error('No se pudo abrir la ventana de impresión'); return }
-  w.document.open()
-  w.document.write(html)
-  w.document.close()
-  w.focus()
-  setTimeout(() => w.print(), 250)
-  toast.success(`Vista PDF lista: ${nombre}`)
+function parseMonto(v) {
+  if (typeof v === 'number') return v
+  const n = Number(String(v).replace(/[$,\s]/g, ''))
+  return isNaN(n) ? 0 : n
 }
+
+function exportarExcel(datos, nombre, filasTotales = []) {
+  if (!datos?.length) { toast.error('Sin datos para exportar'); return }
+  const cols       = Object.keys(datos[0])
+  const todasFilas = [...datos, ...filasTotales]
+
+  const ws = XLSX.utils.json_to_sheet(todasFilas, { header: cols })
+
+  // Ancho de columnas auto-ajustado
+  ws['!cols'] = cols.map(col => ({
+    wch: Math.min(
+      Math.max(col.length, ...todasFilas.map(r => String(r[col] ?? '').length)) + 2,
+      45
+    ),
+  }))
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Reporte')
+  XLSX.writeFile(wb, `${nombre}.xlsx`)
+  toast.success('Excel exportado')
+}
+
+function exportarExcelFinanciero(datos, nombre) {
+  if (!datos?.length) { toast.error('Sin datos para exportar'); return }
+  const col      = 'Monto'
+  const ingresos = datos.filter(r => parseMonto(r[col]) > 0).reduce((a, r) => a + parseMonto(r[col]), 0)
+  const gastos   = datos.filter(r => parseMonto(r[col]) < 0).reduce((a, r) => a + Math.abs(parseMonto(r[col])), 0)
+  const vacio    = Object.fromEntries(Object.keys(datos[0]).map(k => [k, '']))
+  const totales  = [
+    { ...vacio, Concepto: 'INGRESOS', [col]: ingresos          },
+    { ...vacio, Concepto: 'GASTOS',   [col]: -gastos           },
+    { ...vacio, Concepto: 'UTILIDAD', [col]: ingresos - gastos },
+  ]
+  exportarExcel(datos, nombre, totales)
+}
+
 
 // ── Datos para cada reporte ───────────────────────────────────────────────────
 function useReporteData() {
@@ -99,25 +101,39 @@ function useReporteData() {
 
   const financiero = useMemo(() => transacciones.map(tx => ({
     Fecha:     tx.fecha,
+    Día:       diaSemana(tx.fecha),
+    Hora:      tx.hora ?? '—',
     Concepto:  tx.concepto,
     Tipo:      tx.tipo,
-    Método:    tx.metodoPago ?? 'efectivo',
+    Canal:     tx.canal ?? '—',
+    Método:    tx.metodoPago ?? '—',
     Monto:     tx.monto,
   })), [transacciones])
 
-  const usuarios = useMemo(() => clientes.map(u => ({
-    Nombre:    u.nombre ?? u.name,
-    Email:     u.email,
-    Activo:    u.activo ? 'Sí' : 'No',
-    Paquete:   u.paquete ?? '—',
-    Registro:  u.fechaRegistro ?? '—',
-  })), [clientes])
+  const usuarios = useMemo(() => clientes.map(u => {
+    const txPaquetes = transacciones
+      .filter(tx => tx.userId === u.id && tx.tipo === 'paquete')
+      .sort((a, b) => (a.fecha ?? '').localeCompare(b.fecha ?? ''))
+    const renovaciones    = txPaquetes.length > 1 ? txPaquetes.length - 1 : 0
+    const ultimaRenovacion = renovaciones > 0 ? txPaquetes[txPaquetes.length - 1].fecha : '—'
+    return {
+      Nombre:              u.nombre ?? u.name,
+      Email:               u.email,
+      Activo:              u.activo ? 'Sí' : 'No',
+      Paquete:             u.paquete ?? '—',
+      'Renovó paquete':    renovaciones > 0 ? 'Sí' : 'No',
+      'Veces renovado':    renovaciones > 0 ? renovaciones : '—',
+      'Última renovación': ultimaRenovacion,
+      Registro:            u.fechaRegistro ?? '—',
+    }
+  }), [clientes, transacciones])
 
   const clasesData = useMemo(() => clases.map(c => ({
-    Nombre:      c.nombre,
-    Tipo:        c.tipo,
+    Fecha:       c.fecha ?? fechaDesdeDia(c.dia),
     Día:         c.dia,
     Hora:        c.hora,
+    Nombre:      c.nombre,
+    Tipo:        c.tipo,
     Coach:       c.coachNombre,
     Asistentes:  c.cupoActual,
     Capacidad:   c.cupoMax,
@@ -128,8 +144,11 @@ function useReporteData() {
     const ventas = transacciones.filter(tx => tx.tipo === 'paquete')
     return ventas.map(tx => ({
       Fecha:     tx.fecha,
+      Día:       diaSemana(tx.fecha),
+      Hora:      tx.hora ?? '—',
       Concepto:  tx.concepto,
-      Método:    tx.metodoPago ?? 'efectivo',
+      Canal:     tx.canal ?? '—',
+      Método:    tx.metodoPago ?? '—',
       Monto:     tx.monto,
     }))
   }, [transacciones])
@@ -138,8 +157,11 @@ function useReporteData() {
     const ventas = transacciones.filter(tx => tx.tipo === 'producto')
     return ventas.map(tx => ({
       Fecha:     tx.fecha,
+      Día:       diaSemana(tx.fecha),
+      Hora:      tx.hora ?? '—',
       Producto:  tx.concepto,
-      Método:    tx.metodoPago ?? 'efectivo',
+      Canal:     tx.canal ?? '—',
+      Método:    tx.metodoPago ?? '—',
       Monto:     tx.monto,
     }))
   }, [transacciones])
@@ -163,7 +185,7 @@ function BarRow({ label, pct, value, color = 'var(--brand-wine)' }) {
 }
 
 // ── Tarjeta de reporte ────────────────────────────────────────────────────────
-function ReportCard({ icono, titulo, descripcion, onCSV, onExcel, onPDF }) {
+function ReportCard({ icono, titulo, descripcion, onExcel, onPDF }) {
   return (
     <div style={{
       background:   'var(--neutral-card)',
@@ -185,9 +207,6 @@ function ReportCard({ icono, titulo, descripcion, onCSV, onExcel, onPDF }) {
       <div style={{ display: 'flex', gap: 8 }}>
         {onExcel && (
           <button onClick={onExcel} style={btnStyle('#1a472a', '#22c55e')}>📊 Excel</button>
-        )}
-        {onCSV && (
-          <button onClick={onCSV} style={btnStyle('#1e3a1a', '#4ade80')}>📄 CSV</button>
         )}
         {onPDF && (
           <button onClick={onPDF} style={btnStyle('#2d1b1b', '#ef4444')}>📋 PDF</button>
@@ -359,7 +378,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
   ), [reporte])
 
   const exportarCoaches = () => {
-    exportarCSV(datosCoachesPlanos, `reporte_coaches_${periodo}_${new Date().toISOString().split('T')[0]}`)
+    exportarExcel(datosCoachesPlanos, `reporte_coaches_${periodo}_${new Date().toISOString().split('T')[0]}`)
   }
 
   const exportarCoachesPDF = () => {
@@ -592,37 +611,36 @@ export function ReportesSection({ inPanel = false }) {
           <ReportCard
             icono="💰" titulo="Reporte financiero"
             descripcion="Ingresos, gastos, desglose por categoría y período"
-            onCSV={() => exportarCSV(financiero, `financiero_${new Date().toISOString().split('T')[0]}`)}
-            onExcel={() => exportarExcel(financiero, `financiero_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF(financiero, 'financiero', 'Reporte financiero')}
+            onExcel={() => exportarExcelFinanciero(financiero, `financiero_${new Date().toISOString().split('T')[0]}`)}
+            onPDF={() => abrirReportePDF({ tipo: 'financiero', titulo: 'Reporte Financiero', datos: financiero })}
           />
           <ReportCard
             icono="👥" titulo="Reporte de usuarios"
             descripcion="Lista completa, paquetes activos e historial"
-            onCSV={() => exportarCSV(usuarios, `usuarios_${new Date().toISOString().split('T')[0]}`)}
             onExcel={() => exportarExcel(usuarios, `usuarios_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF(usuarios, 'usuarios', 'Reporte de usuarios')}
+            onPDF={() => abrirReportePDF({ tipo: 'usuarios', titulo: 'Reporte de Usuarios', datos: usuarios })}
           />
           <ReportCard
             icono="🏃" titulo="Reporte de clases"
             descripcion="Asistencia por clase, ocupación y horarios pico"
-            onCSV={() => exportarCSV(clasesData, `clases_${new Date().toISOString().split('T')[0]}`)}
             onExcel={() => exportarExcel(clasesData, `clases_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF(clasesData, 'clases', 'Reporte de clases')}
+            onPDF={() => abrirReportePDF({ tipo: 'clases', titulo: 'Reporte de Clases', datos: clasesData })}
           />
           <ReportCard
             icono="📦" titulo="Reporte de paquetes"
             descripcion="Ventas por tipo de paquete y renovaciones"
-            onCSV={() => exportarCSV(paquetes, `paquetes_${new Date().toISOString().split('T')[0]}`)}
-            onExcel={() => exportarExcel(paquetes, `paquetes_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF(paquetes, 'paquetes', 'Reporte de paquetes')}
+            onExcel={() => {
+              const total = paquetes.reduce((a, r) => a + parseMonto(r.Monto), 0)
+              const vacio = Object.fromEntries(Object.keys(paquetes[0] ?? {}).map(k => [k, '']))
+              exportarExcel(paquetes, `paquetes_${new Date().toISOString().split('T')[0]}`, [{ ...vacio, Concepto: 'TOTAL', Monto: total }])
+            }}
+            onPDF={() => abrirReportePDF({ tipo: 'paquetes', titulo: 'Reporte de Paquetes', datos: paquetes })}
           />
           <ReportCard
             icono="🛒" titulo="Reporte punto de venta"
             descripcion="Ventas de productos e inventario"
-            onCSV={() => exportarCSV(pdv, `pdv_${new Date().toISOString().split('T')[0]}`)}
             onExcel={() => exportarExcel(pdv, `pdv_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => exportarPDF(pdv, 'pdv', 'Reporte punto de venta')}
+            onPDF={() => abrirReportePDF({ tipo: 'pdv', titulo: 'Reporte Punto de Venta', datos: pdv })}
           />
         </div>
 

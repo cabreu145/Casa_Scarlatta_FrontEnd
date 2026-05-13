@@ -44,14 +44,6 @@ export const useClasesStore = create(
         const clase = clases.find((c) => c.id === claseId)
         if (!clase || clase.cupoActual >= clase.cupoMax) return false
 
-        const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-        const hoy = new Date()
-        const diaIndex = dias.indexOf(clase.dia)
-        const hoySemana = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1
-        const diff = diaIndex - hoySemana
-        const fecha = new Date(hoy)
-        fecha.setDate(hoy.getDate() + (diff >= 0 ? diff : diff + 7))
-
         const nuevaReserva = {
           id: Date.now(),
           userId,
@@ -62,7 +54,7 @@ export const useClasesStore = create(
           coachNombre: clase.coachNombre,
           tipo: clase.tipo,
           estado: 'confirmada',
-          fecha: fecha.toISOString().split('T')[0],
+          fecha: clase.fecha,
         }
 
         set((state) => ({
@@ -91,14 +83,6 @@ export const useClasesStore = create(
 
       // Reserva desde el flujo público /reservar (datos vienen de classes.js)
       reservarDesdePublico: (userId, cls, asiento) => {
-        const hoy = new Date()
-        const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
-        const diaIndex = dias.indexOf(cls.dia)
-        const hoySemana = hoy.getDay() === 0 ? 6 : hoy.getDay() - 1
-        const diff = diaIndex >= 0 ? diaIndex - hoySemana : 0
-        const fecha = new Date(hoy)
-        fecha.setDate(hoy.getDate() + (diff >= 0 ? diff : diff + 7))
-
         const nuevaReserva = {
           id: Date.now(),
           userId,
@@ -110,7 +94,7 @@ export const useClasesStore = create(
           tipo: cls.tipo,
           asiento,
           estado: 'confirmada',
-          fecha: fecha.toISOString().split('T')[0],
+          fecha: cls.fecha,
         }
 
         set((state) => ({ reservas: [...state.reservas, nuevaReserva] }))

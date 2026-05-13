@@ -66,6 +66,7 @@ export async function procesarVentaService({
     const detalle = items.map(i => i.name ?? i.nombre).join(', ')
 
     // 1. Registrar la transacción completa del POS
+    const ahora = new Date()
     transaccionesStore.registrarTransaccion({
       tipo,
       concepto:    `POS — ${detalle}`,
@@ -76,7 +77,9 @@ export async function procesarVentaService({
       cambio,
       userId:      pendingAsignacion?.userId ?? null,
       adminId,
-      fecha:       new Date().toISOString().split('T')[0],
+      fecha:       ahora.toISOString().split('T')[0],
+      hora:        ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }),
+      canal:       'recepción',
       origen:      'pdv',
     })
 
