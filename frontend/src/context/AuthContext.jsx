@@ -66,7 +66,6 @@ export function AuthProvider({ children }) {
       activo: true,
       fechaRegistro: hoyLocal(),
     }
-    mockUsers.push(nuevoUsuario)
     useUsuariosStore.getState().agregarUsuario(nuevoUsuario)
     const { password: _, ...safeUser } = nuevoUsuario
     setUsuario(safeUser)
@@ -78,14 +77,12 @@ export function AuthProvider({ children }) {
     setLocalLoading(true)
     await new Promise((r) => setTimeout(r, 600))
     const { usuarios, actualizarUsuario } = useUsuariosStore.getState()
-    const mu = mockUsers.find((u) => u.email === email)
     const su = usuarios.find((u) => u.email === email)
-    if (!mu && !su) {
+    if (!su) {
       setLocalLoading(false)
       throw new Error('No existe una cuenta con ese correo')
     }
-    if (mu) mu.password = newPassword
-    if (su) actualizarUsuario(su.id, { password: newPassword })
+    actualizarUsuario(su.id, { password: newPassword })
     setLocalLoading(false)
   }
 
