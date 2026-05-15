@@ -4,6 +4,9 @@ import PasswordInput from '@/components/ui/PasswordInput'
 import DashboardSection from './sections/DashboardSection'
 import CoachesSection from './sections/CoachesSection'
 import ClasesSection from './sections/ClasesSection'
+import PaquetesSection from './sections/PaquetesSection'
+import PuntoDeVentaSection from './sections/PuntoDeVentaSection'
+import UsuariosSection from './sections/UsuariosSection'
 import ModalPago from '../../features/pagos/ModalPago'
 import { procesarVentaService, getDailyIncome, getIncomeByCategory } from '../../services/ventaService'
 import { crearCoachService } from '@/services/coachesService'
@@ -82,23 +85,6 @@ function Tag({ color, children }) {
     gray:   styles.tagGray,
   }[color] || styles.tagGreen
   return <span className={`${styles.miniTag} ${cls}`}>{children}</span>
-}
-
-// ── FilterChips ──────────────────────────────────────────────────────────────
-function FilterChips({ options, active, onChange }) {
-  return (
-    <div style={{ display: 'flex', gap: 8 }}>
-      {options.map((o) => (
-        <button
-          key={o}
-          className={`${styles.filterChip}${active === o ? ' ' + styles.active : ''}`}
-          onClick={() => onChange(o)}
-        >
-          {o}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 // ── Category emoji fallback ──────────────────────────────────────────────────
@@ -547,428 +533,68 @@ export default function AdminPanel() {
 
           {/* ── PAQUETES ── */}
           <section className={`${styles.section}${activeSection === 'paquetes' ? ' ' + styles.active : ''}`}>
-            <div className={styles.sectionTopRow}>
-              <div />
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('paquete')}>
-                + Nuevo Paquete
-              </button>
-            </div>
-            <div className={styles.paquetesGrid}>
-              {paquetes.map((p) => (
-                <div key={p.id} className={`${styles.paqueteCard} ${p.destacado ? styles.featured : ''}`}>
-                  {p.destacado && <div className={styles.paqueteBadge}>⭐ Más popular</div>}
-                  <div className={styles.paqueteName}>{p.nombre}</div>
-                  <div className={styles.paqueteClases}>
-                    {p.clases === 0 ? 'Clases ilimitadas' : `${p.clases} clases`}
-                    {p.vigencia ? ` · ${p.vigencia}` : ''}
-                  </div>
-                  <div className={styles.paquetePrice}>
-                    ${p.precio.toLocaleString()}<span>/{p.categoria === 'mensual' ? 'mes' : 'paquete'}</span>
-                  </div>
-                  <div className={styles.paqueteStats}>
-                    <div className={styles.paqueteStat}><strong>{p.beneficios.length}</strong>beneficios</div>
-                    <div className={styles.paqueteStat}><strong>{p.categoria}</strong></div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                    <button
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ fontSize: 11, padding: '6px' }}
-                      onClick={() => {
-                        setModalEditPaquete(p)
-                        setEditPaqueteForm({
-                          nombre:    p.nombre,
-                          precio:    String(p.precio),
-                          clases:    String(p.clases),
-                          vigencia:  p.vigencia || '',
-                          categoria: p.categoria,
-                          destacado: p.destacado || false,
-                          beneficios: [...(p.beneficios || [])],
-                        })
-                      }}
-                    >✏️ Editar</button>
-                    <button
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ fontSize: 11, padding: '6px', color: '#ef4444' }}
-                      onClick={() => {
-                        if (!window.confirm(`¿Eliminar el paquete "${p.nombre}"?`)) return
-                        eliminarPaquete(p.id)
-                        toast.success(`Paquete "${p.nombre}" eliminado`)
-                      }}
-                    >🗑 Eliminar</button>
-                    {!p.destacado && (
-                      <button
-                        className={`${styles.btn} ${styles.btnGhost}`}
-                        style={{ fontSize: 11, padding: '6px', gridColumn: '1/-1', color: '#d97706' }}
-                        onClick={() => { marcarDestacado(p.id); toast.success(`"${p.nombre}" marcado como popular`) }}
-                      >⭐ Marcar popular</button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div className={styles.cardTitle}>Historial de ventas de paquetes</div>
-                <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Descarga disponible en Reportes</span>
-              </div>
-              <div className={styles.tableWrap}>
-                {(() => {
-                  const ventasPaq = transacciones
-                    .filter(tx => tx.tipo === 'paquete')
-                    .slice().reverse()
-                  if (ventasPaq.length === 0) return (
-                    <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13, fontFamily: 'var(--font-body)' }}>
-                      No hay ventas de paquetes registradas.
-                    </div>
-                  )
-                  return (
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Usuario</th><th>Paquete</th><th>Fecha compra</th>
-                          <th>Vencimiento</th><th>Clases rest.</th><th>Monto</th><th>Método</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ventasPaq.map((tx, i) => {
-                          const usuario = usuarios.find(u => u.id === tx.userId)
-                          const paqInfo = paquetes.find(p => tx.concepto?.includes(p.nombre))
-                          const vencimiento = (() => {
-                            if (!tx.fecha || !paqInfo?.vigencia) return '—'
-                            const dias = parseInt(paqInfo.vigencia) || 30
-                            const d = new Date(tx.fecha + 'T00:00:00')
-                            d.setDate(d.getDate() + dias)
-                            return d.toISOString().split('T')[0]
-                          })()
-                          const clasesRest = usuario?.clasesPaquete ?? '—'
-                          return (
-                            <tr key={i}>
-                              <td>{usuario?.nombre ?? tx.userId ?? '—'}</td>
-                              <td>{tx.concepto ?? '—'}</td>
-                              <td>{tx.fecha ?? '—'}</td>
-                              <td>{vencimiento}</td>
-                              <td>{clasesRest}</td>
-                              <td className={styles.mono}>{tx.monto}</td>
-                              <td>{tx.metodoPago ?? '—'}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  )
-                })()}
-              </div>
-            </div>
+            <PaquetesSection
+              paquetes={paquetes}
+              transacciones={transacciones}
+              usuarios={usuarios}
+              openModal={openModal}
+              setModalEditPaquete={setModalEditPaquete}
+              setEditPaqueteForm={setEditPaqueteForm}
+              eliminarPaquete={eliminarPaquete}
+              marcarDestacado={marcarDestacado}
+            />
           </section>
 
           {/* ── PUNTO DE VENTA ── */}
           <section className={`${styles.section}${activeSection === 'pos' ? ' ' + styles.active : ''}`}>
-            <div className={styles.posGrid}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <FilterChips
-                    options={['Todos', '📦 Paquetes', 'Accesorios', 'Nutrición', 'Equipo', 'Ropa']}
-                    active={posFilter}
-                    onChange={setPosFilter}
-                  />
-                  {posFilter !== '📦 Paquetes' && (
-                    <button
-                      className={`${styles.btn} ${styles.btnPrimary}`}
-                      style={{ fontSize: 13, padding: '6px 14px' }}
-                      onClick={() => { setProdModal('nuevo'); setProdForm({ nombre: '', categoria: posFilter === 'Todos' ? 'Accesorios' : posFilter, precio: '', stock: '', emoji: '' }) }}
-                    >
-                      + Agregar producto
-                    </button>
-                  )}
-                </div>
-                <div className={styles.productGrid}>
-                  {(posFilter === '📦 Paquetes'
-                      ? paquetes.map(p => ({ ...p, emoji: p.clases === 0 ? '⭐' : '📦', name: `${p.nombre} — ${p.clases === 0 ? 'Ilimitadas' : p.clases + ' clases'}`, price: p.precio }))
-                      : productos.filter((p) => p.activo && (posFilter === 'Todos' || p.categoria === posFilter))
-                    ).map((p) => {
-                    const isPaquete = posFilter === '📦 Paquetes'
-                    const emoji  = p.emoji || categoryEmoji(p.categoria)
-                    const nombre = p.nombre ?? p.name
-                    const precio = p.precio ?? p.price
-                    return (
-                      <div key={p.id ?? p.name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <button
-                          className={styles.productCard}
-                          onClick={() => addToCart({ name: nombre, price: precio, emoji })}
-                        >
-                          <div className={styles.productEmoji}>{emoji}</div>
-                          <div className={styles.productName}>{nombre}</div>
-                          <div className={styles.productPrice}>${precio.toLocaleString()}</div>
-                        </button>
-                        {!isPaquete && (
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button
-                              style={{ flex: 1, fontSize: 11, padding: '3px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)' }}
-                              onClick={() => { setProdForm({ nombre: p.nombre, categoria: p.categoria, precio: String(p.precio), stock: String(p.stock), emoji: p.emoji || '' }); setProdModal({ producto: p }) }}
-                            >✏️</button>
-                            <button
-                              style={{ flex: 1, fontSize: 11, padding: '3px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: '#ef4444' }}
-                              onClick={() => setConfirmarEliminarProd(p)}
-                            >🗑</button>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className={styles.cartSection}>
-                <div className={styles.cartTitle}>🛒 Orden actual</div>
-                {/* Aviso de asignación pendiente */}
-                {pendingAsignacion && (
-                  <div style={{ margin: '0 0 10px', padding: '10px 12px', background: 'rgba(234,179,8,0.1)', borderRadius: 8, border: '1px solid rgba(234,179,8,0.3)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 13 }}>🔒</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#fbbf24', fontFamily: 'var(--font-body)' }}>
-                        Paquete pendiente de cobro
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
-                      👤 <strong style={{ color: 'rgba(255,255,255,0.85)' }}>{pendingAsignacion.userName}</strong> recibirá el paquete <strong style={{ color: 'rgba(255,255,255,0.85)' }}>{pendingAsignacion.paqSel.nombre}</strong> al confirmar el cobro.
-                    </div>
-                  </div>
-                )}
-                <div className={styles.cartItems}>
-                  {cart.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: 20, color: 'var(--muted)', fontSize: 13 }}>
-                      Selecciona productos para agregar
-                    </div>
-                  ) : (
-                    cart.map((item, idx) => (
-                      <div key={idx} className={styles.cartItem}>
-                        <span>{item.emoji} {item.name}</span>
-                        <span className={styles.cartItemPrice}>${item.price.toLocaleString()}</span>
-                        <button className={styles.cartRemoveBtn} onClick={() => removeFromCart(idx)}>×</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <div className={styles.cartTotal}>
-                  <div className={styles.cartTotalRow}><span>Subtotal</span><span>${cartSubtotal.toLocaleString()}</span></div>
-                  <div className={styles.cartTotalRow}><span>IVA (16%)</span><span>${cartIva.toLocaleString()}</span></div>
-                  <div className={styles.cartTotalMain}><span>Total</span><span>${cartTotal.toLocaleString()}</span></div>
-                </div>
-                <button
-                  className={`${styles.btn} ${styles.btnPrimary}`}
-                  style={{ width: '100%', justifyContent: 'center', padding: 12 }}
-                  onClick={handleCobrar}
-                >
-                  💳 Cobrar
-                </button>
-                <button
-                  className={`${styles.btn} ${styles.btnGhost}`}
-                  style={{ width: '100%', justifyContent: 'center', padding: 10, marginTop: 8 }}
-                  onClick={clearCart}
-                >
-                  Limpiar orden
-                </button>
-              </div>
-            </div>
+            <PuntoDeVentaSection
+              paquetes={paquetes}
+              productos={productos}
+              agregarProducto={agregarProducto}
+              editarProducto={editarProducto}
+              eliminarProducto={eliminarProducto}
+              cart={cart}
+              posFilter={posFilter}
+              setPosFilter={setPosFilter}
+              prodModal={prodModal}
+              setProdModal={setProdModal}
+              prodForm={prodForm}
+              setProdForm={setProdForm}
+              confirmarEliminarProd={confirmarEliminarProd}
+              setConfirmarEliminarProd={setConfirmarEliminarProd}
+              pendingAsignacion={pendingAsignacion}
+              cartSubtotal={cartSubtotal}
+              cartIva={cartIva}
+              cartTotal={cartTotal}
+              addToCart={addToCart}
+              removeFromCart={removeFromCart}
+              clearCart={clearCart}
+              handleCobrar={handleCobrar}
+              handleSaveProducto={handleSaveProducto}
+              handleEliminarProducto={handleEliminarProducto}
+            />
           </section>
 
           {/* ── USUARIOS ── */}
           <section className={`${styles.section}${activeSection === 'usuarios' ? ' ' + styles.active : ''}`}>
-            <div className={styles.kpiGrid} style={{ marginBottom: 24 }}>
-              {[
-                { label: 'Total usuarios',      val: '142', change: '↑ 12 nuevos este mes',      up: true  },
-                { label: 'Con paquete activo',  val: '118', change: '83% del total',              up: true  },
-                { label: 'Sin paquete',         val: '24',  change: 'Por renovar',               up: false },
-                { label: 'Clases esta semana',  val: '387', change: '↑ 8% vs semana anterior',   up: true  },
-              ].map(({ label, val, change, up }) => (
-                <div key={label} className={styles.kpiCard}>
-                  <div className={styles.kpiLabel}>{label}</div>
-                  <div className={styles.kpiValue}>{val}</div>
-                  <div className={`${styles.kpiChange} ${up ? styles.up : styles.down}`}>{change}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div className={styles.usersFilters}>
-                  <input
-                    className={styles.searchInput}
-                    placeholder="🔍 Buscar usuario..."
-                    type="text"
-                    value={usersSearch}
-                    onChange={e => setUsersSearch(e.target.value)}
-                  />
-                  {['Todos', 'Activos', 'Sin paquete', 'Por vencer'].map((f) => (
-                    <button
-                      key={f}
-                      className={`${styles.filterChip}${usersFilter === f ? ' ' + styles.active : ''}`}
-                      onClick={() => setUsersFilter(f)}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {userSelectMode && userSelectedIds.size > 0 && (
-                    <button
-                      className={`${styles.btn} ${styles.btnPrimary}`}
-                      style={{ background: '#ef4444', borderColor: '#ef4444' }}
-                      onClick={() => {
-                        if (!window.confirm(`¿Eliminar ${userSelectedIds.size} usuario${userSelectedIds.size > 1 ? 's' : ''}?`)) return
-                        userSelectedIds.forEach(id => eliminarUsuario(id))
-                        toast.success(`${userSelectedIds.size} usuario${userSelectedIds.size > 1 ? 's eliminados' : ' eliminado'}`)
-                        setUserSelectedIds(new Set())
-                        setUserSelectMode(false)
-                      }}
-                    >
-                      🗑 Eliminar ({userSelectedIds.size})
-                    </button>
-                  )}
-                  <button
-                    className={`${styles.btn} ${userSelectMode ? styles.btnSecondary : styles.btnGhost}`}
-                    onClick={() => { setUserSelectMode(v => !v); setUserSelectedIds(new Set()) }}
-                  >
-                    {userSelectMode ? '✕ Cancelar' : '☑ Seleccionar'}
-                  </button>
-                  {!userSelectMode && (
-                    <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('usuario')}>
-                      + Nuevo usuario
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Toolbar de selección */}
-              {userSelectMode && (() => {
-                const listaVisible = usuarios.filter((u) => {
-                  if (usersSearch.trim()) {
-                    const q = usersSearch.toLowerCase()
-                    if (!u.nombre?.toLowerCase().includes(q) && !u.email?.toLowerCase().includes(q)) return false
-                  }
-                  if (usersFilter === 'Activos')     return u.activo && u.paquete
-                  if (usersFilter === 'Sin paquete') return !u.paquete
-                  if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
-                  return true
-                })
-                const todosSeleccionados = listaVisible.length > 0 && listaVisible.every(u => userSelectedIds.has(u.id))
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', marginBottom: 8, fontFamily: 'var(--font-body)', fontSize: 13 }}>
-                    <input
-                      type="checkbox"
-                      checked={todosSeleccionados}
-                      onChange={() => {
-                        if (todosSeleccionados) setUserSelectedIds(new Set())
-                        else setUserSelectedIds(new Set(listaVisible.map(u => u.id)))
-                      }}
-                      style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
-                    />
-                    <span style={{ color: 'var(--muted)' }}>
-                      {userSelectedIds.size === 0
-                        ? 'Selecciona los usuarios que deseas eliminar'
-                        : `${userSelectedIds.size} de ${listaVisible.length} seleccionado${userSelectedIds.size > 1 ? 's' : ''}`}
-                    </span>
-                    {userSelectedIds.size > 0 && (
-                      <button
-                        style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
-                        onClick={() => setUserSelectedIds(new Set())}
-                      >
-                        Deseleccionar todo
-                      </button>
-                    )}
-                  </div>
-                )
-              })()}
-
-              <div className={styles.tableWrap}>
-                <table>
-                  <thead>
-                    <tr>
-                      {userSelectMode && <th style={{ width: 36 }}></th>}
-                      <th>Usuario</th><th>Paquete</th><th>Clases restantes</th>
-                      <th>Vencimiento</th><th>Última clase</th><th>Total gastado</th>
-                      <th>Estado</th><th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usuarios
-                      .filter((u) => {
-                        if (usersSearch.trim()) {
-                          const q = usersSearch.toLowerCase()
-                          const coincide = u.nombre?.toLowerCase().includes(q)
-                            || u.email?.toLowerCase().includes(q)
-                            || u.paquete?.toLowerCase().includes(q)
-                            || u.telefono?.toLowerCase().includes(q)
-                          if (!coincide) return false
-                        }
-                        if (usersFilter === 'Activos')     return u.activo && u.paquete
-                        if (usersFilter === 'Sin paquete') return !u.paquete
-                        if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
-                        return true
-                      })
-                      .map((u) => {
-                        const restantes  = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
-                        const tag        = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
-                        const label      = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
-                        const isSelected = userSelectedIds.has(u.id)
-                        return (
-                          <tr
-                            key={u.id}
-                            style={{ cursor: userSelectMode ? 'pointer' : undefined, background: isSelected ? 'rgba(239,68,68,0.08)' : undefined }}
-                            onClick={userSelectMode ? () => {
-                              setUserSelectedIds(prev => {
-                                const next = new Set(prev)
-                                next.has(u.id) ? next.delete(u.id) : next.add(u.id)
-                                return next
-                              })
-                            } : undefined}
-                          >
-                            {userSelectMode && (
-                              <td onClick={e => e.stopPropagation()}>
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    setUserSelectedIds(prev => {
-                                      const next = new Set(prev)
-                                      next.has(u.id) ? next.delete(u.id) : next.add(u.id)
-                                      return next
-                                    })
-                                  }}
-                                  style={{ width: 15, height: 15, accentColor: '#ef4444', cursor: 'pointer' }}
-                                />
-                              </td>
-                            )}
-                            <td style={{ whiteSpace: 'normal', minWidth: 140 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div className={styles.miniAvatar} style={{ width: 28, height: 28, fontSize: 12, flexShrink: 0 }}>{u.nombre[0]}</div>
-                                {u.nombre}
-                              </div>
-                            </td>
-                            <td>{u.paquete || '—'}</td>
-                            <td>{restantes}</td>
-                            <td>{(() => {
-                              if (u.paqueteInfo?.fechaVencimiento) return u.paqueteInfo.fechaVencimiento
-                              if (!u.paqueteInfo?.fechaCompra || !u.paquete) return '—'
-                              const paq = paquetes.find(p => p.nombre === u.paquete)
-                              if (!paq?.vigencia) return '—'
-                              const dias = parseInt(paq.vigencia) || 30
-                              const d = new Date(u.paqueteInfo.fechaCompra + 'T00:00:00')
-                              d.setDate(d.getDate() + dias)
-                              return d.toISOString().split('T')[0]
-                            })()}</td>
-                            <td>—</td>
-                            <td className={styles.mono}>—</td>
-                            <td><Tag color={tag}>{label}</Tag></td>
-                            <td>{!userSelectMode && <button className={styles.coachBtn} style={{ width: 60 }} onClick={() => { setModalVerUsuario(u); setAsignarPaqueteForm({ paqueteNombre: u.paquete || '', metodoPago: 'efectivo' }); setEditNotas(u.notas || ''); setCederClaseUserId('') }}>Ver</button>}</td>
-                          </tr>
-                        )
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <UsuariosSection
+              usuarios={usuarios}
+              paquetes={paquetes}
+              usersFilter={usersFilter}
+              setUsersFilter={setUsersFilter}
+              usersSearch={usersSearch}
+              setUsersSearch={setUsersSearch}
+              userSelectMode={userSelectMode}
+              setUserSelectMode={setUserSelectMode}
+              userSelectedIds={userSelectedIds}
+              setUserSelectedIds={setUserSelectedIds}
+              eliminarUsuario={eliminarUsuario}
+              openModal={openModal}
+              setModalVerUsuario={setModalVerUsuario}
+              setAsignarPaqueteForm={setAsignarPaqueteForm}
+              setEditNotas={setEditNotas}
+              setCederClaseUserId={setCederClaseUserId}
+            />
           </section>
 
           {/* ── FINANZAS ── */}
