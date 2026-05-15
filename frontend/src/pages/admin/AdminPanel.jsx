@@ -7,7 +7,14 @@ import ClasesSection from './sections/ClasesSection'
 import PaquetesSection from './sections/PaquetesSection'
 import PuntoDeVentaSection from './sections/PuntoDeVentaSection'
 import UsuariosSection from './sections/UsuariosSection'
+import ActividadSection from './sections/ActividadSection'
 import ModalPago from '../../features/pagos/ModalPago'
+import {
+  logReservaCreada, logReservaCancelada, logUsuarioNuevo,
+  logPaqueteVendido, logInsumoVendido, logCorteCaja,
+  logClaseCreada, logClaseEliminada,
+  logCoachAgregado, logCoachEliminado,
+} from '@/services/actividadService'
 import { procesarVentaService, getDailyIncome, getIncomeByCategory } from '../../services/ventaService'
 import { crearCoachService } from '@/services/coachesService'
 import { useNavigate } from 'react-router-dom'
@@ -53,6 +60,7 @@ const SECTIONS = {
   usuarios:  { title: 'Usuarios',         sub: 'Gestión de miembros activos'         },
   finanzas:  { title: 'Finanzas',         sub: 'Resumen financiero del estudio'       },
   reportes:  { title: 'Reportes',         sub: 'Descarga y análisis de datos'        },
+  actividad: { title: 'Actividad',        sub: 'Historial de eventos del sistema'    },
 }
 
 // ── POS products ─────────────────────────────────────────────────────────────
@@ -329,6 +337,13 @@ export default function AdminPanel() {
       estado:             'cerrado',
     })
     toast.success('¡Corte de caja realizado!')
+    logCorteCaja({
+      total:          finIngresosDia.total,
+      efectivo:       finIngresosDia.efectivo,
+      tarjeta:        finIngresosDia.tarjeta,
+      transferencia:  finIngresosDia.transferencia,
+      ejecutadoPor:   usuario?.nombre ?? 'Administrador',
+    })
   }
 
   function handleGuardarGasto() {
@@ -431,8 +446,9 @@ export default function AdminPanel() {
         <div className={styles.navSection}>
           <div className={styles.navLabel}>Análisis</div>
           {[
-            { id: 'finanzas', icon: '💰', label: 'Finanzas' },
-            { id: 'reportes', icon: '📄', label: 'Reportes' },
+            { id: 'finanzas',  icon: '💰', label: 'Finanzas'  },
+            { id: 'reportes',  icon: '📄', label: 'Reportes'  },
+            { id: 'actividad', icon: '📋', label: 'Actividad' },
           ].map(({ id, icon, label }) => (
             <button
               key={id}
@@ -607,6 +623,11 @@ export default function AdminPanel() {
             <ReportesSection inPanel />
           </section>
 
+          {/* ── ACTIVIDAD ── */}
+          <section className={`${styles.section}${activeSection === 'actividad' ? ' ' + styles.active : ''}`}>
+            <ActividadSection />
+          </section>
+
         </div>
       </main>
 
@@ -716,6 +737,7 @@ export default function AdminPanel() {
                   })
                   if (resultado.ok) {
                   toast.success(`${coachForm.nombre} agregado`)
+                  logCoachAgregado({ nombre: coachForm.nombre })
                   setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '' })
                   setCoachFotoPreview(null)
                   setCoachFotoPath(null)
@@ -878,6 +900,12 @@ export default function AdminPanel() {
                       ? `Clase programada para ${new Date(claseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}`
                       : `Clase "${claseForm.nombre}" publicada`
                   toast.success(msg)
+                  logClaseCreada({
+                    nombre:      claseForm.nombre,
+                    coachNombre: claseForm.coach || 'Sin asignar',
+                    dia:         claseForm.dia,
+                    hora:        claseForm.hora,
+                  })
                   setClaseForm({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
                   closeModal()
                 }}
@@ -1059,6 +1087,7 @@ export default function AdminPanel() {
                     fechaRegistro:   new Date().toISOString().split('T')[0],
                   })
                   toast.success(`${usuarioForm.nombre} dado de alta`)
+                  logUsuarioNuevo({ nombre: usuarioForm.nombre, email: usuarioForm.email })
                   if (paqSel) {
                     // Guardar asignación pendiente: se ejecuta al cobrar en POS
                     setPendingAsignacion({

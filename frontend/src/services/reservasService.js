@@ -18,6 +18,7 @@ import { useNotificacionesStore } from '@/stores/notificacionesStore'
 import { useAuthStore }           from '@/stores/authStore'
 import { ESTADOS_RESERVA, TIPOS_NOTIFICACION } from '@/data/mockData'
 import { hoyLocal } from '@/utils/fecha'
+import { logReservaCreada, logReservaCancelada } from '@/services/actividadService'
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -112,6 +113,14 @@ export function reservarClase(userId, claseId, asiento = null) {
     })
   }
 
+  logReservaCreada({
+    usuarioNombre: usuario?.nombre ?? `Usuario #${userId}`,
+    usuarioId:     userId,
+    claseNombre:   clase.nombre,
+    claseHora:     clase.hora,
+    claseDia:      clase.dia,
+  })
+
   return { ok: true }
 }
 
@@ -146,6 +155,12 @@ export function cancelarReserva(reservaId, userId) {
 
   // Reducir cupoActual
   clasesStore.actualizarCupo(reserva.claseId, -1)
+
+  logReservaCancelada({
+    usuarioNombre: usuario?.nombre ?? `Usuario #${userId}`,
+    usuarioId:     userId,
+    claseNombre:   reserva.claseNombre ?? 'Clase',
+  })
 
   return { ok: true }
 }

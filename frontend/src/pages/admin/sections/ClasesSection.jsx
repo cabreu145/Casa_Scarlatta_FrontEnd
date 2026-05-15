@@ -1,5 +1,6 @@
 import toast from 'react-hot-toast'
 import { eliminarClaseConReservas } from '@/services/reservasService'
+import { logClaseEliminada } from '@/services/actividadService'
 import styles from '../AdminPanel.module.css'
 
 const ABBR_DIA = { Lunes: 'LUN', Martes: 'MAR', Miércoles: 'MIÉ', Jueves: 'JUE', Viernes: 'VIE', Sábado: 'SÁB', Domingo: 'DOM' }
@@ -248,6 +249,7 @@ export default function ClasesSection({
                     onClick={() => {
                       if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
                       eliminarClaseConReservas(c.id)
+                      logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
                       toast.success('Clase eliminada')
                     }}
                   >

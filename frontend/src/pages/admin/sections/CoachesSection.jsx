@@ -1,5 +1,6 @@
 import toast from 'react-hot-toast'
 import { borrarCoachService } from '@/services/coachesService'
+import { logCoachEliminado } from '@/services/actividadService'
 import styles from '../AdminPanel.module.css'
 
 export default function CoachesSection({
@@ -95,8 +96,10 @@ export default function CoachesSection({
                     onClick={async () => {
                       if (!window.confirm(`¿Eliminar permanentemente a ${c.nombre}? Esta acción no se puede deshacer.`)) return
                       const resultado = await borrarCoachService(c.id)
-                      if (resultado.ok) toast.success(resultado.mensaje)
-                      else toast.error(resultado.mensaje)
+                      if (resultado.ok) {
+                        toast.success(resultado.mensaje)
+                        logCoachEliminado({ nombre: c.nombre })
+                      } else toast.error(resultado.mensaje)
                     }}
                   >Eliminar</button>
                 </div>
