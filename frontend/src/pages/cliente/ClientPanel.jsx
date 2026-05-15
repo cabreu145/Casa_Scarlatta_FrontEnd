@@ -17,49 +17,15 @@ import { useTransaccionesStore } from '@/stores/transaccionesStore'
 import { reservarClase, cancelarReserva } from '@/services/reservasService'
 import { editarPerfilService }            from '@/services/usuariosService'
 import { isPublished }                    from '@/services/classService'
-import { hoyLocal }                       from '@/utils/fecha'
+import {
+  hoyLocal,
+  DAYS_ES, DAYS_ABBR, MONTHS_ES,
+  buildWeek, weekRangeLabel, formatHour, formatFechaISO,
+} from '@/utils/formatters'
 import s from './ClientPanel.module.css'
 
-// ── Week helpers ───────────────────────────────────────────────────────────────
-const DAYS_ES   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
-const DAYS_ABBR = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB']
-const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-
-function buildWeek(off) {
-  const base = new Date()
-  base.setDate(base.getDate() + off * 7)
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(base); d.setDate(base.getDate() + i)
-    const y  = d.getFullYear()
-    const m  = String(d.getMonth() + 1).padStart(2, '0')
-    const dd = String(d.getDate()).padStart(2, '0')
-    return {
-      fullName: DAYS_ES[d.getDay()],
-      abbr:     DAYS_ABBR[d.getDay()],
-      num:      d.getDate(),
-      month:    d.getMonth(),
-      year:     d.getFullYear(),
-      isoDate:  `${y}-${m}-${dd}`,
-    }
-  })
-}
-
-function weekRangeLabel(days) {
-  const f = days[0], l = days[6]
-  return f.month === l.month
-    ? `${MONTHS_ES[f.month]} ${f.year}`
-    : `${MONTHS_ES[f.month]} – ${MONTHS_ES[l.month]} ${l.year}`
-}
-
-function formatHour(time) {
-  const [h, m] = time.split(':').map(Number)
-  const suffix = h >= 12 ? 'p.m.' : 'a.m.'
-  const hr     = h > 12 ? h - 12 : h === 0 ? 12 : h
-  return `${hr}:${String(m || 0).padStart(2, '0')} ${suffix}`
-}
-
 const AVATAR_COLORS = [
-  { bg: 'rgba(123,30,43,0.13)',  text: '#7B1E2B' },
+  { bg: 'var(--brand-wine-13)',  text: '#7B1E2B' },
   { bg: 'rgba(194,107,122,0.18)', text: '#b05060' },
   { bg: 'rgba(154,123,107,0.18)', text: '#7A6560' },
   { bg: 'rgba(92,16,24,0.13)',   text: '#5C1018'  },
@@ -68,13 +34,6 @@ const AVATAR_COLORS = [
 function avatarStyle(name) {
   const idx = name.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % AVATAR_COLORS.length
   return AVATAR_COLORS[idx]
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function formatFechaISO(iso) {
-  if (!iso) return null
-  const [y, m, d] = iso.split('-').map(Number)
-  return `${d} de ${MONTHS_ES[m - 1]} de ${y}`
 }
 
 const SECTION_META = {
@@ -434,7 +393,7 @@ export default function ClientPanel() {
             {/* Banner créditos bajos */}
             {typeof clasesRestantes === 'number' && clasesRestantes <= 2 && (
               <div style={{
-                background: 'rgba(123,31,46,0.08)', border: '1px solid rgba(123,31,46,0.22)',
+                background: 'var(--brand-wine-08)', border: '1px solid var(--brand-wine-22)',
                 borderRadius: 12, padding: '10px 16px', marginBottom: 16,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
                 fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--wine)',

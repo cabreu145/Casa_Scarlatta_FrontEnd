@@ -23,20 +23,15 @@ import { getAvailability } from '@/services/classService'
 import { marcarNoAsistio, eliminarClaseConReservas } from '@/services/reservasService'
 import { useClasses } from '@/hooks/useClasses'
 import { ESTADOS_RESERVA } from '@/data/mockData'
+import {
+  DAYS_ES, DAYS_ABBR,
+  getWeekDays, getMonthLabel, isSameDay, isToday,
+  formatHour, diaDesdefecha,
+} from '@/utils/formatters'
 import styles from '@/styles/dashboard.module.css'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-const DAYS_ES   = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-const DAYS_ABBR = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB']
-const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-
-const DIAS_ES_IDX = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const UBICACIONES = ['Studio A', 'Studio B', 'Sala Principal']
-
-function diaDesdefecha(fechaStr) {
-  if (!fechaStr) return ''
-  return DIAS_ES_IDX[new Date(fechaStr + 'T00:00:00').getDay()] ?? ''
-}
 
 const CLASE_VACIA_BASE = {
   nombre:      '',
@@ -49,42 +44,6 @@ const CLASE_VACIA_BASE = {
   cupoMax:     20,
   cupoActual:  0,
   ubicacion:   'Studio A',
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function getWeekDays(weekOffset = 0) {
-  const today = new Date()
-  const dow   = today.getDay()
-  const start = new Date(today)
-  start.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow) + weekOffset * 7)
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start)
-    d.setDate(start.getDate() + i)
-    return d
-  })
-}
-
-function getMonthLabel(days) {
-  const a = days[0], b = days[days.length - 1]
-  const yr = b.getFullYear()
-  return a.getMonth() === b.getMonth()
-    ? `${MONTHS_ES[a.getMonth()]} ${yr}`
-    : `${MONTHS_ES[a.getMonth()]} – ${MONTHS_ES[b.getMonth()]} ${yr}`
-}
-
-function isSameDay(a, b) {
-  return a.getDate()     === b.getDate()  &&
-         a.getMonth()    === b.getMonth() &&
-         a.getFullYear() === b.getFullYear()
-}
-
-function isToday(date) { return isSameDay(date, new Date()) }
-
-function formatHour(hora) {
-  const [h, m] = hora.split(':').map(Number)
-  const suffix = h >= 12 ? 'p.m.' : 'a.m.'
-  const hr     = h > 12 ? h - 12 : h === 0 ? 12 : h
-  return `${hr}:${String(m || 0).padStart(2, '0')} ${suffix}`
 }
 
 // ─── Availability badge ───────────────────────────────────────────────────────

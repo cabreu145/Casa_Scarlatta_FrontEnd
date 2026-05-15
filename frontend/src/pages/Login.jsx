@@ -163,9 +163,6 @@ function LoginForm({ from }) {
       <button type="submit" className={styles.submitBtn} disabled={loading}>
         {loading ? 'Entrando...' : 'Entrar'}
       </button>
-      <p className={styles.hint}>
-        Prueba: cliente@casascarlatta.com / 123456
-      </p>
     </form>
   )
 }
