@@ -23,6 +23,8 @@ import { useClasesStore }      from '@/stores/clasesStore'
 import { useCoachesStore }     from '@/stores/coachesStore'
 import { useTransaccionesStore } from '@/stores/transaccionesStore'
 import { useTabuladorStore }   from '@/stores/tabuladorStore'
+import { usePaquetesStore }    from '@/stores/paquetesStore'
+import { useUsuariosStore }    from '@/stores/usuariosStore'
 import { getReporteCoaches }   from '@/services/finanzasService'
 import { mockUsers }           from '@/data/mockUsers'
 import { ingresosUltimosMeses } from '@/data/mockTransacciones'
@@ -94,10 +96,12 @@ function exportarExcelFinanciero(datos, nombre) {
 
 // ── Datos para cada reporte ───────────────────────────────────────────────────
 function useReporteData() {
-  const { clases, reservas } = useClasesStore()
-  const { coaches }          = useCoachesStore()
-  const { transacciones }    = useTransaccionesStore()
-  const clientes             = mockUsers.filter(u => u.rol === 'cliente')
+  const { clases }             = useClasesStore()
+  const { coaches }            = useCoachesStore()
+  const { transacciones }      = useTransaccionesStore()
+  const { paquetes: catalogo } = usePaquetesStore()
+  const { usuarios: todos }    = useUsuariosStore()
+  const clientes               = mockUsers.filter(u => u.rol === 'cliente')
 
   const financiero = useMemo(() => transacciones.map(tx => ({
     Fecha:     tx.fecha,
@@ -142,16 +146,29 @@ function useReporteData() {
 
   const paquetes = useMemo(() => {
     const ventas = transacciones.filter(tx => tx.tipo === 'paquete')
-    return ventas.map(tx => ({
-      Fecha:     tx.fecha,
-      Día:       diaSemana(tx.fecha),
-      Hora:      tx.hora ?? '—',
-      Concepto:  tx.concepto,
-      Canal:     tx.canal ?? '—',
-      Método:    tx.metodoPago ?? '—',
-      Monto:     tx.monto,
-    }))
-  }, [transacciones])
+    return ventas.map(tx => {
+      const usuario = todos.find(u => u.id === tx.userId)
+      const paqInfo = catalogo.find(p => tx.concepto?.includes(p.nombre))
+      const vencimiento = (() => {
+        if (!tx.fecha || !paqInfo?.vigencia) return '—'
+        const dias = parseInt(paqInfo.vigencia) || 30
+        const d = new Date(tx.fecha + 'T00:00:00')
+        d.setDate(d.getDate() + dias)
+        return d.toISOString().split('T')[0]
+      })()
+      return {
+        Fecha:       tx.fecha,
+        Día:         diaSemana(tx.fecha),
+        Hora:        tx.hora ?? '—',
+        Usuario:     usuario?.nombre ?? usuario?.name ?? '—',
+        Concepto:    tx.concepto,
+        Vencimiento: vencimiento,
+        Canal:       tx.canal ?? '—',
+        Método:      tx.metodoPago ?? '—',
+        Monto:       tx.monto,
+      }
+    })
+  }, [transacciones, todos, catalogo])
 
   const pdv = useMemo(() => {
     const ventas = transacciones.filter(tx => tx.tipo === 'producto')

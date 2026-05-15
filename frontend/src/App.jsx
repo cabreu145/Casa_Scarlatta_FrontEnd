@@ -15,6 +15,8 @@ import Contacto from '@/pages/Contacto'
 import Reservar from '@/pages/Reservar'
 import Login from '@/pages/Login'
 import Registro from '@/pages/Registro'
+import RecuperarContrasena from '@/pages/RecuperarContrasena'
+import NuevaContrasena from '@/pages/NuevaContrasena'
 
 import ClientPanel from '@/pages/cliente/ClientPanel'
 import { Navigate } from 'react-router-dom'
@@ -84,6 +86,8 @@ function AnimatedRoutes() {
           <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
           <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
           <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />
+          <Route path="/recuperar-contrasena" element={<PageWrapper><RecuperarContrasena /></PageWrapper>} />
+          <Route path="/nueva-contrasena" element={<PageWrapper><NuevaContrasena /></PageWrapper>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>

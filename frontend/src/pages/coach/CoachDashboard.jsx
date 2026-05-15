@@ -16,6 +16,24 @@ const DIAS_SEMANA = [
 ]
 const DIA_HOY = DIAS_SEMANA[new Date().getDay()]
 
+function isClasePasada(c) {
+  if (c.fecha) {
+    const [h, m] = (c.hora || '00:00').split(':').map(Number)
+    const fin = new Date(c.fecha + 'T00:00:00')
+    fin.setHours(h, m, 0, 0)
+    return fin <= new Date()
+  }
+  const today = new Date()
+  const targetDow = DIAS_SEMANA.indexOf(c.dia)
+  if (targetDow === -1) return false
+  const diff = targetDow - today.getDay()
+  const occurrence = new Date(today)
+  occurrence.setDate(today.getDate() + diff)
+  const [h, m] = (c.hora || '00:00').split(':').map(Number)
+  occurrence.setHours(h, m, 0, 0)
+  return occurrence <= today
+}
+
 export default function CoachDashboard() {
   const { usuario } = useAuth()
   const { getClasesByCoach } = useClasesStore()
@@ -67,44 +85,46 @@ export default function CoachDashboard() {
                   <th>Clase</th>
                   <th>Tipo</th>
                   <th>Alumnos</th>
-                  <th>Ocupación</th>
+                  <th>Estado</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {clasesHoy.map((c) => (
-                  <tr key={c.id}>
-                    <td style={{ fontWeight: 600 }}>{c.hora}</td>
-                    <td>{c.nombre}</td>
-                    <td>
-                      <span className={`${styles.badge} ${!c.tipo?.toLowerCase().includes('slow') ? styles.badgeStride : styles.badgeSlow}`}>
-                        {c.tipo}
-                      </span>
-                    </td>
-                    <td>{c.cupoActual} / {c.cupoMax}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div className={styles.progressBar} style={{ width: 80 }}>
-                          <div
-                            className={styles.progressFill}
-                            style={{ width: `${Math.round((c.cupoActual / c.cupoMax) * 100)}%` }}
-                          />
-                        </div>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                          {Math.round((c.cupoActual / c.cupoMax) * 100)}%
+                {clasesHoy.map((c) => {
+                  const pasada = isClasePasada(c)
+                  const pct = Math.round((c.cupoActual / c.cupoMax) * 100)
+                  return (
+                    <tr key={c.id}>
+                      <td style={{ fontWeight: 600 }}>{c.hora}</td>
+                      <td>{c.nombre}</td>
+                      <td>
+                        <span className={`${styles.badge} ${!c.tipo?.toLowerCase().includes('slow') ? styles.badgeStride : styles.badgeSlow}`}>
+                          {!c.tipo?.toLowerCase().includes('slow') ? 'STRYDE X' : c.tipo}
                         </span>
-                      </div>
-                    </td>
-                    <td>
-                      <Link
-                        to="/coach/mis-clases"
-                        className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                      >
-                        Ver alumnos
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>{c.cupoActual} / {c.cupoMax}</td>
+                      <td>
+                        {pasada ? (
+                          <span className={`${styles.badge} ${styles.badgeCompletada}`}>Finalizada</span>
+                        ) : c.cupoActual >= c.cupoMax ? (
+                          <span className={`${styles.badge} ${styles.badgeCancelada}`}>Llena</span>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div className={styles.progressBar} style={{ width: 80 }}>
+                              <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+                            </div>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{pct}%</span>
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <Link to="/coach/mis-clases" className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}>
+                          Ver alumnos
+                        </Link>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
             </div>
@@ -122,22 +142,35 @@ export default function CoachDashboard() {
                 <th>Clase</th>
                 <th>Tipo</th>
                 <th>Alumnos</th>
+                <th>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {misClases.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.dia}</td>
-                  <td>{c.hora}</td>
-                  <td>{c.nombre}</td>
-                  <td>
-                    <span className={`${styles.badge} ${!c.tipo?.toLowerCase().includes('slow') ? styles.badgeStride : styles.badgeSlow}`}>
-                      {c.tipo}
-                    </span>
-                  </td>
-                  <td>{c.cupoActual} / {c.cupoMax}</td>
-                </tr>
-              ))}
+              {misClases.map((c) => {
+                const pasada = isClasePasada(c)
+                return (
+                  <tr key={c.id}>
+                    <td>{c.dia}</td>
+                    <td>{c.hora}</td>
+                    <td>{c.nombre}</td>
+                    <td>
+                      <span className={`${styles.badge} ${!c.tipo?.toLowerCase().includes('slow') ? styles.badgeStride : styles.badgeSlow}`}>
+                        {!c.tipo?.toLowerCase().includes('slow') ? 'STRYDE X' : c.tipo}
+                      </span>
+                    </td>
+                    <td>{c.cupoActual} / {c.cupoMax}</td>
+                    <td>
+                      {pasada ? (
+                        <span className={`${styles.badge} ${styles.badgeCompletada}`}>Finalizada</span>
+                      ) : c.cupoActual >= c.cupoMax ? (
+                        <span className={`${styles.badge} ${styles.badgeCancelada}`}>Llena</span>
+                      ) : (
+                        <span className={`${styles.badge} ${styles.badgeConfirmada}`}>Con espacio</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           </div>

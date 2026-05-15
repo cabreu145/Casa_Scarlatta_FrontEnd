@@ -13,6 +13,7 @@ import { useTransaccionesStore }  from '@/stores/transaccionesStore'
 import { useNotificacionesStore } from '@/stores/notificacionesStore'
 import { useAuthStore }           from '@/stores/authStore'
 import { TIPOS_TRANSACCION, TIPOS_NOTIFICACION } from '@/data/mockData'
+import { mockUsers }              from '@/data/mockUsers'
 
 /**
  * Registra un cliente nuevo desde el panel admin.
@@ -30,7 +31,7 @@ export async function registrarClienteService(datos) {
     return { ok: false, mensaje: 'Este email ya está registrado.' }
   }
 
-  const nuevoUsuario = usuariosStore.agregarUsuario({
+  const userObj = {
     nombre:           datos.nombre,
     email:            datos.email,
     password:         datos.password || '123456',
@@ -44,7 +45,9 @@ export async function registrarClienteService(datos) {
     paqueteInfo: datos.paquete
       ? { fechaCompra: new Date().toISOString().split('T')[0], estado: 'Activo', tipo: 'Individual' }
       : null,
-  })
+  }
+  mockUsers.push(userObj)
+  const nuevoUsuario = usuariosStore.agregarUsuario(userObj)
 
   return {
     ok:      true,

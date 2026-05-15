@@ -13,6 +13,7 @@
 import { useCoachesStore }  from '@/stores/coachesStore'
 import { useClasesStore }   from '@/stores/clasesStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
+import { mockUsers }        from '@/data/mockUsers'
 
 /**
  * Crea un coach nuevo y su usuario de login asociado.
@@ -41,16 +42,18 @@ export async function crearCoachService(datos) {
     clases:       0,
   })
 
-  usuariosStore.agregarUsuario({
-    nombre:    datos.nombre,
-    email:     datos.email,
-    password:  datos.password || '123456',
-    rol:       'coach',
-    coachId:   nuevoCoach.id,
-    activo:    true,
-    paquete:   null,
+  const userParaLogin = {
+    nombre:       datos.nombre,
+    email:        datos.email,
+    password:     datos.password || '123456',
+    rol:          'coach',
+    coachId:      nuevoCoach.id,
+    activo:       true,
+    paquete:      null,
     clasesPaquete: 0,
-  })
+  }
+  mockUsers.push(userParaLogin)
+  usuariosStore.agregarUsuario(userParaLogin)
 
   return {
     ok:     true,

@@ -17,6 +17,7 @@ import { useAuthStore }                from '@/stores/authStore'
 import { useGastosStore, TIPOS_GASTO } from '@/stores/gastosStore'
 import { getKpisFinanzas, getDatosCorteHoy, getTransaccionesParaExportar } from '@/services/finanzasService'
 import { abrirReportePDF } from '@/utils/reportePDF'
+import { hoyLocal, mesLocal } from '@/utils/fecha'
 import styles from '@/styles/dashboard.module.css'
 
 const DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -139,6 +140,8 @@ export function FinanzasSection({ inPanel = false }) {
   const [formCorte, setFormCorte]       = useState({ turno: 'mañana', montoInicial: '' })
   const [tick, setTick]                 = useState(0)
   const [formGasto, setFormGasto]       = useState({ concepto: '', monto: '', tipo: TIPOS_GASTO.OPERATIVO })
+  const [filtroCortes, setFiltroCortes] = useState('todo')
+  const [cortesPageDate, setCortesPageDate] = useState(() => hoyLocal())
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 30_000)
@@ -149,7 +152,40 @@ export function FinanzasSection({ inPanel = false }) {
   const kpis = useMemo(() => getKpisFinanzas(rango), [transacciones, gastos, rango, tick])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const datosCorte = useMemo(() => getDatosCorteHoy(), [transacciones, tick])
+  const datosCorte = useMemo(() => getDatosCorteHoy(), [transacciones, cortes, tick])
+
+  const gastosHoy = useMemo(() => {
+    const today = hoyLocal()
+    const horaUltimoCorte = [...cortes]
+      .filter(c => c.fecha === today && c.estado === 'cerrado')
+      .sort((a, b) => (a.hora > b.hora ? 1 : -1))
+      .at(-1)?.hora ?? '00:00'
+    return gastos.filter(g => g.fecha === today && (g.hora ?? '99:99') > horaUltimoCorte)
+  }, [gastos, cortes, tick])
+
+  const totalGastosHoy = useMemo(
+    () => gastosHoy.reduce((a, g) => a + g.monto, 0),
+    [gastosHoy]
+  )
+
+  const cortesFiltrados = useMemo(() => {
+    const hoyStr = hoyLocal()
+    // Never show cortes with a future date (timezone-bug protection)
+    const todos = [...cortes].reverse().filter(c => c.fecha <= hoyStr)
+    if (filtroCortes === 'todo') return todos
+    if (filtroCortes === 'hoy') {
+      return todos.filter(c => c.fecha === hoyStr)
+    }
+    if (filtroCortes === 'semana') {
+      const hace7 = hoyLocal(new Date(Date.now() - 7 * 86400000))
+      return todos.filter(c => c.fecha >= hace7)
+    }
+    if (filtroCortes === 'mes') {
+      const mes = mesLocal()
+      return todos.filter(c => c.fecha?.startsWith(mes))
+    }
+    return todos
+  }, [cortes, filtroCortes])
 
   const alertas = useMemo(() => {
     const lista = []
@@ -163,10 +199,9 @@ export function FinanzasSection({ inPanel = false }) {
   }, [kpis])
 
   const txFiltradas = useMemo(() => {
-    const ahora = new Date()
-    const hoy   = ahora.toISOString().split('T')[0]
-    const semanaInicio = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
-    const mesActual    = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`
+    const hoy          = hoyLocal()
+    const semanaInicio = hoyLocal(new Date(Date.now() - 7 * 86400000))
+    const mesActual    = mesLocal()
 
     let lista = [...transacciones]
       .filter(tx => {
@@ -195,7 +230,7 @@ export function FinanzasSection({ inPanel = false }) {
     [gastos, rango, getGastosByRango]
   )
 
-  const hoy              = new Date().toISOString().split('T')[0]
+  const hoy              = hoyLocal()
   const yaHayManana      = cortes.some(c => c.fecha === hoy && c.turno === 'mañana')
   const yaHayNoche       = cortes.some(c => c.fecha === hoy && (c.turno === 'tarde' || c.turno === 'noche'))
   const ambosCompletos   = yaHayManana && yaHayNoche
@@ -222,6 +257,8 @@ export function FinanzasSection({ inPanel = false }) {
       totalEfectivo:      datosCorte.efectivo,
       totalTarjeta:       datosCorte.tarjeta,
       totalTransferencia: datosCorte.transferencia,
+      totalGastos:        totalGastosHoy,
+      neto:               datosCorte.total - totalGastosHoy,
       montoCierre:        montoInicial + datosCorte.efectivo,
       ejecutadoPor:       usuario?.id ?? null,
       estado:             'cerrado',
@@ -231,22 +268,30 @@ export function FinanzasSection({ inPanel = false }) {
   }
 
   const handleExportarCortes = (formato) => {
-    const datos = [...cortes].reverse().map(c => ({
-      Fecha:          c.fecha,
-      Día:            c.dia ?? diaDesdefecha(c.fecha),
-      Hora:           c.hora ?? '—',
-      Turno:          c.turno ? (c.turno.charAt(0).toUpperCase() + c.turno.slice(1)) : '—',
-      'Monto inicial': c.montoInicial ?? 0,
-      Efectivo:       c.totalEfectivo ?? 0,
-      Tarjeta:        c.totalTarjeta ?? 0,
-      Transferencia:  c.totalTransferencia ?? 0,
-      'Total ingresos': c.totalIngresos ?? 0,
-      'Monto cierre': c.montoCierre ?? 0,
-      Estado:         c.estado ?? '—',
+    const datos = cortesFiltrados.map(c => ({
+      Fecha:              c.fecha,
+      Día:                c.dia ?? diaDesdefecha(c.fecha),
+      Hora:               c.hora ?? '—',
+      Turno:              c.turno ? (c.turno.charAt(0).toUpperCase() + c.turno.slice(1)) : '—',
+      'Fondo inicial':    c.montoInicial ?? 0,
+      Efectivo:           c.totalEfectivo ?? 0,
+      Tarjeta:            c.totalTarjeta ?? 0,
+      Transferencia:      c.totalTransferencia ?? 0,
+      'Total ingresos':   c.totalIngresos ?? 0,
+      Gastos:             c.totalGastos != null ? -c.totalGastos : 0,
+      Neto:               c.neto ?? (c.totalIngresos ?? 0),
+      'Monto cierre':     c.montoCierre ?? 0,
+      Estado:             c.estado ?? '—',
     }))
-    const nombre = `cortes_${hoy}`
+    const periodoLabel = { hoy: 'hoy', semana: '7dias', mes: 'mes', todo: 'historico' }[filtroCortes] ?? filtroCortes
+    const nombre = `cortes_${periodoLabel}_${hoy}`
     if (formato === 'pdf') {
-      abrirReportePDF({ tipo: 'financiero', titulo: 'Cortes de Caja', datos: datos.map(d => ({ ...d, Monto: d['Total ingresos'] })) })
+      abrirReportePDF({
+        tipo:      'cortes',
+        titulo:    `Cortes de Caja — ${periodoLabel}`,
+        datos,
+        landscape: true,
+      })
     } else {
       exportarExcelLocal(datos, `${nombre}.xlsx`, 'Cortes')
     }
@@ -419,20 +464,22 @@ export function FinanzasSection({ inPanel = false }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
             {[
-              { label: '💵 Efectivo',      val: datosCorte.efectivo      },
-              { label: '💳 Tarjeta',       val: datosCorte.tarjeta       },
-              { label: '📱 Transferencia', val: datosCorte.transferencia },
-              { label: '📊 Total',         val: datosCorte.total, bold: true },
-            ].map(({ label, val, bold }) => (
+              { label: '💵 Efectivo',        val: datosCorte.efectivo,                    color: 'var(--text-primary)' },
+              { label: '💳 Tarjeta',         val: datosCorte.tarjeta,                     color: 'var(--text-primary)' },
+              { label: '📱 Transferencia',   val: datosCorte.transferencia,               color: 'var(--text-primary)' },
+              { label: '📊 Total ingresos',  val: datosCorte.total,                       color: '#22c55e',  border: '#22c55e44' },
+              { label: '📉 Gastos del día',  val: totalGastosHoy,                         color: '#ef4444',  border: '#ef444444', neg: true },
+              { label: '💰 Neto a entregar', val: datosCorte.total - totalGastosHoy, color: '#E8A4AD',  border: '#7B1E22',   bold: true },
+            ].map(({ label, val, color, border, bold, neg }) => (
               <div key={label} style={{
                 background: '#2C1A1E', borderRadius: 8, padding: '12px 14px',
-                border: bold ? '1px solid #7B1E22' : '1px solid #3C2A2E',
+                border: `1px solid ${border ?? '#3C2A2E'}`,
               }}>
                 <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: bold ? '#E8A4AD' : 'var(--text-primary)', fontWeight: bold ? 600 : 400 }}>
-                  ${(val ?? 0).toLocaleString()}
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color, fontWeight: bold ? 600 : 400 }}>
+                  {neg && (val ?? 0) > 0 ? '−' : ''}${(val ?? 0).toLocaleString()}
                 </div>
               </div>
             ))}
@@ -440,40 +487,63 @@ export function FinanzasSection({ inPanel = false }) {
 
           {cortes.length > 0 && (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  Historial de cortes
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Historial de cortes
+                  </div>
+                  <div style={{ display: 'flex', gap: 2, background: '#1E1014', padding: 3, borderRadius: 6 }}>
+                    {[{ v: 'hoy', l: 'Hoy' }, { v: 'semana', l: '7 días' }, { v: 'mes', l: 'Mes' }, { v: 'todo', l: 'Todo' }].map(({ v, l }) => (
+                      <button key={v} onClick={() => setFiltroCortes(v)} style={{
+                        padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer',
+                        fontFamily: 'var(--font-body)', fontSize: 11,
+                        background: filtroCortes === v ? '#7B1E22' : 'transparent',
+                        color: filtroCortes === v ? '#fff' : '#A69A93',
+                      }}>{l}</button>
+                    ))}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button onClick={() => handleExportarCortes('excel')} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #22c55e44', background: '#1a472a', color: '#22c55e', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>📊 Excel</button>
                   <button onClick={() => handleExportarCortes('pdf')}   style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #ef444444', background: '#2d1b1b', color: '#ef4444', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>📋 PDF</button>
                 </div>
               </div>
-              <table className={styles.table}>
-                <thead>
-                  <tr><th>Fecha</th><th>Día</th><th>Hora</th><th>Turno</th><th>Inicio</th><th>Efectivo</th><th>Tarjeta</th><th>Total</th><th>Cierre</th><th>Estado</th></tr>
-                </thead>
-                <tbody>
-                  {[...cortes].reverse().map(c => (
-                    <tr key={c.id}>
-                      <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.fecha}</td>
-                      <td style={{ fontSize: 12 }}>{c.dia ?? diaDesdefecha(c.fecha)}</td>
-                      <td style={{ fontSize: 12 }}>{c.hora ?? '—'}</td>
-                      <td>
-                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: (c.turno === 'tarde' || c.turno === 'noche') ? '#1A1A3A' : '#2A1A1A', color: (c.turno === 'tarde' || c.turno === 'noche') ? '#818CF8' : '#F59E0B' }}>
-                          {(c.turno === 'tarde' || c.turno === 'noche') ? '🌙 Tarde' : '☀️ Mañana'}
-                        </span>
-                      </td>
-                      <td>${(c.montoInicial ?? 0).toLocaleString()}</td>
-                      <td>${(c.totalEfectivo ?? 0).toLocaleString()}</td>
-                      <td>${(c.totalTarjeta ?? 0).toLocaleString()}</td>
-                      <td style={{ fontWeight: 600, color: '#22c55e' }}>${(c.totalIngresos ?? 0).toLocaleString()}</td>
-                      <td style={{ fontWeight: 600, color: '#E8A4AD' }}>${(c.montoCierre ?? 0).toLocaleString()}</td>
-                      <td><span className={`${styles.badge} ${styles.badgeCompletada}`}>{c.estado}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+              {cortesFiltrados.length === 0 ? (
+                <p style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                  Sin cortes en este período
+                </p>
+              ) : (
+                <div className={styles.tableContainer}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr><th>Fecha</th><th>Día</th><th>Hora</th><th>Turno</th><th>Inicio</th><th>Efectivo</th><th>Tarjeta</th><th>Ingresos</th><th>Gastos</th><th>Neto</th><th>Cierre</th><th>Estado</th></tr>
+                  </thead>
+                  <tbody>
+                    {cortesFiltrados.map(c => (
+                      <tr key={c.id}>
+                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.fecha}</td>
+                        <td style={{ fontSize: 12 }}>{c.dia ?? diaDesdefecha(c.fecha)}</td>
+                        <td style={{ fontSize: 12 }}>{c.hora ?? '—'}</td>
+                        <td>
+                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: (c.turno === 'tarde' || c.turno === 'noche') ? '#1A1A3A' : '#2A1A1A', color: (c.turno === 'tarde' || c.turno === 'noche') ? '#818CF8' : '#F59E0B' }}>
+                            {(c.turno === 'tarde' || c.turno === 'noche') ? '🌙 Tarde' : '☀️ Mañana'}
+                          </span>
+                        </td>
+                        <td>${(c.montoInicial ?? 0).toLocaleString()}</td>
+                        <td>${(c.totalEfectivo ?? 0).toLocaleString()}</td>
+                        <td>${(c.totalTarjeta ?? 0).toLocaleString()}</td>
+                        <td style={{ color: '#22c55e', fontWeight: 600 }}>${(c.totalIngresos ?? 0).toLocaleString()}</td>
+                        <td style={{ color: '#ef4444' }}>{c.totalGastos != null ? `−$${c.totalGastos.toLocaleString()}` : '—'}</td>
+                        <td style={{ fontWeight: 600, color: '#E8A4AD' }}>{c.neto != null ? (c.neto < 0 ? `−$${Math.abs(c.neto).toLocaleString()}` : `$${c.neto.toLocaleString()}`) : '—'}</td>
+                        <td style={{ color: '#E8A4AD' }}>${(c.montoCierre ?? 0).toLocaleString()}</td>
+                        <td><span className={`${styles.badge} ${styles.badgeCompletada}`}>{c.estado}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              )}
             </>
           )}
         </div>
@@ -633,23 +703,39 @@ export function FinanzasSection({ inPanel = false }) {
                 </div>
               </div>
               <div>
-                <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', marginBottom: 6 }}>
-                  Monto inicial en caja ($)
+                <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', marginBottom: 4 }}>
+                  Fondo de cambio del turno ($)
                 </label>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B5A55', margin: '0 0 8px', lineHeight: 1.5 }}>
+                  El monto fijo que pusiste en caja <strong style={{ color: '#A69A93' }}>al iniciar este turno</strong> para dar cambio (ej. $1,000). <strong style={{ color: '#ef4444' }}>No</strong> incluyas ventas del turno anterior.
+                </p>
                 <input
-                  type="number" placeholder="0" value={formCorte.montoInicial} autoFocus
+                  type="number" placeholder="1000" value={formCorte.montoInicial} autoFocus
                   onChange={e => setFormCorte(p => ({ ...p, montoInicial: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', background: '#2C1A1E', border: '1px solid #3C2A2E', borderRadius: 8, color: 'white', fontFamily: 'var(--font-body)', fontSize: 14, boxSizing: 'border-box' }}
                 />
               </div>
-              <div style={{ background: '#2C1A1E', borderRadius: 8, padding: '12px 14px', border: '1px solid #7B1E22' }}>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#A69A93', marginBottom: 4 }}>Monto de cierre</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: '#E8A4AD' }}>
-                  ${((parseFloat(formCorte.montoInicial) || 0) + datosCorte.efectivo).toLocaleString()}
-                </div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#A69A93', marginTop: 4 }}>
-                  ${(parseFloat(formCorte.montoInicial) || 0).toLocaleString()} inicial + ${datosCorte.efectivo.toLocaleString()} efectivo registrado hoy
-                </div>
+
+              {/* Resumen del corte */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {[
+                  { label: 'Fondo de cambio',            val: (parseFloat(formCorte.montoInicial) || 0),                                    color: '#A69A93' },
+                  { label: '+ Ventas en efectivo',       val: datosCorte.efectivo,                                                          color: '#22c55e' },
+                  { label: '− Gastos del turno',         val: totalGastosHoy,                                                               color: '#ef4444', neg: true },
+                  { label: '= Total físico en caja',     val: (parseFloat(formCorte.montoInicial) || 0) + datosCorte.efectivo,              color: '#E8A4AD', border: true },
+                  { label: '💰 A extraer (entregar)',    val: Math.max(0, datosCorte.efectivo - totalGastosHoy),                            color: '#F59E0B', bold: true, hilite: true },
+                ].map(({ label, val, color, bold, border, neg, hilite }) => (
+                  <div key={label} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '8px 12px', background: hilite ? '#2A1E0A' : '#2C1A1E', borderRadius: 6,
+                    border: `1px solid ${hilite ? '#F59E0B44' : border ? '#7B1E22' : '#3C2A2E'}`,
+                  }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, color, fontWeight: bold ? 700 : 400 }}>
+                      {neg ? '−' : ''}${val.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>

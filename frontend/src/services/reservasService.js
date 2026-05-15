@@ -17,6 +17,7 @@ import { useUsuariosStore }       from '@/stores/usuariosStore'
 import { useNotificacionesStore } from '@/stores/notificacionesStore'
 import { useAuthStore }           from '@/stores/authStore'
 import { ESTADOS_RESERVA, TIPOS_NOTIFICACION } from '@/data/mockData'
+import { hoyLocal } from '@/utils/fecha'
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -78,7 +79,7 @@ export function reservarClase(userId, claseId, asiento = null) {
     tipo:        clase.tipo,
     asiento,
     estado:      ESTADOS_RESERVA.CONFIRMADA,
-    fecha:       calcularFechaClase(clase.dia),
+    fecha:       clase.fecha ?? calcularFechaClase(clase.dia),
   })
 
   // 6. Descontar crédito
@@ -96,7 +97,7 @@ export function reservarClase(userId, claseId, asiento = null) {
     tipo:    TIPOS_NOTIFICACION.RESERVA,
     titulo:  'Nueva reserva',
     mensaje: `${usuario.nombre} reservó ${clase.nombre} del ${clase.dia}.`,
-    fecha:   new Date().toISOString().split('T')[0],
+    fecha:   hoyLocal(),
   })
 
   // 9. Notificar al admin si la clase llega al 80% de capacidad
@@ -107,7 +108,7 @@ export function reservarClase(userId, claseId, asiento = null) {
       tipo:    TIPOS_NOTIFICACION.SISTEMA,
       titulo:  'Clase casi llena',
       mensaje: `${clase.nombre} del ${clase.dia} está al ${Math.round((nuevoCupo / clase.cupoMax) * 100)}% de capacidad.`,
-      fecha:   new Date().toISOString().split('T')[0],
+      fecha:   hoyLocal(),
     })
   }
 
@@ -165,4 +166,16 @@ export function marcarNoAsistio(reservaId) {
 
   reservasStore.marcarNoAsistio(reservaId)
   return { ok: true }
+}
+
+/**
+ * Elimina una clase y cancela todas sus reservas confirmadas.
+ * Usar en lugar de llamar clasesStore.eliminarClase directamente.
+ */
+export function eliminarClaseConReservas(claseId) {
+  const reservasStore = useReservasStore.getState()
+  const clasesStore   = useClasesStore.getState()
+
+  reservasStore.cancelarReservasByClase(claseId)
+  clasesStore.eliminarClase(claseId)
 }

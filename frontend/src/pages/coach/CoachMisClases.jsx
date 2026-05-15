@@ -13,6 +13,26 @@ const coachLinks = [
   { to: '/coach/mis-clases', icon: BookOpen, label: 'Mis Clases' },
 ]
 
+const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+
+function isClasePasada(c) {
+  if (c.fecha) {
+    const [h, m] = (c.hora || '00:00').split(':').map(Number)
+    const fin = new Date(c.fecha + 'T00:00:00')
+    fin.setHours(h, m, 0, 0)
+    return fin <= new Date()
+  }
+  const today = new Date()
+  const targetDow = DIAS_SEMANA.indexOf(c.dia)
+  if (targetDow === -1) return false
+  const diff = targetDow - today.getDay()
+  const occurrence = new Date(today)
+  occurrence.setDate(today.getDate() + diff)
+  const [h, m] = (c.hora || '00:00').split(':').map(Number)
+  occurrence.setHours(h, m, 0, 0)
+  return occurrence <= today
+}
+
 export default function CoachMisClases() {
   const { usuario } = useAuth()
   const { getClasesByCoach } = useClasesStore()
@@ -39,31 +59,44 @@ export default function CoachMisClases() {
                 <th>Clase</th>
                 <th>Tipo</th>
                 <th>Inscritos</th>
+                <th>Estado</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {misClases.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.dia}</td>
-                  <td style={{ fontWeight: 600 }}>{c.hora}</td>
-                  <td>{c.nombre}</td>
-                  <td>
-                    <span className={`${styles.badge} ${!c.tipo?.toLowerCase().includes('slow') ? styles.badgeStride : styles.badgeSlow}`}>
-                      {c.tipo}
-                    </span>
-                  </td>
-                  <td>{c.cupoActual} / {c.cupoMax}</td>
-                  <td>
-                    <button
-                      className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-                      onClick={() => setClaseSeleccionada(c)}
-                    >
-                      Ver alumnos
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {misClases.map((c) => {
+                const pasada = isClasePasada(c)
+                return (
+                  <tr key={c.id}>
+                    <td>{c.dia}</td>
+                    <td style={{ fontWeight: 600 }}>{c.hora}</td>
+                    <td>{c.nombre}</td>
+                    <td>
+                      <span className={`${styles.badge} ${!c.tipo?.toLowerCase().includes('slow') ? styles.badgeStride : styles.badgeSlow}`}>
+                        {!c.tipo?.toLowerCase().includes('slow') ? 'STRYDE X' : c.tipo}
+                      </span>
+                    </td>
+                    <td>{c.cupoActual} / {c.cupoMax}</td>
+                    <td>
+                      {pasada ? (
+                        <span className={`${styles.badge} ${styles.badgeCompletada}`}>Finalizada</span>
+                      ) : c.cupoActual >= c.cupoMax ? (
+                        <span className={`${styles.badge} ${styles.badgeCancelada}`}>Llena</span>
+                      ) : (
+                        <span className={`${styles.badge} ${styles.badgeConfirmada}`}>Con espacio</span>
+                      )}
+                    </td>
+                    <td>
+                      <button
+                        className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
+                        onClick={() => setClaseSeleccionada(c)}
+                      >
+                        Ver alumnos
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
               {misClases.length === 0 && (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 'var(--space-2xl)' }}>

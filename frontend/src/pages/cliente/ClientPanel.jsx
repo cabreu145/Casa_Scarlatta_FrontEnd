@@ -17,6 +17,7 @@ import { useTransaccionesStore } from '@/stores/transaccionesStore'
 import { reservarClase, cancelarReserva } from '@/services/reservasService'
 import { editarPerfilService }            from '@/services/usuariosService'
 import { isPublished }                    from '@/services/classService'
+import { hoyLocal }                       from '@/utils/fecha'
 import s from './ClientPanel.module.css'
 
 // ── Week helpers ───────────────────────────────────────────────────────────────
@@ -87,8 +88,8 @@ const SECTION_META = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function DisciplinePill({ d }) {
   return d === 'STRYDE'
-    ? <span className={`${s.pill} ${s.pillStride}`}>Stride</span>
-    : <span className={`${s.pill} ${s.pillSlow}`}>Slow</span>
+    ? <span className={`${s.pill} ${s.pillStride}`}>STRYDE</span>
+    : <span className={`${s.pill} ${s.pillSlow}`}>SLOW</span>
 }
 
 function StatusPill({ status }) {
@@ -117,6 +118,7 @@ function toClsShape(r) {
     title:      r.claseNombre,
     coach:      r.coachNombre,
     date:       r.claseDia,
+    claseFecha: r.fecha,
     time:       r.claseHora,
     discipline: !r.tipo?.toLowerCase().includes('slow') ? 'STRYDE' : 'SLOW',
     status:     r.estado,
@@ -222,13 +224,46 @@ export default function ClientPanel() {
     ? reservas.filter((r) => r.userId === usuario.id)
     : []
 
-  const today = new Date().toISOString().split('T')[0]
+  const now   = new Date()
+  const today = hoyLocal()
+
+  // Dynamic date string for header/hero (e.g. "Miércoles, 13 de mayo")
+  const fechaHoyStr = `${DAYS_ES[now.getDay()]}, ${now.getDate()} de ${MONTHS_ES[now.getMonth()].toLowerCase()}`
+
+  // Returns the real ISO date of a recurring class based on its day-of-week,
+  // so corrupted r.fecha (UTC offset bug) doesn't make a past class look future.
+  function realClassDate(r) {
+    const clase = clases.find(c => c.id === r.claseId)
+    if (clase?.fecha) return clase.fecha          // specific-date class → trust it
+    if (!clase?.dia)  return r.fecha ?? today      // no weekday info → fallback
+    const targetIdx = DAYS_ES.indexOf(clase.dia)
+    if (targetIdx < 0) return r.fecha ?? today
+    const diff = targetIdx - now.getDay()
+    const d = new Date(now)
+    d.setDate(now.getDate() + diff)
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  }
+
   const upcomingReservas = [...reservasUsuario]
-    .filter((r) => r.estado === 'confirmada' && r.fecha >= today)
-    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .filter((r) => {
+      if (r.estado !== 'confirmada') return false
+      const hora = r.claseHora ?? clases.find(c => c.id === r.claseId)?.hora
+      if (!hora) return (r.fecha ?? '') >= today
+      const fechaReal = realClassDate(r)
+      return new Date(fechaReal + 'T' + hora + ':00') > now
+    })
+    .sort((a, b) => {
+      const fa = realClassDate(a), fb = realClassDate(b)
+      if (fa !== fb) return fa.localeCompare(fb)
+      return (a.claseHora ?? '').localeCompare(b.claseHora ?? '')
+    })
     .slice(0, 2)
 
-  const upcoming  = upcomingReservas.map(toClsShape)
+  const upcoming = upcomingReservas.map(r => {
+    const cls = toClsShape(r)
+    cls.claseFecha = realClassDate(r)   // ensure ClassCard gets the correct date
+    return cls
+  })
   const nextClass = upcoming[0] ?? null
 
   // Métricas reales para el dashboard
@@ -346,7 +381,7 @@ export default function ClientPanel() {
           </button>
           <div>
             <div className={s.topbarTitle}>{meta.title}</div>
-            <div className={s.topbarSub}>{meta.sub}</div>
+            <div className={s.topbarSub}>{activeSection === 'inicio' ? `${fechaHoyStr} · Casa Scarlatta` : meta.sub}</div>
           </div>
           <div className={s.topbarRight}>
             <div className={s.topbarProfile}>
@@ -368,7 +403,7 @@ export default function ClientPanel() {
             <div className={s.heroCard}>
               <div className={s.heroLeft}>
                 <div className={s.heroGreeting}>Hola, {userName.split(' ')[0]} 👋</div>
-                <div className={s.heroSub}>Bienvenido de vuelta a tu espacio · Jueves, 24 de abril</div>
+                <div className={s.heroSub}>Bienvenido de vuelta a tu espacio · {fechaHoyStr}</div>
                 {nextClass && (
                   <div className={s.heroNext}>
                     <div>
@@ -584,7 +619,7 @@ export default function ClientPanel() {
               return dayClasses.length > 0 ? (
                 <div>
                   {dayClasses.map(c => (
-                    <MisClasesCard key={c.id} cls={c} onCancel={() => handleCancelReserva(c.id)} coachFoto={coachFotoByName[c.coach] || null} />
+                    <MisClasesCard key={c.id} cls={c} dayIsoDate={day.isoDate} onCancel={() => handleCancelReserva(c.id)} coachFoto={coachFotoByName[c.coach] || null} />
                   ))}
                 </div>
               ) : (
@@ -678,9 +713,18 @@ export default function ClientPanel() {
                           </div>
                         </div>
                         <div className={s.pubActions}>
-                          {alreadyBooked ? (
-                            <span className={`${s.statusPill} ${s.statusConfirmada}`}>Reservada</span>
-                          ) : isFull ? (
+                          {alreadyBooked ? (() => {
+                            const classTime = new Date(day.isoDate + 'T' + av.time + ':00')
+                            if (classTime <= new Date()) {
+                              return (
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
+                                  Clase finalizada
+                                </span>
+                              )
+                            }
+                            return <span className={`${s.statusPill} ${s.statusConfirmada}`}>Reservada</span>
+                          })() : isFull ? (
                             <span className={s.pubFullTag}>LLENO</span>
                           ) : (
                             <>
@@ -958,7 +1002,7 @@ export default function ClientPanel() {
 }
 
 // ── MisClasesCard sub-component ───────────────────────────────────────────────
-function MisClasesCard({ cls, onCancel, coachFoto }) {
+function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) {
   const initials = cls.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const { bg, text } = avatarStyle(cls.coach)
   return (
@@ -982,10 +1026,31 @@ function MisClasesCard({ cls, onCancel, coachFoto }) {
         <div style={{ marginTop: 6 }}><DisciplinePill d={cls.discipline} /></div>
       </div>
       <div className={s.mcActions}>
-        <StatusPill status={cls.status} />
-        {cls.status === 'confirmada' && (
-          <button className={s.btnCancelSm} onClick={onCancel}>Cancelar</button>
-        )}
+        {(() => {
+          if (cls.status !== 'confirmada') return <StatusPill status={cls.status} />
+          const fechaRef = dayIsoDate ?? cls.claseFecha
+          if (!fechaRef || !cls.time) return <StatusPill status="confirmada" />
+          const classTime = new Date(fechaRef + 'T' + cls.time + ':00')
+          const n = new Date()
+          if (classTime <= n) {
+            return (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
+                Clase finalizada
+              </span>
+            )
+          }
+          const canCancel = (classTime - n) > 6 * 60 * 60 * 1000
+          return (
+            <>
+              <StatusPill status="confirmada" />
+              {canCancel
+                ? <button className={s.btnCancelSm} onClick={onCancel}>Cancelar</button>
+                : <span style={{ fontSize: 10, color: 'var(--text-muted)', opacity: 0.7, textAlign: 'center' }}>Sin cancelación disponible</span>
+              }
+            </>
+          )
+        })()}
       </div>
     </div>
   )
@@ -1014,10 +1079,26 @@ function ClassCard({ cls, showCancel, onCancel, coachFoto }) {
         <div style={{ marginTop: 5 }}><DisciplinePill d={cls.discipline} /></div>
       </div>
       <div className={s.classRight}>
-        <StatusPill status={cls.status} />
-        {showCancel && cls.status === 'confirmada' && (
-          <button className={s.btnCancelSm} onClick={onCancel}>Cancelar</button>
-        )}
+        {(() => {
+          if (cls.status !== 'confirmada') return <StatusPill status={cls.status} />
+          if (cls.claseFecha && cls.time) {
+            const classTime = new Date(cls.claseFecha + 'T' + cls.time + ':00')
+            if (classTime <= new Date()) {
+              return (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
+                  Clase finalizada
+                </span>
+              )
+            }
+          }
+          return (
+            <>
+              <StatusPill status="confirmada" />
+              {showCancel && <button className={s.btnCancelSm} onClick={onCancel}>Cancelar</button>}
+            </>
+          )
+        })()}
       </div>
     </div>
   )

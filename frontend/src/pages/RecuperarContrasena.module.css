@@ -1,0 +1,227 @@
+.page {
+  min-height: calc(100vh - 72px);
+  background: var(--bg-base);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blob {
+  top: -80px;
+  right: -100px;
+  width: 500px;
+  height: 500px;
+  opacity: 0.55;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-2xl) var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+  text-align: center;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: normal;
+  font-weight: 700;
+  font-size: clamp(30px, 5vw, 42px);
+  color: var(--text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.65;
+  font-family: 'Inter', var(--font-body);
+  margin: 0;
+  max-width: 320px;
+}
+
+.subtitle strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ── Form ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+.field label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-family: 'Inter', var(--font-body);
+}
+
+.field input {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid rgba(0,0,0,0.18);
+  border-radius: 0;
+  padding: 10px 0;
+  font-size: 15px;
+  color: var(--text-primary);
+  font-family: 'Inter', var(--font-body);
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus {
+  border-bottom-color: var(--brand-wine);
+}
+
+.field input::placeholder {
+  color: rgba(0,0,0,0.25);
+}
+
+/* ── Submit button ── */
+.submitBtn {
+  padding: 12px 40px;
+  background: var(--brand-wine);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-family: 'Inter', var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: opacity 0.2s, transform 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 200px;
+  min-height: 46px;
+}
+
+.submitBtn:hover:not(:disabled) {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.submitBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ── Spinner ── */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Success ── */
+.successIcon {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.spamNote {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  font-family: 'Inter', var(--font-body);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ── Secondary action ── */
+.outlineBtn {
+  padding: 11px 36px;
+  background: transparent;
+  color: var(--brand-wine);
+  border: 1.5px solid var(--brand-wine);
+  border-radius: var(--radius-pill);
+  font-family: 'Inter', var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  min-width: 200px;
+}
+
+.outlineBtn:hover {
+  background: var(--brand-wine);
+  color: #fff;
+}
+
+/* ── Divider ── */
+.divider {
+  width: 60px;
+  height: 1px;
+  background: rgba(0,0,0,0.12);
+}
+
+/* ── Back link ── */
+.backLink {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-family: 'Inter', var(--font-body);
+  margin: 0;
+}
+
+.backLink a {
+  color: var(--brand-wine);
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.backLink a:hover {
+  opacity: 0.7;
+}
+
+/* ── Error ── */
+.error {
+  font-size: 11px;
+  color: #EF4444;
+  font-family: 'Inter', var(--font-body);
+}
+
+@media (max-width: 480px) {
+  .submitBtn, .outlineBtn { min-width: 160px; }
+}

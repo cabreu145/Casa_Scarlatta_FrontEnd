@@ -1,17 +1,24 @@
+/* ═══════════════════════════════════════════════════════════════
+   SEAT SELECTOR — Casa Scarlatta
+   Stryde X: classic circular seat grid
+   Slow: premium fitness layout (glassmorphism, sidebar, mat cards)
+═══════════════════════════════════════════════════════════════ */
+
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(44, 24, 16, 0.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(30, 20, 14, 0.52);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-lg);
+  padding: 20px;
   animation: fadeIn var(--duration-fast) var(--ease-out) both;
 }
 
+/* ── Stryde X modal (original) ─────────────────────────────────────────────── */
 .modal {
   position: relative;
   background: var(--bg-base);
@@ -27,6 +34,477 @@
   animation: fadeSlideUp var(--duration-base) var(--ease-out) both;
   box-shadow: 0 24px 64px rgba(44, 24, 16, 0.20);
 }
+
+/* ── Slow modal (premium) ──────────────────────────────────────────────────── */
+.slowModal {
+  position: relative;
+  background: #f5f6f2;
+  border-radius: 28px;
+  width: 100%;
+  max-width: 860px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: fadeSlideUp var(--duration-base) var(--ease-out) both;
+  box-shadow:
+    0 32px 80px rgba(30, 20, 14, 0.18),
+    0 8px 24px rgba(30, 20, 14, 0.08);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   FITNESS LAYOUT  (fitnessLayout = flex row)
+════════════════════════════════════════════════════════════════ */
+.fitnessLayout {
+  display: flex;
+  align-items: stretch;
+}
+
+/* ── Left: machine grid section ────────────────────────────────────────────── */
+.machineSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px 28px 28px;
+  min-width: 0;
+}
+
+/* ── Slow header ─────────────────────────────────────────────── */
+.slowHdr {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.slowHdrLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #b05060;
+  margin-bottom: 6px;
+  font-family: 'Inter', var(--font-body);
+}
+
+.slowHdrTitle {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  color: #1f2937;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.slowHdrCoach {
+  font-size: 13px;
+  color: #6b7280;
+  font-family: 'Inter', var(--font-body);
+}
+
+.slowHdrDesc {
+  font-size: 11.5px;
+  color: #9ca3af;
+  margin-top: 6px;
+  font-style: italic;
+  font-family: 'Inter', var(--font-body);
+}
+
+/* ── Frente banner ─────────────────────────────────────────────────────────── */
+.frenteBanner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.frenteLine {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(176,80,96,0.2), transparent);
+}
+
+.frenteLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  white-space: nowrap;
+  font-family: 'Inter', var(--font-body);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MACHINE GRID
+════════════════════════════════════════════════════════════════ */
+.machineGrid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 8px;
+}
+
+/* ── Machine card (premium glassmorphism) ──────────────────────────────────── */
+.machineCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 7px 8px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  border-radius: 18px;
+  cursor: pointer;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    0 0 0 0 transparent;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.22s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Available state */
+.cardAvailable:hover {
+  transform: translateY(-5px) scale(1.03);
+  border-color: rgba(34, 197, 94, 0.35);
+  box-shadow:
+    0 10px 28px rgba(34, 197, 94, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.cardAvailable:focus-visible {
+  outline: 2px solid #22c55e;
+  outline-offset: 3px;
+}
+
+/* Occupied state */
+.cardOccupied {
+  background: rgba(212, 194, 170, 0.22);
+  border-color: rgba(212, 194, 170, 0.4);
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Selected state */
+.cardSelected {
+  background: rgba(124, 58, 237, 0.07);
+  border-color: #b05060;
+  box-shadow:
+    0 0 0 3px rgba(124, 58, 237, 0.14),
+    0 10px 28px rgba(124, 58, 237, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.06);
+  transform: scale(1.04);
+}
+
+.cardSelected:hover {
+  transform: scale(1.05) translateY(-3px);
+}
+
+/* ── Status indicator dot ──────────────────────────────────────────────────── */
+.statusIndicator {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.indGreen {
+  background: #22c55e;
+  box-shadow: 0 0 0 2.5px rgba(34, 197, 94, 0.22);
+}
+
+.indGray {
+  background: #d1d5db;
+  box-shadow: none;
+}
+
+.indPurple {
+  background: #b05060;
+  box-shadow: 0 0 0 2.5px rgba(124, 58, 237, 0.22);
+}
+
+.indWine {
+  background: #b05060;
+  box-shadow: 0 0 0 2.5px rgba(176, 80, 96, 0.25);
+}
+
+/* ── Machine icon ──────────────────────────────────────────────────────────── */
+.machineIcon {
+  width: 44px;
+  height: 58px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Mat icon wrapper (Slow) ───────────────────────────────────────────────── */
+.matIconWrap {
+  width: 52px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Machine labels ────────────────────────────────────────────────────────── */
+.machineName {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: #6b7280;
+  letter-spacing: 0.04em;
+  font-family: 'Inter', var(--font-body);
+  text-align: center;
+  line-height: 1;
+}
+
+.machineNumber {
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  letter-spacing: 0.08em;
+  font-family: 'Inter', var(--font-body);
+}
+
+/* ── Fitness legend ────────────────────────────────────────────────────────── */
+.fitnessLegend {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   RESERVATION SIDEBAR
+════════════════════════════════════════════════════════════════ */
+.reservationSidebar {
+  width: 224px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  padding: 28px 22px 24px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 0 28px 28px 0;
+  box-shadow: inset -1px 0 0 rgba(255,255,255,0.5);
+}
+
+/* Class info block */
+.sbBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sbSlowBadge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #b05060;
+  background: rgba(124, 58, 237, 0.1);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 4px;
+  width: fit-content;
+  font-family: 'Inter', var(--font-body);
+}
+
+/* Top row: badge + close button */
+.sbTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+  width: 100%;
+}
+
+.sbBadgeGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sbHdrLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #b05060;
+  font-family: 'Inter', var(--font-body);
+}
+
+.sbTitle {
+  font-family: var(--font-heading);
+  font-size: 17px;
+  color: #1f2937;
+  line-height: 1.25;
+}
+
+.sbCoach {
+  font-size: 12px;
+  color: #6b7280;
+  font-family: 'Inter', var(--font-body);
+}
+
+.sbDesc {
+  font-size: 10.5px;
+  color: #9ca3af;
+  font-family: 'Inter', var(--font-body);
+  font-style: italic;
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
+.sbTime {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: 'Inter', var(--font-body);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* Divider */
+.sbDivider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent);
+}
+
+/* Selected seat block */
+.sbSelectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 48px;
+  justify-content: center;
+}
+
+.sbSelLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  font-family: 'Inter', var(--font-body);
+}
+
+.sbSelMat {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  color: #b05060;
+  line-height: 1;
+}
+
+.sbSelDetail {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: 'Inter', var(--font-body);
+}
+
+.sbSelHint {
+  font-size: 13px;
+  color: #c4bfb8;
+  font-family: 'Inter', var(--font-body);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* Credits block */
+.sbCreditsBlock {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.sbCreditsNum {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  color: #374151;
+  line-height: 1;
+}
+
+.sbCreditsLabel {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: 'Inter', var(--font-body);
+  line-height: 1.3;
+}
+
+/* Policy */
+.sbPolicy {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: 'Inter', var(--font-body);
+  line-height: 1.5;
+  width: 100%;
+  text-align: left;
+}
+
+.sbPolicy strong {
+  color: #6b7280;
+}
+
+/* ── Slow confirm button (purple premium) ──────────────────────────────────── */
+.slowConfirmBtn {
+  font-family: 'Inter', var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+  background: #b05060;
+  padding: 14px 16px;
+  border-radius: 16px;
+  width: 100%;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition:
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.2s ease;
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.32);
+  text-align: center;
+}
+
+.slowConfirmBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.42);
+  background: #8a3a4a;
+}
+
+.slowConfirmBtn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.28);
+}
+
+.slowConfirmBtn:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STRYDE X — Original styles (unchanged)
+════════════════════════════════════════════════════════════════ */
 
 /* ── Header ── */
 .header {
@@ -58,19 +536,26 @@
   margin-top: 4px;
 }
 
+.headerDesc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-style: italic;
+}
+
 .closeBtn {
   color: var(--text-muted);
   padding: 4px;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
   transition: color var(--duration-fast);
+  background: none;
+  cursor: pointer;
 }
 
-.closeBtn:hover {
-  color: var(--brand-wine);
-}
+.closeBtn:hover { color: var(--brand-wine); }
 
-/* ── Stage indicator ── */
+/* ── Stage ── */
 .stage {
   background: var(--bg-surface);
   border: 1px solid var(--neutral-border);
@@ -84,7 +569,7 @@
   color: var(--text-label);
 }
 
-/* ── Seat grid ── */
+/* ── Stryde seat grid ── */
 .grid {
   display: grid;
   grid-template-columns: repeat(var(--cols), 1fr);
@@ -101,9 +586,10 @@
   border: 2px solid rgba(123, 31, 46, 0.35);
   background: transparent;
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out),
-              border-color var(--duration-fast) var(--ease-out),
-              transform var(--duration-fast) var(--ease-out);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
 }
 
 .seat:hover:not(:disabled) {
@@ -134,7 +620,7 @@
   transform: scale(1.08);
 }
 
-/* ── Legend ── */
+/* ── Shared legend ─────────────────────────────────────────────────────────── */
 .legend {
   display: flex;
   gap: var(--space-xl);
@@ -145,14 +631,16 @@
 .legendItem {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  font-size: 12px;
-  color: var(--text-secondary);
+  gap: 7px;
+  font-size: 11.5px;
+  color: #6b7280;
+  font-family: 'Inter', var(--font-body);
 }
 
+/* Stryde legend dots */
 .legendDot {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -162,12 +650,22 @@
   background: transparent;
 }
 
-.dotOccupied {
-  background: #CCCCCC;
-}
+.dotOccupied { background: #CCCCCC; }
+.dotSelected { background: var(--brand-wine); }
 
-.dotSelected {
-  background: var(--brand-wine);
+/* ── Cancel policy ── */
+.cancelPolicy {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(123, 31, 46, 0.07);
+  border: 1px solid rgba(123, 31, 46, 0.18);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 /* ── Footer ── */
@@ -186,9 +684,7 @@
   color: var(--text-secondary);
 }
 
-.summaryText strong {
-  color: var(--text-primary);
-}
+.summaryText strong { color: var(--text-primary); }
 
 .confirmBtn {
   font-family: var(--font-body);
@@ -200,8 +696,9 @@
   border-radius: var(--radius-pill);
   letter-spacing: 0.04em;
   cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-out),
-              box-shadow var(--duration-fast) var(--ease-out);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .confirmBtn:hover {
@@ -215,7 +712,659 @@
   font-style: italic;
 }
 
-/* ── Vista de éxito ── */
+/* ════════════════════════════════════════════════════════════════
+   STRYDE X — Premium boutique fitness room layout
+════════════════════════════════════════════════════════════════ */
+
+.strydeModal {
+  position: relative;
+  background: #070B14;
+  border-radius: 28px;
+  width: 100%;
+  max-width: 880px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: fadeSlideUp var(--duration-base) var(--ease-out) both;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.65),
+    0 8px 24px rgba(123, 31, 46, 0.18);
+}
+
+/* Split layout (mirrors fitnessLayout) */
+.strydeLayout {
+  display: flex;
+  align-items: stretch;
+  min-height: 520px;
+}
+
+/* Left section — room grid */
+.strydeSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ── Stryde header ───────────────────────────────────────────────────────────── */
+.strydeHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 28px 20px;
+}
+
+.strydeHdrLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brand-wine);
+  margin-bottom: 6px;
+  font-family: 'Inter', var(--font-body);
+}
+
+.strydeHdrTitle {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  color: #ffffff;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.strydeHdrCoach {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.52);
+  font-family: 'Inter', var(--font-body);
+}
+
+.strydeHdrDesc {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.32);
+  margin-top: 6px;
+  font-style: italic;
+  font-family: 'Inter', var(--font-body);
+}
+
+/* Close button override on dark background */
+.strydeSection .closeBtn,
+.strydeSidebar .closeBtn {
+  color: rgba(255, 255, 255, 0.45);
+}
+.strydeSection .closeBtn:hover,
+.strydeSidebar .closeBtn:hover {
+  color: #ffffff;
+}
+
+/* ── Room container ─────────────────────────────────────────────────────────── */
+.strydeRoom {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 24px 14px;
+  flex: 1;
+}
+
+/* ── Front wall indicator ───────────────────────────────────────────────────── */
+.strydeWall {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.strydeWallLine {
+  flex: 1;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(123, 31, 46, 0.7), transparent);
+  border-radius: 1px;
+}
+
+.strydeWallLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--brand-wine);
+  white-space: nowrap;
+  font-family: 'Inter', var(--font-body);
+  text-shadow: 0 0 10px rgba(123, 31, 46, 0.6);
+}
+
+/* ── Bench row — 4 columns ──────────────────────────────────────────────────── */
+.strydeBenchRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+/* ── Treadmill row — 6 columns ──────────────────────────────────────────────── */
+.strydeTreadRow {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 7px;
+}
+
+/* ── Instructor zone ────────────────────────────────────────────────────────── */
+.strydeInstructorZone {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.strydeZoneLine {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+.instructorBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.instructorAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--brand-wine);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Inter', var(--font-body);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 0 2px rgba(123, 31, 46, 0.4),
+    0 0 16px rgba(123, 31, 46, 0.35);
+}
+
+.instructorName {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Inter', var(--font-body);
+  white-space: nowrap;
+}
+
+.instructorTitle {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  font-family: 'Inter', var(--font-body);
+}
+
+/* ── Equipment card (base) ──────────────────────────────────────────────────── */
+.strydeCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.22s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.strydeCardBench {
+  min-height: 72px;
+}
+
+.strydeCardTread {
+  min-height: 86px;
+}
+
+/* Available hover */
+.strydeAvail:hover {
+  transform: translateY(-6px) scale(1.03);
+  border-color: rgba(255, 23, 68, 0.5);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.45),
+    0 0 22px rgba(255, 23, 68, 0.22),
+    0 0 6px rgba(255, 23, 68, 0.12);
+  background: rgba(255, 23, 68, 0.04);
+}
+
+.strydeAvail:focus-visible {
+  outline: 2px solid #FF1744;
+  outline-offset: 3px;
+}
+
+/* Occupied */
+.strydeOccupied {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.04);
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Selected */
+.strydeSelected {
+  background: rgba(255, 23, 68, 0.10);
+  border-color: #FF1744;
+  box-shadow:
+    0 0 0 2px rgba(255, 23, 68, 0.28),
+    0 14px 30px rgba(0, 0, 0, 0.5),
+    0 0 32px rgba(255, 23, 68, 0.25),
+    0 0 8px rgba(255, 23, 68, 0.15);
+  transform: scale(1.06);
+}
+
+.strydeSelected:hover {
+  transform: scale(1.07) translateY(-2px);
+}
+
+/* ── Status dots ────────────────────────────────────────────────────────────── */
+.strydeStatusDot {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.strydeGreen {
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.22), 0 0 8px rgba(34, 197, 94, 0.65);
+}
+
+.strydeGray {
+  background: #374151;
+  box-shadow: none;
+}
+
+.strydeWine {
+  background: var(--brand-wine);
+  box-shadow: 0 0 0 2px rgba(123, 31, 46, 0.22);
+}
+
+/* ── Icon wrappers ──────────────────────────────────────────────────────────── */
+.benchIconWrap {
+  width: 44px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.treadIconWrap {
+  width: 28px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Equipment labels ───────────────────────────────────────────────────────── */
+.strydeEquipNum {
+  font-size: 15px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.06em;
+  font-family: 'Inter', var(--font-body);
+  line-height: 1;
+}
+
+/* ── Mode badges on cards ───────────────────────────────────────────────────── */
+.modeTagRot {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 20px;
+  padding: 2px 6px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.strydeSelected .modeTagRot {
+  background: rgba(255, 23, 68, 0.15);
+  border-color: rgba(255, 23, 68, 0.35);
+}
+
+.modeTagArrow {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1;
+}
+
+.modeTagStatic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 2px 6px;
+  opacity: 0.55;
+}
+
+/* ── Hover tooltip (CSS-only, glassmorphism) ────────────────────────────────── */
+.cardTooltip {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  background: rgba(7, 11, 20, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.80);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 10;
+  font-family: 'Inter', var(--font-body);
+}
+
+.strydeAvail:hover .cardTooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Subtle top border to visually separate rotation vs static cards */
+.strydeCardRot {
+  border-top: 1.5px solid rgba(123, 31, 46, 0.28);
+}
+
+.strydeCardStatic {
+  border-top: 1.5px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Rotation flow in sidebar ───────────────────────────────────────────────── */
+.rotationFlow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  background: rgba(123, 31, 46, 0.12);
+  border: 1px solid rgba(123, 31, 46, 0.22);
+  border-radius: 12px;
+}
+
+.rfTitle {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--brand-wine);
+  font-family: 'Inter', var(--font-body);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.rfTimeline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rfStep {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rfIconBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.rfIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.rfBlock {
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: rgba(255, 255, 255, 0.38);
+  font-family: 'Inter', var(--font-body);
+}
+
+.rfArrow {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.2);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ── Bench Only flow in sidebar ─────────────────────────────────────────────── */
+.benchOnlyFlow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.bofTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: 'Inter', var(--font-body);
+  margin: 0 0 2px;
+}
+
+.bofSub {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.32);
+  font-family: 'Inter', var(--font-body);
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+
+/* ── Stryde legend ──────────────────────────────────────────────────────────── */
+.strydeLegend {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  padding: 4px 24px 14px;
+}
+
+.strydeLegend .legendItem {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ── Stryde sidebar (mirrors reservationSidebar) ────────────────────────────── */
+.strydeSidebar {
+  width: 224px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  padding: 24px 20px 20px;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0 28px 28px 0;
+}
+
+/* Text overrides for dark sidebar */
+.strydeSidebar .sbTitle        { color: #ffffff; }
+.strydeSidebar .sbCoach        { color: rgba(255, 255, 255, 0.5); }
+.strydeSidebar .sbDesc         { color: rgba(255, 255, 255, 0.28); }
+.strydeSidebar .sbTime         { color: rgba(255, 255, 255, 0.35); }
+.strydeSidebar .sbSelLabel     { color: rgba(255, 255, 255, 0.4); }
+.strydeSidebar .sbSelMat       { color: var(--brand-wine); }
+.strydeSidebar .sbSelDetail    { color: rgba(255, 255, 255, 0.38); }
+.strydeSidebar .sbSelHint      { color: rgba(255, 255, 255, 0.22); }
+.strydeSidebar .sbCreditsNum   { color: #ffffff; }
+.strydeSidebar .sbCreditsLabel { color: rgba(255, 255, 255, 0.38); }
+.strydeSidebar .sbDivider      { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); }
+.strydeSidebar .sbPolicy       { color: rgba(255, 255, 255, 0.3); }
+.strydeSidebar .sbPolicy strong { color: rgba(255, 255, 255, 0.55); }
+
+/* STRYDE X badge in sidebar */
+.strydeXBadge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--brand-wine);
+  background: rgba(123, 31, 46, 0.18);
+  border: 1px solid rgba(123, 31, 46, 0.35);
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 4px;
+  width: fit-content;
+  font-family: 'Inter', var(--font-body);
+}
+
+/* ── Stryde footer ──────────────────────────────────────────────────────────── */
+.strydeFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 32px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.strydePolicy {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'Inter', var(--font-body);
+  line-height: 1.5;
+}
+
+.strydePolicy strong {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Confirm bar */
+.strydeConfirmBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 14px 16px;
+}
+
+.strydeSelInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.strydeSelLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  font-family: 'Inter', var(--font-body);
+}
+
+.strydeSelName {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+/* Confirm button */
+.strydeConfirmBtn {
+  font-family: 'Inter', var(--font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--brand-wine);
+  padding: 13px 22px;
+  border-radius: 14px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.2s ease;
+  box-shadow: 0 6px 20px rgba(123, 31, 46, 0.32);
+}
+
+.strydeConfirmBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(123, 31, 46, 0.42);
+  background: #5c1018;
+}
+
+.strydeConfirmBtn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 14px rgba(123, 31, 46, 0.28);
+}
+
+.strydeConfirmBtn:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Hint text */
+.strydeHint {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+  font-family: 'Inter', var(--font-body);
+  text-align: center;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SUCCESS VIEW (shared)
+════════════════════════════════════════════════════════════════ */
 .successView {
   display: flex;
   flex-direction: column;
@@ -224,6 +1373,15 @@
   padding: var(--space-xl) var(--space-md);
   gap: var(--space-md);
 }
+
+/* Text overrides for dark strydeModal success screen */
+.strydeModal .successView { min-height: 420px; justify-content: center; }
+.strydeModal .successTitle  { color: #ffffff; }
+.strydeModal .successSub    { color: rgba(255,255,255,0.72); }
+.strydeModal .successSub strong { color: #ffffff; }
+.strydeModal .successSeat   { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); color: rgba(255,255,255,0.65); }
+.strydeModal .successCredits { color: #f87171; }
+.strydeModal .successCredits strong { color: #ffffff; }
 
 .successIcon {
   color: #228B22;
@@ -263,11 +1421,11 @@
   margin: 0;
 }
 
-.successCredits strong {
-  font-weight: 700;
-}
+.successCredits strong { font-weight: 700; }
 
-/* ── Sin clases modal ── */
+/* ════════════════════════════════════════════════════════════════
+   SIN CLASES MODAL (shared)
+════════════════════════════════════════════════════════════════ */
 .noClasesModal {
   background: var(--bg-base);
   border-radius: var(--radius-xl);
@@ -311,7 +1469,6 @@
   max-width: 380px;
 }
 
-/* Mini package cards */
 .noClasesPaquetes {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -392,21 +1549,175 @@
   transition: background var(--duration-fast);
 }
 
-.noClasesBtnSecondary:hover {
-  background: var(--bg-surface);
-}
+.noClasesBtnSecondary:hover { background: var(--bg-surface); }
 
-/* ── Mobile ── */
-@media (max-width: 600px) {
+/* ════════════════════════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════════════════════════ */
+
+/* ── ≤700px: stack layouts vertically, snap to bottom sheet ── */
+@media (max-width: 700px) {
+  .backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  /* ── SLOW modal ── */
+  .slowModal {
+    border-radius: 22px 22px 0 0;
+    max-height: 90vh;
+    margin-top: auto;
+    width: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fitnessLayout {
+    flex-direction: column;
+    min-height: unset;
+  }
+
+  .machineSection {
+    padding: 18px 14px 12px;
+    gap: 12px;
+  }
+
+  .machineGrid { gap: 5px; }
+
+  .machineCard {
+    padding: 6px 4px 6px;
+    border-radius: 12px;
+    gap: 4px;
+  }
+
+  .matIconWrap {
+    width: 44px;
+    height: 30px;
+  }
+
+  .machineNumber { font-size: 9px; }
+
+  .reservationSidebar {
+    width: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-top: 1px solid rgba(200, 195, 190, 0.5);
+    padding: 16px 16px 20px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+  .sbBlock { width: 100%; text-align: center; }
+  .sbDivider { display: none; }
+  .sbSelectionBlock { min-height: unset; text-align: center; width: 100%; }
+  .sbCreditsBlock { justify-content: center; }
+  .sbPolicy { font-size: 9.5px; width: 100%; text-align: left; }
+  .slowConfirmBtn { width: 100%; margin-top: 2px; }
+
+  /* ── STRYDE X modal ── */
+  .strydeModal {
+    border-radius: 22px 22px 0 0;
+    max-height: 90vh;
+    margin-top: auto;
+    width: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .strydeLayout {
+    flex-direction: column;
+    min-height: unset;
+  }
+
+  .strydeRoom {
+    padding: 10px 12px 10px;
+    gap: 8px;
+  }
+
+  /* Keep 4 bench cols — same as desktop, just tighter cards */
+  .strydeBenchRow {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+
+  /* Keep 6 tread cols — same as desktop */
+  .strydeTreadRow {
+    grid-template-columns: repeat(6, 1fr);
+    gap: 5px;
+  }
+
+  .strydeCard {
+    padding: 6px 3px 5px;
+    border-radius: 10px;
+    gap: 2px;
+  }
+
+  .strydeCardBench { min-height: 52px; }
+  .strydeCardTread { min-height: 62px; }
+
+  .benchIconWrap { width: 34px; height: 20px; }
+  .treadIconWrap { width: 20px; height: 28px; }
+
+  .strydeEquipNum { font-size: 10px; }
+
+  /* Hide rotation/mode tags on mobile — too small */
+  .modeTagRot,
+  .modeTagStatic { display: none; }
+
+  .strydeStatusDot { width: 5px; height: 5px; top: 5px; left: 5px; }
+
+  .instructorAvatar { width: 34px; height: 34px; font-size: 11px; }
+  .instructorName { font-size: 9px; }
+  .instructorTitle { font-size: 7px; }
+
+  .strydeLegend { padding: 4px 12px 10px; gap: 14px; }
+
+  .strydeSidebar {
+    width: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 16px 16px 20px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .strydeSidebar .sbBlock { width: 100%; text-align: center; }
+  .strydeSidebar .sbDivider { display: none; }
+  .strydeSidebar .sbSelectionBlock { min-height: unset; text-align: center; width: 100%; }
+  .strydeSidebar .sbCreditsBlock { display: none; }
+  .strydeSidebar .sbPolicy { font-size: 9.5px; flex: 1 1 100%; }
+  .strydeConfirmBtn { width: 100%; text-align: center; margin-top: 2px; }
+
+  /* ── original .modal (Stryde original, non-premium) ── */
   .modal {
     padding: var(--space-xl) var(--space-lg);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    max-height: 92vh;
+    max-height: 90vh;
     margin-top: auto;
   }
+}
 
-  .backdrop {
-    align-items: flex-end;
-    padding: 0;
+/* ── ≤420px: very narrow phones — reduce Slow to 4 columns ── */
+@media (max-width: 420px) {
+  .machineGrid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px;
   }
+
+  /* Treadmill: 3 per row so cards aren't microscopic */
+  .strydeTreadRow {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .strydeCardTread { min-height: 68px; }
+  .treadIconWrap { width: 22px; height: 32px; }
 }

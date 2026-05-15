@@ -162,6 +162,18 @@
 .dayBtnActive .dayNum  { color: #F5EDE8; }
 .dayBtnToday  .dayNum  { color: var(--text-primary); }
 
+.dayDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background var(--duration-fast);
+  flex-shrink: 0;
+}
+
+.dayDotVisible { background: var(--brand-wine); }
+.dayBtnActive .dayDotVisible { background: rgba(245, 237, 232, 0.75); }
+
 /* ── Month label ─────────────────────────────────────────────────────────────── */
 .monthLabel {
   font-family: var(--font-body);
@@ -401,6 +413,70 @@
   background: var(--bg-elevated);
   color: var(--text-muted);
   cursor: default;
+}
+
+/* ── Reservada state ─────────────────────────────────────────────────────────── */
+.reservadaWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.reservadaBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #2d7a3e;
+  background: rgba(45,122,62,0.1);
+  border: 1.5px solid rgba(45,122,62,0.3);
+  border-radius: 6px;
+  padding: 7px 14px;
+  text-align: center;
+  width: 100%;
+}
+
+.reservadaBadge::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2d7a3e;
+  flex-shrink: 0;
+}
+
+.cancelarBtn {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  width: 100%;
+}
+
+.cancelarBtn:hover {
+  color: #7B1F2E;
+  border-color: rgba(123,31,46,0.4);
+}
+
+.cancelarVencido {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  opacity: 0.7;
 }
 
 /* ── Empty state ─────────────────────────────────────────────────────────────── */

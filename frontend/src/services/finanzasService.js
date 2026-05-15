@@ -15,12 +15,15 @@
 import { useTransaccionesStore } from '@/stores/transaccionesStore'
 import { useGastosStore }        from '@/stores/gastosStore'
 import { useClasesStore }        from '@/stores/clasesStore'
+import { useReservasStore }      from '@/stores/reservasStore'
 import { useCoachesStore }       from '@/stores/coachesStore'
 import { useTabuladorStore }     from '@/stores/tabuladorStore'
+import { useCortesStore }        from '@/stores/cortesStore'
+import { hoyLocal }              from '@/utils/fecha'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function getHoy()   { return new Date().toISOString().split('T')[0] }
-function getSemana(){ return new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0] }
+function getHoy()   { return hoyLocal() }
+function getSemana(){ return hoyLocal(new Date(Date.now() - 7*24*60*60*1000)) }
 function getMes()   { return getHoy().slice(0,7) }
 
 function filtrarTxPorRango(transacciones, rango) {
@@ -38,14 +41,14 @@ function filtrarTxPeriodoAnterior(transacciones, rango) {
   const hoy = new Date()
   if (rango === 'dia') {
     const ayer = new Date(hoy); ayer.setDate(ayer.getDate() - 1)
-    const ayerStr = ayer.toISOString().split('T')[0]
+    const ayerStr = hoyLocal(ayer)
     return transacciones.filter(tx => tx.fecha === ayerStr)
   }
   if (rango === 'semana') {
     const hace14 = new Date(hoy); hace14.setDate(hoy.getDate() - 14)
     const hace7  = new Date(hoy); hace7.setDate(hoy.getDate() - 7)
-    const f14 = hace14.toISOString().split('T')[0]
-    const f7  = hace7.toISOString().split('T')[0]
+    const f14 = hoyLocal(hace14)
+    const f7  = hoyLocal(hace7)
     return transacciones.filter(tx => tx.fecha >= f14 && tx.fecha < f7)
   }
   // mes anterior
@@ -135,7 +138,7 @@ function getSerieHistorica(transacciones, rango) {
     const dias = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
     return dias.map((label, i) => {
       const fecha = new Date(); fecha.setDate(fecha.getDate() - (6 - i))
-      const fechaStr = fecha.toISOString().split('T')[0]
+      const fechaStr = hoyLocal(fecha)
       const ingresos = transacciones
         .filter(tx => tx.fecha === fechaStr && tx.monto > 0)
         .reduce((a, tx) => a + tx.monto, 0)
@@ -164,10 +167,20 @@ function getSerieHistorica(transacciones, rango) {
  */
 export function getDatosCorteHoy() {
   const { transacciones } = useTransaccionesStore.getState()
+  const { cortes }        = useCortesStore.getState()
   const hoy = getHoy()
-  const txHoy = transacciones.filter(tx => tx.fecha === hoy)
 
-  return txHoy.reduce(
+  // Only count transactions that happened AFTER the last completed corte today
+  const horaUltimoCorte = cortes
+    .filter(c => c.fecha === hoy && c.estado === 'cerrado')
+    .sort((a, b) => (a.hora > b.hora ? 1 : -1))
+    .at(-1)?.hora ?? '00:00'
+
+  const txTurno = transacciones.filter(
+    tx => tx.fecha === hoy && (tx.hora ?? '99:99') > horaUltimoCorte
+  )
+
+  return txTurno.reduce(
     (acc, tx) => {
       if (tx.monto > 0) {
         const m = tx.metodoPago ?? 'efectivo'
@@ -189,8 +202,9 @@ export function getDatosCorteHoy() {
  * // [BACKEND] → GET /api/reportes/coaches?periodo=mes
  */
 export function getReporteCoaches(periodo = 'mes', incluirPago = true) {
-  const { clases, reservas } = useClasesStore.getState()
-  const { coaches }          = useCoachesStore.getState()
+  const { clases }  = useClasesStore.getState()
+  const { reservas } = useReservasStore.getState()
+  const { coaches } = useCoachesStore.getState()
   const tabulador            = useTabuladorStore.getState().tabulador
 
   const hoy  = new Date()

@@ -59,6 +59,25 @@ function classStatusLabel(booked, cap) {
   return              { label: 'Con espacio',   cls: 'success' }
 }
 
+function isClasePasada(c) {
+  if (c.fecha) {
+    const [h, m] = (c.hora || '00:00').split(':').map(Number)
+    const fin = new Date(c.fecha + 'T00:00:00')
+    fin.setHours(h, m, 0, 0)
+    return fin <= new Date()
+  }
+  const today = new Date()
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const targetDow = DIAS.indexOf(c.dia)
+  if (targetDow === -1) return false
+  const diff = targetDow - today.getDay()
+  const occurrence = new Date(today)
+  occurrence.setDate(today.getDate() + diff)
+  const [h, m] = (c.hora || '00:00').split(':').map(Number)
+  occurrence.setHours(h, m, 0, 0)
+  return occurrence <= today
+}
+
 function statusColor(cls) {
   if (cls === 'danger')  return { background:'rgba(232,90,90,0.12)',  color:'#E85A5A', border:'1px solid rgba(232,90,90,0.2)' }
   if (cls === 'warning') return { background:'rgba(232,146,74,0.12)', color:'#E8924A', border:'1px solid rgba(232,146,74,0.2)' }
@@ -77,9 +96,12 @@ export default function CoachPanel() {
   const { usuario } = useAuth()
   const { clases } = useClasesStore()
   const { coaches } = useCoachesStore()
-  // Buscar el coach por email para obtener su id real
+  // coachData: perfil del coach en coachesStore (id = "coach-xxx", distinto al id de usuario)
   const coachData = coaches.find(c => c.email === usuario?.email)
-  const misClases = clases.filter(c => c.coachNombre === coachData?.nombre)
+  const misClases = clases.filter(c =>
+    (coachData && (String(c.coachId) === String(coachData.id) || c.coachNombre === coachData.nombre)) ||
+    c.coachNombre === usuario?.nombre
+  )
   const hoy = new Date()
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
@@ -244,7 +266,9 @@ export default function CoachPanel() {
                         <div className={s.classInfo}>
                           <div className={s.className}>{cls.nombre}</div>
                           <div className={s.classMeta}>
-                            <span className={`${s.pill} ${s.pillStride}`}>Stride</span>
+                            <span className={`${s.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s.pillStride : s.pillSlow}`}>
+                              {!cls.tipo?.toLowerCase().includes('slow') ? 'STRYDE X' : cls.tipo}
+                            </span>
                             <span className={s.classLocation}>Sala Principal</span>
                           </div>
                         </div>
@@ -285,7 +309,7 @@ export default function CoachPanel() {
               <div className={s.cardHeader}>
                 <div>
                   <div className={s.cardTitle}>Todas mis clases esta semana</div>
-                  <div className={s.cardSubtitle}>Semana del 21 al 27 de abril</div>
+                  <div className={s.cardSubtitle}>{semanaLabel}</div>
                 </div>
               </div>
               <WeekTable classes={misClases} onOpen={openModal} />
@@ -431,25 +455,34 @@ function WeekTable({ classes, onOpen }) {
                 {esHoy
                    ? <strong style={{ color:'var(--blush)' }}>{cls.dia} · hoy</strong>
                   : (() => {
+                    const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+                    if (cls.fecha) {
+                      const d = new Date(cls.fecha + 'T12:00:00')
+                      return `${cls.dia} ${d.getDate()} de ${MESES[d.getMonth()]}`
+                    }
                     const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(cls.dia)
                     const d = new Date()
-                    const hoyIdx = d.getDay()
-                    const diff = idx - hoyIdx
+                    const diff = idx - d.getDay()
                     const fecha = new Date(d)
                     fecha.setDate(d.getDate() + (diff >= 0 ? diff : diff + 7))
-                    const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
                     return `${cls.dia} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`
                   })()
                 }
               </td>
               <td><span className={s2.mono} style={{ color:'var(--blush)' }}>{cls.hora}</span></td>
               <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
-              <td><span className={`${s2.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s2.pillStride : s2.pillSlow}`}>{cls.tipo}</span></td>
+              <td><span className={`${s2.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s2.pillStride : s2.pillSlow}`}>{!cls.tipo?.toLowerCase().includes('slow') ? 'STRYDE X' : cls.tipo}</span></td>
               <td><span className={`${s2.mono} ${s2[color]}`} style={{ fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
               <td>
-                <div className={s2.availBar} style={{ width:60 }}>
-                  <div className={`${s2.availFill} ${s2[color]}`} style={{ width:`${cls.cupoActual/cls.cupoMax*100}%` }} />
-                </div>
+                {isClasePasada(cls) ? (
+                  <span className={s2.pill} style={{ background:'rgba(120,120,120,0.15)', color:'#888', border:'1px solid rgba(120,120,120,0.2)' }}>Finalizada</span>
+                ) : cls.cupoActual >= cls.cupoMax ? (
+                  <span className={s2.pill} style={{ background:'rgba(232,90,90,0.12)', color:'#E85A5A', border:'1px solid rgba(232,90,90,0.2)' }}>Llena</span>
+                ) : (
+                  <div className={s2.availBar} style={{ width:60 }}>
+                    <div className={`${s2.availFill} ${s2[color]}`} style={{ width:`${cls.cupoActual/cls.cupoMax*100}%` }} />
+                  </div>
+                )}
               </td>
               <td>
                 <button
@@ -504,22 +537,30 @@ function MisClasesTable({ classes, onOpen }) {
                 {esHoy
                   ? <strong style={{ color: 'var(--blush)' }}>{cls.dia} · hoy</strong>
                   : (() => {
+                  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+                  if (cls.fecha) {
+                    const d = new Date(cls.fecha + 'T12:00:00')
+                    return `${cls.dia} ${d.getDate()} de ${MESES[d.getMonth()]}`
+                  }
                   const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(cls.dia)
                   const d = new Date()
-                  const hoyIdx = d.getDay()
-                  const diff = idx - hoyIdx
+                  const diff = idx - d.getDay()
                   const fecha = new Date(d)
                   fecha.setDate(d.getDate() + (diff >= 0 ? diff : diff + 7))
-                  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
                   return `${cls.dia} ${fecha.getDate()} de ${MESES[fecha.getMonth()]}`
                 })()
                 }
               </td>
               <td><span className={s2.mono} style={{ color: 'var(--blush)' }}>{cls.hora}</span></td>
               <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
-              <td><span className={`${s2.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s2.pillStride : s2.pillSlow}`}>{cls.tipo}</span></td>
+              <td><span className={`${s2.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s2.pillStride : s2.pillSlow}`}>{!cls.tipo?.toLowerCase().includes('slow') ? 'STRYDE X' : cls.tipo}</span></td>
               <td><span className={s2.mono} style={{ color: color === 'red' ? '#E85A5A' : color === 'orange' ? '#E8924A' : '#5CB97A', fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
-              <td><span className={s2.pill} style={stStyle}>{label}</span></td>
+              <td>
+                {isClasePasada(cls)
+                  ? <span className={s2.pill} style={{ background:'rgba(120,120,120,0.15)', color:'#888', border:'1px solid rgba(120,120,120,0.2)' }}>Finalizada</span>
+                  : <span className={s2.pill} style={stStyle}>{label}</span>
+                }
+              </td>
               <td>
                 <button
                   className={s2.btnSm}
@@ -548,8 +589,11 @@ function ClassModal({ cls, onClose }) {
   }))
   const avail = cls.cupoMax - cls.cupoActual
   const availColor2 = avail === 0 ? 'var(--danger)' : avail <= cls.cupoMax * 0.5 ? 'var(--warning)' : 'var(--success)'
-  const { label: statusLabel, cls: stCls } = classStatusLabel(cls.cupoActual, cls.cupoMax)
-  const statusClr = stCls === 'danger' ? 'var(--danger)' : stCls === 'warning' ? 'var(--warning)' : 'var(--success)'
+  const pasada = isClasePasada(cls)
+  const { label: statusLabel, cls: stCls } = pasada
+    ? { label: 'Finalizada', cls: 'gray' }
+    : classStatusLabel(cls.cupoActual, cls.cupoMax)
+  const statusClr = pasada ? '#888' : stCls === 'danger' ? 'var(--danger)' : stCls === 'warning' ? 'var(--warning)' : 'var(--success)'
   const dayInfo = `${cls.dia} · ${cls.hora} · ${cls.cupoActual}/${cls.cupoMax} inscritos`
 
   return (

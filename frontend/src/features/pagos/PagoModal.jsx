@@ -20,7 +20,7 @@ const STEPS = ['resumen', 'pago', 'procesando', 'exito']
 
 export default function PagoModal({ paquete, onClose, onSuccess }) {
   const { usuario, actualizarClasesPaquete, actualizarPerfil } = useAuth()
-  const { asignarPaqueteCompartido } = useUsuariosStore()
+  const { asignarPaquete, asignarPaqueteCompartido } = useUsuariosStore()
   const [step, setStep]       = useState('resumen')
   const [metodo, setMetodo]   = useState('tarjeta')
   const [error, setError]     = useState('')
@@ -98,10 +98,14 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
       const clasesPorPersona = Math.floor(paquete.clases / todosIds.length)
       actualizarClasesPaquete(clasesPorPersona)
     } else {
-      actualizarClasesPaquete(paquete.clases === 0 ? 999 : paquete.clases)
+      // Paquete individual: actualiza authStore Y usuariosStore
+      const clasesNum = paquete.clases === 0 ? 999 : paquete.clases
+      actualizarClasesPaquete(clasesNum)
+      asignarPaquete(usuario.id, paquete.nombre, clasesNum) // ✅ sincroniza el admin
     }
 
     actualizarPerfil({ paquete: paquete.nombre })
+
     console.log('resultado pago:', resultado)
     console.log('usuario.id:', usuario.id)
     setStep('exito')
@@ -156,13 +160,13 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
               </div>
             </div>
 
-            {/* Compartir paquete */}
-            <CompartirPaquete
+            {/* Compartir paquete — comentado, pendiente de implementación futura */}
+            {/* <CompartirPaquete
               paquete={paquete}
               usuarioActualId={usuario?.id}
               variant="light"
               onChange={setCompartirData}
-            />
+            /> */}
 
             <div className={s.divider} />
 

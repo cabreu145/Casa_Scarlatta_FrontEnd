@@ -4,10 +4,9 @@
  * Store de Zustand para el historial de reservas.
  * Persiste en localStorage bajo 'casa-scarlatta-reservas'.
  *
- * Nota: clasesStore también maneja reservas en su flujo de cupos.
- * Este store es la fuente de verdad para historial, estados y
- * asistencia. Cuando haya backend, reemplazar RESERVAS_MOCK por
- * llamadas a los endpoints de reservas en api.js.
+ * Fuente de verdad para historial, estados y asistencia.
+ * clasesStore solo gestiona cupoActual — las reservas viven aquí.
+ * Cuando haya backend, reemplazar RESERVAS_MOCK por llamadas a api.js.
  *
  * Usado en: ClientPanel, CoachDashboard, AdminClases
  * Depende de: zustand, mockData
@@ -59,6 +58,15 @@ export const useReservasStore = create(
         set((state) => ({
           reservas: state.reservas.map((r) =>
             r.id === reservaId ? { ...r, estado: ESTADOS_RESERVA.COMPLETADA } : r
+          ),
+        })),
+
+      cancelarReservasByClase: (claseId) =>
+        set((state) => ({
+          reservas: state.reservas.map((r) =>
+            r.claseId === claseId && r.estado === ESTADOS_RESERVA.CONFIRMADA
+              ? { ...r, estado: ESTADOS_RESERVA.CANCELADA }
+              : r
           ),
         })),
     }),

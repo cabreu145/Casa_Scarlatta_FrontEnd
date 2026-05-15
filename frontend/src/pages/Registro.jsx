@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import BrandBlob from '@/components/ui/BrandBlob'
+import PasswordInput from '@/components/ui/PasswordInput'
 import styles from './Registro.module.css'
 
 function validarEmail(email) {
@@ -215,9 +216,8 @@ export default function Registro() {
             <div className={styles.row}>
               <div className={styles.field}>
                 <label htmlFor="password">Contraseña *</label>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   placeholder="Mínimo 6 caracteres"
                   autoComplete="new-password"
                   value={form.password}
@@ -228,9 +228,8 @@ export default function Registro() {
               </div>
               <div className={styles.field}>
                 <label htmlFor="confirmarPassword">Confirmar contraseña *</label>
-                <input
+                <PasswordInput
                   id="confirmarPassword"
-                  type="password"
                   placeholder="Repite tu contraseña"
                   autoComplete="new-password"
                   value={form.confirmarPassword}

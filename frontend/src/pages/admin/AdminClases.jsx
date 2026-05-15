@@ -20,7 +20,7 @@ import { useReservasStore } from '@/stores/reservasStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import { useCoachesStore } from '@/stores/coachesStore'
 import { getAvailability } from '@/services/classService'
-import { marcarNoAsistio } from '@/services/reservasService'
+import { marcarNoAsistio, eliminarClaseConReservas } from '@/services/reservasService'
 import { useClasses } from '@/hooks/useClasses'
 import { ESTADOS_RESERVA } from '@/data/mockData'
 import styles from '@/styles/dashboard.module.css'
@@ -230,7 +230,7 @@ function ClassRow({ clase, onEdit, onDelete, onAlumnos }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AdminClases() {
-  const { clases, agregarClase, editarClase, eliminarClase } = useClasesStore()
+  const { clases, agregarClase, editarClase } = useClasesStore()
   const { reservas } = useReservasStore()
   const { getUsuarioById } = useUsuariosStore()
   const { coaches: todosCoaches } = useCoachesStore()
@@ -300,7 +300,7 @@ export default function AdminClases() {
     setModalAbierto(false)
   }
 
-  const handleEliminar = (id) => { eliminarClase(id); toast.success('Clase eliminada'); setEliminandoId(null) }
+  const handleEliminar = (id) => { eliminarClaseConReservas(id); toast.success('Clase eliminada'); setEliminandoId(null) }
 
   const handlePrevWeek = () => {
     if (weekOffset === 0) return
@@ -592,9 +592,18 @@ export default function AdminClases() {
                 <div className={styles.field}>
                   <label>Coach</label>
                   <select value={String(form.coachId)} onChange={set('coachId')}>
-                    {coaches.map((c) => (
-                      <option key={c.id} value={String(c.id)}>{c.nombre}</option>
-                    ))}
+                    {coaches
+                      .filter((c) => {
+                        const esp = c.especialidad
+                        if (!esp || esp === 'Ambas') return true
+                        const claseEsSlow = form.tipo?.toLowerCase().includes('slow')
+                        return claseEsSlow
+                          ? esp.toLowerCase().includes('slow')
+                          : !esp.toLowerCase().includes('slow')
+                      })
+                      .map((c) => (
+                        <option key={c.id} value={String(c.id)}>{c.nombre}</option>
+                      ))}
                   </select>
                 </div>
                 <div className={styles.field}>

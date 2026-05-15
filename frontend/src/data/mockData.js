@@ -129,17 +129,17 @@ export const CLASES_MOCK = [
  */
 export const COACHES_MOCK = [
   {
-    id: 2, nombre: 'Carlos Méndez', especialidad: 'Stryde X',
+    id: 2, nombre: 'Carlos Méndez', email: 'coach@casascarlatta.com', especialidad: 'Stryde X',
     bio: 'Especialista en entrenamiento funcional y cardio de alta intensidad. Más de 8 años de experiencia.',
     foto: null, activo: true,
   },
   {
-    id: 5, nombre: 'Sofía Reyes', especialidad: 'Slow',
+    id: 5, nombre: 'Sofía Reyes', email: 'sofia@casascarlatta.com', especialidad: 'Slow',
     bio: 'Instructora certificada en pilates, meditación y movimiento consciente. Enfoque en bienestar integral.',
     foto: null, activo: true,
   },
   {
-    id: 6, nombre: 'Ana Torres', especialidad: 'Stryde X',
+    id: 6, nombre: 'Ana Torres', email: 'ana@casascarlatta.com', especialidad: 'Stryde X',
     bio: 'Entrenadora personal con especialización en cardio y acondicionamiento físico de alto rendimiento.',
     foto: null, activo: true,
   },

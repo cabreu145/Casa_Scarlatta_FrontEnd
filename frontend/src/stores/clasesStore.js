@@ -1,28 +1,22 @@
 /**
  * clasesStore.js
  * ─────────────────────────────────────────────────────
- * Store de Zustand para clases y reservas.
- * Persiste en localStorage bajo la clave 'casa-scarlatta-clases'.
- * Cuando haya backend, reemplazar mockClases/mockReservas
- * por llamadas a classService.js.
+ * Store de Zustand para clases y cupos.
+ * Las reservas viven en reservasStore; este store solo
+ * gestiona el catálogo de clases y el cupo disponible.
  *
- * Usado en: AdminClases, ClientPanel, CoachDashboard, SeatSelector
- * Depende de: zustand, mockClases, mockReservas
+ * Usado en: AdminClases, CoachDashboard, SeatSelector, reservasService
+ * Depende de: zustand, mockData
  * ─────────────────────────────────────────────────────
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { CLASES_MOCK } from '@/data/mockData'
-import { mockReservas } from '@/data/mockReservas'
 
 export const useClasesStore = create(
   persist(
     (set, get) => ({
       clases: CLASES_MOCK,
-      reservas: mockReservas,
-
-      getReservasByUsuario: (userId) =>
-        get().reservas.filter((r) => r.userId === userId),
 
       getClasesByCoach: (coachId) =>
         get().clases.filter((c) => c.coachId === coachId),
@@ -39,68 +33,6 @@ export const useClasesStore = create(
           ),
         })),
 
-      reservarClase: (userId, claseId) => {
-        const clases = get().clases
-        const clase = clases.find((c) => c.id === claseId)
-        if (!clase || clase.cupoActual >= clase.cupoMax) return false
-
-        const nuevaReserva = {
-          id: Date.now(),
-          userId,
-          claseId,
-          claseNombre: clase.nombre,
-          claseHora: clase.hora,
-          claseDia: clase.dia,
-          coachNombre: clase.coachNombre,
-          tipo: clase.tipo,
-          estado: 'confirmada',
-          fecha: clase.fecha,
-        }
-
-        set((state) => ({
-          reservas: [...state.reservas, nuevaReserva],
-          clases: state.clases.map((c) =>
-            c.id === claseId ? { ...c, cupoActual: c.cupoActual + 1 } : c
-          ),
-        }))
-        return true
-      },
-
-      cancelarReserva: (reservaId, userId) => {
-        const reserva = get().reservas.find((r) => r.id === reservaId && r.userId === userId)
-        if (!reserva || reserva.estado !== 'confirmada') return false
-
-        set((state) => ({
-          reservas: state.reservas.map((r) =>
-            r.id === reservaId ? { ...r, estado: 'cancelada' } : r
-          ),
-          clases: state.clases.map((c) =>
-            c.id === reserva.claseId ? { ...c, cupoActual: Math.max(0, c.cupoActual - 1) } : c
-          ),
-        }))
-        return true
-      },
-
-      // Reserva desde el flujo público /reservar (datos vienen de classes.js)
-      reservarDesdePublico: (userId, cls, asiento) => {
-        const nuevaReserva = {
-          id: Date.now(),
-          userId,
-          claseId: cls.id ?? null,
-          claseNombre: cls.nombre,
-          claseHora: cls.hora,
-          claseDia: cls.dia,
-          coachNombre: cls.coachNombre,
-          tipo: cls.tipo,
-          asiento,
-          estado: 'confirmada',
-          fecha: cls.fecha,
-        }
-
-        set((state) => ({ reservas: [...state.reservas, nuevaReserva] }))
-        return nuevaReserva
-      },
-
       agregarClase: (nuevaClase) =>
         set((state) => ({
           clases: [...state.clases, { ...nuevaClase, id: Date.now() }],
@@ -114,14 +46,8 @@ export const useClasesStore = create(
       eliminarClase: (id) =>
         set((state) => ({
           clases: state.clases.filter((c) => c.id !== id),
-          // Cancelar todas las reservas de esa clase automáticamente
-          reservas: state.reservas.map((r) =>
-            r.claseId === id && r.estado === 'confirmada'
-              ? { ...r, estado: 'cancelada' }
-              : r
-          ),
         })),
     }),
-    { name: 'casa-scarlatta-clases' }
+    { name: 'casa-scarlatta-clases', version: 1 }
   )
 )

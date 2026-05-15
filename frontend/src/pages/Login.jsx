@@ -1,15 +1,25 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
-import BrandBlob from '@/components/ui/BrandBlob'
-import SectionHeader from '@/components/ui/SectionHeader'
+import PasswordInput from '@/components/ui/PasswordInput'
 import styles from './Login.module.css'
 
 const rolDashboard = {
   cliente: '/cliente/dashboard',
   coach: '/coach/dashboard',
   admin: '/admin/dashboard',
+}
+
+const underlineInputStyle = {
+  background: 'transparent',
+  border: 'none',
+  borderBottom: '1.5px solid rgba(0,0,0,0.18)',
+  borderRadius: 0,
+  padding: '10px 40px 10px 0',
+  fontSize: 15,
+  width: '100%',
+  outline: 'none',
 }
 
 function LegalModal({ titulo, children, onClose }) {
@@ -57,18 +67,22 @@ export default function Login() {
 
   return (
     <main className={styles.page}>
-      <BrandBlob className={styles.blob} width={460} height={460} />
       <div className={styles.inner}>
-        <SectionHeader
-          label={reservation.selectedClass ? 'Casi listo' : 'Bienvenido'}
-          title={mode === 'login' ? 'Inicia sesión' : 'Crea tu cuenta'}
-          subtitle={
-            reservation.selectedClass
-              ? `Para confirmar tu lugar en ${reservation.selectedClass.name}, inicia sesión o crea una cuenta.`
-              : 'Accede a tu cuenta para gestionar tus reservas.'
-          }
-          size="lg"
-        />
+        {mode === 'login' ? (
+          <div className={styles.header}>
+            <span className={styles.headerLabel}>BIENVENIDO</span>
+            <h1 className={styles.headerTitle}>Inicia sesión</h1>
+            <p className={styles.headerSubtitle}>
+              {reservation.selectedClass
+                ? `Para confirmar tu lugar en ${reservation.selectedClass.name}, inicia sesión o crea una cuenta.`
+                : 'Accede a tu cuenta para gestionar tus reservas.'}
+            </p>
+          </div>
+        ) : (
+          <div className={styles.header} style={{ textAlign: 'center', marginBottom: 32 }}>
+            <h1 className={styles.headerTitleRegister}>Regístrate</h1>
+          </div>
+        )}
 
         <div className={styles.toggle}>
           <button
@@ -85,11 +99,9 @@ export default function Login() {
           </button>
         </div>
 
-        <div className={styles.card}>
-          {mode === 'login'
-            ? <LoginForm from={location.state?.from} />
-            : <RegisterForm onSuccess={() => setMode('login')} LegalModal={LegalModal} />}
-        </div>
+        {mode === 'login'
+          ? <LoginForm from={location.state?.from} />
+          : <RegisterForm onSuccess={() => setMode('login')} LegalModal={LegalModal} />}
       </div>
     </main>
   )
@@ -132,15 +144,22 @@ function LoginForm({ from }) {
       </div>
       <div className={styles.field}>
         <label htmlFor="password">Contraseña</label>
-        <input
+        <PasswordInput
           id="password"
-          type="password"
           placeholder="••••••••"
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          style={underlineInputStyle}
         />
       </div>
+
+      <div className={styles.forgotWrap}>
+        <Link to="/recuperar-contrasena" className={styles.forgotLink}>
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </div>
+
       <button type="submit" className={styles.submitBtn} disabled={loading}>
         {loading ? 'Entrando...' : 'Entrar'}
       </button>
@@ -155,11 +174,11 @@ function RegisterForm({ onSuccess, LegalModal: Modal }) {
   const { register } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({
-    nombre: '', apellido: '', email: '', password: '',
+    nombreCompleto: '', email: '', password: '',
     telefono: '', fechaNacimiento: '',
   })
   const [checks, setChecks] = useState({ privacidad: false, responsiva: false })
-  const [legalModal, setLegalModal] = useState(null) // 'privacidad' | 'responsiva'
+  const [legalModal, setLegalModal] = useState(null)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
 
@@ -180,7 +199,7 @@ function RegisterForm({ onSuccess, LegalModal: Modal }) {
 
   const validar = () => {
     const errs = {}
-    if (!form.nombre.trim()) errs.nombre = 'El nombre es obligatorio'
+    if (!form.nombreCompleto.trim()) errs.nombreCompleto = 'El nombre es obligatorio'
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       errs.email = 'El email no es válido'
     if (form.password.length < 6) errs.password = 'Mínimo 6 caracteres'
@@ -199,8 +218,8 @@ function RegisterForm({ onSuccess, LegalModal: Modal }) {
     }
     setLoading(true)
     try {
-      const user = await register({
-        nombre: `${form.nombre} ${form.apellido}`.trim(),
+      await register({
+        nombre: form.nombreCompleto.trim(),
         email: form.email,
         password: form.password,
         telefono: form.telefono,
@@ -220,84 +239,61 @@ function RegisterForm({ onSuccess, LegalModal: Modal }) {
   }
 
   const puedeContinuar = checks.privacidad && checks.responsiva
+  const errStyle = { fontSize: 11, color: '#EF4444', marginTop: 2, fontFamily: "'Inter', var(--font-body)" }
 
   return (
     <>
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
-        <div className={styles.formRow}>
-          <div className={styles.field}>
-            <label htmlFor="nombre">Nombre *</label>
-            <input
-              id="nombre" type="text" placeholder="Tu nombre"
-              autoComplete="given-name" value={form.nombre} onChange={set('nombre')}
-              style={errors.nombre ? { borderColor: '#EF4444' } : {}}
-            />
-            {errors.nombre && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.nombre}</span>}
-          </div>
-          <div className={styles.field}>
-            <label htmlFor="apellido">Apellido</label>
-            <input id="apellido" type="text" placeholder="Tu apellido" autoComplete="family-name" value={form.apellido} onChange={set('apellido')} />
-          </div>
+        <div className={styles.field}>
+          <label htmlFor="nombreCompleto">Nombre completo *</label>
+          <input id="nombreCompleto" type="text" placeholder="Tu nombre completo"
+            autoComplete="name" value={form.nombreCompleto} onChange={set('nombreCompleto')} />
+          {errors.nombreCompleto && <span style={errStyle}>{errors.nombreCompleto}</span>}
         </div>
 
         <div className={styles.field}>
           <label htmlFor="reg-email">Correo electrónico *</label>
-          <input
-            id="reg-email" type="email" placeholder="tu@correo.com"
-            autoComplete="email" value={form.email} onChange={set('email')}
-            style={errors.email ? { borderColor: '#EF4444' } : {}}
-          />
-          {errors.email && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.email}</span>}
+          <input id="reg-email" type="email" placeholder="tu@correo.com" autoComplete="email"
+            value={form.email} onChange={set('email')} />
+          {errors.email && <span style={errStyle}>{errors.email}</span>}
         </div>
 
         <div className={styles.formRow}>
           <div className={styles.field}>
             <label htmlFor="fechaNacimiento">Fecha de nacimiento</label>
-            <input
-              id="fechaNacimiento" type="date" value={form.fechaNacimiento}
-              onChange={set('fechaNacimiento')}
-              max={new Date().toISOString().split('T')[0]}
-              style={errors.fechaNacimiento ? { borderColor: '#EF4444' } : {}}
-            />
-            {errors.fechaNacimiento && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.fechaNacimiento}</span>}
+            <input id="fechaNacimiento" type="date" value={form.fechaNacimiento}
+              onChange={set('fechaNacimiento')} max={new Date().toISOString().split('T')[0]} />
+            {errors.fechaNacimiento && <span style={errStyle}>{errors.fechaNacimiento}</span>}
           </div>
           <div className={styles.field}>
             <label htmlFor="telefono">Teléfono</label>
-            <input id="telefono" type="tel" placeholder="5512345678" autoComplete="tel" value={form.telefono} onChange={set('telefono')} maxLength={10} />
+            <input id="telefono" type="tel" placeholder="5512345678" autoComplete="tel"
+              value={form.telefono} onChange={set('telefono')} maxLength={10} />
           </div>
         </div>
 
         <div className={styles.field}>
           <label htmlFor="reg-password">Contraseña *</label>
-          <input
-            id="reg-password" type="password" placeholder="Mínimo 6 caracteres"
+          <PasswordInput id="reg-password" placeholder="Mínimo 6 caracteres"
             autoComplete="new-password" value={form.password} onChange={set('password')}
-            style={errors.password ? { borderColor: '#EF4444' } : {}}
-          />
-          {errors.password && <span style={{ fontSize: 11, color: '#EF4444', marginTop: 2 }}>{errors.password}</span>}
+            style={underlineInputStyle} />
+          {errors.password && <span style={errStyle}>{errors.password}</span>}
         </div>
 
-        {/* Legal checkboxes */}
         <div className={styles.legales}>
           <label className={styles.checkLabel}>
-            <input
-              type="checkbox" checked={checks.privacidad}
-              onChange={(e) => setChecks((p) => ({ ...p, privacidad: e.target.checked }))}
-            />
-            <span>
-              He leído y acepto el{' '}
+            <input type="checkbox" checked={checks.privacidad}
+              onChange={(e) => setChecks((p) => ({ ...p, privacidad: e.target.checked }))} />
+            <span>He leído y acepto el{' '}
               <button type="button" className={styles.linkBtn} onClick={() => setLegalModal('privacidad')}>
                 Aviso de Privacidad
               </button>
             </span>
           </label>
           <label className={styles.checkLabel}>
-            <input
-              type="checkbox" checked={checks.responsiva}
-              onChange={(e) => setChecks((p) => ({ ...p, responsiva: e.target.checked }))}
-            />
-            <span>
-              Acepto la{' '}
+            <input type="checkbox" checked={checks.responsiva}
+              onChange={(e) => setChecks((p) => ({ ...p, responsiva: e.target.checked }))} />
+            <span>Acepto la{' '}
               <button type="button" className={styles.linkBtn} onClick={() => setLegalModal('responsiva')}>
                 responsiva de actividad física
               </button>
@@ -305,35 +301,27 @@ function RegisterForm({ onSuccess, LegalModal: Modal }) {
           </label>
         </div>
 
-        <button
-          type="submit"
-          className={styles.submitBtn}
+        <button type="submit" className={styles.submitBtn}
           disabled={loading || !puedeContinuar}
-          style={!puedeContinuar ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-        >
+          style={!puedeContinuar ? { opacity: 0.45, cursor: 'not-allowed' } : {}}>
           {loading ? 'Creando cuenta...' : 'Crear cuenta'}
         </button>
       </form>
 
       {legalModal === 'privacidad' && (
         <Modal titulo="Aviso de Privacidad" onClose={() => setLegalModal(null)}>
-          <p>
-            Casa Scarlatta Wellness Studio recopila tus datos personales (nombre, email, teléfono,
+          <p>Casa Scarlatta Wellness Studio recopila tus datos personales (nombre, email, teléfono,
             fecha de nacimiento) únicamente para gestionar tu cuenta y reservas. Tus datos no serán
             compartidos con terceros. Puedes solicitar la eliminación de tu cuenta en cualquier
-            momento escribiendo a <strong>hola@casascarlatta.com</strong>.
-          </p>
+            momento escribiendo a <strong>hola@casascarlatta.com</strong>.</p>
         </Modal>
       )}
-
       {legalModal === 'responsiva' && (
         <Modal titulo="Responsiva de Actividad Física" onClose={() => setLegalModal(null)}>
-          <p>
-            Declaro que cuento con las condiciones físicas adecuadas para participar en las
+          <p>Declaro que cuento con las condiciones físicas adecuadas para participar en las
             actividades de Casa Scarlatta. Libero al estudio de cualquier responsabilidad por
             lesiones derivadas de mi participación en clases. Recomiendo consultar a un médico
-            antes de iniciar cualquier programa de ejercicio.
-          </p>
+            antes de iniciar cualquier programa de ejercicio.</p>
         </Modal>
       )}
     </>

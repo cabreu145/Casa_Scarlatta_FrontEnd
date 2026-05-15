@@ -3,9 +3,11 @@
  * Genera reportes HTML con branding de Casa Scarlatta y los abre
  * en una nueva ventana lista para imprimir / guardar como PDF.
  */
+import { hoyLocal } from './fecha'
 
 const ICONO_TIPO = {
   financiero: '💰',
+  cortes:     '🏧',
   usuarios:   '👥',
   clases:     '🏃',
   paquetes:   '📦',
@@ -20,7 +22,7 @@ function fmtFecha(iso) {
 }
 
 function hoy() {
-  return fmtFecha(new Date().toISOString().split('T')[0])
+  return fmtFecha(hoyLocal())
 }
 
 function esMonto(v) {
@@ -47,6 +49,18 @@ export function calcularStats(tipo, datos) {
       { valor: '$' + ingresos.toLocaleString('es-MX'),   etiqueta: 'Ingresos' },
       { valor: '$' + gastos.toLocaleString('es-MX'),     etiqueta: 'Gastos' },
       { valor: '$' + utilidad.toLocaleString('es-MX'),   etiqueta: 'Utilidad' },
+    ]
+  }
+
+  if (tipo === 'cortes') {
+    const ingresos = datos.reduce((a, r) => a + parseMonto(r['Total ingresos'] ?? 0), 0)
+    const gastos   = datos.reduce((a, r) => a + Math.abs(parseMonto(r['Gastos'] ?? 0)), 0)
+    const neto     = datos.reduce((a, r) => a + parseMonto(r['Neto'] ?? 0), 0)
+    return [
+      { valor: datos.length.toLocaleString('es-MX'),   etiqueta: 'Cortes realizados' },
+      { valor: '$' + ingresos.toLocaleString('es-MX'), etiqueta: 'Total ingresos' },
+      { valor: '$' + gastos.toLocaleString('es-MX'),   etiqueta: 'Total gastos' },
+      { valor: '$' + neto.toLocaleString('es-MX'),     etiqueta: 'Neto a entregar' },
     ]
   }
 
@@ -198,7 +212,63 @@ const CSS_BLOCK = `  <style>
       body { background: white; padding: 0; }
       .page { box-shadow: none; padding: 0; max-width: 100%; }
       .print-controls { display: none; }
-      @page { margin: 15mm 12mm; size: A4 portrait; }
+      @page { margin: 12mm 10mm; size: A4 var(--page-orientation, portrait); }
+    }
+  </style>
+`
+
+const CSS_LANDSCAPE = `  <style>
+    :root { --page-orientation: landscape; }
+    :root {
+      --wine:   #7B1E22;
+      --rose:   #E8A4AD;
+      --cream:  #F5EDE8;
+      --dark:   #2C1810;
+      --muted:  #7A5C58;
+      --border: #E8D5CB;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: 'DM Sans', sans-serif; color: var(--dark); background: #F0E9E4; min-height: 100vh; padding: 30px 20px 50px; }
+    .page { background: white; max-width: 1200px; margin: 0 auto; padding: 40px 48px; border-radius: 4px; box-shadow: 0 4px 40px rgba(44,24,16,0.15); }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 18px; border-bottom: 2.5px solid var(--wine); margin-bottom: 24px; }
+    .logo-wrap { display: flex; align-items: center; gap: 14px; }
+    .logo-icon { width: 44px; height: 44px; background: var(--wine); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .logo-icon svg { width: 24px; height: 24px; }
+    .logo-text { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 28px; color: var(--wine); line-height: 1; }
+    .logo-sub { font-family: 'DM Sans', sans-serif; font-size: 10px; color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 4px; }
+    .contact-info { text-align: right; font-size: 11px; color: var(--muted); line-height: 1.9; }
+    .contact-info strong { display: block; color: var(--dark); font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+    .report-meta { display: flex; align-items: center; gap: 16px; background: var(--cream); border-left: 4px solid var(--wine); padding: 14px 20px; border-radius: 0 10px 10px 0; margin-bottom: 24px; }
+    .report-meta-icon { font-size: 28px; line-height: 1; flex-shrink: 0; }
+    .report-title { font-family: 'DM Serif Display', serif; font-size: 20px; color: var(--wine); margin-bottom: 3px; }
+    .report-date { font-size: 11px; color: var(--muted); }
+    .report-date strong { color: var(--dark); }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: var(--cream); border: 1px solid var(--border); border-radius: 10px; padding: 16px 14px; text-align: center; }
+    .stat-value { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--wine); line-height: 1; margin-bottom: 6px; }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.09em; }
+    .table-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    thead tr { background: var(--wine); }
+    th { font-family: 'DM Sans', sans-serif; font-weight: 600; padding: 8px 7px; text-align: center; font-size: 8.5px; letter-spacing: 0.06em; text-transform: uppercase; color: #fff; white-space: nowrap; }
+    td { padding: 7px 7px; border-bottom: 1px solid var(--border); color: var(--dark); vertical-align: middle; text-align: center; }
+    tr:nth-child(even) td { background: #FDFAF8; }
+    tr:last-child td { border-bottom: none; }
+    .total-row td { background: var(--cream) !important; font-weight: 700; color: var(--wine) !important; border-top: 1px solid var(--border); border-bottom: none; font-family: 'DM Serif Display', serif; font-size: 13px; }
+    .total-row:first-of-type td { border-top: 2px solid var(--wine); }
+    .gastos-row td { color: #B91C1C !important; }
+    .utilidad-row td { border-top: 1px solid var(--wine); }
+    .footer { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+    .footer strong { color: var(--wine); }
+    .print-controls { text-align: center; margin-top: 28px; }
+    .btn-print { background: var(--wine); color: white; border: none; padding: 13px 30px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 12px rgba(123,30,34,0.35); margin-right: 12px; }
+    .btn-print:hover { background: #5C1519; }
+    .btn-close { background: white; color: var(--muted); border: 1px solid var(--border); padding: 13px 30px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer; }
+    @media print {
+      body { background: white; padding: 0; }
+      .page { box-shadow: none; padding: 0; max-width: 100%; }
+      .print-controls { display: none; }
+      @page { margin: 10mm 8mm; size: A4 landscape; }
     }
   </style>
 `
@@ -225,7 +295,7 @@ const HEADER_BLOCK = `    <div class="header">
     </div>
 `
 
-function construirHTML({ tipo, titulo, datos, periodo }) {
+function construirHTML({ tipo, titulo, datos, periodo, landscape = false }) {
   const icono    = ICONO_TIPO[tipo] ?? '📋'
   const stats    = calcularStats(tipo, datos)
   const cols     = datos?.length ? Object.keys(datos[0]) : []
@@ -242,6 +312,8 @@ function construirHTML({ tipo, titulo, datos, periodo }) {
     ? '&nbsp;·&nbsp; Período: <strong>' + periodo + '</strong>'
     : ''
 
+  const cssBlock = landscape ? CSS_LANDSCAPE : CSS_BLOCK
+
   return '<!DOCTYPE html>\n'
     + '<html lang="es">\n<head>\n'
     + '  <meta charset="UTF-8">\n'
@@ -249,7 +321,7 @@ function construirHTML({ tipo, titulo, datos, periodo }) {
     + '  <title>Casa Scarlatta — ' + titulo + '</title>\n'
     + '  <link rel="preconnect" href="https://fonts.googleapis.com">\n'
     + '  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400;1,600&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">\n'
-    + CSS_BLOCK
+    + cssBlock
     + '</head>\n<body>\n'
     + '  <div class="page">\n'
     + HEADER_BLOCK
@@ -278,8 +350,8 @@ function construirHTML({ tipo, titulo, datos, periodo }) {
 /**
  * Abre el reporte en una nueva pestaña lista para imprimir / guardar como PDF.
  */
-export function abrirReportePDF({ tipo, titulo, datos, periodo = '' }) {
-  const html = construirHTML({ tipo, titulo, datos, periodo })
+export function abrirReportePDF({ tipo, titulo, datos, periodo = '', landscape = false }) {
+  const html = construirHTML({ tipo, titulo, datos, periodo, landscape })
   const win  = window.open('', '_blank')
   if (!win) {
     alert('El navegador bloqueó la ventana emergente. Permite pop-ups para este sitio.')
@@ -297,7 +369,7 @@ export function descargarHTMLReporte({ tipo, titulo, datos, periodo = '' }) {
   const blob  = new Blob([html], { type: 'text/html;charset=utf-8;' })
   const url   = URL.createObjectURL(blob)
   const a     = document.createElement('a')
-  const fecha = new Date().toISOString().split('T')[0]
+  const fecha = hoyLocal()
   a.href     = url
   a.download = 'reporte-' + tipo + '-' + fecha + '.html'
   a.click()

@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import PasswordInput from '@/components/ui/PasswordInput'
 import { getDashboardMetrics } from '@/services/dashboardService'
 import ModalPago from '../../features/pagos/ModalPago'
 import { procesarVentaService, getDailyIncome, getIncomeByCategory } from '../../services/ventaService'
@@ -17,7 +18,7 @@ import { useClasesStore }    from '@/stores/clasesStore'
 import { useReservasStore }  from '@/stores/reservasStore'
 import { usePaquetesStore }  from '@/stores/paquetesStore'
 import { useUsuariosStore }  from '@/stores/usuariosStore'
-import { reservarClase as reservarClaseService, cancelarReserva as cancelarReservaService } from '@/services/reservasService'
+import { reservarClase as reservarClaseService, cancelarReserva as cancelarReservaService, eliminarClaseConReservas } from '@/services/reservasService'
 import { borrarCoachService } from '@/services/coachesService'
 import { useDisciplinasStore } from '@/stores/disciplinasStore'
 import SeatSelector from '@/features/clases/SeatSelector'
@@ -78,6 +79,7 @@ function Tag({ color, children }) {
     yellow: styles.tagYellow,
     blue:   styles.tagBlue,
     pink:   styles.tagPink,
+    gray:   styles.tagGray,
   }[color] || styles.tagGreen
   return <span className={`${styles.miniTag} ${cls}`}>{children}</span>
 }
@@ -117,7 +119,7 @@ export default function AdminPanel() {
   const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
   const { productos, agregarProducto,
           editarProducto, eliminarProducto }               = useProductosStore()
-  const { clases, reservas, agregarClase, editarClase, eliminarClase } = useClasesStore()
+  const { clases, agregarClase, editarClase } = useClasesStore()
   const { reservas: todasReservas, getReservasByClase } = useReservasStore()
   const { paquetes, agregarPaquete, editarPaquete, eliminarPaquete, marcarDestacado } = usePaquetesStore()
   const { usuarios, agregarUsuario, editarUsuario, eliminarUsuario } = useUsuariosStore()
@@ -195,7 +197,7 @@ export default function AdminPanel() {
   const [modalHorarioCoach, setModalHorarioCoach] = useState(null)
 
   // Coach form
-  const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: '', email: '', telefono: '', bio: '', estado: 'activo' })
+  const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo' })
   // Clase form — publicarEn: ISO datetime string o '' (publicar inmediatamente)
   //              fecha:      YYYY-MM-DD o '' (si vacío → clase recurrente cada semana)
   const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
@@ -212,7 +214,7 @@ export default function AdminPanel() {
   const [modalEditClase,  setModalEditClase]  = useState(null)  // clase | null
   const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
   // Paquete form (crear)
-  const [paqueteForm, setPaqueteForm] = useState({ nombre: '', tipo: 'mensual', numClases: '', precio: '', vigencia: '', descripcion: '', destacado: false })
+  const [paqueteForm, setPaqueteForm] = useState({ nombre: '', tipo: 'clases', numClases: '', precio: '', vigencia: '', descripcion: '', destacado: false })
   // Paquete — editar
   const [modalEditPaquete, setModalEditPaquete] = useState(null)
   const [editPaqueteForm,  setEditPaqueteForm]  = useState({ nombre: '', precio: '', clases: '', vigencia: '', categoria: 'mensual', destacado: false, beneficios: [] })
@@ -224,6 +226,7 @@ export default function AdminPanel() {
   // Usuario — asignar paquete desde modal Ver
   const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
   const [compartirAdminData, setCompartirAdminData] = useState({ activo: false, participantes: [] })
+  const [cederClaseUserId, setCederClaseUserId] = useState('')
   // Asignación pendiente de pago: se aplica al procesar la venta en POS
   const [pendingAsignacion, setPendingAsignacion] = useState(null)
   // null | { userId, userName, paqSel, fechaVencimiento, metodoPago }
@@ -744,13 +747,11 @@ export default function AdminPanel() {
                           className={styles.coachBtn}
                           onClick={() => {
                             setModalEditCoach(c)
-                            const parts = (c.especialidad || '').split(' · ')
-                            const disc  = disciplinas.includes(parts[0]) ? parts[0] : ''
-                            const esp   = disc ? parts.slice(1).join(' · ') : (c.especialidad || '')
+                            const disc = ['Stryde X','Slow','Ambas'].includes(c.especialidad) ? c.especialidad : 'Stryde X'
                             setEditCoachForm({
                               nombre:       c.nombre,
                               disciplina:   disc,
-                              especialidad: esp,
+                              especialidad: '',
                               email:        c.email || '',
                               telefono:     c.telefono || '',
                               bio:          c.bio || '',
@@ -815,7 +816,7 @@ export default function AdminPanel() {
                     style={{ background: '#ef4444', borderColor: '#ef4444' }}
                     onClick={() => {
                       if (!window.confirm(`¿Eliminar ${selectedIds.size} clase${selectedIds.size > 1 ? 's' : ''}?`)) return
-                      selectedIds.forEach(id => eliminarClase(id))
+                      selectedIds.forEach(id => eliminarClaseConReservas(id))
                       toast.success(`${selectedIds.size} clase${selectedIds.size > 1 ? 's eliminadas' : ' eliminada'}`)
                       setSelectedIds(new Set())
                       setSelectMode(false)
@@ -888,8 +889,15 @@ export default function AdminPanel() {
                     )
                 ).map((c) => {
                   const pct          = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
-                  const statusTag    = pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
-                  const statusLabel  = pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
+                  const isPasada = (() => {
+                    if (!c.fecha) return false
+                    const [h, m] = (c.hora || '00:00').split(':').map(Number)
+                    const fin = new Date(c.fecha + 'T00:00:00')
+                    fin.setHours(h + Math.floor((c.duracion || 50) / 60), m + (c.duracion || 50) % 60)
+                    return fin < new Date()
+                  })()
+                  const statusTag    = isPasada ? 'gray' : pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
+                  const statusLabel  = isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
                   const isProgramada = c.publicarEn && new Date(c.publicarEn) > new Date()
                   const isSelected  = selectedIds.has(c.id)
                   return (
@@ -924,6 +932,7 @@ export default function AdminPanel() {
                         <span style={{ fontSize: 9 }}>{ABBR_DIA[c.dia] || c.dia}</span>
                         <span className={styles.dayNum}>
                           {(() => {
+                            if (c.fecha) return new Date(c.fecha + 'T12:00:00').getDate()
                             const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(c.dia)
                             const hoy = new Date()
                             const diff = idx - hoy.getDay()
@@ -989,7 +998,7 @@ export default function AdminPanel() {
                           style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
                           onClick={() => {
                             if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
-                            eliminarClase(c.id)
+                            eliminarClaseConReservas(c.id)
                             toast.success('Clase eliminada')
                           }}
                         >
@@ -1068,43 +1077,54 @@ export default function AdminPanel() {
             <div className={styles.card}>
               <div className={styles.cardHeader}>
                 <div className={styles.cardTitle}>Historial de ventas de paquetes</div>
-                <button className={`${styles.btn} ${styles.btnGhost}`} style={{ fontSize: 12 }}>📥 Exportar</button>
+                <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Descarga disponible en Reportes</span>
               </div>
               <div className={styles.tableWrap}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Usuario</th><th>Paquete</th><th>Fecha compra</th>
-                      <th>Vencimiento</th><th>Clases rest.</th><th>Monto</th><th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Sofía Reyes</td><td>Mensual</td><td>01 Abr 2026</td>
-                      <td>30 Abr 2026</td><td>—</td>
-                      <td className={styles.mono}>$1,200</td>
-                      <td><Tag color="green">Activo</Tag></td>
-                    </tr>
-                    <tr>
-                      <td>Ana Torres</td><td>10 clases</td><td>15 Mar 2026</td>
-                      <td>14 May 2026</td><td>3</td>
-                      <td className={styles.mono}>$850</td>
-                      <td><Tag color="yellow">Casi agotado</Tag></td>
-                    </tr>
-                    <tr>
-                      <td>Lucía Mendoza</td><td>Mensual</td><td>01 Abr 2026</td>
-                      <td>30 Abr 2026</td><td>—</td>
-                      <td className={styles.mono}>$1,200</td>
-                      <td><Tag color="green">Activo</Tag></td>
-                    </tr>
-                    <tr>
-                      <td>Paula González</td><td>Por clase</td><td>25 Abr 2026</td>
-                      <td>—</td><td>0</td>
-                      <td className={styles.mono}>$120</td>
-                      <td><Tag color="blue">Usada</Tag></td>
-                    </tr>
-                  </tbody>
-                </table>
+                {(() => {
+                  const ventasPaq = transacciones
+                    .filter(tx => tx.tipo === 'paquete')
+                    .slice().reverse()
+                  if (ventasPaq.length === 0) return (
+                    <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13, fontFamily: 'var(--font-body)' }}>
+                      No hay ventas de paquetes registradas.
+                    </div>
+                  )
+                  return (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Usuario</th><th>Paquete</th><th>Fecha compra</th>
+                          <th>Vencimiento</th><th>Clases rest.</th><th>Monto</th><th>Método</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ventasPaq.map((tx, i) => {
+                          const usuario = usuarios.find(u => u.id === tx.userId)
+                          const paqInfo = paquetes.find(p => tx.concepto?.includes(p.nombre))
+                          const vencimiento = (() => {
+                            if (!tx.fecha || !paqInfo?.vigencia) return '—'
+                            const dias = parseInt(paqInfo.vigencia) || 30
+                            const d = new Date(tx.fecha + 'T00:00:00')
+                            d.setDate(d.getDate() + dias)
+                            return d.toISOString().split('T')[0]
+                          })()
+                          const clasesRest = usuario?.clasesPaquete ?? '—'
+                          return (
+                            <tr key={i}>
+                              <td>{usuario?.nombre ?? tx.userId ?? '—'}</td>
+                              <td>{tx.concepto ?? '—'}</td>
+                              <td>{tx.fecha ?? '—'}</td>
+                              <td>{vencimiento}</td>
+                              <td>{clasesRest}</td>
+                              <td className={styles.mono}>{tx.monto}</td>
+                              <td>{tx.metodoPago ?? '—'}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )
+                })()}
               </div>
             </div>
           </section>
@@ -1395,11 +1415,20 @@ export default function AdminPanel() {
                             </td>
                             <td>{u.paquete || '—'}</td>
                             <td>{restantes}</td>
-                            <td>{u.paqueteInfo?.fechaVencimiento || '—'}</td>
+                            <td>{(() => {
+                              if (u.paqueteInfo?.fechaVencimiento) return u.paqueteInfo.fechaVencimiento
+                              if (!u.paqueteInfo?.fechaCompra || !u.paquete) return '—'
+                              const paq = paquetes.find(p => p.nombre === u.paquete)
+                              if (!paq?.vigencia) return '—'
+                              const dias = parseInt(paq.vigencia) || 30
+                              const d = new Date(u.paqueteInfo.fechaCompra + 'T00:00:00')
+                              d.setDate(d.getDate() + dias)
+                              return d.toISOString().split('T')[0]
+                            })()}</td>
                             <td>—</td>
                             <td className={styles.mono}>—</td>
                             <td><Tag color={tag}>{label}</Tag></td>
-                            <td>{!userSelectMode && <button className={styles.coachBtn} style={{ width: 60 }} onClick={() => { setModalVerUsuario(u); setAsignarPaqueteForm({ paqueteNombre: u.paquete || '', metodoPago: 'efectivo' }); setEditNotas(u.notas || '') }}>Ver</button>}</td>
+                            <td>{!userSelectMode && <button className={styles.coachBtn} style={{ width: 60 }} onClick={() => { setModalVerUsuario(u); setAsignarPaqueteForm({ paqueteNombre: u.paquete || '', metodoPago: 'efectivo' }); setEditNotas(u.notas || ''); setCederClaseUserId('') }}>Ver</button>}</td>
                           </tr>
                         )
                       })}
@@ -1477,23 +1506,12 @@ export default function AdminPanel() {
                 </select>
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Especialidad</label>
-                <input className={styles.formInput} placeholder="Ej: Stride · Funcional" value={coachForm.especialidad}
-                  onChange={e => setCoachForm(f => ({ ...f, especialidad: e.target.value }))} />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  Disciplina principal
-                  <button
-                    type="button"
-                    style={{ fontSize: 10, color: 'rgba(232,164,173,0.7)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                    onClick={() => setModalDisciplinas(true)}
-                  >Gestionar lista</button>
-                </label>
+                <label className={styles.formLabel}>Disciplina</label>
                 <select className={styles.formSelect} value={coachForm.disciplina}
                   onChange={e => setCoachForm(f => ({ ...f, disciplina: e.target.value }))}>
-                  <option value="">Seleccionar…</option>
-                  {disciplinas.map((d) => <option key={d}>{d}</option>)}
+                  <option value="Stryde X">Stryde X</option>
+                  <option value="Slow">Slow</option>
+                  <option value="Ambas">Ambas</option>
                 </select>
               </div>
               <div className={styles.formGroup}>
@@ -1509,9 +1527,8 @@ export default function AdminPanel() {
 
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Contraseña inicial</label>
-                <input
+                <PasswordInput
                   className={styles.formInput}
-                  type="password"
                   placeholder="Por defecto: 123456"
                   value={coachForm.password || ''}
                   onChange={e => setCoachForm(f => ({ ...f, password: e.target.value }))} />
@@ -1530,18 +1547,17 @@ export default function AdminPanel() {
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={async () => {
                   if (!coachForm.nombre.trim()) return
-                  const spec = [coachForm.disciplina, coachForm.especialidad].filter(Boolean).join(' · ') || 'Stryde X'
                   const resultado = await crearCoachService({
                     nombre:       coachForm.nombre,
                     email:        coachForm.email,
                     password:     coachForm.password || '123456',
-                    especialidad: spec,
+                    especialidad: coachForm.disciplina || 'Stryde X',
                     bio:          coachForm.bio,
-                     foto:         coachFotoPath || null,
+                    foto:         coachFotoPath || null,
                   })
                   if (resultado.ok) {
                   toast.success(`${coachForm.nombre} agregado`)
-                  setCoachForm({ nombre: '', especialidad: '', disciplina: '', email: '', telefono: '', bio: '', estado: 'activo', password: '' })
+                  setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '' })
                   setCoachFotoPreview(null)
                   setCoachFotoPath(null)
                   closeModal()
@@ -1582,7 +1598,13 @@ export default function AdminPanel() {
                 <select className={styles.formSelect} value={claseForm.coach}
                   onChange={e => setClaseForm(f => ({ ...f, coach: e.target.value }))}>
                   <option value="">Seleccionar coach…</option>
-                  {coaches.filter(c => c.activo !== false).map(c => (
+                  {coaches.filter(c => {
+                    if (c.activo === false) return false
+                    const esp = c.especialidad
+                    if (!esp || esp === 'Ambas') return true
+                    const claseEsSlow = claseForm.tipo?.toLowerCase().includes('slow')
+                    return claseEsSlow ? esp.toLowerCase().includes('slow') : !esp.toLowerCase().includes('slow')
+                  }).map(c => (
                     <option key={c.id} value={c.nombre}>{c.nombre}</option>
                   ))}
                 </select>
@@ -1724,7 +1746,6 @@ export default function AdminPanel() {
                 <label className={styles.formLabel}>Tipo</label>
                 <select className={styles.formSelect} value={paqueteForm.tipo}
                   onChange={e => setPaqueteForm(f => ({ ...f, tipo: e.target.value }))}>
-                  <option value="mensual">Mensual (ilimitado)</option>
                   <option value="clases">Paquete de clases</option>
                   <option value="individual">Por clase individual</option>
                 </select>
@@ -1797,18 +1818,8 @@ export default function AdminPanel() {
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Nombre completo</label>
-                <input className={styles.formInput} placeholder="Ej: Sofía Reyes" value={usuarioForm.nombre}
+                <input className={styles.formInput} autoComplete="name" placeholder="Ej: Sofía Reyes" value={usuarioForm.nombre}
                   onChange={e => setUsuarioForm(f => ({ ...f, nombre: e.target.value }))} />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Email</label>
-                <input className={styles.formInput} type="email" placeholder="sofia@email.com" value={usuarioForm.email}
-                  onChange={e => setUsuarioForm(f => ({ ...f, email: e.target.value }))} />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Teléfono</label>
-                <input className={styles.formInput} type="tel" placeholder="+52 55 0000 0000" value={usuarioForm.telefono}
-                  onChange={e => setUsuarioForm(f => ({ ...f, telefono: e.target.value }))} />
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Fecha de nacimiento</label>
@@ -1816,9 +1827,19 @@ export default function AdminPanel() {
                   onChange={e => setUsuarioForm(f => ({ ...f, nacimiento: e.target.value }))} />
               </div>
               <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Email</label>
+                <input className={styles.formInput} type="email" autoComplete="off" placeholder="sofia@email.com" value={usuarioForm.email}
+                  onChange={e => setUsuarioForm(f => ({ ...f, email: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Contraseña temporal</label>
-                <input className={styles.formInput} type="password" placeholder="Mínimo 8 caracteres" value={usuarioForm.password}
+                <PasswordInput className={styles.formInput} autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={usuarioForm.password}
                   onChange={e => setUsuarioForm(f => ({ ...f, password: e.target.value }))} />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Teléfono</label>
+                <input className={styles.formInput} type="tel" autoComplete="tel" placeholder="+52 55 0000 0000" value={usuarioForm.telefono}
+                  onChange={e => setUsuarioForm(f => ({ ...f, telefono: e.target.value }))} />
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Paquete inicial</label>
@@ -1867,6 +1888,7 @@ export default function AdminPanel() {
                   const nuevoUsuario = agregarUsuario({
                     nombre:          usuarioForm.nombre,
                     email:           usuarioForm.email,
+                    password:        usuarioForm.password,
                     telefono:        usuarioForm.telefono,
                     fechaNacimiento: usuarioForm.nacimiento,
                     rol:             'cliente',
@@ -1875,6 +1897,7 @@ export default function AdminPanel() {
                     clasesPaquete:   0,
                     paqueteInfo:     null,
                     notas:           usuarioForm.notas,
+                    fechaRegistro:   new Date().toISOString().split('T')[0],
                   })
                   toast.success(`${usuarioForm.nombre} dado de alta`)
                   if (paqSel) {
@@ -2003,31 +2026,16 @@ export default function AdminPanel() {
                 />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  Disciplina principal
-                  <button
-                    type="button"
-                    style={{ fontSize: 10, color: 'rgba(232,164,173,0.7)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                    onClick={() => setModalDisciplinas(true)}
-                  >Gestionar lista</button>
-                </label>
+                <label className={styles.formLabel}>Disciplina</label>
                 <select
                   className={styles.formSelect}
                   value={editCoachForm.disciplina}
                   onChange={(e) => setEditCoachForm((f) => ({ ...f, disciplina: e.target.value }))}
                 >
-                  <option value="">Seleccionar…</option>
-                  {disciplinas.map((d) => <option key={d}>{d}</option>)}
+                  <option value="Stryde X">Stryde X</option>
+                  <option value="Slow">Slow</option>
+                  <option value="Ambas">Ambas</option>
                 </select>
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Especialidad / descripción</label>
-                <input
-                  className={styles.formInput}
-                  placeholder="Ej: Funcional · Hiit"
-                  value={editCoachForm.especialidad}
-                  onChange={(e) => setEditCoachForm((f) => ({ ...f, especialidad: e.target.value }))}
-                />
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Teléfono</label>
@@ -2069,10 +2077,9 @@ export default function AdminPanel() {
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={() => {
                   if (!editCoachForm.nombre.trim()) return
-                  const spec = [editCoachForm.disciplina, editCoachForm.especialidad].filter(Boolean).join(' · ') || 'Stryde X'
                   editarCoach(modalEditCoach.id, {
                     nombre:       editCoachForm.nombre,
-                    especialidad: spec,
+                    especialidad: editCoachForm.disciplina || 'Stryde X',
                     bio:          editCoachForm.bio,
                     email:        editCoachForm.email,
                     telefono:     editCoachForm.telefono,
@@ -2130,7 +2137,13 @@ export default function AdminPanel() {
                 <select className={styles.formSelect} value={editClaseForm.coach}
                   onChange={e => setEditClaseForm(f => ({ ...f, coach: e.target.value }))}>
                   <option value="">Sin asignar</option>
-                  {coaches.filter(c => c.activo !== false).map(c => (
+                  {coaches.filter(c => {
+                    if (c.activo === false) return false
+                    const esp = c.especialidad
+                    if (!esp || esp === 'Ambas') return true
+                    const claseEsSlow = editClaseForm.tipo?.toLowerCase().includes('slow')
+                    return claseEsSlow ? esp.toLowerCase().includes('slow') : !esp.toLowerCase().includes('slow')
+                  }).map(c => (
                     <option key={c.id} value={c.nombre}>{c.nombre}</option>
                   ))}
                 </select>
@@ -2306,7 +2319,7 @@ export default function AdminPanel() {
             className={`${styles.modalOverlay} ${styles.open}`}
             onClick={e => { if (e.target === e.currentTarget) setModalAlumnosClase(null) }}
           >
-            <div className={styles.modal} style={{ maxWidth: 520 }}>
+            <div className={styles.modal} style={{ maxWidth: 640, width: '90vw', maxHeight: '85vh', overflowY: 'auto' }}>
               <div className={styles.modalHeader}>
                 <div>
                   <div className={styles.modalTitle}>Alumnos — {cls.nombre}</div>
@@ -2607,7 +2620,7 @@ export default function AdminPanel() {
       {/* ── VER USUARIO ── */}
       {modalVerUsuario && (() => {
         const u = modalVerUsuario
-        const reservasU = reservas.filter(r => String(r.userId) === String(u.id))
+        const reservasU = todasReservas.filter(r => String(r.userId) === String(u.id))
         const paqActivo = paquetes.find(p => p.nombre === u.paquete)
         const restantes = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
         const tag   = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
@@ -2642,14 +2655,25 @@ export default function AdminPanel() {
                 <div style={{ marginBottom: 24 }}>
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>Datos del cliente</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px' }}>
-                    {[
-                      { label: 'Teléfono',        val: u.telefono || '—' },
-                      { label: 'Nacimiento',       val: u.fechaNacimiento || '—' },
-                      { label: 'Paquete activo',   val: u.paquete || 'Sin paquete' },
-                      { label: 'Clases restantes', val: String(restantes) },
-                      { label: 'Vencimiento',      val: u.paqueteInfo?.fechaVencimiento || '—' },
-                      { label: 'Miembro desde',    val: u.paqueteInfo?.fechaCompra || '—' },
-                    ].map(({ label, val }) => (
+                    {(() => {
+                      const paqActivo = paquetes.find(p => p.nombre === u.paquete)
+                      const vencimientoDisplay = (() => {
+                        if (u.paqueteInfo?.fechaVencimiento) return u.paqueteInfo.fechaVencimiento
+                        if (!u.paqueteInfo?.fechaCompra || !paqActivo?.vigencia) return '—'
+                        const dias = parseInt(paqActivo.vigencia) || 30
+                        const d = new Date(u.paqueteInfo.fechaCompra + 'T00:00:00')
+                        d.setDate(d.getDate() + dias)
+                        return d.toISOString().split('T')[0]
+                      })()
+                      return [
+                        { label: 'Teléfono',        val: u.telefono || '—' },
+                        { label: 'Nacimiento',       val: u.fechaNacimiento || '—' },
+                        { label: 'Paquete activo',   val: u.paquete || 'Sin paquete' },
+                        { label: 'Clases restantes', val: String(restantes) },
+                        { label: 'Fecha de compra',  val: u.paqueteInfo?.fechaCompra || '—' },
+                        { label: 'Vencimiento',      val: vencimientoDisplay },
+                      ]
+                    })().map(({ label, val }) => (
                       <div key={label} style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid var(--muted-2)' }}>
                         <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{label}</div>
                         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', fontFamily: 'var(--font-body)', fontWeight: 500 }}>{val}</div>
@@ -2764,16 +2788,59 @@ export default function AdminPanel() {
                     </button>
                   </div>
 
-                  {/* Compartir paquete */}
-                  {asignarPaqueteForm.paqueteNombre && (
+                  {/* Compartir paquete — comentado, pendiente de implementación futura */}
+                  {/* {asignarPaqueteForm.paqueteNombre && (
                     <CompartirPaquete
                       paquete={paquetes.find(p => p.nombre === asignarPaqueteForm.paqueteNombre)}
                       usuarioActualId={u.id}
                       variant="dark"
                       onChange={setCompartirAdminData}
                     />
-                  )}
+                  )} */}
                 </div>
+
+                {/* ── CEDER CLASE ── */}
+                {u.paquete && (u.clasesPaquete ?? 0) > 0 && (
+                  <div style={{ marginBottom: 24, padding: '16px 18px', background: 'rgba(123,30,34,0.08)', borderRadius: 10, border: '1px solid rgba(123,30,34,0.2)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>
+                      Ceder clase a otro usuario
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'var(--font-body)', marginBottom: 10 }}>
+                      Descuenta 1 clase de <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{u.nombre}</strong> ({u.clasesPaquete} disponibles) y se la asigna al usuario seleccionado.
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <select
+                        className={styles.formSelect}
+                        style={{ flex: 1 }}
+                        value={cederClaseUserId}
+                        onChange={e => setCederClaseUserId(e.target.value)}
+                      >
+                        <option value="">Seleccionar beneficiario…</option>
+                        {usuarios.filter(c => c.id !== u.id).map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.nombre ?? c.name} {c.paquete ? `— ${c.clasesPaquete ?? 0} clases` : '(sin paquete)'}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className={`${styles.btn} ${styles.btnPrimary}`}
+                        style={{ whiteSpace: 'nowrap' }}
+                        disabled={!cederClaseUserId}
+                        onClick={() => {
+                          const beneficiario = usuarios.find(c => String(c.id) === String(cederClaseUserId))
+                          if (!beneficiario) return
+                          editarUsuario(u.id, { clasesPaquete: (u.clasesPaquete ?? 0) - 1 })
+                          editarUsuario(beneficiario.id, { clasesPaquete: (beneficiario.clasesPaquete ?? 0) + 1 })
+                          setModalVerUsuario(prev => ({ ...prev, clasesPaquete: (prev.clasesPaquete ?? 0) - 1 }))
+                          setCederClaseUserId('')
+                          toast.success(`✅ 1 clase cedida a ${beneficiario.nombre ?? beneficiario.name}`)
+                        }}
+                      >
+                        Ceder 1 clase
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* ── HISTORIAL DE RESERVAS ── */}
                 <div>

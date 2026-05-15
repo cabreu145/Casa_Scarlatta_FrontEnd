@@ -14,6 +14,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { useAuthStore }   from '@/stores/authStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import { mockUsers } from '@/data/mockUsers'
+import { hoyLocal } from '@/utils/fecha'
 
 const AuthContext = createContext(null)
 
@@ -49,7 +50,8 @@ export function AuthProvider({ children }) {
   const register = async (datos) => {
     setLocalLoading(true)
     await new Promise((r) => setTimeout(r, 600))
-    const existe = mockUsers.find((u) => u.email === datos.email)
+    const storeUsuariosCheck = useUsuariosStore.getState().usuarios
+    const existe = storeUsuariosCheck.find((u) => u.email === datos.email)
     if (existe) {
       setLocalLoading(false)
       throw new Error('Este correo ya está registrado')
@@ -62,7 +64,7 @@ export function AuthProvider({ children }) {
       clasesPaqueteTotal: 0,
       paquete: null,
       activo: true,
-      fechaRegistro: new Date().toISOString().split('T')[0],
+      fechaRegistro: hoyLocal(),
     }
     mockUsers.push(nuevoUsuario)
     useUsuariosStore.getState().agregarUsuario(nuevoUsuario)
@@ -70,6 +72,21 @@ export function AuthProvider({ children }) {
     setUsuario(safeUser)
     setLocalLoading(false)
     return safeUser
+  }
+
+  const resetPassword = async (email, newPassword) => {
+    setLocalLoading(true)
+    await new Promise((r) => setTimeout(r, 600))
+    const { usuarios, actualizarUsuario } = useUsuariosStore.getState()
+    const mu = mockUsers.find((u) => u.email === email)
+    const su = usuarios.find((u) => u.email === email)
+    if (!mu && !su) {
+      setLocalLoading(false)
+      throw new Error('No existe una cuenta con ese correo')
+    }
+    if (mu) mu.password = newPassword
+    if (su) actualizarUsuario(su.id, { password: newPassword })
+    setLocalLoading(false)
   }
 
   const logout = () => {
@@ -85,6 +102,7 @@ export function AuthProvider({ children }) {
         login,
         logout,
         register,
+        resetPassword,
         actualizarPerfil,
         actualizarClasesPaquete,
       }}

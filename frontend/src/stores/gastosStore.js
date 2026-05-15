@@ -16,6 +16,7 @@
  */
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { hoyLocal } from '@/utils/fecha'
 
 export const TIPOS_GASTO = {
   OPERATIVO:  'operativo',
@@ -44,7 +45,7 @@ export const useGastosStore = create(
         const nuevo = {
           ...datos,
           id:    `gasto-${Date.now()}`,
-          fecha: new Date().toISOString().split('T')[0],
+          fecha: hoyLocal(),
           hora:  new Date().toTimeString().slice(0, 5),
         }
         set(state => ({ gastos: [...state.gastos, nuevo] }))
@@ -68,8 +69,8 @@ export const useGastosStore = create(
        * // [BACKEND] → GET /api/gastos?rango=mes
        */
       getGastosByRango: (rango) => {
-        const hoy    = new Date().toISOString().split('T')[0]
-        const semana = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        const hoy    = hoyLocal()
+        const semana = hoyLocal(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
         const mes    = hoy.slice(0, 7) // 'YYYY-MM'
         return get().gastos.filter(g => {
           const f = g.fecha ?? ''

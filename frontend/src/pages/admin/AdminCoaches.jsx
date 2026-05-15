@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X, Calendar } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
+import PasswordInput from '@/components/ui/PasswordInput'
 import { adminLinks } from './AdminDashboard'
 import { useCoachesStore }      from '@/stores/coachesStore'
 import { useClasesStore }       from '@/stores/clasesStore'
@@ -17,6 +18,8 @@ import styles    from '@/styles/dashboard.module.css'
 import localStyles from './AdminCoaches.module.css'
 
 // ESPECIALIDADES ya viene del disciplinasStore (dinámico)
+
+const DISCIPLINAS = ['Stryde X', 'Slow', 'Ambas']
 
 const FORM_VACIO = {
   nombre:       '',
@@ -55,7 +58,6 @@ async function subirFoto(file, setPreview, setFotoEnForm) {
 // ── Modal crear coach ─────────────────────────────────────────────────────────
 
 function ModalCrear({ onClose }) {
-  const { disciplinas } = useDisciplinasStore()
   const [formData,    setFormData]    = useState(FORM_VACIO)
   const [fotoPreview, setFotoPreview] = useState(null)
   const [guardando,   setGuardando]   = useState(false)
@@ -166,18 +168,16 @@ function ModalCrear({ onClose }) {
             </div>
             <div className={`${styles.field} ${styles.fieldFull}`}>
               <label>Contraseña inicial</label>
-              <input
-                type="password"
+              <PasswordInput
                 value={formData.password}
                 onChange={setField('password')}
                 placeholder="Por defecto: 123456"
               />
             </div>
             <div className={styles.field}>
-              <label>Especialidad / Disciplina</label>
+              <label>Disciplina</label>
               <select value={formData.especialidad} onChange={setField('especialidad')}>
-                <option value="">Seleccionar…</option>
-                {disciplinas.map((e) => <option key={e} value={e}>{e}</option>)}
+                {DISCIPLINAS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div className={`${styles.field} ${styles.fieldFull}`}>
@@ -218,7 +218,6 @@ function ModalCrear({ onClose }) {
 // ── Modal editar coach ────────────────────────────────────────────────────────
 
 function ModalEditar({ coach, onClose }) {
-  const { disciplinas } = useDisciplinasStore()
   const [formData,    setFormData]    = useState({
     nombre:       coach.nombre,
     especialidad: coach.especialidad || '',
@@ -329,10 +328,9 @@ function ModalEditar({ coach, onClose }) {
               />
             </div>
             <div className={styles.field}>
-              <label>Especialidad / Disciplina</label>
+              <label>Disciplina</label>
               <select value={formData.especialidad} onChange={setField('especialidad')}>
-                <option value="">Seleccionar…</option>
-                {disciplinas.map((e) => <option key={e} value={e}>{e}</option>)}
+                {DISCIPLINAS.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div className={`${styles.field} ${styles.fieldFull}`}>
@@ -534,9 +532,10 @@ export default function AdminCoaches() {
   )
 
   const espBadge = {
-    Stride: styles.badgeStride,
-    Slow:   styles.badgeSlow,
-    Ambas:  styles.badgeCompletada,
+    'Stryde X': styles.badgeStride,
+    Stride:     styles.badgeStride,
+    Slow:       styles.badgeSlow,
+    Ambas:      styles.badgeCompletada,
   }
 
   return (

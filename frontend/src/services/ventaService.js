@@ -17,6 +17,7 @@ import { useTransaccionesStore }  from '../stores/transaccionesStore'
 import { useUsuariosStore }       from '../stores/usuariosStore'
 import { useNotificacionesStore } from '../stores/notificacionesStore'
 import { TIPOS_TRANSACCION }      from '../data/mockData'
+import { hoyLocal, fechaLocal }   from '../utils/fecha'
 
 /**
  * Procesa una venta completa del POS.
@@ -77,7 +78,7 @@ export async function procesarVentaService({
       cambio,
       userId:      pendingAsignacion?.userId ?? null,
       adminId,
-      fecha:       ahora.toISOString().split('T')[0],
+      fecha:       fechaLocal(ahora),
       hora:        ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }),
       canal:       'recepción',
       origen:      'pdv',
@@ -94,7 +95,7 @@ export async function procesarVentaService({
         tipo:    'paquete',
         titulo:  'Paquete activado',
         mensaje: `${paqSel.nombre} activado para ${userName} — vía POS.`,
-        fecha:   new Date().toISOString().split('T')[0],
+        fecha:   hoyLocal(),
       })
     }
 
@@ -116,7 +117,7 @@ export async function procesarVentaService({
  */
 export function getDailyIncome() {
   const { transacciones } = useTransaccionesStore.getState()
-  const hoy = new Date().toISOString().split('T')[0] // 'YYYY-MM-DD' — evita problemas de zona horaria
+  const hoy = hoyLocal()
 
   const txHoy = transacciones.filter(tx => tx.fecha === hoy)
 
@@ -141,9 +142,9 @@ export function getDailyIncome() {
  */
 export function getIncomeByCategory(rango = 'mes') {
   const { transacciones } = useTransaccionesStore.getState()
-  const hoy    = new Date().toISOString().split('T')[0]  // 'YYYY-MM-DD'
-  const semana = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  const mes    = hoy.slice(0, 7) // 'YYYY-MM'
+  const hoy    = hoyLocal()
+  const semana = hoyLocal(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+  const mes    = hoy.slice(0, 7)
 
   const txFiltradas = transacciones.filter(tx => {
     const f = tx.fecha ?? ''

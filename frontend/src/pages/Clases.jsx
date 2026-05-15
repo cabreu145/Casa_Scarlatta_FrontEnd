@@ -16,8 +16,10 @@ import ClassTypeFilter from '@/features/clases/ClassTypeFilter'
 import SeatSelector from '@/features/clases/SeatSelector'
 import { useClasesStore }   from '@/stores/clasesStore'
 import { useCoachesStore }  from '@/stores/coachesStore'
+import { useReservasStore } from '@/stores/reservasStore'
 import { useAuth } from '@/context/AuthContext'
 import { getPublicClassesByDate, getPublicAvailability } from '@/services/classService'
+import { cancelarReserva as cancelarReservaService } from '@/services/reservasService'
 import { ROUTES } from '@/constants/routes'
 import styles from './Clases.module.css'
 
@@ -69,6 +71,13 @@ function isSameDay(a, b) {
          a.getFullYear() === b.getFullYear()
 }
 
+function canCancelClass(date, hora) {
+  const [h, m] = hora.split(':').map(Number)
+  const classTime = new Date(date)
+  classTime.setHours(h, m, 0, 0)
+  return (classTime - new Date()) > 6 * 60 * 60 * 1000
+}
+
 function formatHour(time) {
   const [h, m] = time.split(':').map(Number)
   const suffix = h >= 12 ? 'p.m.' : 'a.m.'
@@ -80,7 +89,8 @@ function formatHour(time) {
 export default function Clases() {
   const { clases: allClasses } = useClasesStore()
   const { coaches }            = useCoachesStore()
-  const { isAuthenticated } = useAuth()
+  const { reservas } = useReservasStore()
+  const { isAuthenticated, usuario } = useAuth()
 
   const coachFotoByName = useMemo(
     () => Object.fromEntries(coaches.map((c) => [c.nombre, c.foto]).filter(([, f]) => f)),
@@ -101,6 +111,17 @@ export default function Clases() {
   // Uses slow-based detection: anything that doesn't contain 'slow' is Stryde.
   // This handles 'Stryde X', 'Slow', and any custom variant.
   const isSlow = (tipo) => tipo?.toLowerCase().includes('slow')
+
+  const dayHasClasses = useMemo(() =>
+    days.map((d) => {
+      const forDay = getPublicClassesByDate(allClasses, d)
+      return filter
+        ? forDay.some((c) => isSlow(filter) ? isSlow(c.tipo) : !isSlow(c.tipo))
+        : forDay.length > 0
+    }),
+    [days, allClasses, filter]
+  )
+
   const dayClasses = useMemo(() => {
     const forDay = getPublicClassesByDate(allClasses, selectedDate)
     return filter
@@ -167,6 +188,10 @@ export default function Clases() {
                 >
                   <span className={styles.dayAbbr}>{DAYS_ABBR[date.getDay()]}</span>
                   <span className={styles.dayNum}>{date.getDate()}</span>
+                  <span className={[
+                    styles.dayDot,
+                    dayHasClasses[i] ? styles.dayDotVisible : '',
+                  ].join(' ')} />
                 </button>
               )
             })}
@@ -200,6 +225,16 @@ export default function Clases() {
 
               const { bg, text } = avatarStyle(cls.coachNombre)
               const coachFoto   = coachFotoByName[cls.coachNombre] || null
+
+              const miReserva = isAuthenticated && usuario
+                ? reservas.find(r => r.claseId === cls.id && r.userId === usuario.id && r.estado === 'confirmada')
+                : null
+              const cancelAllowed = miReserva ? canCancelClass(selectedDate, cls.hora) : false
+              // selectedDate is a Date object — convert to ISO string before building datetime
+              const selectedDateISO = selectedDate instanceof Date
+                ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`
+                : selectedDate
+              const clasePasada = new Date(selectedDateISO + 'T' + cls.hora + ':00') <= new Date()
 
               return (
                 <div key={i} className={`${styles.classCard} ${isFull ? styles.classCardFull : ''}`}>
@@ -250,28 +285,49 @@ export default function Clases() {
 
                   {/* RIGHT — availability + button */}
                   <div className={styles.classActions}>
-                    {isFull ? (
+                    {!clasePasada && (isFull ? (
                       <span className={styles.fullTag}>LLENO</span>
                     ) : (
                       <span className={`${styles.availTag} ${isLow ? styles.availTagLow : styles.availTagOk}`}>
                         <span className={styles.availDot} />
                         {available} {available === 1 ? 'lugar' : 'lugares'}
                       </span>
+                    ))}
+                    {clasePasada ? (
+                      <span className={styles.cancelarVencido} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
+                        Clase finalizada
+                      </span>
+                    ) : miReserva ? (
+                      <div className={styles.reservadaWrap}>
+                        <span className={styles.reservadaBadge}>CONFIRMADA</span>
+                        {cancelAllowed ? (
+                          <button
+                            className={styles.cancelarBtn}
+                            onClick={() => cancelarReservaService(miReserva.id, usuario.id)}
+                          >
+                            Cancelar
+                          </button>
+                        ) : (
+                          <span className={styles.cancelarVencido}>Sin cancelación disponible</span>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        className={styles.reservarBtn}
+                        onClick={() => {
+                          if (isFull) return
+                          if (!isAuthenticated) {
+                            navigate(ROUTES.login, { state: { selectedClass: cls } })
+                            return
+                          }
+                          setSelectedClass(cls)
+                        }}
+                        disabled={isFull}
+                      >
+                        RESERVAR
+                      </button>
                     )}
-                    <button
-                      className={styles.reservarBtn}
-                      onClick={() => {
-                        if (isFull) return
-                        if (!isAuthenticated) {
-                          navigate(ROUTES.login, { state: { selectedClass: cls } })
-                          return
-                        }
-                        setSelectedClass(cls)
-                      }}
-                      disabled={isFull}
-                    >
-                      RESERVAR
-                    </button>
                   </div>
 
                 </div>
@@ -283,7 +339,7 @@ export default function Clases() {
 
       {/* ── Seat selector modal ── */}
       {selectedClass && (
-        <SeatSelector cls={selectedClass} onClose={() => setSelectedClass(null)} />
+        <SeatSelector cls={selectedClass} onClose={() => setSelectedClass(null)} fecha={selectedDate} />
       )}
 
     </main>

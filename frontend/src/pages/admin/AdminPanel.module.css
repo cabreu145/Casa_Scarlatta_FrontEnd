@@ -517,6 +517,7 @@
 .tagYellow { background: rgba(255,152,0,0.15); color: #FF9800; }
 .tagBlue { background: rgba(33,150,243,0.15); color: #2196F3; }
 .tagPink { background: rgba(232,164,173,0.2); color: var(--blush); }
+.tagGray { background: rgba(120,120,120,0.15); color: #888; }
 
 /* ── DONUT ─────────────────────────────────────────────────────────────────── */
 .donutWrap {

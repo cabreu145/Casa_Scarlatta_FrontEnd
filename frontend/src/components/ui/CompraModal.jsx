@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
+import { hoyLocal } from '@/utils/fecha'
 import styles from './CompraModal.module.css'
 
 export default function CompraModal({ paquete, compartido, partnerNombre, onClose }) {
@@ -27,7 +28,7 @@ export default function CompraModal({ paquete, compartido, partnerNombre, onClos
       clasesPaquete: clasesCompradas,
       clasesPaqueteTotal: clasesCompradas,
       paqueteInfo: {
-        fechaCompra: new Date().toISOString().split('T')[0],
+        fechaCompra: hoyLocal(),
         estado: 'Activo',
         tipo,
       },

@@ -19,6 +19,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { mockUsers } from '@/data/mockUsers'
+import { hoyLocal } from '@/utils/fecha'
 
 export const useUsuariosStore = create(
   persist(
@@ -73,7 +74,7 @@ export const useUsuariosStore = create(
         })),
 
       agregarUsuario: (nuevoUsuario) => {
-        const nuevo = { ...nuevoUsuario, id: Date.now() }
+        const nuevo = { ...nuevoUsuario, id: nuevoUsuario.id ?? Date.now() }
         set((state) => ({ usuarios: [...state.usuarios, nuevo] }))
         return nuevo
       },
@@ -94,7 +95,7 @@ export const useUsuariosStore = create(
                   clasesPaquete: clases,
                   clasesPaqueteTotal: clases,
                   paqueteInfo: {
-                    fechaCompra: new Date().toISOString().split('T')[0],
+                    fechaCompra: hoyLocal(),
                     estado: 'Activo',
                     tipo: 'Individual',
                   },

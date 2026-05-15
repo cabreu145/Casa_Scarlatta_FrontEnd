@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
+import PasswordInput from '@/components/ui/PasswordInput'
 import { adminLinks } from './AdminDashboard'
 import { useUsuariosStore }      from '@/stores/usuariosStore'
 import { usePaquetesStore }       from '@/stores/paquetesStore'
@@ -101,7 +102,7 @@ function RegistrarModal({ paquetes, onClose }) {
             </div>
             <div className={styles.field}>
               <label>Contraseña inicial</label>
-              <input type="password" value={form.password} onChange={set('password')} placeholder="Dejar vacío → '123456'" />
+              <PasswordInput value={form.password} onChange={set('password')} placeholder="Dejar vacío → '123456'" />
             </div>
             <div className={`${styles.field} ${styles.fieldFull}`}>
               <label>Paquete inicial</label>
