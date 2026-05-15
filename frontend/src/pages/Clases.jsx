@@ -21,6 +21,7 @@ import { useAuth } from '@/context/AuthContext'
 import { getPublicClassesByDate, getPublicAvailability } from '@/services/classService'
 import { cancelarReserva as cancelarReservaService } from '@/services/reservasService'
 import { ROUTES } from '@/constants/routes'
+import { getWeekDays, isSameDay, formatHour, getInitials, DAYS_ABBR, MONTHS_ES } from '@/utils/formatters'
 import styles from './Clases.module.css'
 
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
@@ -31,32 +32,12 @@ const AVATAR_COLORS = [
   { bg: 'rgba(92,16,24,0.13)', text: '#5C1018' },
 ]
 
-function getInitials(name) {
-  return name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
-}
-
 function avatarStyle(name) {
   const idx = name.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % AVATAR_COLORS.length
   return AVATAR_COLORS[idx]
 }
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
-const DAYS_ES   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
-const DAYS_ABBR = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB']
-const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-
-function getWeekDays(offset = 0) {
-  const today = new Date()
-  const dow   = today.getDay()
-  const start = new Date(today)
-  start.setDate(today.getDate() + (dow === 0 ? -6 : 1 - dow) + offset * 7)
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start)
-    d.setDate(start.getDate() + i)
-    return d
-  })
-}
 
 function getMonthLabel(days) {
   const a = days[0], b = days[days.length - 1]
@@ -65,24 +46,11 @@ function getMonthLabel(days) {
   return `${MONTHS_ES[a.getMonth()].toUpperCase()} – ${MONTHS_ES[b.getMonth()].toUpperCase()} ${b.getFullYear()}`
 }
 
-function isSameDay(a, b) {
-  return a.getDate()     === b.getDate()  &&
-         a.getMonth()    === b.getMonth() &&
-         a.getFullYear() === b.getFullYear()
-}
-
 function canCancelClass(date, hora) {
   const [h, m] = hora.split(':').map(Number)
   const classTime = new Date(date)
   classTime.setHours(h, m, 0, 0)
   return (classTime - new Date()) > 6 * 60 * 60 * 1000
-}
-
-function formatHour(time) {
-  const [h, m] = time.split(':').map(Number)
-  const suffix = h >= 12 ? 'p.m.' : 'a.m.'
-  const hr     = h > 12 ? h - 12 : h === 0 ? 12 : h
-  return `${hr}:${String(m || 0).padStart(2, '0')} ${suffix}`
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
