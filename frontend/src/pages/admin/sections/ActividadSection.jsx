@@ -2,19 +2,19 @@
  * ActividadSection.jsx
  * ─────────────────────────────────────────────────────
  * Sección de actividad del sistema para el admin.
- * Muestra todos los eventos con filtros y paginación.
+ * Muestra todos los eventos con filtros e infinite scroll.
  *
  * Filtros disponibles:
  * - Por tipo de evento
- * - Por fecha (hoy, semana, mes, rango)
+ * - Por fecha (DateNavigator modo libre)
  * - Por nombre de usuario
  * ─────────────────────────────────────────────────────
  */
 import { useState, useMemo } from 'react'
 import { useActividadStore, TIPO_LABELS, TIPO_ICONOS } from '@/stores/actividadStore'
+import DateNavigator from '@/components/ui/DateNavigator'
+import InfiniteList  from '@/components/ui/InfiniteList'
 import styles from '../AdminPanel.module.css'
-
-const EVENTOS_POR_PAGINA = 20
 
 const FILTROS_TIPO = [
   { value: 'todos',             label: 'Todos'        },
@@ -26,13 +26,6 @@ const FILTROS_TIPO = [
   { value: 'corte_caja',        label: 'Cortes'       },
   { value: 'clase_creada',      label: 'Clases'       },
   { value: 'coach_agregado',    label: 'Coaches'      },
-]
-
-const FILTROS_FECHA = [
-  { value: 'todos',  label: 'Todo'       },
-  { value: 'hoy',    label: 'Hoy'        },
-  { value: 'semana', label: 'Esta semana'},
-  { value: 'mes',    label: 'Este mes'   },
 ]
 
 function formatTimestamp(iso) {
@@ -49,10 +42,9 @@ function formatTimestamp(iso) {
 export default function ActividadSection() {
   const { eventos, limpiarEventos } = useActividadStore()
 
-  const [filtroTipo,    setFiltroTipo]    = useState('todos')
-  const [filtroFecha,   setFiltroFecha]   = useState('todos')
-  const [filtroUsuario, setFiltroUsuario] = useState('')
-  const [pagina,        setPagina]        = useState(1)
+  const [filtroTipo,       setFiltroTipo]       = useState('todos')
+  const [rangoFecha,       setRangoFecha]       = useState({ tipo: 'hoy' })
+  const [filtroUsuario,    setFiltroUsuario]    = useState('')
   const [confirmarLimpiar, setConfirmarLimpiar] = useState(false)
 
   const hoy    = new Date().toISOString().split('T')[0]
@@ -63,26 +55,17 @@ export default function ActividadSection() {
   const eventosFiltrados = useMemo(() => {
     return eventos.filter((e) => {
       if (filtroTipo !== 'todos' && e.tipo !== filtroTipo) return false
-      if (filtroFecha === 'hoy'    && e.fecha !== hoy)              return false
-      if (filtroFecha === 'semana' && e.fecha < semana)             return false
-      if (filtroFecha === 'mes'    && e.fecha.slice(0, 7) !== mes)  return false
+      if (rangoFecha.tipo === 'hoy'    && e.fecha !== hoy)              return false
+      if (rangoFecha.tipo === 'semana' && e.fecha < semana)             return false
+      if (rangoFecha.tipo === 'mes'    && e.fecha.slice(0, 7) !== mes)  return false
+      if (rangoFecha.tipo === 'fecha'  && e.fecha !== rangoFecha.fecha) return false
       if (filtroUsuario.trim()) {
         const q = filtroUsuario.toLowerCase()
         if (!e.usuarioNombre?.toLowerCase().includes(q)) return false
       }
       return true
     })
-  }, [eventos, filtroTipo, filtroFecha, filtroUsuario, hoy, semana, mes])
-
-  const totalPaginas  = Math.max(1, Math.ceil(eventosFiltrados.length / EVENTOS_POR_PAGINA))
-  const eventosPagina = eventosFiltrados.slice(
-    (pagina - 1) * EVENTOS_POR_PAGINA,
-    pagina * EVENTOS_POR_PAGINA
-  )
-
-  function cambiarFiltro(setter) {
-    return (val) => { setter(val); setPagina(1) }
-  }
+  }, [eventos, filtroTipo, rangoFecha, filtroUsuario, hoy, semana, mes])
 
   return (
     <div>
@@ -132,7 +115,7 @@ export default function ActividadSection() {
           {FILTROS_TIPO.map(({ value, label }) => (
             <button
               key={value}
-              onClick={() => cambiarFiltro(setFiltroTipo)(value)}
+              onClick={() => setFiltroTipo(value)}
               className={`${styles.filterChip}${filtroTipo === value ? ' ' + styles.active : ''}`}
             >
               {label}
@@ -142,22 +125,16 @@ export default function ActividadSection() {
 
         {/* Filtro por fecha + búsqueda de usuario */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {FILTROS_FECHA.map(({ value, label }) => (
-              <button
-                key={value}
-                onClick={() => cambiarFiltro(setFiltroFecha)(value)}
-                className={`${styles.filterChip}${filtroFecha === value ? ' ' + styles.active : ''}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <DateNavigator
+            modo="libre"
+            darkMode={true}
+            onChange={(rango) => setRangoFecha(rango)}
+          />
           <input
             className={styles.searchInput}
             placeholder="🔍 Buscar por usuario..."
             value={filtroUsuario}
-            onChange={(e) => { setFiltroUsuario(e.target.value); setPagina(1) }}
+            onChange={(e) => setFiltroUsuario(e.target.value)}
             style={{ flex: 1, minWidth: 200, maxWidth: 300 }}
           />
         </div>
@@ -165,158 +142,111 @@ export default function ActividadSection() {
 
       {/* Lista de eventos */}
       <div className={styles.card}>
-        {eventosPagina.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 0',
-            color: 'var(--text-muted)', fontFamily: 'var(--font-body)' }}>
-            <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
-            <div style={{ fontSize: 14 }}>
-              {eventos.length === 0
-                ? 'No hay eventos registrados aún. La actividad aparecerá aquí automáticamente.'
-                : 'No hay eventos que coincidan con los filtros seleccionados.'}
-            </div>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {eventosPagina.map((evento, idx) => (
-              <div
-                key={evento.id}
-                style={{
-                  display:      'flex',
-                  alignItems:   'center',
-                  gap:          14,
-                  padding:      '12px 16px',
-                  borderBottom: idx < eventosPagina.length - 1
-                    ? '1px solid var(--neutral-border)' : 'none',
-                  transition:   'background 0.15s',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                {/* Ícono */}
-                <div style={{
-                  width:          36,
-                  height:         36,
-                  borderRadius:   '50%',
-                  background:     'rgba(255,255,255,0.06)',
-                  display:        'flex',
-                  alignItems:     'center',
-                  justifyContent: 'center',
-                  fontSize:       16,
-                  flexShrink:     0,
-                }}>
-                  {TIPO_ICONOS[evento.tipo] ?? '📌'}
-                </div>
-
-                {/* Descripción */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontFamily:   'var(--font-body)',
-                    fontSize:     13,
-                    color:        'var(--text-primary)',
-                    fontWeight:   500,
-                    whiteSpace:   'nowrap',
-                    overflow:     'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {evento.descripcion}
-                  </div>
-                  {evento.usuarioNombre && (
-                    <div style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize:   11,
-                      color:      'var(--text-muted)',
-                      marginTop:  2,
-                    }}>
-                      {evento.usuarioNombre}
-                    </div>
-                  )}
-                </div>
-
-                {/* Tipo badge */}
-                <span style={{
-                  fontFamily:    'var(--font-body)',
-                  fontSize:      10,
-                  fontWeight:    600,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  padding:       '3px 10px',
-                  borderRadius:  'var(--radius-pill)',
-                  background:    'rgba(255,255,255,0.06)',
-                  color:         'var(--text-muted)',
-                  flexShrink:    0,
-                }}>
-                  {TIPO_LABELS[evento.tipo] ?? evento.tipo}
-                </span>
-
-                {/* Timestamp */}
-                <div style={{
-                  fontFamily: 'var(--font-body)',
-                  fontSize:   11,
-                  color:      'var(--text-muted)',
-                  flexShrink: 0,
-                  minWidth:   120,
-                  textAlign:  'right',
-                }}>
-                  {formatTimestamp(evento.timestamp)}
-                </div>
+        <InfiniteList
+          items={eventosFiltrados}
+          pageSize={20}
+          darkMode={true}
+          renderItem={(evento, idx) => (
+            <div
+              key={evento.id}
+              style={{
+                display:      'flex',
+                alignItems:   'center',
+                gap:          14,
+                padding:      '12px 16px',
+                borderBottom: idx < Math.min(eventosFiltrados.length, 20) - 1
+                  ? '1px solid var(--neutral-border)' : 'none',
+                transition:   'background 0.15s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              {/* Ícono */}
+              <div style={{
+                width:          36,
+                height:         36,
+                borderRadius:   '50%',
+                background:     'rgba(255,255,255,0.06)',
+                display:        'flex',
+                alignItems:     'center',
+                justifyContent: 'center',
+                fontSize:       16,
+                flexShrink:     0,
+              }}>
+                {TIPO_ICONOS[evento.tipo] ?? '📌'}
               </div>
-            ))}
-          </div>
-        )}
+
+              {/* Descripción */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontFamily:   'var(--font-body)',
+                  fontSize:     13,
+                  color:        'var(--text-primary)',
+                  fontWeight:   500,
+                  whiteSpace:   'nowrap',
+                  overflow:     'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
+                  {evento.descripcion}
+                </div>
+                {evento.usuarioNombre && (
+                  <div style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize:   11,
+                    color:      'var(--text-muted)',
+                    marginTop:  2,
+                  }}>
+                    {evento.usuarioNombre}
+                  </div>
+                )}
+              </div>
+
+              {/* Tipo badge */}
+              <span style={{
+                fontFamily:    'var(--font-body)',
+                fontSize:      10,
+                fontWeight:    600,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                padding:       '3px 10px',
+                borderRadius:  'var(--radius-pill)',
+                background:    'rgba(255,255,255,0.06)',
+                color:         'var(--text-muted)',
+                flexShrink:    0,
+              }}>
+                {TIPO_LABELS[evento.tipo] ?? evento.tipo}
+              </span>
+
+              {/* Timestamp */}
+              <div style={{
+                fontFamily: 'var(--font-body)',
+                fontSize:   11,
+                color:      'var(--text-muted)',
+                flexShrink: 0,
+                minWidth:   120,
+                textAlign:  'right',
+              }}>
+                {formatTimestamp(evento.timestamp)}
+              </div>
+            </div>
+          )}
+          emptyNode={
+            <div style={{
+              textAlign:  'center',
+              padding:    '40px 0',
+              color:      'rgba(255,255,255,0.35)',
+              fontFamily: 'var(--font-body)',
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
+              <div style={{ fontSize: 14 }}>
+                {eventos.length === 0
+                  ? 'No hay eventos registrados aún. La actividad aparecerá aquí automáticamente.'
+                  : 'No hay eventos que coincidan con los filtros seleccionados.'}
+              </div>
+            </div>
+          }
+        />
       </div>
-
-      {/* Paginación */}
-      {totalPaginas > 1 && (
-        <div style={{
-          display:        'flex',
-          alignItems:     'center',
-          justifyContent: 'center',
-          gap:            8,
-          marginTop:      20,
-        }}>
-          <button
-            className={`${styles.btn} ${styles.btnGhost}`}
-            style={{ padding: '6px 14px', fontSize: 13 }}
-            onClick={() => setPagina((p) => Math.max(1, p - 1))}
-            disabled={pagina === 1}
-          >← Anterior</button>
-
-          <div style={{ display: 'flex', gap: 4 }}>
-            {Array.from({ length: totalPaginas }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === totalPaginas ||
-                Math.abs(p - pagina) <= 2)
-              .reduce((acc, p, idx, arr) => {
-                if (idx > 0 && p - arr[idx - 1] > 1) {
-                  acc.push('...')
-                }
-                acc.push(p)
-                return acc
-              }, [])
-              .map((p, idx) => p === '...' ? (
-                <span key={`ellipsis-${idx}`} style={{
-                  padding: '6px 4px', fontSize: 13,
-                  color: 'var(--text-muted)',
-                  fontFamily: 'var(--font-body)',
-                }}>...</span>
-              ) : (
-                <button
-                  key={p}
-                  onClick={() => setPagina(p)}
-                  className={`${styles.btn} ${p === pagina ? styles.btnPrimary : styles.btnGhost}`}
-                  style={{ padding: '6px 12px', fontSize: 13, minWidth: 36 }}
-                >{p}</button>
-              ))
-            }
-          </div>
-
-          <button
-            className={`${styles.btn} ${styles.btnGhost}`}
-            style={{ padding: '6px 14px', fontSize: 13 }}
-            onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
-            disabled={pagina === totalPaginas}
-          >Siguiente →</button>
-        </div>
-      )}
     </div>
   )
 }

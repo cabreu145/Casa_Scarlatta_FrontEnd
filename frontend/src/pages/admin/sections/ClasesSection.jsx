@@ -1,6 +1,10 @@
+import { useState, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { eliminarClaseConReservas } from '@/services/reservasService'
 import { logClaseEliminada } from '@/services/actividadService'
+import DateNavigator from '@/components/ui/DateNavigator'
+import InfiniteList  from '@/components/ui/InfiniteList'
+import { useClasses } from '@/hooks/useClasses'
 import styles from '../AdminPanel.module.css'
 
 const ABBR_DIA = { Lunes: 'LUN', Martes: 'MAR', Miércoles: 'MIÉ', Jueves: 'JUE', Viernes: 'VIE', Sábado: 'SÁB', Domingo: 'DOM' }
@@ -51,11 +55,27 @@ export default function ClasesSection({
   claseForm,
   setClaseForm,
 }) {
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(() => {
+    const hoy = new Date()
+    hoy.setHours(0, 0, 0, 0)
+    return hoy
+  })
+
+  const { classes: clasesDelDia } = useClasses(fechaSeleccionada)
+
+  const clasesFiltradas = useMemo(() => {
+    if (clasesFilter === 'Stryde X')
+      return clasesDelDia.filter(c => !c.tipo?.toLowerCase().includes('slow'))
+    if (clasesFilter === 'Slow')
+      return clasesDelDia.filter(c => c.tipo?.toLowerCase().includes('slow'))
+    return clasesDelDia
+  }, [clasesDelDia, clasesFilter])
+
   return (
     <>
       <div className={styles.sectionTopRow}>
         <FilterChips
-          options={['Todas', 'Stryde X', 'Slow', 'Esta semana']}
+          options={['Todas', 'Stryde X', 'Slow']}
           active={clasesFilter}
           onChange={setClasesFilter}
         />
@@ -91,12 +111,7 @@ export default function ClasesSection({
 
       {/* Toolbar de selección */}
       {selectMode && (() => {
-        const listaVisible = clasesFilter === 'Todas' || clasesFilter === 'Esta semana'
-          ? clases
-          : clases.filter(c => clasesFilter === 'Stryde X'
-              ? !c.tipo?.toLowerCase().includes('slow')
-              : c.tipo?.toLowerCase().includes('slow'))
-        const todosSeleccionados = listaVisible.length > 0 && listaVisible.every(c => selectedIds.has(c.id))
+        const todosSeleccionados = clasesFiltradas.length > 0 && clasesFiltradas.every(c => selectedIds.has(c.id))
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', marginBottom: 8, fontFamily: 'var(--font-body)', fontSize: 13 }}>
             <input
@@ -106,7 +121,7 @@ export default function ClasesSection({
                 if (todosSeleccionados) {
                   setSelectedIds(new Set())
                 } else {
-                  setSelectedIds(new Set(listaVisible.map(c => c.id)))
+                  setSelectedIds(new Set(clasesFiltradas.map(c => c.id)))
                 }
               }}
               style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
@@ -114,7 +129,7 @@ export default function ClasesSection({
             <span style={{ color: 'var(--muted)' }}>
               {selectedIds.size === 0
                 ? 'Selecciona las clases que deseas eliminar'
-                : `${selectedIds.size} de ${listaVisible.length} seleccionada${selectedIds.size > 1 ? 's' : ''}`}
+                : `${selectedIds.size} de ${clasesFiltradas.length} seleccionada${selectedIds.size > 1 ? 's' : ''}`}
             </span>
             {selectedIds.size > 0 && (
               <button
@@ -128,16 +143,22 @@ export default function ClasesSection({
         )
       })()}
 
+      <DateNavigator
+        modo="dia"
+        darkMode={true}
+        onChange={(fecha) => {
+          setFechaSeleccionada(fecha)
+          setSelectedIds(new Set())
+        }}
+      />
+
       <div className={styles.card}>
-        <div className={styles.clasesList}>
-          {(clasesFilter === 'Todas' || clasesFilter === 'Esta semana'
-            ? clases
-            : clases.filter((c) =>
-                clasesFilter === 'Stryde X'
-                  ? !c.tipo?.toLowerCase().includes('slow')
-                  : c.tipo?.toLowerCase().includes('slow')
-              )
-          ).map((c) => {
+        <InfiniteList
+          items={clasesFiltradas}
+          pageSize={12}
+          darkMode={true}
+          gap={10}
+          renderItem={(c) => {
             const pct          = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
             const isPasada = (() => {
               if (!c.fecha) return false
@@ -149,17 +170,17 @@ export default function ClasesSection({
             const statusTag    = isPasada ? 'gray' : pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
             const statusLabel  = isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
             const isProgramada = c.publicarEn && new Date(c.publicarEn) > new Date()
-            const isSelected  = selectedIds.has(c.id)
+            const isSelected   = selectedIds.has(c.id)
             return (
               <div
                 key={c.id}
                 className={styles.claseItem}
                 style={{
-                  opacity: isProgramada ? 0.75 : 1,
-                  background: isSelected ? 'rgba(239,68,68,0.08)' : undefined,
-                  outline: isSelected ? '1px solid rgba(239,68,68,0.3)' : undefined,
+                  opacity:      isProgramada ? 0.75 : 1,
+                  background:   isSelected ? 'rgba(239,68,68,0.08)' : undefined,
+                  outline:      isSelected ? '1px solid rgba(239,68,68,0.3)' : undefined,
                   borderRadius: isSelected ? 'var(--radius-md)' : undefined,
-                  cursor: selectMode ? 'pointer' : undefined,
+                  cursor:       selectMode ? 'pointer' : undefined,
                 }}
                 onClick={selectMode ? () => {
                   setSelectedIds(prev => {
@@ -258,8 +279,19 @@ export default function ClasesSection({
                 </div>}
               </div>
             )
-          })}
-        </div>
+          }}
+          emptyNode={
+            <div style={{
+              textAlign:  'center',
+              padding:    '40px 0',
+              color:      'rgba(255,255,255,0.35)',
+              fontFamily: 'var(--font-body)',
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
+              <div style={{ fontSize: 14 }}>Sin clases para este día</div>
+            </div>
+          }
+        />
       </div>
     </>
   )
