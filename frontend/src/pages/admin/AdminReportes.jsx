@@ -19,6 +19,7 @@ import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { adminLinks }          from './AdminDashboard'
+import DateNavigator           from '@/components/ui/DateNavigator'
 import { useClasesStore }      from '@/stores/clasesStore'
 import { useCoachesStore }     from '@/stores/coachesStore'
 import { useTransaccionesStore } from '@/stores/transaccionesStore'
@@ -95,7 +96,7 @@ function exportarExcelFinanciero(datos, nombre) {
 
 
 // ── Datos para cada reporte ───────────────────────────────────────────────────
-function useReporteData() {
+function useReporteData(periodoReporte = { tipo: 'todos' }) {
   const { clases }             = useClasesStore()
   const { coaches }            = useCoachesStore()
   const { transacciones }      = useTransaccionesStore()
@@ -103,7 +104,19 @@ function useReporteData() {
   const { usuarios: todos }    = useUsuariosStore()
   const clientes               = mockUsers.filter(u => u.rol === 'cliente')
 
-  const financiero = useMemo(() => transacciones.map(tx => ({
+  const hoy    = new Date().toISOString().split('T')[0]
+  const semana = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
+  const mes    = hoy.slice(0, 7)
+
+  const txFiltradas = useMemo(() => transacciones.filter(tx => {
+    if (periodoReporte.tipo === 'hoy')    return tx.fecha === hoy
+    if (periodoReporte.tipo === 'semana') return tx.fecha >= semana
+    if (periodoReporte.tipo === 'mes')    return tx.fecha?.slice(0, 7) === mes
+    if (periodoReporte.tipo === 'fecha')  return tx.fecha === periodoReporte.fecha
+    return true
+  }), [transacciones, periodoReporte, hoy, semana, mes])
+
+  const financiero = useMemo(() => txFiltradas.map(tx => ({
     Fecha:     tx.fecha,
     Día:       diaSemana(tx.fecha),
     Hora:      tx.hora ?? '—',
@@ -112,7 +125,7 @@ function useReporteData() {
     Canal:     tx.canal ?? '—',
     Método:    tx.metodoPago ?? '—',
     Monto:     tx.monto,
-  })), [transacciones])
+  })), [txFiltradas])
 
   const usuarios = useMemo(() => clientes.map(u => {
     const txPaquetes = transacciones
@@ -145,7 +158,7 @@ function useReporteData() {
   })), [clases])
 
   const paquetes = useMemo(() => {
-    const ventas = transacciones.filter(tx => tx.tipo === 'paquete')
+    const ventas = txFiltradas.filter(tx => tx.tipo === 'paquete')
     return ventas.map(tx => {
       const usuario = todos.find(u => u.id === tx.userId)
       const paqInfo = catalogo.find(p => tx.concepto?.includes(p.nombre))
@@ -168,10 +181,10 @@ function useReporteData() {
         Monto:       tx.monto,
       }
     })
-  }, [transacciones, todos, catalogo])
+  }, [txFiltradas, todos, catalogo])
 
   const pdv = useMemo(() => {
-    const ventas = transacciones.filter(tx => tx.tipo === 'producto')
+    const ventas = txFiltradas.filter(tx => tx.tipo === 'producto')
     return ventas.map(tx => ({
       Fecha:     tx.fecha,
       Día:       diaSemana(tx.fecha),
@@ -181,7 +194,7 @@ function useReporteData() {
       Método:    tx.metodoPago ?? '—',
       Monto:     tx.monto,
     }))
-  }, [transacciones])
+  }, [txFiltradas])
 
   return { financiero, usuarios, clasesData, paquetes, pdv }
 }
@@ -434,7 +447,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
       tipo:    'coaches',
       titulo:  'Reporte de Coaches',
       datos:   datosCoachesPlanos,
-      periodo: periodo === 'quincena' ? 'Quincena actual' : periodoActual(),
+      periodo: periodo === 'quincena' ? 'Quincena actual' : 'Mes actual',
     })
   }
 
@@ -623,7 +636,8 @@ function TablaCoaches({ periodo, setPeriodo }) {
 export function ReportesSection({ inPanel = false }) {
   const { clases }           = useClasesStore()
   const { transacciones }    = useTransaccionesStore()
-  const [periodoCoach, setPeriodoCoach] = useState('mes')
+  const [periodoCoach, setPeriodoCoach]     = useState('mes')
+  const [periodoReporte, setPeriodoReporte] = useState({ tipo: 'todos' })
 
   const clientes         = mockUsers.filter(u => u.rol === 'cliente')
   const clientesActivos  = clientes.filter(u => u.activo)
@@ -641,7 +655,7 @@ export function ReportesSection({ inPanel = false }) {
     .sort((a,b) => b.cupoActual - a.cupoActual)
     .slice(0,5)
 
-  const { financiero, usuarios, clasesData, paquetes, pdv } = useReporteData()
+  const { financiero, usuarios, clasesData, paquetes, pdv } = useReporteData(periodoReporte)
 
   const panelStyle = {
     background:   'var(--neutral-card)',
@@ -654,6 +668,13 @@ export function ReportesSection({ inPanel = false }) {
   return (
     <>
       <div className={inPanel ? undefined : styles.page}>
+        {/* ── Filtro de período ── */}
+        <DateNavigator
+          modo="libre"
+          darkMode={true}
+          onChange={(r) => setPeriodoReporte(r)}
+        />
+
         {/* ── Tarjetas de descarga rápida ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 24 }}>
           <ReportCard

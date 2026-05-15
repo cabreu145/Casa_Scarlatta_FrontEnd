@@ -187,6 +187,37 @@ function ModoDia({ onChange, darkMode }) {
         </div>
       </div>
 
+      {/* Ir a fecha */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{
+          fontFamily: 'var(--font-body)', fontSize: 12,
+          color: darkMode ? 'rgba(255,255,255,0.45)' : 'var(--text-muted)',
+        }}>
+          Ir a fecha:
+        </span>
+        <input
+          type="date"
+          onChange={(e) => {
+            const val = e.target.value
+            if (!val) return
+            const fecha = new Date(val + 'T00:00:00')
+            setWeekStart(startOfWeek(fecha))
+            select(fecha)
+          }}
+          style={{
+            padding:      '4px 10px',
+            borderRadius: 8,
+            border:       `1px solid ${darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(123,31,46,0.25)'}`,
+            background:   darkMode ? 'rgba(255,255,255,0.06)' : 'transparent',
+            color:        darkMode ? '#fff' : 'var(--text-primary)',
+            fontFamily:   'var(--font-body)',
+            fontSize:     13,
+            outline:      'none',
+            cursor:       'pointer',
+          }}
+        />
+      </div>
+
       {/* Tira de días */}
       <div style={{
         display: 'flex', gap: 6, overflowX: 'auto',

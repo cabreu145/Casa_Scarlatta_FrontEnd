@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { getDashboardMetrics } from '@/services/dashboardService'
+import DateNavigator from '@/components/ui/DateNavigator'
 import styles from '../AdminPanel.module.css'
 
 function Tag({ color, children }) {
@@ -14,39 +15,41 @@ function Tag({ color, children }) {
   return <span className={`${styles.miniTag} ${cls}`}>{children}</span>
 }
 
+function subtituloDash(rango, fechaEspec) {
+  if (fechaEspec) {
+    const d = new Date(fechaEspec + 'T00:00:00')
+    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+  const hoy = new Date()
+  if (rango === 'dia') {
+    return hoy.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  }
+  if (rango === 'semana') return 'Últimos 7 días'
+  if (rango === 'mes') {
+    return hoy.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+  }
+  return 'Todo el historial'
+}
+
 export default function DashboardSection({ rangoDash, setRangoDash }) {
-  const metricas = useMemo(() => getDashboardMetrics(rangoDash), [rangoDash])
+  const [fechaEspecifica, setFechaEspecifica] = useState(null)
+  const metricas = useMemo(() => getDashboardMetrics(rangoDash, fechaEspecifica), [rangoDash, fechaEspecifica])
 
   return (
     <>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {[
-          { value: 'dia',    label: 'Hoy'    },
-          { value: 'semana', label: 'Semana' },
-          { value: 'mes',    label: 'Mes'    },
-        ].map(({ value, label }) => (
-          <button
-            key={value}
-            onClick={() => setRangoDash(value)}
-            style={{
-              padding: '6px 16px',
-              borderRadius: 6,
-              border: 'none',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-body)',
-              fontSize: 13,
-              background: rangoDash === value
-                ? 'var(--wine, #7B1E22)'
-                : 'rgba(255,255,255,0.07)',
-              color: rangoDash === value
-                ? '#fff'
-                : 'rgba(255,255,255,0.5)',
-              transition: 'all 0.15s',
-            }}
-          >
-            {label}
-          </button>
-        ))}
+      <div style={{ marginBottom: 16 }}>
+        <DateNavigator
+          modo="libre"
+          darkMode={true}
+          onChange={(rango) => {
+            const mapa = { hoy: 'dia', semana: 'semana', mes: 'mes', todos: 'todos', fecha: 'fecha' }
+            setRangoDash(mapa[rango.tipo] ?? 'dia')
+            setFechaEspecifica(rango.fecha ?? null)
+          }}
+        />
+        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: -4 }}>
+          {subtituloDash(rangoDash, fechaEspecifica)}
+        </div>
       </div>
       <div className={styles.kpiGrid}>
         <div className={styles.kpiCard}>

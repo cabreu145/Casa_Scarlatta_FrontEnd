@@ -18,6 +18,7 @@ import { useGastosStore, TIPOS_GASTO } from '@/stores/gastosStore'
 import { getKpisFinanzas, getDatosCorteHoy, getTransaccionesParaExportar } from '@/services/finanzasService'
 import { abrirReportePDF } from '@/utils/reportePDF'
 import { hoyLocal, mesLocal } from '@/utils/fecha'
+import DateNavigator from '@/components/ui/DateNavigator'
 import styles from '@/styles/dashboard.module.css'
 
 const DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -133,6 +134,7 @@ export function FinanzasSection({ inPanel = false }) {
   const { gastos, registrarGasto, getGastosByRango, eliminarGasto } = useGastosStore()
 
   const [rango, setRango]               = useState('dia')
+  const [fechaFin, setFechaFin]         = useState(null)
   const [filtroActivo, setFiltroActivo] = useState(null)
   const [busqueda, setBusqueda]         = useState('')
   const [modalGasto, setModalGasto]     = useState(false)
@@ -205,6 +207,8 @@ export function FinanzasSection({ inPanel = false }) {
 
     let lista = [...transacciones]
       .filter(tx => {
+        if (rango === 'fecha')  return fechaFin ? tx.fecha === fechaFin : tx.fecha === hoy
+        if (rango === 'todos')  return true
         if (rango === 'dia')    return tx.fecha === hoy
         if (rango === 'semana') return tx.fecha >= semanaInicio
         return tx.fecha?.slice(0, 7) === mesActual
@@ -225,10 +229,11 @@ export function FinanzasSection({ inPanel = false }) {
     return lista
   }, [transacciones, rango, filtroActivo, busqueda])
 
-  const gastosRango = useMemo(
-    () => getGastosByRango(rango),
-    [gastos, rango, getGastosByRango]
-  )
+  const gastosRango = useMemo(() => {
+    if (rango === 'fecha' && fechaFin) return gastos.filter(g => g.fecha === fechaFin)
+    if (rango === 'todos') return [...gastos]
+    return getGastosByRango(rango)
+  }, [gastos, rango, fechaFin, getGastosByRango])
 
   const hoy              = hoyLocal()
   const yaHayManana      = cortes.some(c => c.fecha === hoy && c.turno === 'mañana')
@@ -322,26 +327,26 @@ export function FinanzasSection({ inPanel = false }) {
     background: 'var(--neutral-card)', border: '1px solid var(--neutral-border)',
     borderRadius: 12, padding: '20px 24px', marginBottom: 16,
   }
-  const labelRango = rango === 'dia' ? 'hoy' : rango === 'semana' ? 'esta semana' : 'este mes'
+  const labelRango = rango === 'fecha' && fechaFin ? fechaFin
+    : rango === 'todos'  ? 'todo el historial'
+    : rango === 'dia'    ? 'hoy'
+    : rango === 'semana' ? 'esta semana'
+    : 'este mes'
 
   return (
     <>
       <div className={inPanel ? undefined : styles.page}>
 
         {/* Selector de rango */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
-          <div style={{ display: 'flex', gap: 4, background: '#1E1014', padding: 4, borderRadius: 8 }}>
-            {[{ v: 'dia', l: 'Hoy' }, { v: 'semana', l: 'Semana' }, { v: 'mes', l: 'Mes' }].map(({ v, l }) => (
-              <button key={v} onClick={() => setRango(v)} style={{
-                padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--font-body)', fontSize: 13,
-                background: rango === v ? '#7B1E22' : 'transparent',
-                color:      rango === v ? '#fff' : '#A69A93',
-                transition: 'all 0.15s',
-              }}>{l}</button>
-            ))}
-          </div>
-        </div>
+        <DateNavigator
+          modo="libre"
+          darkMode={true}
+          onChange={(r) => {
+            const mapa = { hoy: 'dia', semana: 'semana', mes: 'mes', todos: 'todos', fecha: 'fecha' }
+            setRango(mapa[r.tipo] ?? 'dia')
+            setFechaFin(r.fecha ?? null)
+          }}
+        />
 
         {/* Alertas */}
         {alertas.length > 0 && (
