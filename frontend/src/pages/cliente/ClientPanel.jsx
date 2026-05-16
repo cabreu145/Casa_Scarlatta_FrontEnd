@@ -89,7 +89,7 @@ function toClsShape(r) {
 
 export default function ClientPanel() {
   const navigate = useNavigate()
-  const { usuario } = useAuth()
+  const { usuario, logout } = useAuth()
 
   // ── Stores ────────────────────────────────────────────────────────────────
   const { reservas } = useReservasStore()
@@ -318,7 +318,7 @@ export default function ClientPanel() {
         ))}
 
         <div className={s.sidebarFooter}>
-          <button className={s.logoutLink} onClick={() => { setIsSidebarOpen(false); navigate('/login') }}>
+          <button className={s.logoutLink} onClick={() => { logout(); setIsSidebarOpen(false); navigate('/') }}>
             <LogOut size={14} strokeWidth={2} />
             Cerrar sesión
           </button>
@@ -550,7 +550,9 @@ export default function ClientPanel() {
               ><ChevronLeft size={18} /></button>
               <div className={s.dayTabs}>
                 {weekDays.map((day, i) => {
-                  const hasCls = reservasUsuario.some(r => r.claseDia === day.fullName && r.estado !== 'cancelada')
+                  const hasCls = reservasUsuario.some(r =>
+                    (r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName) && r.estado !== 'cancelada'
+                  )
                   return (
                     <button
                       key={i}
@@ -575,7 +577,7 @@ export default function ClientPanel() {
             {(() => {
               const day = weekDays[dayIdx]
               const dayClasses = reservasUsuario
-                .filter(r => r.claseDia === day.fullName)
+                .filter(r => r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName)
                 .map(toClsShape)
               return dayClasses.length > 0 ? (
                 <div>
@@ -674,36 +676,43 @@ export default function ClientPanel() {
                           </div>
                         </div>
                         <div className={s.pubActions}>
-                          {alreadyBooked ? (() => {
+                          {(() => {
                             const classTime = new Date(day.isoDate + 'T' + av.time + ':00')
-                            if (classTime <= new Date()) {
-                              return (
+                            const isPast = classTime <= new Date()
+                            if (alreadyBooked) {
+                              if (isPast) return (
                                 <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
                                   Clase finalizada
                                 </span>
                               )
+                              return <span className={`${s.statusPill} ${s.statusConfirmada}`}>Reservada</span>
                             }
-                            return <span className={`${s.statusPill} ${s.statusConfirmada}`}>Reservada</span>
-                          })() : isFull ? (
-                            <span className={s.pubFullTag}>LLENO</span>
-                          ) : (
-                            <>
-                              <span className={`${s.pubAvailTag} ${isLow ? s.pubAvailLow : s.pubAvailOk}`}>
-                                <span className={s.pubAvailDot} />
-                                {av.spots} {av.spots === 1 ? 'lugar' : 'lugares'}
+                            if (isPast) return (
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
+                                Clase finalizada
                               </span>
-                              <button
-                                className={s.pubReservarBtn}
-                                onClick={() => {
-                                  const raw = clases.find(c => c.id === av.id)
-                                  setSeatSelectorClass(raw ?? null)
-                                }}
-                              >
-                                RESERVAR
-                              </button>
-                            </>
-                          )}
+                            )
+                            if (isFull) return <span className={s.pubFullTag}>LLENO</span>
+                            return (
+                              <>
+                                <span className={`${s.pubAvailTag} ${isLow ? s.pubAvailLow : s.pubAvailOk}`}>
+                                  <span className={s.pubAvailDot} />
+                                  {av.spots} {av.spots === 1 ? 'lugar' : 'lugares'}
+                                </span>
+                                <button
+                                  className={s.pubReservarBtn}
+                                  onClick={() => {
+                                    const raw = clases.find(c => c.id === av.id)
+                                    setSeatSelectorClass(raw ?? null)
+                                  }}
+                                >
+                                  RESERVAR
+                                </button>
+                              </>
+                            )
+                          })()}
                         </div>
                       </div>
                     )

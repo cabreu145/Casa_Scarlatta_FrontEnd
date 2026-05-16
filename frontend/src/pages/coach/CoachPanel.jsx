@@ -93,7 +93,7 @@ export default function CoachPanel() {
   const [selectedDay, setSelectedDay] = useState(KEYS[new Date().getDay()])
   const [weekOffset, setWeekOffset]   = useState(0)
   const [modalClass, setModalClass]       = useState(null)  // class object | null
-  const { usuario } = useAuth()
+  const { usuario, logout } = useAuth()
   const { clases } = useClasesStore()
   const { coaches } = useCoachesStore()
   // coachData: perfil del coach en coachesStore (id = "coach-xxx", distinto al id de usuario)
@@ -184,7 +184,7 @@ export default function CoachPanel() {
         </nav>
 
         <div className={s.sidebarFooter}>
-          <button className={s.logoutBtn} onClick={() => navigate('/login')}>
+          <button className={s.logoutBtn} onClick={() => { logout(); navigate('/') }}>
             <LogOut size={14} strokeWidth={2} />
             Cerrar sesión
           </button>
