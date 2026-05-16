@@ -128,12 +128,12 @@ export default function CoachPanel() {
       c.fecha ? c.fecha === isoDate : c.dia === diaNombre
     )
     return {
-      key:     WEEK_DAY_KEYS[i],
-      name:    WEEK_DAY_NAMES[i],
-      num:     d.getDate(),
+      key:       WEEK_DAY_KEYS[i],
+      name:      WEEK_DAY_NAMES[i],
+      num:       d.getDate(),
       isoDate,
-      isToday: d.toDateString() === hoy.toDateString(),
-      count:   clasesDelDia.length > 0 ? `${clasesDelDia.length} clase${clasesDelDia.length > 1 ? 's' : ''}` : '—',
+      isToday:   d.toDateString() === hoy.toDateString(),
+      hasClases: clasesDelDia.length > 0,
     }
   })
   // ESC closes modal
@@ -373,7 +373,7 @@ export default function CoachPanel() {
                 >
                   <div className={s.wdbName}>{d.name}</div>
                   <div className={s.wdbNum}>{d.num}</div>
-                  <div className={s.wdbCount}>{d.count}</div>
+                  <span className={s.wdbDot} style={{ visibility: d.hasClases ? 'visible' : 'hidden' }} />
                 </button>
               ))}
             </div>

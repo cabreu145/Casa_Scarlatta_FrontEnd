@@ -639,10 +639,10 @@
 
 .weekDayBtn {
   flex: 1;
-  padding: 10px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--muted-3);
-  border: 1px solid var(--muted-2);
+  padding: 10px 0;
+  border-radius: 14px;
+  background: transparent;
+  border: 1.5px solid transparent;
   cursor: pointer;
   text-align: center;
   transition: all 0.2s;
@@ -651,18 +651,18 @@
   user-select: none;
 }
 
-.weekDayBtn:hover { background: var(--muted-2); color: rgba(255,255,255,0.8); }
+.weekDayBtn:hover:not(.active) { background: rgba(194,107,122,0.08); border-color: rgba(194,107,122,0.2); color: rgba(255,255,255,0.8); }
 
 .weekDayBtn.active {
-  background: linear-gradient(135deg, var(--wine), var(--wine-light));
+  background: var(--wine);
   border-color: var(--wine);
   color: #fff;
 }
 
-.wdbName { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
-.wdbNum  { font-size: 17px; font-family: var(--font-display); margin: 2px 0; }
-.wdbCount { font-size: 10px; color: var(--blush); }
-.weekDayBtn:not(.active) .wdbCount { color: rgba(232,164,173,0.5); }
+.wdbName { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+.wdbNum  { font-size: 20px; font-family: var(--font-body); font-weight: 700; line-height: 1; margin: 4px 0; }
+.wdbDot  { display: inline-block; width: 5px; height: 5px; border-radius: 50%; margin-top: 2px; background: var(--blush); transition: background 0.2s; }
+.weekDayBtn.active .wdbDot { background: rgba(255,255,255,0.7); }
 
 /* ── CHECKLIST ─────────────────────────────────────────────────────────────── */
 .checklistItem {
