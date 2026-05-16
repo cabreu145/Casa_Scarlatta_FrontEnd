@@ -65,25 +65,31 @@ function filtrarTxPeriodoAnterior(transacciones, rango) {
  *
  * // [BACKEND] → GET /api/finanzas/kpis?rango=mes
  */
-export function getKpisFinanzas(rango = 'mes') {
+export function getKpisFinanzas(rango = 'mes', fechaFin = null) {
   const { transacciones } = useTransaccionesStore.getState()
   const gastosStore       = useGastosStore.getState()
 
-  const txActual   = filtrarTxPorRango(transacciones, rango).filter(tx => tx.monto > 0)
+  const txActual   = fechaFin
+    ? transacciones.filter(tx => tx.fecha === fechaFin && tx.monto > 0)
+    : filtrarTxPorRango(transacciones, rango).filter(tx => tx.monto > 0)
   const txAnterior = filtrarTxPeriodoAnterior(transacciones, rango).filter(tx => tx.monto > 0)
 
   const totalIngresos   = txActual.reduce((a,tx) => a + tx.monto, 0)
   const totalAnt        = txAnterior.reduce((a,tx) => a + tx.monto, 0)
   const crecimiento     = totalAnt > 0 ? Math.round(((totalIngresos - totalAnt) / totalAnt) * 100) : null
 
-  const gastosRango    = gastosStore.getGastosByRango(rango)
+  const gastosRango    = fechaFin
+    ? gastosStore.gastos.filter(g => g.fecha === fechaFin)
+    : gastosStore.getGastosByRango(rango)
   const totalGastos    = gastosRango.reduce((a,g) => a + g.monto, 0)
   const utilidad       = totalIngresos - totalGastos
   const numTx          = txActual.length
   const ticketPromedio = numTx > 0 ? Math.round(totalIngresos / numTx) : 0
 
   // Desglose por método de pago (rango actual)
-  const txAll = filtrarTxPorRango(transacciones, rango)
+  const txAll = fechaFin
+    ? transacciones.filter(tx => tx.fecha === fechaFin)
+    : filtrarTxPorRango(transacciones, rango)
   const desglosePago = txAll.reduce(
     (acc, tx) => {
       const m = tx.metodoPago ?? 'efectivo'
@@ -104,7 +110,7 @@ export function getKpisFinanzas(rango = 'mes') {
   )
 
   // Datos para gráfica de línea (últimos 7 días o 6 semanas o 6 meses)
-  const serieHistorica = getSerieHistorica(transacciones, rango)
+  const serieHistorica = getSerieHistorica(transacciones, rango, fechaFin)
 
   return {
     totalIngresos,
@@ -120,7 +126,17 @@ export function getKpisFinanzas(rango = 'mes') {
 }
 
 // ── Serie histórica para gráfica ──────────────────────────────────────────────
-function getSerieHistorica(transacciones, rango) {
+function getSerieHistorica(transacciones, rango, fechaFin = null) {
+  if (fechaFin) {
+    return Array.from({ length: 8 }, (_, i) => {
+      const h     = i * 3
+      const label = `${String(h).padStart(2,'0')}:00`
+      const ingresos = transacciones
+        .filter(tx => tx.monto > 0 && tx.fecha === fechaFin)
+        .reduce((a, tx) => a + tx.monto, 0)
+      return { label, ingresos: Math.round(ingresos / 8), gastos: 0 }
+    })
+  }
   if (rango === 'dia') {
     // Últimas 24 horas por hora
     return Array.from({ length: 8 }, (_, i) => {
