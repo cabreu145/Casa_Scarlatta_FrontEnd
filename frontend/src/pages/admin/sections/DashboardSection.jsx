@@ -16,19 +16,26 @@ function Tag({ color, children }) {
 }
 
 function subtituloDash(rango, fechaEspec) {
+  const hoy = new Date()
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio',
+                 'julio','agosto','septiembre','octubre','noviembre','diciembre']
+  const DIAS  = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   if (fechaEspec) {
     const d = new Date(fechaEspec + 'T00:00:00')
-    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+    return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]} ${d.getFullYear()}`
   }
-  const hoy = new Date()
   if (rango === 'dia') {
-    return hoy.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    return `${DIAS[hoy.getDay()]} ${hoy.getDate()} de ${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`
   }
-  if (rango === 'semana') return 'Últimos 7 días'
+  if (rango === 'semana') {
+    const hace7 = new Date(hoy)
+    hace7.setDate(hoy.getDate() - 7)
+    return `${hace7.getDate()} – ${hoy.getDate()} de ${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`
+  }
   if (rango === 'mes') {
-    return hoy.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+    return `${MESES[hoy.getMonth()].charAt(0).toUpperCase() + MESES[hoy.getMonth()].slice(1)} ${hoy.getFullYear()}`
   }
-  return 'Todo el historial'
+  return 'Todo el historial disponible'
 }
 
 export default function DashboardSection({ rangoDash, setRangoDash }) {
@@ -37,7 +44,44 @@ export default function DashboardSection({ rangoDash, setRangoDash }) {
 
   return (
     <>
-      <div style={{ marginBottom: 16 }}>
+      {/* ── Header del dashboard ── */}
+      <div style={{
+        display:        'flex',
+        justifyContent: 'space-between',
+        alignItems:     'center',
+        marginBottom:   24,
+        flexWrap:       'wrap',
+        gap:            12,
+      }}>
+        {/* Lado izquierdo: título grande + fecha dinámica */}
+        <div>
+          <div style={{
+            fontFamily:   'var(--font-display)',
+            fontSize:     28,
+            fontStyle:    'italic',
+            fontWeight:   400,
+            color:        '#fff',
+            lineHeight:   1.1,
+            marginBottom: 4,
+          }}>
+            {rangoDash === 'dia' && !fechaEspecifica ? 'Hoy' :
+             rangoDash === 'semana'                  ? 'Esta semana' :
+             rangoDash === 'mes'                     ? 'Este mes' :
+             fechaEspecifica                         ? new Date(fechaEspecifica + 'T00:00:00')
+               .toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) :
+             'General'}
+          </div>
+          <div style={{
+            fontFamily:    'var(--font-body)',
+            fontSize:      13,
+            color:         'rgba(255,255,255,0.4)',
+            letterSpacing: '0.01em',
+          }}>
+            {subtituloDash(rangoDash, fechaEspecifica)}
+          </div>
+        </div>
+
+        {/* Lado derecho: DateNavigator */}
         <DateNavigator
           modo="libre"
           darkMode={true}
@@ -47,9 +91,6 @@ export default function DashboardSection({ rangoDash, setRangoDash }) {
             setFechaEspecifica(rango.fecha ?? null)
           }}
         />
-        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: -4 }}>
-          {subtituloDash(rangoDash, fechaEspecifica)}
-        </div>
       </div>
       <div className={styles.kpiGrid}>
         <div className={styles.kpiCard}>

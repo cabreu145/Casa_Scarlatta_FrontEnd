@@ -52,7 +52,7 @@ export const adminLinks = [
 
 // ── Section metadata ─────────────────────────────────────────────────────────
 const SECTIONS = {
-  dashboard: { title: 'Dashboard',        sub: 'Resumen general · Abril 2026'       },
+  dashboard: { title: 'Dashboard',        sub: ''                                    },
   coaches:   { title: 'Coaches',          sub: 'Gestión y perfiles del equipo'       },
   clases:    { title: 'Clases',           sub: 'Calendario y gestión de clases'      },
   paquetes:  { title: 'Paquetes',         sub: 'Gestión y venta de paquetes'         },
@@ -489,7 +489,7 @@ export default function AdminPanel() {
             </button>
             <div className={styles.topbarHeading}>
               <h1>{sec.title}</h1>
-              <p>{sec.sub}</p>
+              {sec.sub && <p>{sec.sub}</p>}
             </div>
           </div>
           <div className={styles.topbarRight}>
