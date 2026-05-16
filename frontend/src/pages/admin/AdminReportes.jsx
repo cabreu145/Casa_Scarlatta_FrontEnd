@@ -59,6 +59,32 @@ function parseMonto(v) {
   return isNaN(n) ? 0 : n
 }
 
+function labelPeriodo(p) {
+  if (!p) return 'historico'
+  if (p.tipo === 'hoy')    return 'hoy'
+  if (p.tipo === 'semana') return 'semana'
+  if (p.tipo === 'mes')    return 'mes'
+  if (p.tipo === 'fecha')  return p.fecha ?? 'fecha'
+  if (p.tipo === 'rango') {
+    const { fechaDesde, fechaHasta } = p
+    return fechaDesde && fechaHasta ? `${fechaDesde}_${fechaHasta}` : 'rango'
+  }
+  return 'historico'
+}
+
+function tituloPeriodo(p) {
+  if (!p) return 'Historial completo'
+  if (p.tipo === 'hoy')    return 'Hoy'
+  if (p.tipo === 'semana') return 'Esta semana'
+  if (p.tipo === 'mes')    return 'Este mes'
+  if (p.tipo === 'fecha')  return p.fecha ?? ''
+  if (p.tipo === 'rango') {
+    const { fechaDesde, fechaHasta } = p
+    return fechaDesde && fechaHasta ? `Del ${fechaDesde} al ${fechaHasta}` : 'Rango de fechas'
+  }
+  return 'Historial completo'
+}
+
 function exportarExcel(datos, nombre, filasTotales = []) {
   if (!datos?.length) { toast.error('Sin datos para exportar'); return }
   const cols       = Object.keys(datos[0])
@@ -113,6 +139,11 @@ function useReporteData(periodoReporte = { tipo: 'todos' }) {
     if (periodoReporte.tipo === 'semana') return tx.fecha >= semana
     if (periodoReporte.tipo === 'mes')    return tx.fecha?.slice(0, 7) === mes
     if (periodoReporte.tipo === 'fecha')  return tx.fecha === periodoReporte.fecha
+    if (periodoReporte.tipo === 'rango') {
+      const { fechaDesde, fechaHasta } = periodoReporte
+      if (!fechaDesde || !fechaHasta) return true
+      return tx.fecha >= fechaDesde && tx.fecha <= fechaHasta
+    }
     return true
   }), [transacciones, periodoReporte, hoy, semana, mes])
 
@@ -638,6 +669,7 @@ export function ReportesSection({ inPanel = false }) {
   const { transacciones }    = useTransaccionesStore()
   const [periodoCoach, setPeriodoCoach]     = useState('mes')
   const [periodoReporte, setPeriodoReporte] = useState({ tipo: 'todos' })
+  const [navKey, setNavKey]                 = useState(0)
 
   const clientes         = mockUsers.filter(u => u.rol === 'cliente')
   const clientesActivos  = clientes.filter(u => u.activo)
@@ -657,6 +689,10 @@ export function ReportesSection({ inPanel = false }) {
 
   const { financiero, usuarios, clasesData, paquetes, pdv } = useReporteData(periodoReporte)
 
+  const label  = labelPeriodo(periodoReporte)
+  const titulo = tituloPeriodo(periodoReporte)
+  const hoyStr = new Date().toISOString().split('T')[0]
+
   const panelStyle = {
     background:   'var(--neutral-card)',
     border:       '1px solid var(--neutral-border)',
@@ -670,31 +706,60 @@ export function ReportesSection({ inPanel = false }) {
       <div className={inPanel ? undefined : styles.page}>
         {/* ── Filtro de período ── */}
         <DateNavigator
+          key={navKey}
           modo="libre"
           darkMode={true}
           inicial="todos"
           onChange={(r) => setPeriodoReporte(r)}
         />
 
+        {/* ── Indicador visual del período activo ── */}
+        {periodoReporte.tipo !== 'todos' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            marginBottom: 16, marginTop: -8,
+            padding: '8px 14px',
+            background: 'rgba(123,31,46,0.1)',
+            border: '1px solid rgba(123,31,46,0.25)',
+            borderRadius: 8,
+          }}>
+            <span style={{ fontSize: 14 }}>📋</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#E8A4AD' }}>
+              Los reportes incluyen datos de: <strong>{titulo}</strong>
+            </span>
+            <button
+              onClick={() => { setPeriodoReporte({ tipo: 'todos' }); setNavKey(k => k + 1) }}
+              style={{
+                marginLeft: 'auto', background: 'none', border: 'none',
+                color: 'rgba(255,255,255,0.35)', cursor: 'pointer',
+                fontSize: 16, lineHeight: 1, padding: '0 4px',
+              }}
+              title="Limpiar filtro"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* ── Tarjetas de descarga rápida ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 24 }}>
           <ReportCard
             icono="💰" titulo="Reporte financiero"
             descripcion="Ingresos, gastos, desglose por categoría y período"
-            onExcel={() => exportarExcelFinanciero(financiero, `financiero_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => abrirReportePDF({ tipo: 'financiero', titulo: 'Reporte Financiero', datos: financiero })}
+            onExcel={() => exportarExcelFinanciero(financiero, `financiero_${label}_${hoyStr}`)}
+            onPDF={() => abrirReportePDF({ tipo: 'financiero', titulo: `Reporte Financiero — ${titulo}`, datos: financiero, periodo: titulo })}
           />
           <ReportCard
             icono="👥" titulo="Reporte de usuarios"
             descripcion="Lista completa, paquetes activos e historial"
-            onExcel={() => exportarExcel(usuarios, `usuarios_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => abrirReportePDF({ tipo: 'usuarios', titulo: 'Reporte de Usuarios', datos: usuarios })}
+            onExcel={() => exportarExcel(usuarios, `usuarios_${label}_${hoyStr}`)}
+            onPDF={() => abrirReportePDF({ tipo: 'usuarios', titulo: `Reporte de Usuarios — ${titulo}`, datos: usuarios, periodo: titulo })}
           />
           <ReportCard
             icono="🏃" titulo="Reporte de clases"
             descripcion="Asistencia por clase, ocupación y horarios pico"
-            onExcel={() => exportarExcel(clasesData, `clases_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => abrirReportePDF({ tipo: 'clases', titulo: 'Reporte de Clases', datos: clasesData })}
+            onExcel={() => exportarExcel(clasesData, `clases_${label}_${hoyStr}`)}
+            onPDF={() => abrirReportePDF({ tipo: 'clases', titulo: `Reporte de Clases — ${titulo}`, datos: clasesData, periodo: titulo })}
           />
           <ReportCard
             icono="📦" titulo="Reporte de paquetes"
@@ -702,15 +767,15 @@ export function ReportesSection({ inPanel = false }) {
             onExcel={() => {
               const total = paquetes.reduce((a, r) => a + parseMonto(r.Monto), 0)
               const vacio = Object.fromEntries(Object.keys(paquetes[0] ?? {}).map(k => [k, '']))
-              exportarExcel(paquetes, `paquetes_${new Date().toISOString().split('T')[0]}`, [{ ...vacio, Concepto: 'TOTAL', Monto: total }])
+              exportarExcel(paquetes, `paquetes_${label}_${hoyStr}`, [{ ...vacio, Concepto: 'TOTAL', Monto: total }])
             }}
-            onPDF={() => abrirReportePDF({ tipo: 'paquetes', titulo: 'Reporte de Paquetes', datos: paquetes })}
+            onPDF={() => abrirReportePDF({ tipo: 'paquetes', titulo: `Reporte de Paquetes — ${titulo}`, datos: paquetes, periodo: titulo })}
           />
           <ReportCard
             icono="🛒" titulo="Reporte punto de venta"
             descripcion="Ventas de productos e inventario"
-            onExcel={() => exportarExcel(pdv, `pdv_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => abrirReportePDF({ tipo: 'pdv', titulo: 'Reporte Punto de Venta', datos: pdv })}
+            onExcel={() => exportarExcel(pdv, `pdv_${label}_${hoyStr}`)}
+            onPDF={() => abrirReportePDF({ tipo: 'pdv', titulo: `Reporte Punto de Venta — ${titulo}`, datos: pdv, periodo: titulo })}
           />
         </div>
 
