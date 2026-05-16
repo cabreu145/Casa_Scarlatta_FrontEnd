@@ -262,7 +262,7 @@ function VerMas({ onClick }) {
 }
 
 // ── Componente principal ───────────────────────────────────────────────────
-export default function DashboardSection({ rangoDash, setRangoDash, showSection }) {
+export default function DashboardSection({ rangoDash, setRangoDash, showSection, showSectionWithFilter }) {
   const [fechaEspecifica, setFechaEspecifica] = useState(null)
 
   // Subscribirse a los stores para reactividad
@@ -279,10 +279,6 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection 
   const ultimasVentas = useMemo(() => getUltimasVentas(),                   [transacciones, usuarios])
 
   const maxIngreso = Math.max(...ingresosMes.map(m => m.ingresos), 1)
-  const COLORES_BARRA = [
-    '#3B1A22','#4A1F2B','#5C2533','#6B2A3A','#7B3042',
-    '#8C3A4E','#9B435A','#C26B7A',
-  ]
 
   const tituloRango = rangoDash === 'dia' && !fechaEspecifica ? 'Hoy'
     : rangoDash === 'semana' ? 'Esta semana'
@@ -322,6 +318,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection 
         <DateNavigator
           modo="libre"
           darkMode={true}
+          hideFecha={true}
           onChange={(rango) => {
             const mapa = { hoy: 'dia', semana: 'semana', mes: 'mes', todos: 'todos', fecha: 'fecha' }
             setRangoDash(mapa[rango.tipo] ?? 'dia')
@@ -348,13 +345,11 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection 
           icono="💰" label="Ingresos del mes"
           valor={`$${metricas.ingresosTotales.toLocaleString()}`}
           cambio="15% vs mes anterior" up
-          onClick={() => showSection('finanzas')}
         />
         <KpiCard
           icono="🔄" label="Ocupación promedio"
           valor={`${metricas.ocupacionPromedio}%`}
           cambio="3% vs mes anterior" up={false}
-          onClick={() => showSection('clases')}
         />
       </div>
 
@@ -371,16 +366,21 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection 
           </div>
           <div className={styles.chartBars}>
             {ingresosMes.map((m, i) => {
-              const pct = maxIngreso > 0
+              const pct   = maxIngreso > 0
                 ? Math.max(8, Math.round((m.ingresos / maxIngreso) * 100))
                 : 8
+              const ratio = maxIngreso > 0 ? m.ingresos / maxIngreso : 0
+              const colorBarra = ratio >= 0.75 ? '#22C55E'
+                : ratio >= 0.40               ? '#3B82F6'
+                : m.ingresos === 0            ? '#3C2A2E'
+                :                               '#EF4444'
               return (
                 <BarraConTooltip
                   key={m.mes}
                   h={`${pct}%`}
                   label={m.label}
                   ingresos={m.ingresos}
-                  color={COLORES_BARRA[i] ?? '#7B1F2E'}
+                  color={colorBarra}
                   isLast={i === ingresosMes.length - 1}
                 />
               )
@@ -438,7 +438,6 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection 
               )}
             </div>
           </div>
-          <VerMas onClick={() => showSection('paquetes')} />
         </div>
       </div>
 
@@ -522,7 +521,13 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection 
               </div>
             )}
           </div>
-          <VerMas onClick={() => showSection('finanzas')} />
+          <VerMas onClick={() => {
+            showSection('finanzas')
+            setTimeout(() => {
+              const el = document.querySelector('[data-section="transacciones"]')
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }, 150)
+          }} />
         </div>
 
         {/* Paquetes por vencer */}
@@ -564,7 +569,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection 
               </div>
             )}
           </div>
-          <VerMas onClick={() => showSection('usuarios')} />
+          <VerMas onClick={() => showSectionWithFilter('usuarios', 'usersFilter', 'Por vencer')} />
         </div>
       </div>
     </>

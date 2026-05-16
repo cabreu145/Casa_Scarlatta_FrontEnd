@@ -260,7 +260,7 @@ function ModoDia({ onChange, darkMode }) {
 }
 
 // ── Modo LIBRE ─────────────────────────────────────────────────────────────
-function ModoLibre({ onChange, darkMode }) {
+function ModoLibre({ onChange, darkMode, hideFecha = false }) {
   const [activo,      setActivo]      = useState('hoy')
   const [fechaCustom, setFechaCustom] = useState('')
 
@@ -269,7 +269,7 @@ function ModoLibre({ onChange, darkMode }) {
     { value: 'hoy',    label: 'Hoy'         },
     { value: 'semana', label: 'Esta semana' },
     { value: 'mes',    label: 'Este mes'    },
-    { value: 'fecha',  label: '📅 Fecha'    },
+    ...(hideFecha ? [] : [{ value: 'fecha', label: '📅 Fecha' }]),
   ]
 
   function seleccionar(value) {
@@ -325,7 +325,7 @@ function ModoLibre({ onChange, darkMode }) {
 }
 
 // ── Export principal ───────────────────────────────────────────────────────
-export default function DateNavigator({ modo = 'libre', onChange, darkMode = false }) {
+export default function DateNavigator({ modo = 'libre', onChange, darkMode = false, hideFecha = false }) {
   if (modo === 'dia') return <ModoDia onChange={onChange} darkMode={darkMode} />
-  return <ModoLibre onChange={onChange} darkMode={darkMode} />
+  return <ModoLibre onChange={onChange} darkMode={darkMode} hideFecha={hideFecha} />
 }

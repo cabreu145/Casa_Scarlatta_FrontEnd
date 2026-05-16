@@ -310,6 +310,11 @@ export default function AdminPanel() {
     setIsSidebarOpen(false)
   }
 
+  function showSectionWithFilter(sectionId, filterKey, filterValue) {
+    showSection(sectionId)
+    if (filterKey === 'usersFilter') setUsersFilter(filterValue)
+  }
+
   useEffect(() => {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
@@ -511,6 +516,7 @@ export default function AdminPanel() {
               rangoDash={rangoDash}
               setRangoDash={setRangoDash}
               showSection={showSection}
+              showSectionWithFilter={showSectionWithFilter}
             />
           </section>
 

@@ -610,7 +610,7 @@ export function FinanzasSection({ inPanel = false }) {
         </div>
 
         {/* Transacciones */}
-        <div style={panel}>
+        <div style={panel} data-section="transacciones">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-primary)' }}>
               Transacciones
