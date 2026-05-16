@@ -100,43 +100,47 @@ export default function CoachMisClases() {
           </div>
 
           {/* Day strip */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none' }}>
             {days.map((day, i) => {
               const isSelected = isSameDay(day, selectedDate)
-              const isToday    = isSameDay(day, new Date())
               const hasDot     = dayHasClases[i]
               return (
                 <button
                   key={i}
                   onClick={() => setSelectedDate(day)}
                   style={{
+                    flex: 1,
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                    padding: '10px 4px',
-                    borderRadius: 'var(--radius-md)',
-                    border: isSelected ? '2px solid var(--brand-wine)' : '2px solid transparent',
-                    background: isSelected ? 'var(--brand-wine-13)' : isToday ? 'var(--bg-surface)' : 'transparent',
+                    padding: '10px 0',
+                    borderRadius: 14,
+                    border: `1.5px solid ${isSelected ? 'var(--brand-wine)' : 'transparent'}`,
+                    background: isSelected ? 'var(--brand-wine)' : 'transparent',
                     cursor: 'pointer',
-                    transition: 'all 0.15s',
+                    transition: 'all 0.2s',
+                    fontFamily: 'var(--font-body)',
                   }}
                 >
                   <span style={{
-                    fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700,
-                    letterSpacing: '0.08em', textTransform: 'uppercase',
-                    color: isSelected ? 'var(--brand-wine)' : 'var(--text-muted)',
+                    fontSize: 10, fontWeight: 700,
+                    letterSpacing: '0.1em', textTransform: 'uppercase',
+                    color: isSelected ? 'rgba(245,239,234,0.85)' : 'var(--text-muted)',
+                    transition: 'color 0.2s',
                   }}>
                     {DAYS_ABBR[day.getDay()]}
                   </span>
                   <span style={{
-                    fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700,
-                    color: isSelected ? 'var(--brand-wine)' : isToday ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    fontSize: 20, fontWeight: 700, lineHeight: 1,
+                    color: isSelected ? '#F5EFEA' : 'var(--text-secondary)',
+                    transition: 'color 0.2s',
                   }}>
                     {day.getDate()}
                   </span>
                   <span style={{
-                    width: 6, height: 6, borderRadius: '50%',
+                    width: 5, height: 5, borderRadius: '50%', marginTop: 2,
                     background: hasDot
-                      ? (isSelected ? 'var(--brand-wine)' : 'var(--text-muted)')
+                      ? (isSelected ? 'rgba(255,255,255,0.7)' : 'var(--brand-wine)')
                       : 'transparent',
+                    transition: 'background 0.2s',
                   }} />
                 </button>
               )
@@ -253,11 +257,13 @@ export default function CoachMisClases() {
 }
 
 const NAV_BTN = {
+  flexShrink: 0,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  width: 32, height: 32,
-  borderRadius: 'var(--radius-md)',
+  width: 36, height: 36,
+  borderRadius: '50%',
   border: '1.5px solid var(--neutral-border)',
-  background: 'var(--bg-base)',
+  background: 'rgba(255,255,255,0.5)',
   color: 'var(--text-secondary)',
   cursor: 'pointer',
+  transition: 'background 0.2s, color 0.2s',
 }
