@@ -206,6 +206,7 @@ export function FinanzasSection({ inPanel = false }) {
   const [formGasto, setFormGasto]       = useState({ concepto: '', monto: '', tipo: TIPOS_GASTO.OPERATIVO })
   const [filtroCortes, setFiltroCortes] = useState('todo')
   const [cortesPageDate, setCortesPageDate] = useState(() => hoyLocal())
+  const [txExpandidas, setTxExpandidas]     = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 30_000)
@@ -325,8 +326,10 @@ export function FinanzasSection({ inPanel = false }) {
       totalTarjeta:       datosCorte.tarjeta,
       totalTransferencia: datosCorte.transferencia,
       totalGastos:        totalGastosHoy,
-      neto:               datosCorte.total - totalGastosHoy,
-      montoCierre:        monto + datosCorte.efectivo,
+      neto:           datosCorte.efectivo - totalGastosHoy,
+      aEntregar:      Math.max(0, datosCorte.efectivo - totalGastosHoy),
+      fondoSiguiente: monto,
+      montoCierre:    monto + datosCorte.efectivo,
       ejecutadoPor:       usuario?.id ?? null,
       estado:             'cerrado',
     })
@@ -380,6 +383,10 @@ export function FinanzasSection({ inPanel = false }) {
     exportarExcelLocal(datos, `${nombre}.xlsx`, 'Finanzas')
   }
 
+  const TX_VISIBLES = 5
+  const txVisibles  = txExpandidas ? txFiltradas : txFiltradas.slice(0, TX_VISIBLES)
+  const hayMasTx    = txFiltradas.length > TX_VISIBLES
+
   const panel = {
     background: 'var(--neutral-card)', border: '1px solid var(--neutral-border)',
     borderRadius: 12, padding: '20px 24px', marginBottom: 16,
@@ -402,6 +409,7 @@ export function FinanzasSection({ inPanel = false }) {
             const mapa = { hoy: 'dia', semana: 'semana', mes: 'mes', todos: 'todos', fecha: 'fecha' }
             setRango(mapa[r.tipo] ?? 'dia')
             setFechaFin(r.fecha ?? null)
+            setTxExpandidas(false)
           }}
         />
 
@@ -420,13 +428,13 @@ export function FinanzasSection({ inPanel = false }) {
             sub={`${kpis.numTransacciones} transacciones`}
             crecimiento={kpis.crecimiento} color="#22c55e" icono="💹"
             activo={filtroActivo === 'ingresos'}
-            onClick={() => setFiltroActivo(f => f === 'ingresos' ? null : 'ingresos')}
+            onClick={() => { setFiltroActivo(f => f === 'ingresos' ? null : 'ingresos'); setTxExpandidas(false) }}
           />
           <KpiCard
             label="Gastos" valor={`$${kpis.totalGastos.toLocaleString()}`}
             sub={`${gastosRango.length} registros`} color="#ef4444" icono="📉"
             activo={filtroActivo === 'gastos'}
-            onClick={() => setFiltroActivo(f => f === 'gastos' ? null : 'gastos')}
+            onClick={() => { setFiltroActivo(f => f === 'gastos' ? null : 'gastos'); setTxExpandidas(false) }}
           />
           <KpiCard
             label="Utilidad neta"
@@ -520,7 +528,7 @@ export function FinanzasSection({ inPanel = false }) {
               <input
                 className={styles.searchInput} style={{ width: 180 }}
                 type="text" placeholder="Buscar..." value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
+                onChange={e => { setBusqueda(e.target.value); setTxExpandidas(false) }}
               />
               <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={handleExportar}>CSV</button>
               <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={handleExportar}>Excel</button>
@@ -538,7 +546,7 @@ export function FinanzasSection({ inPanel = false }) {
                     Sin transacciones en este período
                   </td>
                 </tr>
-              ) : txFiltradas.map(tx => (
+              ) : txVisibles.map(tx => (
                 <tr key={tx.id}>
                   <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{tx.fecha}</td>
                   <td style={{ fontWeight: 500 }}>{tx.concepto}</td>
@@ -559,6 +567,29 @@ export function FinanzasSection({ inPanel = false }) {
               ))}
             </tbody>
           </table>
+          {hayMasTx && (
+            <button
+              onClick={() => setTxExpandidas(v => !v)}
+              style={{
+                width: '100%', marginTop: 12, padding: '9px 0',
+                borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)',
+                fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background  = 'rgba(123,31,46,0.15)'
+                e.currentTarget.style.color       = '#E8A4AD'
+                e.currentTarget.style.borderColor = 'rgba(123,31,46,0.4)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background  = 'rgba(255,255,255,0.03)'
+                e.currentTarget.style.color       = 'rgba(255,255,255,0.5)'
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+              }}
+            >
+              {txExpandidas ? `▲ Ver menos` : `▼ Ver ${txFiltradas.length - TX_VISIBLES} más`}
+            </button>
+          )}
         </div>
 
         {/* Gastos */}
@@ -695,34 +726,108 @@ export function FinanzasSection({ inPanel = false }) {
                   Sin cortes en este período
                 </p>
               ) : (
-                <div className={styles.tableContainer}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr><th>Fecha</th><th>Día</th><th>Hora</th><th>Turno</th><th>Inicio</th><th>Efectivo</th><th>Tarjeta</th><th>Ingresos</th><th>Gastos</th><th>Neto</th><th>Cierre</th><th>Estado</th></tr>
-                    </thead>
-                    <tbody>
-                      {cortesFiltrados.map(c => (
-                        <tr key={c.id}>
-                          <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.fecha}</td>
-                          <td style={{ fontSize: 12 }}>{c.dia ?? diaDesdefecha(c.fecha)}</td>
-                          <td style={{ fontSize: 12 }}>{c.hora ?? '—'}</td>
-                          <td>
-                            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: (c.turno === 'tarde' || c.turno === 'noche') ? '#1A1A3A' : '#2A1A1A', color: (c.turno === 'tarde' || c.turno === 'noche') ? '#818CF8' : '#F59E0B' }}>
-                              {(c.turno === 'tarde' || c.turno === 'noche') ? '🌙 Tarde' : '☀️ Mañana'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {cortesFiltrados.map(c => {
+                    const esTarde = c.turno === 'tarde' || c.turno === 'noche'
+                    const neto    = c.neto ?? (c.totalEfectivo ?? 0) - (c.totalGastos ?? 0)
+                    const aEntregar = c.aEntregar ?? Math.max(0, neto)
+                    return (
+                      <div key={c.id} style={{
+                        borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)',
+                        background: '#1E1014', overflow: 'hidden',
+                      }}>
+                        {/* Header */}
+                        <div style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '10px 16px', background: 'rgba(255,255,255,0.03)',
+                          borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        }}>
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: '#F5EDE8' }}>
+                              {c.fecha} — {c.dia ?? diaDesdefecha(c.fecha)}
                             </span>
-                          </td>
-                          <td>${(c.montoInicial ?? 0).toLocaleString()}</td>
-                          <td>${(c.totalEfectivo ?? 0).toLocaleString()}</td>
-                          <td>${(c.totalTarjeta ?? 0).toLocaleString()}</td>
-                          <td style={{ color: '#22c55e', fontWeight: 600 }}>${(c.totalIngresos ?? 0).toLocaleString()}</td>
-                          <td style={{ color: '#ef4444' }}>{c.totalGastos != null ? `−$${c.totalGastos.toLocaleString()}` : '—'}</td>
-                          <td style={{ fontWeight: 600, color: '#E8A4AD' }}>{c.neto != null ? (c.neto < 0 ? `−$${Math.abs(c.neto).toLocaleString()}` : `$${c.neto.toLocaleString()}`) : '—'}</td>
-                          <td style={{ color: '#E8A4AD' }}>${(c.montoCierre ?? 0).toLocaleString()}</td>
-                          <td><span className={`${styles.badge} ${styles.badgeCompletada}`}>{c.estado}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            <span style={{ fontSize: 11, color: '#A69A93' }}>{c.hora ?? ''}</span>
+                            <span style={{
+                              fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                              background: esTarde ? '#1A1A3A' : '#2A1A1A',
+                              color:      esTarde ? '#818CF8' : '#F59E0B',
+                            }}>
+                              {esTarde ? '🌙 Tarde' : '☀️ Mañana'}
+                            </span>
+                          </div>
+                          <span className={`${styles.badge} ${styles.badgeCompletada}`} style={{ fontSize: 11 }}>
+                            {c.estado}
+                          </span>
+                        </div>
+
+                        {/* 3 columnas */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 0 }}>
+
+                          {/* Col 1 — Ingresos */}
+                          <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B5A55', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ingresos del turno</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {[
+                                { label: 'Total ingresos', val: c.totalIngresos ?? 0, color: '#22c55e', bold: true },
+                                { label: 'Efectivo',       val: c.totalEfectivo ?? 0, color: '#A3E635' },
+                                { label: 'Tarjeta',        val: c.totalTarjeta ?? 0,  color: '#60A5FA' },
+                                { label: 'Transferencia',  val: c.totalTransferencia ?? 0, color: '#A78BFA' },
+                              ].map(({ label, val, color, bold }) => (
+                                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: bold ? 15 : 13, fontWeight: bold ? 700 : 500, color }}>
+                                    ${val.toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Col 2 — Gastos y resultado */}
+                          <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B5A55', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Gastos y resultado</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {[
+                                { label: 'Gastos',  val: -(c.totalGastos ?? 0), color: '#ef4444' },
+                                { label: 'Neto',    val: neto,                   color: neto >= 0 ? '#22c55e' : '#ef4444', bold: true },
+                              ].map(({ label, val, color, bold }) => (
+                                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: bold ? 15 : 13, fontWeight: bold ? 700 : 500, color }}>
+                                    {val < 0 ? '−' : ''}${Math.abs(val).toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                              <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#F59E0B', fontWeight: 600 }}>A entregar</span>
+                                <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#F59E0B', fontWeight: 700 }}>${aEntregar.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Col 3 — Caja física */}
+                          <div style={{ padding: '12px 16px' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B5A55', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Caja física</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {[
+                                { label: 'Fondo inicial',   val: c.montoInicial ?? 0,  color: '#A69A93' },
+                                { label: 'Fondo siguiente', val: c.fondoSiguiente ?? c.montoInicial ?? 0, color: '#60A5FA' },
+                                { label: 'Cierre de caja',  val: c.montoCierre ?? 0,   color: '#E8A4AD', bold: true },
+                              ].map(({ label, val, color, bold }) => (
+                                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: bold ? 15 : 13, fontWeight: bold ? 700 : 500, color }}>
+                                    ${val.toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </>
