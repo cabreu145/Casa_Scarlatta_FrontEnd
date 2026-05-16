@@ -102,3 +102,110 @@ export function getDashboardMetrics(rango = 'mes') {
     totalPaquetes: paquetes.length,
   }
 }
+
+// ── Ingresos reales por mes (últimos 8 meses) ─────────────────────────────
+export function getIngresosPorMes() {
+  const { transacciones } = useTransaccionesStore.getState()
+  const ahora = new Date()
+  const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun',
+                         'Jul','Ago','Sep','Oct','Nov','Dic']
+  return Array.from({ length: 8 }, (_, i) => {
+    const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - (7 - i), 1)
+    const ym    = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}`
+    const total = transacciones
+      .filter(tx => tx.monto > 0 && (tx.fecha ?? '').startsWith(ym))
+      .reduce((s, tx) => s + tx.monto, 0)
+    return {
+      label:    MESES_CORTOS[fecha.getMonth()],
+      mes:      ym,
+      ingresos: total,
+    }
+  })
+}
+
+// ── Distribución real de paquetes vendidos ────────────────────────────────
+export function getDistribucionPaquetes() {
+  const { transacciones } = useTransaccionesStore.getState()
+  const { paquetes }      = usePaquetesStore.getState()
+
+  const ventas = transacciones.filter(tx => tx.tipo === 'paquete' && tx.monto > 0)
+  const total  = ventas.length || 1
+
+  const COLORES = ['#7B1F2E', '#C26B7A', '#3B82F6', '#22C55E', '#F59E0B', '#8B5CF6']
+
+  return paquetes.map((p, i) => {
+    const count = ventas.filter(tx =>
+      tx.concepto?.toLowerCase().includes(p.nombre.toLowerCase())
+    ).length
+    return {
+      nombre: p.nombre,
+      count,
+      pct:    Math.round((count / total) * 100),
+      color:  COLORES[i % COLORES.length],
+      precio: p.precio,
+      clases: p.clases,
+    }
+  }).filter(p => p.count > 0)
+    .sort((a, b) => b.count - a.count)
+}
+
+// ── Clases del día actual ─────────────────────────────────────────────────
+export function getClasesHoy() {
+  const { clases } = useClasesStore.getState()
+  const hoy    = new Date()
+  const isoHoy = hoy.toISOString().split('T')[0]
+  const DIAS_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const diaHoy  = DIAS_ES[hoy.getDay()]
+
+  return clases
+    .filter(c => c.fecha === isoHoy || (!c.fecha && c.dia === diaHoy))
+    .sort((a, b) => (a.hora ?? '').localeCompare(b.hora ?? ''))
+    .slice(0, 4)
+}
+
+// ── Usuarios con paquete por vencer (≤ 7 días o ≤ 2 clases) ──────────────
+export function getUsuariosPorVencer() {
+  const { usuarios } = useUsuariosStore.getState()
+  const hoy = new Date().toISOString().split('T')[0]
+
+  return usuarios
+    .filter(u => u.rol === 'cliente' && u.activo && u.paquete)
+    .map(u => {
+      const vencimiento    = u.paqueteInfo?.fechaVencimiento ?? null
+      const diasRestantes  = vencimiento
+        ? Math.ceil((new Date(vencimiento) - new Date(hoy)) / 86400000)
+        : null
+      const clasesRestantes = u.clasesPaquete === 999 ? null : (u.clasesPaquete ?? 0)
+      const urgente = (diasRestantes !== null && diasRestantes <= 3)
+                   || (clasesRestantes !== null && clasesRestantes <= 1)
+      const pronto  = (diasRestantes !== null && diasRestantes <= 7)
+                   || (clasesRestantes !== null && clasesRestantes <= 2)
+      return { ...u, diasRestantes, clasesRestantes, urgente, pronto }
+    })
+    .filter(u => u.urgente || u.pronto)
+    .sort((a, b) => {
+      if (a.urgente && !b.urgente) return -1
+      if (!a.urgente && b.urgente) return 1
+      return (a.diasRestantes ?? 99) - (b.diasRestantes ?? 99)
+    })
+    .slice(0, 4)
+}
+
+// ── Últimas transacciones reales ──────────────────────────────────────────
+export function getUltimasVentas() {
+  const { transacciones } = useTransaccionesStore.getState()
+  const { usuarios }      = useUsuariosStore.getState()
+
+  return [...transacciones]
+    .filter(tx => tx.monto > 0)
+    .sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? ''))
+    .slice(0, 4)
+    .map(tx => {
+      const usuario = usuarios.find(u => u.id === tx.userId)
+      return {
+        ...tx,
+        nombreUsuario: usuario?.nombre ?? 'Cliente',
+        inicial:       (usuario?.nombre ?? 'C').charAt(0).toUpperCase(),
+      }
+    })
+}

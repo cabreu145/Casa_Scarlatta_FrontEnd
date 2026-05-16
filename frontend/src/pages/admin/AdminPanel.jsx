@@ -507,7 +507,11 @@ export default function AdminPanel() {
 
           {/* ── DASHBOARD ── */}
           <section className={`${styles.section}${activeSection === 'dashboard' ? ' ' + styles.active : ''}`}>
-            <DashboardSection rangoDash={rangoDash} setRangoDash={setRangoDash} />
+            <DashboardSection
+              rangoDash={rangoDash}
+              setRangoDash={setRangoDash}
+              showSection={showSection}
+            />
           </section>
 
           {/* ── COACHES ── */}
