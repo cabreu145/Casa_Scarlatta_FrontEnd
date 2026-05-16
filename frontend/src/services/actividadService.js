@@ -140,3 +140,13 @@ export function logLoginAdmin({ nombre }) {
     {}
   )
 }
+
+export function logLoginCliente({ nombre, email }) {
+  return registrar(
+    TIPOS_EVENTO.USUARIO_NUEVO,
+    `Inicio de sesión (cliente): ${nombre ?? email}`,
+    nombre ?? email,
+    null,
+    { email }
+  )
+}

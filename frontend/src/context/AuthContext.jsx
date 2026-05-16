@@ -15,6 +15,7 @@ import { useAuthStore }   from '@/stores/authStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import { mockUsers } from '@/data/mockUsers'
 import { hoyLocal } from '@/utils/fecha'
+import { logUsuarioNuevo, logLoginCliente } from '@/services/actividadService'
 
 const AuthContext = createContext(null)
 
@@ -44,6 +45,9 @@ export function AuthProvider({ children }) {
     const { password: _, ...safeUser } = user
     setUsuario(safeUser)
     setLocalLoading(false)
+    if (safeUser.rol === 'cliente') {
+      logLoginCliente({ nombre: safeUser.nombre ?? safeUser.name, email: safeUser.email })
+    }
     return safeUser
   }
 
@@ -70,6 +74,10 @@ export function AuthProvider({ children }) {
     const { password: _, ...safeUser } = nuevoUsuario
     setUsuario(safeUser)
     setLocalLoading(false)
+    logUsuarioNuevo({
+      nombre: datos.nombre ?? datos.name ?? 'Usuario nuevo',
+      email:  datos.email,
+    })
     return safeUser
   }
 
