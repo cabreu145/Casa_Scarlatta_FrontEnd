@@ -65,13 +65,17 @@ function filtrarTxPeriodoAnterior(transacciones, rango) {
  *
  * // [BACKEND] → GET /api/finanzas/kpis?rango=mes
  */
-export function getKpisFinanzas(rango = 'mes', fechaFin = null) {
+export function getKpisFinanzas(rango = 'mes', fechaFin = null, { fechaDesde = null, fechaHasta = null } = {}) {
   const { transacciones } = useTransaccionesStore.getState()
   const gastosStore       = useGastosStore.getState()
 
+  const esRango = rango === 'rango' && fechaDesde && fechaHasta
+
   const txActual   = fechaFin
     ? transacciones.filter(tx => tx.fecha === fechaFin && tx.monto > 0)
-    : filtrarTxPorRango(transacciones, rango).filter(tx => tx.monto > 0)
+    : esRango
+      ? transacciones.filter(tx => tx.fecha >= fechaDesde && tx.fecha <= fechaHasta && tx.monto > 0)
+      : filtrarTxPorRango(transacciones, rango).filter(tx => tx.monto > 0)
   const txAnterior = filtrarTxPeriodoAnterior(transacciones, rango).filter(tx => tx.monto > 0)
 
   const totalIngresos   = txActual.reduce((a,tx) => a + tx.monto, 0)
@@ -80,7 +84,9 @@ export function getKpisFinanzas(rango = 'mes', fechaFin = null) {
 
   const gastosRango    = fechaFin
     ? gastosStore.gastos.filter(g => g.fecha === fechaFin)
-    : gastosStore.getGastosByRango(rango)
+    : esRango
+      ? gastosStore.gastos.filter(g => g.fecha >= fechaDesde && g.fecha <= fechaHasta)
+      : gastosStore.getGastosByRango(rango)
   const totalGastos    = gastosRango.reduce((a,g) => a + g.monto, 0)
   const utilidad       = totalIngresos - totalGastos
   const numTx          = txActual.length
@@ -89,7 +95,9 @@ export function getKpisFinanzas(rango = 'mes', fechaFin = null) {
   // Desglose por método de pago (rango actual)
   const txAll = fechaFin
     ? transacciones.filter(tx => tx.fecha === fechaFin)
-    : filtrarTxPorRango(transacciones, rango)
+    : esRango
+      ? transacciones.filter(tx => tx.fecha >= fechaDesde && tx.fecha <= fechaHasta)
+      : filtrarTxPorRango(transacciones, rango)
   const desglosePago = txAll.reduce(
     (acc, tx) => {
       const m = tx.metodoPago ?? 'efectivo'

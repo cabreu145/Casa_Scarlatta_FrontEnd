@@ -14,6 +14,7 @@ import { useNotificacionesStore } from '@/stores/notificacionesStore'
 import { useAuthStore }           from '@/stores/authStore'
 import { TIPOS_TRANSACCION, TIPOS_NOTIFICACION } from '@/data/mockData'
 import { mockUsers }              from '@/data/mockUsers'
+import { fechaLocal }             from '@/utils/fecha'
 
 /**
  * Registra un cliente nuevo desde el panel admin.
@@ -84,7 +85,7 @@ export async function asignarPaqueteService(clienteId, paquete, origen = 'estudi
     tipo:       TIPOS_TRANSACCION.PAQUETE,
     concepto:   `${paquete.nombre} — ${origen}`,
     monto:      paquete.precio,
-    fecha:      ahora.toISOString().split('T')[0],
+    fecha:      fechaLocal(ahora),
     hora:       ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }),
     canal:      origen === 'online' ? 'en línea' : 'recepción',
     metodoPago: origen === 'estudio' ? 'efectivo' : null,

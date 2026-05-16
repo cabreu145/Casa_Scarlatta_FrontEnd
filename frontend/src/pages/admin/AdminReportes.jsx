@@ -672,6 +672,7 @@ export function ReportesSection({ inPanel = false }) {
         <DateNavigator
           modo="libre"
           darkMode={true}
+          inicial="todos"
           onChange={(r) => setPeriodoReporte(r)}
         />
 

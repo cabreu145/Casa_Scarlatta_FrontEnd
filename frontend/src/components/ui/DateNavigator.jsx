@@ -51,6 +51,20 @@ function isSameDay(a, b) {
 }
 
 // ── Estilos dinámicos ──────────────────────────────────────────────────────
+function inputRangoStyle(dark) {
+  return {
+    padding:      '5px 10px',
+    borderRadius: 8,
+    border:       `1px solid ${dark ? 'rgba(255,255,255,0.15)' : 'rgba(123,31,46,0.25)'}`,
+    background:   dark ? 'rgba(255,255,255,0.06)' : 'transparent',
+    color:        dark ? '#fff' : 'var(--text-primary)',
+    fontFamily:   'var(--font-body)',
+    fontSize:     13,
+    outline:      'none',
+    cursor:       'pointer',
+  }
+}
+
 function chip(active, dark) {
   return {
     padding:      '6px 14px',
@@ -260,22 +274,29 @@ function ModoDia({ onChange, darkMode }) {
 }
 
 // ── Modo LIBRE ─────────────────────────────────────────────────────────────
-function ModoLibre({ onChange, darkMode, hideFecha = false }) {
-  const [activo,      setActivo]      = useState('hoy')
+function ModoLibre({ onChange, darkMode, hideFecha = false, inicial = 'hoy' }) {
+  const [activo,      setActivo]      = useState(inicial)
   const [fechaCustom, setFechaCustom] = useState('')
+  const [fechaDesde,  setFechaDesde]  = useState('')
+  const [fechaHasta,  setFechaHasta]  = useState('')
 
   const OPCIONES = [
     { value: 'todos',  label: 'Todo'        },
     { value: 'hoy',    label: 'Hoy'         },
     { value: 'semana', label: 'Esta semana' },
     { value: 'mes',    label: 'Este mes'    },
-    ...(hideFecha ? [] : [{ value: 'fecha', label: '📅 Fecha' }]),
+    ...(hideFecha ? [] : [
+      { value: 'fecha', label: '📅 Fecha' },
+      { value: 'rango', label: '📅 Rango' },
+    ]),
   ]
 
   function seleccionar(value) {
     setActivo(value)
-    if (value !== 'fecha') {
-      setFechaCustom('')
+    setFechaCustom('')
+    setFechaDesde('')
+    setFechaHasta('')
+    if (value !== 'fecha' && value !== 'rango') {
       onChange({ tipo: value })
     }
   }
@@ -287,10 +308,7 @@ function ModoLibre({ onChange, darkMode, hideFecha = false }) {
   }
 
   return (
-    <div style={{
-      display: 'flex', gap: 8, flexWrap: 'wrap',
-      alignItems: 'center', marginBottom: 16,
-    }}>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
       {OPCIONES.map(({ value, label }) => (
         <button
           key={value}
@@ -300,6 +318,7 @@ function ModoLibre({ onChange, darkMode, hideFecha = false }) {
           {label}
         </button>
       ))}
+
       {activo === 'fecha' && (
         <input
           type="date"
@@ -308,9 +327,7 @@ function ModoLibre({ onChange, darkMode, hideFecha = false }) {
           style={{
             padding:      '6px 12px',
             borderRadius: 8,
-            border:       `1px solid ${darkMode
-              ? 'rgba(255,255,255,0.15)'
-              : 'rgba(123,31,46,0.25)'}`,
+            border:       `1px solid ${darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(123,31,46,0.25)'}`,
             background:   darkMode ? 'rgba(255,255,255,0.06)' : 'transparent',
             color:        darkMode ? '#fff' : 'var(--text-primary)',
             fontFamily:   'var(--font-body)',
@@ -320,12 +337,53 @@ function ModoLibre({ onChange, darkMode, hideFecha = false }) {
           }}
         />
       )}
+
+      {activo === 'rango' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: darkMode ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>
+            De:
+          </span>
+          <input
+            type="date"
+            value={fechaDesde}
+            onChange={(e) => {
+              const val = e.target.value
+              setFechaDesde(val)
+              if (val && fechaHasta && val <= fechaHasta) {
+                onChange({ tipo: 'rango', fechaDesde: val, fechaHasta })
+              }
+            }}
+            style={inputRangoStyle(darkMode)}
+          />
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: darkMode ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>
+            Hasta:
+          </span>
+          <input
+            type="date"
+            value={fechaHasta}
+            min={fechaDesde || undefined}
+            onChange={(e) => {
+              const val = e.target.value
+              setFechaHasta(val)
+              if (fechaDesde && val && fechaDesde <= val) {
+                onChange({ tipo: 'rango', fechaDesde, fechaHasta: val })
+              }
+            }}
+            style={inputRangoStyle(darkMode)}
+          />
+          {fechaDesde && fechaHasta && fechaDesde <= fechaHasta && (
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: darkMode ? 'rgba(255,255,255,0.35)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              {Math.ceil((new Date(fechaHasta) - new Date(fechaDesde)) / 86400000) + 1} días
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
 // ── Export principal ───────────────────────────────────────────────────────
-export default function DateNavigator({ modo = 'libre', onChange, darkMode = false, hideFecha = false }) {
+export default function DateNavigator({ modo = 'libre', onChange, darkMode = false, hideFecha = false, inicial = 'hoy' }) {
   if (modo === 'dia') return <ModoDia onChange={onChange} darkMode={darkMode} />
-  return <ModoLibre onChange={onChange} darkMode={darkMode} hideFecha={hideFecha} />
+  return <ModoLibre onChange={onChange} darkMode={darkMode} hideFecha={hideFecha} inicial={inicial} />
 }

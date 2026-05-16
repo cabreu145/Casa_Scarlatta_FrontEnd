@@ -197,6 +197,8 @@ export function FinanzasSection({ inPanel = false }) {
 
   const [rango, setRango]               = useState('dia')
   const [fechaFin, setFechaFin]         = useState(null)
+  const [fechaDesde, setFechaDesde]     = useState(null)
+  const [fechaHasta, setFechaHasta]     = useState(null)
   const [filtroActivo, setFiltroActivo] = useState(null)
   const [busqueda, setBusqueda]         = useState('')
   const [modalGasto, setModalGasto]     = useState(false)
@@ -215,8 +217,8 @@ export function FinanzasSection({ inPanel = false }) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const kpis = useMemo(
-    () => getKpisFinanzas(rango, fechaFin),
-    [transacciones, gastos, rango, fechaFin, tick]
+    () => getKpisFinanzas(rango, fechaFin, { fechaDesde, fechaHasta }),
+    [transacciones, gastos, rango, fechaFin, fechaDesde, fechaHasta, tick]
   )
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,6 +240,9 @@ export function FinanzasSection({ inPanel = false }) {
 
   const cortesFiltrados = useMemo(() => {
     const hoyStr = hoyLocal()
+    if (fechaFin) {
+      return [...cortes].reverse().filter(c => c.fecha === fechaFin)
+    }
     const todos = [...cortes].reverse().filter(c => c.fecha <= hoyStr)
     if (filtroCortes === 'todo') return todos
     if (filtroCortes === 'hoy')    return todos.filter(c => c.fecha === hoyStr)
@@ -250,7 +255,7 @@ export function FinanzasSection({ inPanel = false }) {
       return todos.filter(c => c.fecha?.startsWith(mes))
     }
     return todos
-  }, [cortes, filtroCortes])
+  }, [cortes, filtroCortes, fechaFin])
 
   const alertas = useMemo(() => {
     const lista = []
@@ -274,6 +279,7 @@ export function FinanzasSection({ inPanel = false }) {
         if (rango === 'todos')  return true
         if (rango === 'dia')    return tx.fecha === hoy
         if (rango === 'semana') return tx.fecha >= semanaInicio
+        if (rango === 'rango')  return fechaDesde && fechaHasta ? tx.fecha >= fechaDesde && tx.fecha <= fechaHasta : false
         return tx.fecha?.slice(0, 7) === mesActual
       })
       .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
@@ -290,15 +296,40 @@ export function FinanzasSection({ inPanel = false }) {
       )
     }
     return lista
-  }, [transacciones, rango, filtroActivo, busqueda])
+  }, [transacciones, rango, filtroActivo, busqueda, fechaFin, fechaDesde, fechaHasta])
 
   const gastosRango = useMemo(() => {
     if (rango === 'fecha' && fechaFin) return gastos.filter(g => g.fecha === fechaFin)
     if (rango === 'todos') return [...gastos]
+    if (rango === 'rango' && fechaDesde && fechaHasta) {
+      return gastos.filter(g => g.fecha >= fechaDesde && g.fecha <= fechaHasta)
+    }
     return getGastosByRango(rango)
-  }, [gastos, rango, fechaFin, getGastosByRango])
+  }, [gastos, rango, fechaFin, fechaDesde, fechaHasta, getGastosByRango])
 
-  const hoy            = hoyLocal()
+  const hoy              = hoyLocal()
+  const fechaCorteActiva = fechaFin ?? hoy
+  const esFechaFutura    = fechaCorteActiva > hoy
+  const puedeHacerCorte  = !fechaFin || fechaFin === hoy
+
+  const datosCorteActivos = useMemo(() => {
+    if (esFechaFutura) return { efectivo: 0, tarjeta: 0, transferencia: 0, total: 0 }
+    if (fechaFin) {
+      const txFecha = transacciones.filter(tx => tx.fecha === fechaFin && tx.monto > 0)
+      return txFecha.reduce(
+        (acc, tx) => {
+          const m = tx.metodoPago ?? 'efectivo'
+          acc[m]    = (acc[m] ?? 0) + tx.monto
+          acc.total = (acc.total ?? 0) + tx.monto
+          return acc
+        },
+        { efectivo: 0, tarjeta: 0, transferencia: 0, total: 0 }
+      )
+    }
+    return datosCorte
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transacciones, fechaFin, datosCorte, esFechaFutura])
+
   const yaHayManana    = cortes.some(c => c.fecha === hoy && c.turno === 'mañana')
   const yaHayNoche     = cortes.some(c => c.fecha === hoy && (c.turno === 'tarde' || c.turno === 'noche'))
   const montoInicial   = parseFloat(formCorte.montoInicial) || 0
@@ -391,7 +422,9 @@ export function FinanzasSection({ inPanel = false }) {
     background: 'var(--neutral-card)', border: '1px solid var(--neutral-border)',
     borderRadius: 12, padding: '20px 24px', marginBottom: 16,
   }
-  const labelRango = rango === 'fecha' && fechaFin ? fechaFin
+  const labelRango = rango === 'rango' && fechaDesde && fechaHasta
+    ? `${fechaDesde} al ${fechaHasta}`
+    : rango === 'fecha' && fechaFin ? fechaFin
     : rango === 'todos'  ? 'todo el historial'
     : rango === 'dia'    ? 'hoy'
     : rango === 'semana' ? 'esta semana'
@@ -405,10 +438,13 @@ export function FinanzasSection({ inPanel = false }) {
         <DateNavigator
           modo="libre"
           darkMode={true}
+          inicial="hoy"
           onChange={(r) => {
-            const mapa = { hoy: 'dia', semana: 'semana', mes: 'mes', todos: 'todos', fecha: 'fecha' }
+            const mapa = { hoy: 'dia', semana: 'semana', mes: 'mes', todos: 'todos', fecha: 'fecha', rango: 'rango' }
             setRango(mapa[r.tipo] ?? 'dia')
             setFechaFin(r.fecha ?? null)
+            setFechaDesde(r.fechaDesde ?? null)
+            setFechaHasta(r.fechaHasta ?? null)
             setTxExpandidas(false)
           }}
         />
@@ -652,38 +688,40 @@ export function FinanzasSection({ inPanel = false }) {
         <div style={panel}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-primary)' }}>
-              Corte de caja — Hoy
+              Corte de caja — {fechaCorteActiva}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => abrirModalCorte('mañana')} disabled={yaHayManana} style={{
-                padding: '8px 16px', borderRadius: 8, border: 'none',
-                cursor: yaHayManana ? 'not-allowed' : 'pointer',
-                fontFamily: 'var(--font-body)', fontSize: 13,
-                background: yaHayManana ? '#2C1A1E' : '#7B1E22',
-                color: yaHayManana ? '#A69A93' : '#fff', opacity: yaHayManana ? 0.7 : 1,
-              }}>
-                {yaHayManana ? '✓ Mañana' : '☀️ Turno mañana'}
-              </button>
-              <button onClick={() => abrirModalCorte('tarde')} disabled={yaHayNoche} style={{
-                padding: '8px 16px', borderRadius: 8, border: 'none',
-                cursor: yaHayNoche ? 'not-allowed' : 'pointer',
-                fontFamily: 'var(--font-body)', fontSize: 13,
-                background: yaHayNoche ? '#2C1A1E' : '#4A1A3A',
-                color: yaHayNoche ? '#A69A93' : '#fff', opacity: yaHayNoche ? 0.7 : 1,
-              }}>
-                {yaHayNoche ? '✓ Tarde' : '🌙 Turno tarde'}
-              </button>
-            </div>
+            {puedeHacerCorte && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => abrirModalCorte('mañana')} disabled={yaHayManana} style={{
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  cursor: yaHayManana ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font-body)', fontSize: 13,
+                  background: yaHayManana ? '#2C1A1E' : '#7B1E22',
+                  color: yaHayManana ? '#A69A93' : '#fff', opacity: yaHayManana ? 0.7 : 1,
+                }}>
+                  {yaHayManana ? '✓ Mañana' : '☀️ Turno mañana'}
+                </button>
+                <button onClick={() => abrirModalCorte('tarde')} disabled={yaHayNoche} style={{
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  cursor: yaHayNoche ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font-body)', fontSize: 13,
+                  background: yaHayNoche ? '#2C1A1E' : '#4A1A3A',
+                  color: yaHayNoche ? '#A69A93' : '#fff', opacity: yaHayNoche ? 0.7 : 1,
+                }}>
+                  {yaHayNoche ? '✓ Tarde' : '🌙 Turno tarde'}
+                </button>
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
             {[
-              { label: '💵 Efectivo',        val: datosCorte.efectivo,               color: 'var(--text-primary)' },
-              { label: '💳 Tarjeta',         val: datosCorte.tarjeta,                color: 'var(--text-primary)' },
-              { label: '📱 Transferencia',   val: datosCorte.transferencia,          color: 'var(--text-primary)' },
-              { label: '📊 Total ingresos',  val: datosCorte.total,                  color: '#22c55e', border: '#22c55e44' },
-              { label: '📉 Gastos del día',  val: totalGastosHoy,                    color: '#ef4444', border: '#ef444444', neg: true },
-              { label: '💰 Neto a entregar', val: datosCorte.total - totalGastosHoy, color: '#E8A4AD', border: '#7B1E22',   bold: true },
+              { label: '💵 Efectivo',        val: datosCorteActivos.efectivo,                        color: 'var(--text-primary)' },
+              { label: '💳 Tarjeta',         val: datosCorteActivos.tarjeta,                         color: 'var(--text-primary)' },
+              { label: '📱 Transferencia',   val: datosCorteActivos.transferencia,                   color: 'var(--text-primary)' },
+              { label: '📊 Total ingresos',  val: datosCorteActivos.total,                           color: '#22c55e', border: '#22c55e44' },
+              { label: '📉 Gastos del día',  val: totalGastosHoy,                                    color: '#ef4444', border: '#ef444444', neg: true },
+              { label: '💰 Neto a entregar', val: datosCorteActivos.efectivo - totalGastosHoy,       color: '#E8A4AD', border: '#7B1E22',   bold: true },
             ].map(({ label, val, color, border, bold, neg }) => (
               <div key={label} style={{
                 background: '#2C1A1E', borderRadius: 8, padding: '12px 14px',

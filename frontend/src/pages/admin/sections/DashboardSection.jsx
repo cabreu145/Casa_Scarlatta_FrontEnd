@@ -319,6 +319,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
           modo="libre"
           darkMode={true}
           hideFecha={true}
+          inicial="mes"
           onChange={(rango) => {
             const mapa = { hoy: 'dia', semana: 'semana', mes: 'mes', todos: 'todos', fecha: 'fecha' }
             setRangoDash(mapa[rango.tipo] ?? 'dia')
