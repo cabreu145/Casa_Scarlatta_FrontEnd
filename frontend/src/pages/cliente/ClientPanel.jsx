@@ -294,7 +294,7 @@ export default function ClientPanel() {
   // ── Handlers ─────────────────────────────────────────────────────────────
   function handleCancelReserva(reservaId) {
     const resultado = cancelarReserva(reservaId, usuario.id)
-    if (resultado.ok) toast.success('Reserva cancelada')
+    if (resultado.ok) toast.success('Reserva cancelada. Te enviamos confirmación por correo 📧')
     else toast.error(resultado.error)
   }
 
@@ -305,7 +305,7 @@ export default function ClientPanel() {
       toast.error(resultado.error)
       return
     }
-    toast.success('¡Reserva confirmada!')
+    toast.success('Tu reserva quedó confirmada. Revisa tu correo con los detalles 📧')
     goTo('clases')
   }
 
@@ -331,6 +331,20 @@ export default function ClientPanel() {
       claseNombre:   av.title,
       posicion,
     })
+    // [BACKEND] → POST /api/email/send { plantilla: 'lista_espera_unirse' }
+    const uData = usuarios.find(u => u.id === usuario?.id)
+    if (uData?.email) {
+      import('@/services/emailService').then(({ emailListaEsperaUnirse }) => {
+        emailListaEsperaUnirse({
+          nombre:      userName,
+          email:       uData.email,
+          claseNombre: av.title,
+          posicion,
+          dia:         av.date,
+          hora:        av.time,
+        }).catch(() => {})
+      })
+    }
   }
 
   function handleSalirListaEspera(av) {

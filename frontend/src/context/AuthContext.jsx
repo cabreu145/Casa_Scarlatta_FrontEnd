@@ -16,6 +16,7 @@ import { useUsuariosStore } from '@/stores/usuariosStore'
 import { mockUsers } from '@/data/mockUsers'
 import { hoyLocal } from '@/utils/fecha'
 import { logUsuarioNuevo, logLoginCliente } from '@/services/actividadService'
+import { emailBienvenida, emailResetPassword } from '@/services/emailService'
 
 const AuthContext = createContext(null)
 
@@ -78,6 +79,12 @@ export function AuthProvider({ children }) {
       nombre: datos.nombre ?? datos.name ?? 'Usuario nuevo',
       email:  datos.email,
     })
+    // Enviar email de bienvenida
+    // [BACKEND] → POST /api/email/send { plantilla: 'bienvenida' }
+    emailBienvenida({
+      nombre: datos.nombre ?? datos.name ?? 'Cliente',
+      email:  datos.email,
+    }).catch(() => {}) // No bloquear el flujo si falla el email
     return safeUser
   }
 
@@ -92,6 +99,11 @@ export function AuthProvider({ children }) {
     }
     actualizarUsuario(su.id, { password: newPassword })
     setLocalLoading(false)
+    // [BACKEND] → El backend genera el token y envía el link real.
+    emailResetPassword({
+      nombre: su.nombre ?? su.name ?? 'Cliente',
+      email:  su.email,
+    }).catch(() => {})
   }
 
   const logout = () => {

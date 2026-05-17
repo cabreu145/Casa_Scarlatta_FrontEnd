@@ -17,7 +17,7 @@ import SeatSelector from '@/features/clases/SeatSelector'
 import { useClasesStore }          from '@/stores/clasesStore'
 import { useCoachesStore }         from '@/stores/coachesStore'
 import { useReservasStore }        from '@/stores/reservasStore'
-import { useConfiguracionStore }   from '@/stores/configuracionStore'
+import { useConfiguracionStore } from '@/stores/configuracionStore'
 import { useAuth } from '@/context/AuthContext'
 import { getPublicClassesByDate, getPublicAvailability } from '@/services/classService'
 import { cancelarReserva as cancelarReservaService } from '@/services/reservasService'
@@ -63,6 +63,7 @@ export default function Clases() {
   const { coaches }            = useCoachesStore()
   const { reservas } = useReservasStore()
   const { isAuthenticated, usuario } = useAuth()
+  const cfg = useConfiguracionStore()
 
   const coachFotoByName = useMemo(
     () => Object.fromEntries(coaches.map((c) => [c.nombre, c.foto]).filter(([, f]) => f)),
@@ -118,7 +119,10 @@ export default function Clases() {
     <main className={styles.main}>
 
       {/* ── Hero — keep exactly as-is ── */}
-      <section className={styles.hero}>
+      <section
+        className={styles.hero}
+        style={{ backgroundImage: `url(${cfg.get('imagenBannerClases')})` }}
+      >
         <div className={styles.heroInner}>
           <span className={styles.heroLabel}>RESERVA TU LUGAR</span>
           <h1 className={styles.heroTitle}>CLASES</h1>

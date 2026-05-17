@@ -1,5 +1,6 @@
 import { MapPin } from 'lucide-react'
 import styles from './Contacto.module.css'
+import { useConfiguracionStore } from '@/stores/configuracionStore'
 
 function InstagramIcon({ size = 32 }) {
   return (
@@ -18,6 +19,7 @@ function WhatsAppIcon({ size = 32 }) {
 }
 
 export default function Contacto() {
+  const cfg = useConfiguracionStore()
   return (
     <main className={styles.page}>
       <div className={styles.inner}>
@@ -28,19 +30,31 @@ export default function Contacto() {
 
         <div className={styles.contactRow}>
           <a
-            href="https://www.instagram.com/casa.scarlatta?igsh=MXRkbzlzc2xzZzk0dQ=="
+            href={cfg.get('instagram')}
             target="_blank"
             rel="noreferrer"
             className={styles.contactItem}
           >
             <InstagramIcon size={36} />
-            <span className={styles.contactLabel}>@casa.scarlatta</span>
+            <span className={styles.contactLabel}>{cfg.get('instagramHandle')}</span>
           </a>
 
-          <a href="tel:+529990000000" className={styles.contactItem}>
-            <WhatsAppIcon size={36} />
-            <span className={styles.contactLabel}>+52 (999) 000-0000</span>
-          </a>
+          {cfg.get('whatsapp') ? (
+            <a
+              href={`https://wa.me/${cfg.get('whatsapp').replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noreferrer"
+              className={styles.contactItem}
+            >
+              <WhatsAppIcon size={36} />
+              <span className={styles.contactLabel}>{cfg.get('telefono')}</span>
+            </a>
+          ) : (
+            <a href={`tel:${cfg.get('telefono').replace(/\D/g, '')}`} className={styles.contactItem}>
+              <WhatsAppIcon size={36} />
+              <span className={styles.contactLabel}>{cfg.get('telefono')}</span>
+            </a>
+          )}
         </div>
 
         <div className={styles.divider} />
@@ -50,8 +64,7 @@ export default function Contacto() {
           <div className={styles.ubicacionContent}>
             <MapPin size={20} className={styles.ubicacionIcon} />
             <p className={styles.ubicacionText}>
-              Calle 00 #00, Col. Centro,<br />
-              Mérida, Yucatán, C.P. 00000
+              {cfg.get('direccion')}
             </p>
           </div>
         </div>

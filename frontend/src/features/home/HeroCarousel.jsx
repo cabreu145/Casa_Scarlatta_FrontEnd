@@ -1,36 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useConfiguracionStore } from '@/stores/configuracionStore'
 import styles from './HeroCarousel.module.css'
-
-const VIDEO_SLIDE_INDEX = 0
-
-const slides = [
-  {
-    type: 'video',
-    videoId: 'djp5ZQQ7WXA',
-    start: 14,
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1600&q=80',
-    alt: 'Clase en Casa Scarlatta',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1600&q=80',
-    alt: 'Sala STRIDE — alta intensidad',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=1600&q=80',
-    alt: 'Sala Slow — movimiento consciente',
-  },
-  {
-    src: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1600&q=80',
-    alt: 'Comunidad Casa Scarlatta',
-  },
-]
 
 const INTERVAL = 4000
 
 export default function HeroCarousel() {
+  const cfg    = useConfiguracionStore()
+  const slides = cfg.get('carouselHome')
+
   const [current, setCurrent] = useState(0)
   const [paused, setPaused] = useState(false)
   const [videoReady, setVideoReady] = useState(false)
@@ -39,7 +17,7 @@ export default function HeroCarousel() {
 
   const advance = useCallback(() => {
     setCurrent(prev => (prev + 1) % slides.length)
-  }, [])
+  }, [slides.length])
 
   // Load YouTube iframe when browser is idle (after critical resources)
   useEffect(() => {
@@ -57,7 +35,8 @@ export default function HeroCarousel() {
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     if (mq.matches) return
-    if (current === VIDEO_SLIDE_INDEX) {
+    const isVideo = slides[current]?.tipo === 'video'
+    if (isVideo) {
       clearInterval(timerRef.current)
       return
     }
@@ -65,7 +44,7 @@ export default function HeroCarousel() {
       timerRef.current = setInterval(advance, INTERVAL)
     }
     return () => clearInterval(timerRef.current)
-  }, [current, paused, advance])
+  }, [current, paused, advance, slides])
 
   // Listen for YouTube video end event and advance slide
   useEffect(() => {
@@ -101,20 +80,23 @@ export default function HeroCarousel() {
           className={`${styles.slide} ${i === current ? styles.active : ''}`}
           aria-hidden={i !== current}
         >
-          {slide.type === 'video' ? (
+          {slide.tipo === 'video' ? (
             <>
               <iframe
                 ref={iframeRef}
                 className={styles.videoBg}
-                src={videoReady ? `https://www.youtube.com/embed/${slide.videoId}?autoplay=1&mute=1&loop=1&playlist=${slide.videoId}&controls=0&rel=0&modestbranding=1&showinfo=0&fs=0&iv_load_policy=3&disablekb=1&start=${slide.start}` : undefined}
+                src={videoReady
+                  ? `https://www.youtube.com/embed/${slide.videoId}?autoplay=1&mute=1&loop=1&playlist=${slide.videoId}&controls=0&rel=0&modestbranding=1&showinfo=0&fs=0&iv_load_policy=3&disablekb=1&start=${slide.start ?? 0}`
+                  : undefined}
                 title="Casa Scarlatta video"
                 allow="autoplay; encrypted-media"
                 frameBorder="0"
+                onLoad={handleIframeLoad}
               />
               <div className={styles.videoBlock} />
             </>
           ) : (
-            <img src={slide.src} alt={slide.alt} className={styles.bg} />
+            <img src={slide.url} alt="" className={styles.bg} />
           )}
         </div>
       ))}

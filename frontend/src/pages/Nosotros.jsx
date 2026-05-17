@@ -1,18 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useCoachesStore } from '../stores/coachesStore'
+import { useConfiguracionStore } from '@/stores/configuracionStore'
 import styles from './Nosotros.module.css'
-
-const carouselImages = [
-  '/fotos/team_laughing.jpg',
-  '/fotos/team_scene_2.jpg',
-  '/fotos/team_scene_3.jpg',
-  '/fotos/team_scene_4.jpg',
-]
 
 export default function Nosotros() {
   const { coaches: todosCoaches } = useCoachesStore()
   const coaches = todosCoaches.filter((c) => c.activo !== false)
+  const cfg = useConfiguracionStore()
+  const carouselImages = cfg.get('carouselNosotros')
   const [current, setCurrent] = useState(0)
 
   const next = useCallback(() => setCurrent(c => (c + 1) % carouselImages.length), [])
@@ -58,11 +54,11 @@ export default function Nosotros() {
           <div className={styles.historiaText}>
 
             <h1 className={styles.historiaTitle}>
-              Creemos en el equilibrio entre fluidez y fuerza, entre disciplina y presencia.
+              {cfg.get('nosotrosTexto1')}
             </h1>
 
             <div className={styles.divider} />
-            <p className={styles.experienceText}>Arrive. Breathe. Move. Connect. Transform.</p>
+            <p className={styles.experienceText}>{cfg.get('nosotrosTexto2')}</p>
 
 
           </div>
