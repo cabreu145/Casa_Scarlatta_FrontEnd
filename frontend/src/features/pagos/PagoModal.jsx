@@ -117,7 +117,7 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
     })
 
     setStep('exito')
-    // onSuccess?.()
+    onSuccess?.()
   }
 
   function handleOverlayClick(e) {

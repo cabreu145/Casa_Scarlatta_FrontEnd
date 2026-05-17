@@ -47,7 +47,6 @@ export async function registrarClienteService(datos) {
       ? { fechaCompra: new Date().toISOString().split('T')[0], estado: 'Activo', tipo: 'Individual' }
       : null,
   }
-  mockUsers.push(userObj)
   const nuevoUsuario = usuariosStore.agregarUsuario(userObj)
 
   return {

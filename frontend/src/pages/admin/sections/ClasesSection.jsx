@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import { eliminarClaseConReservas } from '@/services/reservasService'
-import { logClaseEliminada } from '@/services/actividadService'
+import { logClaseEliminada, logClaseCreada } from '@/services/actividadService'
 import DateNavigator from '@/components/ui/DateNavigator'
 import InfiniteList  from '@/components/ui/InfiniteList'
 import { useClasses } from '@/hooks/useClasses'
@@ -446,6 +446,7 @@ export default function ClasesSection({
 
   const handleImportar = (clases) => {
     clases.forEach(c => agregarClase(c))
+    logClaseCreada({ nombre: `Importación masiva: ${clases.length} clases` })
     toast.success(`${clases.length} clase${clases.length !== 1 ? 's' : ''} importadas correctamente`)
   }
 
