@@ -1610,7 +1610,7 @@ export default function AdminPanel() {
                           </span>
                           <span style={{
                             fontFamily: 'var(--font-body)',
-                            fontSize: 13, color: 'var(--text-primary)',
+                            fontSize: 13, color: '#fff',
                           }}>
                             {e.nombre}
                           </span>
