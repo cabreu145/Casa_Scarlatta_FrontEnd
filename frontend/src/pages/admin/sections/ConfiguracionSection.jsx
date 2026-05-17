@@ -1,7 +1,33 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useConfiguracionStore, CONFIG_DEFAULTS } from '@/stores/configuracionStore'
 import toast from 'react-hot-toast'
 import styles from '../AdminPanel.module.css'
+
+// ── Compresión de imagen vía canvas (max 1920px, JPEG 0.82) ──────────────────
+function compressImage(file, maxWidth = 1920, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = reject
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onerror = reject
+      img.onload = () => {
+        let { width, height } = img
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width)
+          width = maxWidth
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width  = width
+        canvas.height = height
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.src = e.target.result
+    }
+    reader.readAsDataURL(file)
+  })
+}
 
 const TABS = [
   { id: 'contacto',  label: '📞 Contacto'   },
@@ -214,7 +240,33 @@ function TabImagenes({ cfg, actualizar }) {
     imagenSlow:          cfg.get('imagenSlow'),
     imagenCoachesBanner: cfg.get('imagenCoachesBanner'),
   })
-  const [guardando, setGuardando] = useState(false)
+  const [guardando,  setGuardando]  = useState(false)
+  const [uploading,  setUploading]  = useState(false)
+
+  // ── Shared hidden file input ──────────────────────────────────────────────
+  const fileInputRef = useRef(null)
+  const callbackRef  = useRef(null)
+
+  const triggerUpload = useCallback((onResult) => {
+    callbackRef.current = onResult
+    fileInputRef.current.value = ''
+    fileInputRef.current.click()
+  }, [])
+
+  async function handleFileChange(e) {
+    const file = e.target.files[0]
+    if (!file || !callbackRef.current) return
+    setUploading(true)
+    try {
+      const dataUrl = await compressImage(file)
+      callbackRef.current(dataUrl)
+    } catch {
+      toast.error('No se pudo leer la imagen')
+    } finally {
+      setUploading(false)
+      callbackRef.current = null
+    }
+  }
 
   async function handleGuardar(e) {
     e.preventDefault()
@@ -260,38 +312,65 @@ function TabImagenes({ cfg, actualizar }) {
     setCarouselNosotros(prev => [...prev, ''])
   }
 
+  // ── Upload button ─────────────────────────────────────────────────────────
+  const uploadBtnStyle = {
+    display:     'flex',
+    alignItems:  'center',
+    gap:         5,
+    padding:     '0 12px',
+    height:      36,
+    borderRadius: 8,
+    border:      '1px solid var(--neutral-border)',
+    background:  'rgba(255,255,255,0.04)',
+    color:       uploading ? 'var(--text-muted)' : 'var(--text-secondary)',
+    fontFamily:  'var(--font-body)',
+    fontSize:    12,
+    cursor:      uploading ? 'not-allowed' : 'pointer',
+    flexShrink:  0,
+    whiteSpace:  'nowrap',
+  }
+
+  function UploadBtn({ onResult }) {
+    return (
+      <button
+        type="button"
+        style={uploadBtnStyle}
+        disabled={uploading}
+        onClick={() => triggerUpload(onResult)}
+        title="Subir imagen desde tu computadora"
+      >
+        {uploading ? '⏳' : '📁'} {uploading ? 'Leyendo…' : 'Subir'}
+      </button>
+    )
+  }
+
   const imgField = (key, labelText, hintText) => (
     <Field label={labelText} hint={hintText}>
-      <input
-        type="text"
-        value={imagenes[key]}
-        onChange={e => setImagenes(p => ({ ...p, [key]: e.target.value }))}
-        className={styles.formInput}
-        placeholder="https://... o /fotos/imagen.jpg"
-      />
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          type="text"
+          value={imagenes[key]}
+          onChange={e => setImagenes(p => ({ ...p, [key]: e.target.value }))}
+          className={styles.formInput}
+          placeholder="https://... o /fotos/imagen.jpg"
+          style={{ flex: 1 }}
+        />
+        <UploadBtn onResult={val => setImagenes(p => ({ ...p, [key]: val }))} />
+      </div>
       <ImagePreview url={imagenes[key]} />
     </Field>
   )
 
-  const noteStyle = {
-    background: 'rgba(245,158,11,0.06)',
-    border: '1px solid rgba(245,158,11,0.2)',
-    borderRadius: 8,
-    padding: '10px 14px',
-    fontFamily: 'var(--font-body)',
-    fontSize: 12,
-    color: 'rgba(245,158,11,0.85)',
-    marginBottom: 20,
-    lineHeight: 1.6,
-  }
-
   return (
     <form onSubmit={handleGuardar}>
-      <div style={noteStyle}>
-        💡 Pega la URL de cualquier imagen (Google Drive con acceso público, Dropbox, Unsplash, etc.).
-        Asegúrate de que sea un link de imagen directa.<br />
-        <span style={{ opacity: 0.7 }}>[BACKEND] → Cuando el backend esté listo, estas URLs se reemplazarán por un botón de subida de archivos.</span>
-      </div>
+      {/* Hidden shared file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
 
       {/* Carrusel Home */}
       <div style={panel}>
@@ -302,12 +381,12 @@ function TabImagenes({ cfg, actualizar }) {
         {carouselHome.map((slide, i) => (
           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12, borderBottom: '1px solid var(--neutral-border)', paddingBottom: 12 }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
                 <select
                   value={slide.tipo}
                   onChange={e => updateHomeSlide(i, 'tipo', e.target.value)}
                   className={styles.formInput}
-                  style={{ width: 160 }}
+                  style={{ width: 160, flexShrink: 0 }}
                 >
                   <option value="imagen">🖼 Imagen</option>
                   <option value="video">▶ Video YouTube</option>
@@ -322,14 +401,17 @@ function TabImagenes({ cfg, actualizar }) {
                     style={{ flex: 1 }}
                   />
                 ) : (
-                  <input
-                    type="text"
-                    placeholder="URL de imagen"
-                    value={slide.url ?? ''}
-                    onChange={e => updateHomeSlide(i, 'url', e.target.value)}
-                    className={styles.formInput}
-                    style={{ flex: 1 }}
-                  />
+                  <>
+                    <input
+                      type="text"
+                      placeholder="URL de imagen"
+                      value={slide.url ?? ''}
+                      onChange={e => updateHomeSlide(i, 'url', e.target.value)}
+                      className={styles.formInput}
+                      style={{ flex: 1 }}
+                    />
+                    <UploadBtn onResult={val => updateHomeSlide(i, 'url', val)} />
+                  </>
                 )}
               </div>
               {slide.tipo === 'imagen' && slide.url && <ImagePreview url={slide.url} />}
@@ -365,13 +447,17 @@ function TabImagenes({ cfg, actualizar }) {
         {carouselNosotros.map((url, i) => (
           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
-              <input
-                type="text"
-                placeholder="URL de imagen"
-                value={url}
-                onChange={e => updateNosotrosSlide(i, e.target.value)}
-                className={styles.formInput}
-              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="URL de imagen"
+                  value={url}
+                  onChange={e => updateNosotrosSlide(i, e.target.value)}
+                  className={styles.formInput}
+                  style={{ flex: 1 }}
+                />
+                <UploadBtn onResult={val => updateNosotrosSlide(i, val)} />
+              </div>
               <ImagePreview url={url} />
             </div>
             <button
