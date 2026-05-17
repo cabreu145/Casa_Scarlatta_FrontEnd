@@ -10,6 +10,7 @@
  * ─────────────────────────────────────────────────────
  */
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { asignarPaqueteService } from '@/services/usuariosService'
 import { useAuth } from '@/context/AuthContext'
 import { useUsuariosStore } from '@/stores/usuariosStore'
@@ -117,6 +118,11 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
     })
 
     setStep('exito')
+    toast.success(
+      `¡Pago exitoso! Tu paquete está activo. ` +
+      `Revisa tu correo con los detalles 📧`,
+      { duration: 5000 }
+    )
     onSuccess?.()
   }
 

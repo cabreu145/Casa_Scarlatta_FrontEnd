@@ -322,8 +322,9 @@ export default function ClientPanel() {
     }
     const posicion = listaEsperaStore.getPosicion(av.id, usuario.id)
     toast.success(
-      `¡Estás en la lista de espera! Posición: ${posicion}. ` +
-      `Te avisaremos si se libera un lugar.`
+      `¡Estás en la lista de espera! Posición #${posicion}. ` +
+      `Te enviaremos un correo si se libera un lugar 📧`,
+      { duration: 5000 }
     )
     logListaEsperaUnirse({
       usuarioNombre: userName,
