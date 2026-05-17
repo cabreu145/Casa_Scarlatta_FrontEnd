@@ -18,15 +18,17 @@ import styles from '../AdminPanel.module.css'
 const PAGE_SIZE = 10
 
 const FILTROS_TIPO = [
-  { value: 'todos',             label: 'Todos'        },
-  { value: 'reserva_creada',    label: 'Reservas'     },
-  { value: 'reserva_cancelada', label: 'Cancelaciones'},
-  { value: 'usuario_nuevo',     label: 'Usuarios'     },
-  { value: 'paquete_vendido',   label: 'Paquetes'     },
-  { value: 'insumo_vendido',    label: 'Ventas POS'   },
-  { value: 'corte_caja',        label: 'Cortes'       },
-  { value: 'clase_creada',      label: 'Clases'       },
-  { value: 'coach_agregado',    label: 'Coaches'      },
+  { value: 'todos',               label: 'Todos'              },
+  { value: 'reserva_creada',      label: 'Reservas'           },
+  { value: 'reserva_cancelada',   label: 'Cancelaciones'      },
+  { value: 'usuario_nuevo',       label: 'Usuarios'           },
+  { value: 'paquete_vendido',     label: 'Paquetes'           },
+  { value: 'insumo_vendido',      label: 'Ventas POS'         },
+  { value: 'corte_caja',          label: 'Cortes'             },
+  { value: 'clase_creada',        label: 'Clases'             },
+  { value: 'coach_agregado',      label: 'Coaches'            },
+  { value: 'login_cliente',       label: '🔑 Sesiones cliente' },
+  { value: 'lista_espera_unirse', label: '⏳ Lista espera'    },
 ]
 
 function formatTimestamp(iso) {

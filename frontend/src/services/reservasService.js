@@ -16,6 +16,7 @@ import { useClasesStore }         from '@/stores/clasesStore'
 import { useUsuariosStore }       from '@/stores/usuariosStore'
 import { useNotificacionesStore } from '@/stores/notificacionesStore'
 import { useAuthStore }           from '@/stores/authStore'
+import { useListaEsperaStore }    from '@/stores/listaEsperaStore'
 import { ESTADOS_RESERVA, TIPOS_NOTIFICACION } from '@/data/mockData'
 import { hoyLocal } from '@/utils/fecha'
 import { logReservaCreada, logReservaCancelada } from '@/services/actividadService'
@@ -162,6 +163,22 @@ export function cancelarReserva(reservaId, userId) {
     claseNombre:   reserva.claseNombre ?? 'Clase',
   })
 
+  // ── Notificar lista de espera si hay personas esperando ──
+  // [BACKEND] → El backend hace esto automáticamente con un
+  // trigger en la tabla de reservas. En frontend, simular
+  // marcando al primero como 'notificado'.
+  const listaStore = useListaEsperaStore.getState()
+  const primero    = listaStore.notificarPrimero(reserva.claseId)
+  if (primero) {
+    // [BACKEND] → Aquí el backend enviaría push notification / email
+    // a primero.userId con un link para confirmar su reserva
+    // en un tiempo límite (ej. 30 minutos).
+    console.info(
+      `[listaEspera] Lugar liberado en clase ${reserva.claseId}.` +
+      ` Notificado: ${primero.nombre} (pos. 1)`
+    )
+  }
+
   return { ok: true }
 }
 
@@ -193,4 +210,6 @@ export function eliminarClaseConReservas(claseId) {
 
   reservasStore.cancelarReservasByClase(claseId)
   clasesStore.eliminarClase(claseId)
+  useListaEsperaStore.getState().limpiarClase(claseId)
+  // [BACKEND] → DEL /api/lista-espera?claseId=X
 }

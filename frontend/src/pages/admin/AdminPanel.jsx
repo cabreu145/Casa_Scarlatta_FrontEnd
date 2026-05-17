@@ -8,6 +8,7 @@ import PaquetesSection from './sections/PaquetesSection'
 import PuntoDeVentaSection from './sections/PuntoDeVentaSection'
 import UsuariosSection from './sections/UsuariosSection'
 import ActividadSection from './sections/ActividadSection'
+import ConfiguracionSection from './sections/ConfiguracionSection'
 import ModalPago from '../../features/pagos/ModalPago'
 import {
   logReservaCreada, logReservaCancelada, logUsuarioNuevo,
@@ -26,10 +27,11 @@ import { useCortesStore }              from '@/stores/cortesStore'
 import { useAuthStore }                from '@/stores/authStore'
 import { useCoachesStore }   from '@/stores/coachesStore'
 import { useProductosStore } from '@/stores/productosStore'
-import { useClasesStore }    from '@/stores/clasesStore'
-import { useReservasStore }  from '@/stores/reservasStore'
-import { usePaquetesStore }  from '@/stores/paquetesStore'
-import { useUsuariosStore }  from '@/stores/usuariosStore'
+import { useClasesStore }      from '@/stores/clasesStore'
+import { useReservasStore }    from '@/stores/reservasStore'
+import { usePaquetesStore }    from '@/stores/paquetesStore'
+import { useUsuariosStore }    from '@/stores/usuariosStore'
+import { useListaEsperaStore } from '@/stores/listaEsperaStore'
 import { reservarClase as reservarClaseService, cancelarReserva as cancelarReservaService, eliminarClaseConReservas } from '@/services/reservasService'
 import { borrarCoachService } from '@/services/coachesService'
 import { useDisciplinasStore } from '@/stores/disciplinasStore'
@@ -60,7 +62,8 @@ const SECTIONS = {
   usuarios:  { title: 'Usuarios',         sub: 'Gestión de miembros activos'         },
   finanzas:  { title: 'Finanzas',         sub: 'Resumen financiero del estudio'       },
   reportes:  { title: 'Reportes',         sub: 'Descarga y análisis de datos'        },
-  actividad: { title: 'Actividad',        sub: 'Historial de eventos del sistema'    },
+  actividad:      { title: 'Actividad',      sub: 'Historial de eventos del sistema'    },
+  configuracion:  { title: 'Configuración', sub: 'Ajustes del estudio'                 },
 }
 
 // ── POS products ─────────────────────────────────────────────────────────────
@@ -115,6 +118,7 @@ export default function AdminPanel() {
   const { reservas: todasReservas, getReservasByClase } = useReservasStore()
   const { paquetes, agregarPaquete, editarPaquete, eliminarPaquete, marcarDestacado } = usePaquetesStore()
   const { usuarios, agregarUsuario, editarUsuario, eliminarUsuario } = useUsuariosStore()
+  const { getPorClase: getListaEspera } = useListaEsperaStore()
   const { disciplinas, agregarDisciplina, eliminarDisciplina } = useDisciplinasStore()
 
   // ── Finanzas stores ──────────────────────────────────────────────────────────
@@ -451,9 +455,10 @@ export default function AdminPanel() {
         <div className={styles.navSection}>
           <div className={styles.navLabel}>Análisis</div>
           {[
-            { id: 'finanzas',  icon: '💰', label: 'Finanzas'  },
-            { id: 'reportes',  icon: '📄', label: 'Reportes'  },
-            { id: 'actividad', icon: '📋', label: 'Actividad' },
+            { id: 'finanzas',      icon: '💰', label: 'Finanzas'       },
+            { id: 'reportes',      icon: '📄', label: 'Reportes'       },
+            { id: 'actividad',     icon: '📋', label: 'Actividad'      },
+            { id: 'configuracion', icon: '⚙️', label: 'Configuración'  },
           ].map(({ id, icon, label }) => (
             <button
               key={id}
@@ -636,6 +641,11 @@ export default function AdminPanel() {
           {/* ── ACTIVIDAD ── */}
           <section className={`${styles.section}${activeSection === 'actividad' ? ' ' + styles.active : ''}`}>
             <ActividadSection />
+          </section>
+
+          {/* ── CONFIGURACIÓN ── */}
+          <section className={`${styles.section}${activeSection === 'configuracion' ? ' ' + styles.active : ''}`}>
+            <ConfiguracionSection />
           </section>
 
         </div>
@@ -1565,6 +1575,72 @@ export default function AdminPanel() {
                   </table>
                 )}
               </div>
+
+              {/* Lista de espera */}
+              {(() => {
+                const enEspera = getListaEspera(cls.id)
+                if (!enEspera.length) return null
+                return (
+                  <div style={{ marginTop: 20, borderTop: '1px solid var(--neutral-border)', paddingTop: 16 }}>
+                    <div style={{
+                      fontFamily: 'var(--font-body)', fontSize: 12,
+                      color: '#F59E0B', fontWeight: 600,
+                      textTransform: 'uppercase', letterSpacing: '0.06em',
+                      marginBottom: 10,
+                    }}>
+                      ⏳ Lista de espera ({enEspera.length})
+                    </div>
+                    {enEspera.map((e, i) => (
+                      <div key={e.id} style={{
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 0',
+                        borderBottom: i < enEspera.length - 1
+                          ? '1px solid var(--neutral-border)' : 'none',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{
+                            width: 22, height: 22, borderRadius: '50%',
+                            background: 'rgba(245,158,11,0.15)',
+                            color: '#F59E0B', fontSize: 11, fontWeight: 700,
+                            display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', flexShrink: 0,
+                          }}>
+                            {i + 1}
+                          </span>
+                          <span style={{
+                            fontFamily: 'var(--font-body)',
+                            fontSize: 13, color: 'var(--text-primary)',
+                          }}>
+                            {e.nombre}
+                          </span>
+                        </div>
+                        <span style={{
+                          fontFamily: 'var(--font-body)',
+                          fontSize: 11, color: 'var(--text-muted)',
+                        }}>
+                          {new Date(e.timestamp).toLocaleTimeString('es-MX',
+                            { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{
+                      marginTop: 10, padding: '8px 12px',
+                      background: 'rgba(245,158,11,0.06)',
+                      borderRadius: 8, border: '1px solid rgba(245,158,11,0.15)',
+                      fontFamily: 'var(--font-body)', fontSize: 11,
+                      color: 'rgba(245,158,11,0.7)',
+                    }}>
+                      {/* [BACKEND] → El backend notificará automáticamente al
+                          primero en la lista cuando se libere un lugar.
+                          Implementar: webhook en cancelarReserva →
+                          notificación push/email → link con token de 30min
+                          para confirmar la reserva. */}
+                      💡 El primero en la lista será notificado automáticamente cuando se libere un lugar.
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Agregar alumno manualmente */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>

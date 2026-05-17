@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import { eliminarClaseConReservas } from '@/services/reservasService'
 import { logClaseEliminada, logClaseCreada } from '@/services/actividadService'
+import { useListaEsperaStore } from '@/stores/listaEsperaStore'
 import DateNavigator from '@/components/ui/DateNavigator'
 import InfiniteList  from '@/components/ui/InfiniteList'
 import { useClasses } from '@/hooks/useClasses'
@@ -443,6 +444,7 @@ export default function ClasesSection({
   })
   const [modalImport, setModalImport] = useState(false)
   const { agregarClase } = useClasesStore()
+  const { getPorClase }  = useListaEsperaStore()
 
   const handleImportar = (clases) => {
     clases.forEach(c => agregarClase(c))
@@ -626,6 +628,22 @@ export default function ClasesSection({
                   </div>
                 </div>
                 {!isProgramada && <Tag color={statusTag}>{statusLabel}</Tag>}
+                {c.cupoActual >= c.cupoMax && (() => {
+                  const enEspera = getPorClase(c.id)
+                  if (!enEspera.length) return null
+                  return (
+                    <span style={{
+                      fontSize: 10, padding: '2px 8px', borderRadius: 10,
+                      background: 'rgba(245,158,11,0.12)',
+                      color: '#F59E0B',
+                      border: '1px solid rgba(245,158,11,0.25)',
+                      fontFamily: 'var(--font-body)',
+                      marginLeft: 4,
+                    }}>
+                      ⏳ {enEspera.length} en espera
+                    </span>
+                  )
+                })()}
                 {!selectMode && <div style={{ display: 'flex', gap: 6 }}>
                   <button
                     className={`${styles.btn} ${styles.btnSecondary}`}

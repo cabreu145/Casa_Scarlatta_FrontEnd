@@ -142,11 +142,36 @@ export function logLoginAdmin({ nombre }) {
 }
 
 export function logLoginCliente({ nombre, email }) {
+  // [BACKEND] → POST /api/actividad
+  // Registra el inicio de sesión de un cliente desde el portal.
+  // Diferente de logLoginAdmin — usa TIPOS_EVENTO.LOGIN_CLIENTE.
   return registrar(
-    TIPOS_EVENTO.USUARIO_NUEVO,
-    `Inicio de sesión (cliente): ${nombre ?? email}`,
+    TIPOS_EVENTO.LOGIN_CLIENTE,
+    `Inicio de sesión: ${nombre ?? email}`,
     nombre ?? email,
     null,
     { email }
+  )
+}
+
+export function logListaEsperaUnirse({ usuarioNombre, usuarioId, claseNombre, posicion }) {
+  // [BACKEND] → POST /api/actividad
+  return registrar(
+    TIPOS_EVENTO.LISTA_ESPERA_UNIRSE,
+    `${usuarioNombre} se unió a la lista de espera de ${claseNombre} (posición ${posicion})`,
+    usuarioNombre,
+    usuarioId,
+    { claseNombre, posicion }
+  )
+}
+
+export function logListaEsperaSalir({ usuarioNombre, usuarioId, claseNombre }) {
+  // [BACKEND] → POST /api/actividad
+  return registrar(
+    TIPOS_EVENTO.LISTA_ESPERA_SALIR,
+    `${usuarioNombre} salió de la lista de espera de ${claseNombre}`,
+    usuarioNombre,
+    usuarioId,
+    { claseNombre }
   )
 }

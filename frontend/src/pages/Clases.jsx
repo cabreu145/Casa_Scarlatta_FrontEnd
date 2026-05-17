@@ -14,9 +14,10 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import ClassTypeFilter from '@/features/clases/ClassTypeFilter'
 import SeatSelector from '@/features/clases/SeatSelector'
-import { useClasesStore }   from '@/stores/clasesStore'
-import { useCoachesStore }  from '@/stores/coachesStore'
-import { useReservasStore } from '@/stores/reservasStore'
+import { useClasesStore }          from '@/stores/clasesStore'
+import { useCoachesStore }         from '@/stores/coachesStore'
+import { useReservasStore }        from '@/stores/reservasStore'
+import { useConfiguracionStore }   from '@/stores/configuracionStore'
 import { useAuth } from '@/context/AuthContext'
 import { getPublicClassesByDate, getPublicAvailability } from '@/services/classService'
 import { cancelarReserva as cancelarReservaService } from '@/services/reservasService'
@@ -50,7 +51,10 @@ function canCancelClass(date, hora) {
   const [h, m] = hora.split(':').map(Number)
   const classTime = new Date(date)
   classTime.setHours(h, m, 0, 0)
-  return (classTime - new Date()) > 6 * 60 * 60 * 1000
+  // Límite de cancelación configurable desde el panel admin
+  // [BACKEND] → GET /api/configuracion → horasCancelacion
+  const horasCancelacion = useConfiguracionStore.getState().get('horasCancelacion')
+  return (classTime - new Date()) > horasCancelacion * 60 * 60 * 1000
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────

@@ -14,9 +14,11 @@ import { useUsuariosStore }      from '@/stores/usuariosStore'
 import { useCoachesStore }       from '@/stores/coachesStore'
 import { usePaquetesStore }      from '@/stores/paquetesStore'
 import { useTransaccionesStore } from '@/stores/transaccionesStore'
+import { useListaEsperaStore }   from '@/stores/listaEsperaStore'
 import { reservarClase, cancelarReserva } from '@/services/reservasService'
 import { editarPerfilService }            from '@/services/usuariosService'
 import { isPublished }                    from '@/services/classService'
+import { logListaEsperaUnirse, logListaEsperaSalir } from '@/services/actividadService'
 import {
   hoyLocal,
   DAYS_ES, DAYS_ABBR, MONTHS_ES,
@@ -98,6 +100,7 @@ export default function ClientPanel() {
   const { coaches }   = useCoachesStore()
   const { paquetes }  = usePaquetesStore()
   const { getTransaccionesByUsuario } = useTransaccionesStore()
+  const listaEsperaStore = useListaEsperaStore()
 
   // Historial real de pagos del usuario
   const historialPagos = usuario?.id ? getTransaccionesByUsuario(usuario.id) : []
@@ -235,6 +238,45 @@ export default function ClientPanel() {
     (r) => r.estado === 'completada' || r.estado === 'no_asistio'
   ).length
 
+  // ── Métricas de progreso mensual ─────────────────────────────────────
+  // [BACKEND] → GET /api/usuarios/:id/progreso?mes=YYYY-MM
+  // Cuando haya backend: reemplazar este bloque por una llamada HTTP
+  // y mostrar los datos del servidor directamente.
+
+  const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+
+  const clasesTomadasEsteMes = reservasUsuario.filter(r => {
+    if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
+    const fechaR = r.fecha ?? ''
+    return fechaR.startsWith(mesActual)
+  }).length
+
+  const strideEsteMes = reservasUsuario.filter(r => {
+    if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
+    const fechaR = r.fecha ?? ''
+    return fechaR.startsWith(mesActual) && !r.tipo?.toLowerCase().includes('slow')
+  }).length
+
+  const slowEsteMes = reservasUsuario.filter(r => {
+    if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
+    const fechaR = r.fecha ?? ''
+    return fechaR.startsWith(mesActual) && r.tipo?.toLowerCase().includes('slow')
+  }).length
+
+  // [BACKEND] → Este valor debería venir del perfil del usuario
+  // como usuario.metaMensual o del paquete activo.
+  const metaMensual = clasesTotal > 0 && usuario?.clasesPaquete !== 999
+    ? clasesTotal
+    : 20
+
+  const pctProgreso = metaMensual > 0
+    ? Math.min(100, Math.round((clasesTomadasEsteMes / metaMensual) * 100))
+    : 0
+
+  const pctPaquete = clasesTotal > 0 && usuario?.clasesPaquete !== 999
+    ? Math.min(100, Math.round((clasesUsadas / clasesTotal) * 100))
+    : 0
+
   // ── Clases disponibles para reservar (solo las ya publicadas) ───────────
   const availableClases = clases.filter(isPublished).map((c) => ({
     _raw:       c,                 // referencia directa al objeto original
@@ -265,6 +307,40 @@ export default function ClientPanel() {
     }
     toast.success('¡Reserva confirmada!')
     goTo('clases')
+  }
+
+  function handleUnirseListaEspera(av) {
+    if (!usuario?.id) return
+    const resultado = listaEsperaStore.unirse({
+      claseId: av.id,
+      userId:  usuario.id,
+      nombre:  userName,
+    })
+    if (!resultado.ok) {
+      toast.error(resultado.error)
+      return
+    }
+    const posicion = listaEsperaStore.getPosicion(av.id, usuario.id)
+    toast.success(
+      `¡Estás en la lista de espera! Posición: ${posicion}. ` +
+      `Te avisaremos si se libera un lugar.`
+    )
+    logListaEsperaUnirse({
+      usuarioNombre: userName,
+      usuarioId:     usuario.id,
+      claseNombre:   av.title,
+      posicion,
+    })
+  }
+
+  function handleSalirListaEspera(av) {
+    listaEsperaStore.salir({ claseId: av.id, userId: usuario.id })
+    toast('Saliste de la lista de espera', { icon: '↩️' })
+    logListaEsperaSalir({
+      usuarioNombre: userName,
+      usuarioId:     usuario.id,
+      claseNombre:   av.title,
+    })
   }
 
   const navGroups = [
@@ -495,31 +571,79 @@ export default function ClientPanel() {
                   <div className={s.cardSubtitle}>{MONTHS_ES[new Date().getMonth()]} {new Date().getFullYear()}</div>
                 </div>
                 <div className={s.cardBody}>
+                  {/* Clases completadas este mes */}
                   <div style={{ marginBottom: 18 }}>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Clases completadas</div>
+                    <div style={{
+                      fontSize: 12, color: 'var(--muted)', marginBottom: 10,
+                      fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
+                    }}>
+                      Clases este mes
+                    </div>
                     <div className={s.progressWrap}>
-                      <div className={s.progressLabel}><span>12 de 20 <strong>meta mensual</strong></span><strong>60%</strong></div>
-                      <div className={s.progressBar}><div className={s.progressFill} style={{ width: '60%' }} /></div>
+                      <div className={s.progressLabel}>
+                        <span>
+                          {clasesTomadasEsteMes} de {metaMensual}{' '}
+                          <strong>meta mensual</strong>
+                        </span>
+                        <strong>{pctProgreso}%</strong>
+                      </div>
+                      <div className={s.progressBar}>
+                        <div className={s.progressFill} style={{ width: `${pctProgreso}%` }} />
+                      </div>
                     </div>
                   </div>
-                  <div style={{ marginBottom: 18 }}>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Paquete utilizado</div>
-                    <div className={s.progressWrap}>
-                      <div className={s.progressLabel}><span>2 de 10 <strong>clases usadas</strong></span><strong>20%</strong></div>
-                      <div className={s.progressBar}><div className={s.progressFill} style={{ width: '20%' }} /></div>
+
+                  {/* Paquete utilizado */}
+                  {usuario?.clasesPaquete !== 999 && clasesTotal > 0 && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{
+                        fontSize: 12, color: 'var(--muted)', marginBottom: 10,
+                        fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
+                      }}>
+                        Paquete utilizado
+                      </div>
+                      <div className={s.progressWrap}>
+                        <div className={s.progressLabel}>
+                          <span>
+                            {clasesUsadas} de {clasesTotal}{' '}
+                            <strong>clases usadas</strong>
+                          </span>
+                          <strong>{pctPaquete}%</strong>
+                        </div>
+                        <div className={s.progressBar}>
+                          <div className={s.progressFill} style={{ width: `${pctPaquete}%` }} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Desglose por disciplina */}
                   <div className={s.miniGrid}>
                     <div className={s.miniGridItem}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: 'var(--wine)' }}>5</div>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontSize: 26,
+                        fontWeight: 600, color: 'var(--wine)',
+                      }}>
+                        {strideEsteMes}
+                      </div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>STRYDE</div>
                     </div>
                     <div className={s.miniGridItem}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: '#2464B4' }}>7</div>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontSize: 26,
+                        fontWeight: 600, color: '#2464B4',
+                      }}>
+                        {slowEsteMes}
+                      </div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>SLOW</div>
                     </div>
                     <div className={s.miniGridItem}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: 'var(--ink)' }}>12</div>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontSize: 26,
+                        fontWeight: 600, color: 'var(--ink)',
+                      }}>
+                        {clasesTomadasEsteMes}
+                      </div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>Total</div>
                     </div>
                   </div>
@@ -695,7 +819,51 @@ export default function ClientPanel() {
                                 Clase finalizada
                               </span>
                             )
-                            if (isFull) return <span className={s.pubFullTag}>LLENO</span>
+                            if (isFull) {
+                              const estaEnEspera = listaEsperaStore.estaEnLista(av.id, usuario?.id)
+                              const posicion     = estaEnEspera
+                                ? listaEsperaStore.getPosicion(av.id, usuario?.id)
+                                : null
+                              return estaEnEspera ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                  <span style={{
+                                    fontSize: 11, color: '#F59E0B', fontWeight: 600,
+                                    fontFamily: 'var(--font-body)',
+                                  }}>
+                                    ⏳ Lista de espera #{posicion}
+                                  </span>
+                                  <button
+                                    onClick={() => handleSalirListaEspera(av)}
+                                    style={{
+                                      fontSize: 10, padding: '4px 10px', borderRadius: 6,
+                                      border: '1px solid rgba(245,158,11,0.3)',
+                                      background: 'transparent', color: '#F59E0B',
+                                      fontFamily: 'var(--font-body)', cursor: 'pointer',
+                                    }}
+                                  >
+                                    Salir de lista
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                  <span className={s.pubFullTag}>LLENO</span>
+                                  {usuario?.id && (
+                                    <button
+                                      onClick={() => handleUnirseListaEspera(av)}
+                                      style={{
+                                        fontSize: 10, padding: '4px 10px', borderRadius: 6,
+                                        border: '1px solid rgba(245,158,11,0.3)',
+                                        background: 'rgba(245,158,11,0.08)',
+                                        color: '#F59E0B', fontFamily: 'var(--font-body)',
+                                        cursor: 'pointer', whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      ⏳ Unirse a lista de espera
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            }
                             return (
                               <>
                                 <span className={`${s.pubAvailTag} ${isLow ? s.pubAvailLow : s.pubAvailOk}`}>

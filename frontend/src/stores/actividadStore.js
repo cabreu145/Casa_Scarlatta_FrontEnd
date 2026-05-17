@@ -24,7 +24,10 @@ export const TIPOS_EVENTO = {
   CLASE_ELIMINADA:   'clase_eliminada',
   COACH_AGREGADO:    'coach_agregado',
   COACH_ELIMINADO:   'coach_eliminado',
-  LOGIN_ADMIN:       'login_admin',
+  LOGIN_ADMIN:          'login_admin',
+  LOGIN_CLIENTE:        'login_cliente',
+  LISTA_ESPERA_UNIRSE:  'lista_espera_unirse',
+  LISTA_ESPERA_SALIR:   'lista_espera_salir',
 }
 
 export const TIPO_LABELS = {
@@ -38,7 +41,10 @@ export const TIPO_LABELS = {
   clase_eliminada:   'Clase',
   coach_agregado:    'Coach',
   coach_eliminado:   'Coach',
-  login_admin:       'Sesión',
+  login_admin:          'Sesión',
+  login_cliente:        'Sesión cliente',
+  lista_espera_unirse:  'Lista de espera',
+  lista_espera_salir:   'Lista de espera',
 }
 
 export const TIPO_ICONOS = {
@@ -52,7 +58,10 @@ export const TIPO_ICONOS = {
   clase_eliminada:   '🗑',
   coach_agregado:    '👩‍🏫',
   coach_eliminado:   '👋',
-  login_admin:       '🔐',
+  login_admin:          '🔐',
+  login_cliente:        '🔑',
+  lista_espera_unirse:  '⏳',
+  lista_espera_salir:   '↩️',
 }
 
 export const useActividadStore = create(

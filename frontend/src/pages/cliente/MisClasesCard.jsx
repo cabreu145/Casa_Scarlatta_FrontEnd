@@ -1,4 +1,5 @@
 import { formatHour } from '@/utils/formatters'
+import { useConfiguracionStore } from '@/stores/configuracionStore'
 import s from './ClientPanel.module.css'
 
 const AVATAR_COLORS = [
@@ -75,7 +76,10 @@ export default function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) 
               </span>
             )
           }
-          const canCancel = (classTime - n) > 6 * 60 * 60 * 1000
+          // Límite de cancelación configurable desde el panel admin
+          // [BACKEND] → GET /api/configuracion → horasCancelacion
+          const horasCancelacion = useConfiguracionStore.getState().get('horasCancelacion')
+          const canCancel = (classTime - n) > horasCancelacion * 60 * 60 * 1000
           return (
             <>
               <StatusPill status="confirmada" />
