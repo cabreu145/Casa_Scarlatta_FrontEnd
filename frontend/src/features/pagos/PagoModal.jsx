@@ -116,8 +116,6 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
       metodoPago:    metodoPagoLabel,
     })
 
-    console.log('resultado pago:', resultado)
-    console.log('usuario.id:', usuario.id)
     setStep('exito')
     // onSuccess?.()
   }

@@ -492,7 +492,7 @@ export default function ClientPanel() {
               <div className={s.card}>
                 <div className={s.cardHeader}>
                   <div className={s.cardTitle}>Mi progreso</div>
-                  <div className={s.cardSubtitle}>Abril 2025</div>
+                  <div className={s.cardSubtitle}>{MONTHS_ES[new Date().getMonth()]} {new Date().getFullYear()}</div>
                 </div>
                 <div className={s.cardBody}>
                   <div style={{ marginBottom: 18 }}>

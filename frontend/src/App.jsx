@@ -19,7 +19,6 @@ import Registro from '@/pages/Registro'
 import RecuperarContrasena from '@/pages/RecuperarContrasena'
 import NuevaContrasena from '@/pages/NuevaContrasena'
 
-import AdminDashboard from '@/pages/admin/AdminDashboard'
 import NotFound from '@/pages/NotFound'
 
 const ClientPanel    = lazy(() => import('@/pages/cliente/ClientPanel'))
