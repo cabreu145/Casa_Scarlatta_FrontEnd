@@ -85,8 +85,23 @@ function Field({ label: lbl, children, hint: h }) {
   )
 }
 
-function ImagePreview({ url }) {
+function MediaPreview({ url, isVideo }) {
   if (!url) return null
+  if (isVideo) {
+    return (
+      <>
+        <video
+          src={url}
+          style={{ height: 80, borderRadius: 8, objectFit: 'cover', marginTop: 8, display: 'block', background: '#111' }}
+          muted autoPlay loop playsInline
+          onError={e => { e.target.style.display = 'none' }}
+        />
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'rgba(245,158,11,0.8)', marginTop: 4 }}>
+          ⚠️ Video temporal — se perderá al recargar la página. Usa YouTube o el backend para persistencia.
+        </p>
+      </>
+    )
+  }
   return (
     <img
       src={url}
@@ -243,9 +258,13 @@ function TabImagenes({ cfg, actualizar }) {
   const [guardando,  setGuardando]  = useState(false)
   const [uploading,  setUploading]  = useState(false)
 
+  // Tracks which fields/indices have a video blob this session (blob URLs don't persist)
+  const [videoNosotros, setVideoNosotros] = useState(new Set())   // Set of indices
+  const [videoImagenes, setVideoImagenes] = useState(new Set())   // Set of keys
+
   // ── Shared hidden file input ──────────────────────────────────────────────
   const fileInputRef = useRef(null)
-  const callbackRef  = useRef(null)
+  const callbackRef  = useRef(null) // (url: string, isVideo: boolean) => void
 
   const triggerUpload = useCallback((onResult) => {
     callbackRef.current = onResult
@@ -258,10 +277,16 @@ function TabImagenes({ cfg, actualizar }) {
     if (!file || !callbackRef.current) return
     setUploading(true)
     try {
-      const dataUrl = await compressImage(file)
-      callbackRef.current(dataUrl)
+      if (file.type.startsWith('video/')) {
+        const blobUrl = URL.createObjectURL(file)
+        callbackRef.current(blobUrl, true)
+        toast('Video cargado. Solo disponible esta sesión — se perderá al recargar.', { icon: '⚠️', duration: 6000 })
+      } else {
+        const dataUrl = await compressImage(file)
+        callbackRef.current(dataUrl, false)
+      }
     } catch {
-      toast.error('No se pudo leer la imagen')
+      toast.error('No se pudo leer el archivo')
     } finally {
       setUploading(false)
       callbackRef.current = null
@@ -274,7 +299,7 @@ function TabImagenes({ cfg, actualizar }) {
     actualizar({ carouselHome, carouselNosotros, ...imagenes })
     await new Promise(r => setTimeout(r, 350))
     setGuardando(false)
-    toast.success('Imágenes guardadas 🖼️')
+    toast.success('Guardado 🖼️')
   }
 
   function handleRestaurar() {
@@ -285,6 +310,8 @@ function TabImagenes({ cfg, actualizar }) {
     setCarouselHome(CONFIG_DEFAULTS.carouselHome)
     setCarouselNosotros(CONFIG_DEFAULTS.carouselNosotros)
     setImagenes({ imagenBannerClases: CONFIG_DEFAULTS.imagenBannerClases, imagenStryde: CONFIG_DEFAULTS.imagenStryde, imagenSlow: CONFIG_DEFAULTS.imagenSlow, imagenCoachesBanner: CONFIG_DEFAULTS.imagenCoachesBanner })
+    setVideoNosotros(new Set())
+    setVideoImagenes(new Set())
     toast('Imágenes restauradas', { icon: '↩️' })
   }
 
@@ -306,28 +333,23 @@ function TabImagenes({ cfg, actualizar }) {
   }
   function removeNosotrosSlide(idx) {
     setCarouselNosotros(prev => prev.filter((_, i) => i !== idx))
+    setVideoNosotros(prev => { const n = new Set(prev); n.delete(idx); return n })
   }
   function addNosotrosSlide() {
     if (carouselNosotros.length >= 8) return
     setCarouselNosotros(prev => [...prev, ''])
   }
 
-  // ── Upload button ─────────────────────────────────────────────────────────
+  // ── Shared upload button ──────────────────────────────────────────────────
   const uploadBtnStyle = {
-    display:     'flex',
-    alignItems:  'center',
-    gap:         5,
-    padding:     '0 12px',
-    height:      36,
-    borderRadius: 8,
-    border:      '1px solid var(--neutral-border)',
-    background:  'rgba(255,255,255,0.04)',
-    color:       uploading ? 'var(--text-muted)' : 'var(--text-secondary)',
-    fontFamily:  'var(--font-body)',
-    fontSize:    12,
-    cursor:      uploading ? 'not-allowed' : 'pointer',
-    flexShrink:  0,
-    whiteSpace:  'nowrap',
+    display: 'flex', alignItems: 'center', gap: 5,
+    padding: '0 12px', height: 36, borderRadius: 8,
+    border: '1px solid var(--neutral-border)',
+    background: 'rgba(255,255,255,0.04)',
+    color: uploading ? 'var(--text-muted)' : 'var(--text-secondary)',
+    fontFamily: 'var(--font-body)', fontSize: 12,
+    cursor: uploading ? 'not-allowed' : 'pointer',
+    flexShrink: 0, whiteSpace: 'nowrap',
   }
 
   function UploadBtn({ onResult }) {
@@ -337,13 +359,14 @@ function TabImagenes({ cfg, actualizar }) {
         style={uploadBtnStyle}
         disabled={uploading}
         onClick={() => triggerUpload(onResult)}
-        title="Subir imagen desde tu computadora"
+        title="Subir imagen o video desde tu computadora"
       >
         {uploading ? '⏳' : '📁'} {uploading ? 'Leyendo…' : 'Subir'}
       </button>
     )
   }
 
+  // ── Section image field with upload ──────────────────────────────────────
   const imgField = (key, labelText, hintText) => (
     <Field label={labelText} hint={hintText}>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -352,31 +375,34 @@ function TabImagenes({ cfg, actualizar }) {
           value={imagenes[key]}
           onChange={e => setImagenes(p => ({ ...p, [key]: e.target.value }))}
           className={styles.formInput}
-          placeholder="https://... o /fotos/imagen.jpg"
+          placeholder="https://... o /fotos/archivo.jpg"
           style={{ flex: 1 }}
         />
-        <UploadBtn onResult={val => setImagenes(p => ({ ...p, [key]: val }))} />
+        <UploadBtn onResult={(val, isVid) => {
+          setImagenes(p => ({ ...p, [key]: val }))
+          setVideoImagenes(prev => { const n = new Set(prev); isVid ? n.add(key) : n.delete(key); return n })
+        }} />
       </div>
-      <ImagePreview url={imagenes[key]} />
+      <MediaPreview url={imagenes[key]} isVideo={videoImagenes.has(key)} />
     </Field>
   )
 
   return (
     <form onSubmit={handleGuardar}>
-      {/* Hidden shared file input */}
+      {/* Hidden shared file input — accepts images AND videos */}
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
 
-      {/* Carrusel Home */}
+      {/* ── Carrusel Home ──────────────────────────────────────────────── */}
       <div style={panel}>
         <div style={sectionTitle}>Inicio — Carrusel hero</div>
         <p style={{ ...hint, marginBottom: 16 }}>
-          Para videos YouTube, usa solo el ID (ej: djp5ZQQ7WXA), no la URL completa. Máx. 6 slides.
+          Máx. 6 slides. YouTube: pega solo el ID (ej: djp5ZQQ7WXA). Video local: solo esta sesión.
         </p>
         {carouselHome.map((slide, i) => (
           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12, borderBottom: '1px solid var(--neutral-border)', paddingBottom: 12 }}>
@@ -389,9 +415,11 @@ function TabImagenes({ cfg, actualizar }) {
                   style={{ width: 160, flexShrink: 0 }}
                 >
                   <option value="imagen">🖼 Imagen</option>
+                  <option value="videolocal">🎬 Video local</option>
                   <option value="video">▶ Video YouTube</option>
                 </select>
-                {slide.tipo === 'video' ? (
+
+                {slide.tipo === 'video' && (
                   <input
                     type="text"
                     placeholder="ID de YouTube (ej: djp5ZQQ7WXA)"
@@ -400,23 +428,27 @@ function TabImagenes({ cfg, actualizar }) {
                     className={styles.formInput}
                     style={{ flex: 1 }}
                   />
-                ) : (
+                )}
+
+                {(slide.tipo === 'imagen' || slide.tipo === 'videolocal') && (
                   <>
                     <input
                       type="text"
-                      placeholder="URL de imagen"
+                      placeholder={slide.tipo === 'videolocal' ? 'URL de video' : 'URL de imagen'}
                       value={slide.url ?? ''}
                       onChange={e => updateHomeSlide(i, 'url', e.target.value)}
                       className={styles.formInput}
                       style={{ flex: 1 }}
                     />
-                    <UploadBtn onResult={val => updateHomeSlide(i, 'url', val)} />
+                    <UploadBtn onResult={(val) => updateHomeSlide(i, 'url', val)} />
                   </>
                 )}
               </div>
-              {slide.tipo === 'imagen' && slide.url && <ImagePreview url={slide.url} />}
-              {slide.tipo === 'video' && slide.videoId && (
-                <p style={hint}>▶ Video: youtube.com/watch?v={slide.videoId}</p>
+
+              {slide.tipo === 'imagen'     && slide.url && <MediaPreview url={slide.url} isVideo={false} />}
+              {slide.tipo === 'videolocal' && slide.url && <MediaPreview url={slide.url} isVideo={true} />}
+              {slide.tipo === 'video'      && slide.videoId && (
+                <p style={hint}>▶ youtube.com/watch?v={slide.videoId}</p>
               )}
             </div>
             <button
@@ -424,9 +456,7 @@ function TabImagenes({ cfg, actualizar }) {
               onClick={() => removeHomeSlide(i)}
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, padding: '4px 8px', flexShrink: 0 }}
               title="Eliminar slide"
-            >
-              ×
-            </button>
+            >×</button>
           </div>
         ))}
         {carouselHome.length < 6 && (
@@ -434,40 +464,39 @@ function TabImagenes({ cfg, actualizar }) {
             type="button"
             onClick={addHomeSlide}
             style={{ marginTop: 4, padding: '7px 16px', borderRadius: 8, border: '1px dashed var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer' }}
-          >
-            + Agregar slide
-          </button>
+          >+ Agregar slide</button>
         )}
       </div>
 
-      {/* Carrusel Nosotros */}
+      {/* ── Carrusel Nosotros ──────────────────────────────────────────── */}
       <div style={panel}>
         <div style={sectionTitle}>Nosotros — Carrusel de fotos</div>
-        <p style={{ ...hint, marginBottom: 16 }}>Máx. 8 fotos. [BACKEND] → configuracion.carouselNosotros</p>
+        <p style={{ ...hint, marginBottom: 16 }}>Máx. 8 archivos. [BACKEND] → configuracion.carouselNosotros</p>
         {carouselNosotros.map((url, i) => (
           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input
                   type="text"
-                  placeholder="URL de imagen"
+                  placeholder="URL de imagen o video"
                   value={url}
                   onChange={e => updateNosotrosSlide(i, e.target.value)}
                   className={styles.formInput}
                   style={{ flex: 1 }}
                 />
-                <UploadBtn onResult={val => updateNosotrosSlide(i, val)} />
+                <UploadBtn onResult={(val, isVid) => {
+                  updateNosotrosSlide(i, val)
+                  setVideoNosotros(prev => { const n = new Set(prev); isVid ? n.add(i) : n.delete(i); return n })
+                }} />
               </div>
-              <ImagePreview url={url} />
+              <MediaPreview url={url} isVideo={videoNosotros.has(i)} />
             </div>
             <button
               type="button"
               onClick={() => removeNosotrosSlide(i)}
               style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, padding: '4px 8px', flexShrink: 0 }}
-              title="Eliminar foto"
-            >
-              ×
-            </button>
+              title="Eliminar"
+            >×</button>
           </div>
         ))}
         {carouselNosotros.length < 8 && (
@@ -475,20 +504,18 @@ function TabImagenes({ cfg, actualizar }) {
             type="button"
             onClick={addNosotrosSlide}
             style={{ marginTop: 4, padding: '7px 16px', borderRadius: 8, border: '1px dashed var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer' }}
-          >
-            + Agregar foto
-          </button>
+          >+ Agregar foto / video</button>
         )}
       </div>
 
-      {/* Imágenes de sección */}
+      {/* ── Imágenes de sección ────────────────────────────────────────── */}
       <div style={panel}>
         <div style={sectionTitle}>Imágenes de sección</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {imgField('imagenBannerClases',  'Banner página Clases',        'Imagen de fondo en la sección hero de la página de Clases. [BACKEND] → configuracion.imagenBannerClases')}
-          {imgField('imagenStryde',        'Imagen disciplina Stryde X',  'Imagen de fondo del botón Stryde X en la página de Inicio. [BACKEND] → configuracion.imagenStryde')}
-          {imgField('imagenSlow',          'Imagen disciplina Slow',      'Imagen de fondo del botón Slow en la página de Inicio. [BACKEND] → configuracion.imagenSlow')}
-          {imgField('imagenCoachesBanner', 'Banner coaches',               "Imagen de fondo de la sección 'Conoce a nuestro equipo'. [BACKEND] → configuracion.imagenCoachesBanner")}
+          {imgField('imagenBannerClases',  'Banner página Clases',       'Fondo hero de la página Clases. [BACKEND] → configuracion.imagenBannerClases')}
+          {imgField('imagenStryde',        'Imagen disciplina Stryde X', 'Fondo del botón Stryde X en Inicio. [BACKEND] → configuracion.imagenStryde')}
+          {imgField('imagenSlow',          'Imagen disciplina Slow',     'Fondo del botón Slow en Inicio. [BACKEND] → configuracion.imagenSlow')}
+          {imgField('imagenCoachesBanner', 'Banner coaches',             "Fondo de la sección 'Conoce a nuestro equipo'. [BACKEND] → configuracion.imagenCoachesBanner")}
         </div>
       </div>
 

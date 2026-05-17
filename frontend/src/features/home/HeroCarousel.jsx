@@ -95,6 +95,13 @@ export default function HeroCarousel() {
               />
               <div className={styles.videoBlock} />
             </>
+          ) : slide.tipo === 'videolocal' ? (
+            <video
+              src={slide.url}
+              className={styles.bg}
+              autoPlay muted loop playsInline
+              style={{ objectFit: 'cover' }}
+            />
           ) : (
             <img src={slide.url} alt="" className={styles.bg} />
           )}
