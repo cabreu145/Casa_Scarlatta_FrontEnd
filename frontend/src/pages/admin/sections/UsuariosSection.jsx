@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import toast from 'react-hot-toast'
 import styles from '../AdminPanel.module.css'
 
@@ -31,6 +32,26 @@ export default function UsuariosSection({
   setEditNotas,
   setCederClaseUserId,
 }) {
+  const [usersExpandido, setUsersExpandido] = useState(false)
+  const PAGE_SIZE = 10
+
+  const usuariosFiltrados = usuarios.filter((u) => {
+    if (usersSearch.trim()) {
+      const q = usersSearch.toLowerCase()
+      const coincide = u.nombre?.toLowerCase().includes(q)
+        || u.email?.toLowerCase().includes(q)
+        || u.paquete?.toLowerCase().includes(q)
+        || u.telefono?.toLowerCase().includes(q)
+      if (!coincide) return false
+    }
+    if (usersFilter === 'Activos')     return u.activo && u.paquete
+    if (usersFilter === 'Sin paquete') return !u.paquete
+    if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
+    return true
+  })
+  const usuariosVisibles = usersExpandido ? usuariosFiltrados : usuariosFiltrados.slice(0, PAGE_SIZE)
+  const hayMasUsuarios   = usuariosFiltrados.length > PAGE_SIZE
+
   return (
     <>
       <div className={styles.kpiGrid} style={{ marginBottom: 24 }}>
@@ -150,22 +171,7 @@ export default function UsuariosSection({
               </tr>
             </thead>
             <tbody>
-              {usuarios
-                .filter((u) => {
-                  if (usersSearch.trim()) {
-                    const q = usersSearch.toLowerCase()
-                    const coincide = u.nombre?.toLowerCase().includes(q)
-                      || u.email?.toLowerCase().includes(q)
-                      || u.paquete?.toLowerCase().includes(q)
-                      || u.telefono?.toLowerCase().includes(q)
-                    if (!coincide) return false
-                  }
-                  if (usersFilter === 'Activos')     return u.activo && u.paquete
-                  if (usersFilter === 'Sin paquete') return !u.paquete
-                  if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
-                  return true
-                })
-                .map((u) => {
+              {usuariosVisibles.map((u) => {
                   const restantes  = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
                   const tag        = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
                   const label      = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
@@ -226,6 +232,29 @@ export default function UsuariosSection({
             </tbody>
           </table>
         </div>
+        {hayMasUsuarios && (
+          <button
+            onClick={() => setUsersExpandido(v => !v)}
+            style={{
+              width: '100%', marginTop: 12, padding: '9px 0',
+              borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)',
+              fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background  = 'rgba(123,31,46,0.15)'
+              e.currentTarget.style.color       = '#E8A4AD'
+              e.currentTarget.style.borderColor = 'rgba(123,31,46,0.4)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background  = 'rgba(255,255,255,0.03)'
+              e.currentTarget.style.color       = 'rgba(255,255,255,0.5)'
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+            }}
+          >
+            {usersExpandido ? '▲ Ver menos' : `▼ Ver ${usuariosFiltrados.length - PAGE_SIZE} más`}
+          </button>
+        )}
       </div>
     </>
   )

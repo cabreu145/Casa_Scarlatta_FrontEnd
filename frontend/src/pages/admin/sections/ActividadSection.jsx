@@ -13,8 +13,9 @@
 import { useState, useMemo } from 'react'
 import { useActividadStore, TIPO_LABELS, TIPO_ICONOS } from '@/stores/actividadStore'
 import DateNavigator from '@/components/ui/DateNavigator'
-import InfiniteList  from '@/components/ui/InfiniteList'
 import styles from '../AdminPanel.module.css'
+
+const PAGE_SIZE = 10
 
 const FILTROS_TIPO = [
   { value: 'todos',             label: 'Todos'        },
@@ -46,6 +47,7 @@ export default function ActividadSection() {
   const [rangoFecha,       setRangoFecha]       = useState({ tipo: 'hoy' })
   const [filtroUsuario,    setFiltroUsuario]    = useState('')
   const [confirmarLimpiar, setConfirmarLimpiar] = useState(false)
+  const [expandido, setExpandido]               = useState(false)
 
   const hoy    = new Date().toISOString().split('T')[0]
   const semana = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -66,6 +68,9 @@ export default function ActividadSection() {
       return true
     })
   }, [eventos, filtroTipo, rangoFecha, filtroUsuario, hoy, semana, mes])
+
+  const eventosVisibles   = expandido ? eventosFiltrados : eventosFiltrados.slice(0, PAGE_SIZE)
+  const hayMasEventos     = eventosFiltrados.length > PAGE_SIZE
 
   return (
     <div>
@@ -142,110 +147,132 @@ export default function ActividadSection() {
 
       {/* Lista de eventos */}
       <div className={styles.card}>
-        <InfiniteList
-          items={eventosFiltrados}
-          pageSize={20}
-          darkMode={true}
-          renderItem={(evento, idx) => (
-            <div
-              key={evento.id}
-              style={{
-                display:      'flex',
-                alignItems:   'center',
-                gap:          14,
-                padding:      '12px 16px',
-                borderBottom: idx < Math.min(eventosFiltrados.length, 20) - 1
-                  ? '1px solid var(--neutral-border)' : 'none',
-                transition:   'background 0.15s',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              {/* Ícono */}
-              <div style={{
-                width:          36,
-                height:         36,
-                borderRadius:   '50%',
-                background:     'rgba(255,255,255,0.06)',
-                display:        'flex',
-                alignItems:     'center',
-                justifyContent: 'center',
-                fontSize:       16,
-                flexShrink:     0,
-              }}>
-                {TIPO_ICONOS[evento.tipo] ?? '📌'}
-              </div>
-
-              {/* Descripción */}
-              <div style={{ flex: 1, minWidth: 0 }}>
+        {eventosFiltrados.length === 0 ? (
+          <div style={{
+            textAlign:  'center',
+            padding:    '40px 0',
+            color:      'rgba(255,255,255,0.35)',
+            fontFamily: 'var(--font-body)',
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
+            <div style={{ fontSize: 14 }}>
+              {eventos.length === 0
+                ? 'No hay eventos registrados aún. La actividad aparecerá aquí automáticamente.'
+                : 'No hay eventos que coincidan con los filtros seleccionados.'}
+            </div>
+          </div>
+        ) : (
+          <>
+            {eventosVisibles.map((evento, idx) => (
+              <div
+                key={evento.id}
+                style={{
+                  display:      'flex',
+                  alignItems:   'center',
+                  gap:          14,
+                  padding:      '12px 16px',
+                  borderBottom: idx < eventosVisibles.length - 1
+                    ? '1px solid var(--neutral-border)' : 'none',
+                  transition:   'background 0.15s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                {/* Ícono */}
                 <div style={{
-                  fontFamily:   'var(--font-body)',
-                  fontSize:     13,
-                  color:        'var(--text-primary)',
-                  fontWeight:   500,
-                  whiteSpace:   'nowrap',
-                  overflow:     'hidden',
-                  textOverflow: 'ellipsis',
+                  width:          36,
+                  height:         36,
+                  borderRadius:   '50%',
+                  background:     'rgba(255,255,255,0.06)',
+                  display:        'flex',
+                  alignItems:     'center',
+                  justifyContent: 'center',
+                  fontSize:       16,
+                  flexShrink:     0,
                 }}>
-                  {evento.descripcion}
+                  {TIPO_ICONOS[evento.tipo] ?? '📌'}
                 </div>
-                {evento.usuarioNombre && (
+
+                {/* Descripción */}
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize:   11,
-                    color:      'var(--text-muted)',
-                    marginTop:  2,
+                    fontFamily:   'var(--font-body)',
+                    fontSize:     13,
+                    color:        'var(--text-primary)',
+                    fontWeight:   500,
+                    whiteSpace:   'nowrap',
+                    overflow:     'hidden',
+                    textOverflow: 'ellipsis',
                   }}>
-                    {evento.usuarioNombre}
+                    {evento.descripcion}
                   </div>
-                )}
-              </div>
+                  {evento.usuarioNombre && (
+                    <div style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize:   11,
+                      color:      'var(--text-muted)',
+                      marginTop:  2,
+                    }}>
+                      {evento.usuarioNombre}
+                    </div>
+                  )}
+                </div>
 
-              {/* Tipo badge */}
-              <span style={{
-                fontFamily:    'var(--font-body)',
-                fontSize:      10,
-                fontWeight:    600,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                padding:       '3px 10px',
-                borderRadius:  'var(--radius-pill)',
-                background:    'rgba(255,255,255,0.06)',
-                color:         'var(--text-muted)',
-                flexShrink:    0,
-              }}>
-                {TIPO_LABELS[evento.tipo] ?? evento.tipo}
-              </span>
+                {/* Tipo badge */}
+                <span style={{
+                  fontFamily:    'var(--font-body)',
+                  fontSize:      10,
+                  fontWeight:    600,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  padding:       '3px 10px',
+                  borderRadius:  'var(--radius-pill)',
+                  background:    'rgba(255,255,255,0.06)',
+                  color:         'var(--text-muted)',
+                  flexShrink:    0,
+                }}>
+                  {TIPO_LABELS[evento.tipo] ?? evento.tipo}
+                </span>
 
-              {/* Timestamp */}
-              <div style={{
-                fontFamily: 'var(--font-body)',
-                fontSize:   11,
-                color:      'var(--text-muted)',
-                flexShrink: 0,
-                minWidth:   120,
-                textAlign:  'right',
-              }}>
-                {formatTimestamp(evento.timestamp)}
+                {/* Timestamp */}
+                <div style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize:   11,
+                  color:      'var(--text-muted)',
+                  flexShrink: 0,
+                  minWidth:   120,
+                  textAlign:  'right',
+                }}>
+                  {formatTimestamp(evento.timestamp)}
+                </div>
               </div>
-            </div>
-          )}
-          emptyNode={
-            <div style={{
-              textAlign:  'center',
-              padding:    '40px 0',
-              color:      'rgba(255,255,255,0.35)',
-              fontFamily: 'var(--font-body)',
-            }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
-              <div style={{ fontSize: 14 }}>
-                {eventos.length === 0
-                  ? 'No hay eventos registrados aún. La actividad aparecerá aquí automáticamente.'
-                  : 'No hay eventos que coincidan con los filtros seleccionados.'}
-              </div>
-            </div>
-          }
-        />
+            ))}
+
+            {hayMasEventos && (
+              <button
+                onClick={() => setExpandido(v => !v)}
+                style={{
+                  width: '100%', marginTop: 4, padding: '9px 0',
+                  borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)',
+                  fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background  = 'rgba(123,31,46,0.15)'
+                  e.currentTarget.style.color       = '#E8A4AD'
+                  e.currentTarget.style.borderColor = 'rgba(123,31,46,0.4)'
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background  = 'rgba(255,255,255,0.03)'
+                  e.currentTarget.style.color       = 'rgba(255,255,255,0.5)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+                }}
+              >
+                {expandido ? '▲ Ver menos' : `▼ Ver ${eventosFiltrados.length - PAGE_SIZE} más`}
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

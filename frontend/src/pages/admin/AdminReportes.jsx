@@ -451,8 +451,22 @@ const inputTabStyle = {
 
 // ── Tabla de coaches ──────────────────────────────────────────────────────────
 function TablaCoaches({ periodo, setPeriodo }) {
-  const reporte = useMemo(() => getReporteCoaches(periodo, true), [periodo])
-  const [expandido, setExpandido] = useState(null)
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
+  const [expandido, setExpandido]   = useState(null)
+
+  const rangoFecha = (fechaDesde && fechaHasta)
+    ? { tipo: 'rango', fechaDesde, fechaHasta }
+    : null
+
+  const reporte = useMemo(() => getReporteCoaches(periodo, true, rangoFecha), [periodo, rangoFecha])
+
+  const periodoLabel = rangoFecha
+    ? `Del ${fechaDesde} al ${fechaHasta}`
+    : (periodo === 'quincena' ? 'Quincena actual' : 'Mes actual')
+  const periodoKey = rangoFecha
+    ? `${fechaDesde}_${fechaHasta}`
+    : periodo
 
   const datosCoachesPlanos = useMemo(() => reporte.flatMap(coach =>
     coach.detalleClases.map(c => ({
@@ -460,6 +474,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
       Especialidad:  coach.especialidad,
       Clase:         c.nombre,
       Tipo:          c.tipo,
+      Fecha:         c.fecha ?? '—',
       Día:           c.dia,
       Hora:          c.hora,
       Asistentes:    c.asistentes,
@@ -470,7 +485,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
   ), [reporte])
 
   const exportarCoaches = () => {
-    exportarExcel(datosCoachesPlanos, `reporte_coaches_${periodo}_${new Date().toISOString().split('T')[0]}`)
+    exportarExcel(datosCoachesPlanos, `reporte_coaches_${periodoKey}_${new Date().toISOString().split('T')[0]}`)
   }
 
   const exportarCoachesPDF = () => {
@@ -478,8 +493,16 @@ function TablaCoaches({ periodo, setPeriodo }) {
       tipo:    'coaches',
       titulo:  'Reporte de Coaches',
       datos:   datosCoachesPlanos,
-      periodo: periodo === 'quincena' ? 'Quincena actual' : 'Mes actual',
+      periodo: periodoLabel,
     })
+  }
+
+  const inputDateStyle = {
+    padding: '6px 10px', borderRadius: 8,
+    border: '1px solid var(--neutral-border)',
+    background: '#1E1014', color: 'var(--text-primary)',
+    fontFamily: 'var(--font-body)', fontSize: 12,
+    cursor: 'pointer',
   }
 
   return (
@@ -490,7 +513,8 @@ function TablaCoaches({ periodo, setPeriodo }) {
       padding:      '20px 24px',
       marginBottom: 16,
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-primary)' }}>
             Reporte de coaches
@@ -499,7 +523,8 @@ function TablaCoaches({ periodo, setPeriodo }) {
             Clases impartidas, ocupación y pago calculado automáticamente
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Quincena/Mes — siempre visible */}
           <div style={{ display: 'flex', gap: 4, background: '#1E1014', padding: 4, borderRadius: 8 }}>
             {[{ v: 'quincena', l: 'Quincena' }, { v: 'mes', l: 'Mes' }].map(({ v, l }) => (
               <button key={v} onClick={() => setPeriodo(v)} style={{
@@ -526,6 +551,58 @@ function TablaCoaches({ periodo, setPeriodo }) {
           </button>
         </div>
       </div>
+
+      {/* Filtro por rango de fechas */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)' }}>
+          Filtrar por período:
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)' }}>Desde</span>
+          <input
+            type="date"
+            value={fechaDesde}
+            onChange={e => setFechaDesde(e.target.value)}
+            style={inputDateStyle}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)' }}>Hasta</span>
+          <input
+            type="date"
+            value={fechaHasta}
+            min={fechaDesde || undefined}
+            onChange={e => setFechaHasta(e.target.value)}
+            style={inputDateStyle}
+          />
+        </div>
+        {(fechaDesde || fechaHasta) && (
+          <button
+            onClick={() => { setFechaDesde(''); setFechaHasta('') }}
+            style={{
+              padding: '5px 12px', borderRadius: 8, border: '1px solid var(--neutral-border)',
+              background: 'transparent', color: 'var(--text-muted)',
+              fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer',
+            }}
+          >
+            × Limpiar
+          </button>
+        )}
+      </div>
+
+      {/* Indicador período activo cuando hay rango personalizado */}
+      {rangoFecha && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
+          padding: '7px 12px',
+          background: 'rgba(123,31,46,0.1)', border: '1px solid rgba(123,31,46,0.25)', borderRadius: 8,
+        }}>
+          <span style={{ fontSize: 13 }}>📅</span>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#E8A4AD' }}>
+            Mostrando: <strong>{periodoLabel}</strong>
+          </span>
+        </div>
+      )}
 
       {reporte.map(coach => (
         <div key={coach.coachId} style={{
@@ -589,7 +666,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
                 <thead>
                   <tr>
-                    {['Clase', 'Tipo', 'Día', 'Hora', 'Asistentes', 'Capacidad', 'Ocupación', 'Pago clase'].map(h => (
+                    {['Clase', 'Tipo', 'Fecha', 'Hora', 'Asistentes', 'Capacidad', 'Ocupación', 'Pago clase'].map(h => (
                       <th key={h} style={{
                         fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)',
                         textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)',
@@ -609,7 +686,14 @@ function TablaCoaches({ periodo, setPeriodo }) {
                           color:      c.tipo === 'Stryde X' ? '#ef4444' : '#3b82f6',
                         }}>{c.tipo}</span>
                       </td>
-                      <td style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>{c.dia}</td>
+                      <td style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {c.fecha
+                          ? (() => {
+                              const d = new Date(c.fecha + 'T00:00:00')
+                              return d.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+                            })()
+                          : (c.dia ?? '—')}
+                      </td>
                       <td style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>{c.hora}</td>
                       <td style={{ padding: '10px 10px', textAlign: 'center' }}>
                         <span style={{
@@ -647,7 +731,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
                 <tfoot>
                   <tr>
                     <td colSpan={7} style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>
-                      Total a pagar ({periodo}):
+                      Total a pagar ({periodoLabel}):
                     </td>
                     <td style={{ padding: '10px 10px', fontFamily: 'var(--font-display)', fontSize: 18, color: '#22c55e', fontWeight: 600, textAlign: 'right' }}>
                       ${(coach.totalPago ?? 0).toLocaleString()}

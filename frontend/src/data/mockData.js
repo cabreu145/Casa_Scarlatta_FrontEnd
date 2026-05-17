@@ -31,7 +31,6 @@
  * @property {number}  duracion     - Duración en minutos
  * @property {number}  coachId      - ID del coach asignado (ref a COACHES_MOCK)
  * @property {string}  coachNombre  - Nombre del coach (desnormalizado para UI)
- * @property {string}  ubicacion    - Sala o espacio físico
  * @property {number}  cupoMax      - Capacidad máxima de la clase
  * @property {number}  cupoActual   - Lugares ocupados actualmente
  * @property {string}  descripcion  - Descripción breve de la clase
@@ -39,79 +38,79 @@
 export const CLASES_MOCK = [
   {
     id: 1, nombre: 'Stride Power', tipo: 'Stryde X', fecha: '2026-05-12', dia: 'Lunes', hora: '07:00',
-    duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
+    duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez',
     cupoMax: 20, cupoActual: 18,
     descripcion: 'Sesión de potencia que combina fuerza funcional y cardio explosivo.',
   },
   {
     id: 2, nombre: 'Slow Pilates', tipo: 'Slow', fecha: '2026-05-12', dia: 'Lunes', hora: '09:00',
-    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
+    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes',
     cupoMax: 15, cupoActual: 12,
     descripcion: 'Pilates de base consciente para fortalecer el core y mejorar la postura.',
   },
   {
     id: 3, nombre: 'Stride Cardio', tipo: 'Stryde X', fecha: '2026-05-12', dia: 'Lunes', hora: '18:00',
-    duracion: 45, coachId: 6, coachNombre: 'Ana Torres', ubicacion: 'Studio A',
+    duracion: 45, coachId: 6, coachNombre: 'Ana Torres',
     cupoMax: 20, cupoActual: 3,
     descripcion: 'Cardio de alta intensidad con intervalos diseñados para quemar calorías.',
   },
   {
     id: 4, nombre: 'Slow Meditación', tipo: 'Slow', fecha: '2026-05-13', dia: 'Martes', hora: '08:00',
-    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
+    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes',
     cupoMax: 15, cupoActual: 10,
     descripcion: 'Meditación guiada con movimiento suave para comenzar el día con claridad.',
   },
   {
     id: 5, nombre: 'Stride HIIT', tipo: 'Stryde X', fecha: '2026-05-13', dia: 'Martes', hora: '19:00',
-    duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
+    duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez',
     cupoMax: 20, cupoActual: 15,
     descripcion: 'Entrenamiento por intervalos de alta intensidad para elevar tu rendimiento.',
   },
   {
     id: 6, nombre: 'Slow Stretch', tipo: 'Slow', fecha: '2026-05-14', dia: 'Miércoles', hora: '07:30',
-    duracion: 55, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
+    duracion: 55, coachId: 5, coachNombre: 'Sofía Reyes',
     cupoMax: 15, cupoActual: 7,
     descripcion: 'Stretching profundo con respiración consciente para liberar tensiones.',
   },
   {
     id: 7, nombre: 'Stride Power', tipo: 'Stryde X', fecha: '2026-05-14', dia: 'Miércoles', hora: '17:00',
-    duracion: 50, coachId: 6, coachNombre: 'Ana Torres', ubicacion: 'Studio A',
+    duracion: 50, coachId: 6, coachNombre: 'Ana Torres',
     cupoMax: 20, cupoActual: 2,
     descripcion: 'Sesión de potencia que combina fuerza funcional y cardio explosivo.',
   },
   {
     id: 8, nombre: 'Stride Fuerza', tipo: 'Stryde X', fecha: '2026-05-15', dia: 'Jueves', hora: '07:00',
-    duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
+    duracion: 50, coachId: 2, coachNombre: 'Carlos Méndez',
     cupoMax: 20, cupoActual: 12,
     descripcion: 'Entrenamiento de fuerza funcional con énfasis en técnica y progresión.',
   },
   {
     id: 9, nombre: 'Slow Mindfulness', tipo: 'Slow', fecha: '2026-05-15', dia: 'Jueves', hora: '10:00',
-    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
+    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes',
     cupoMax: 15, cupoActual: 5,
     descripcion: 'Práctica de mindfulness en movimiento para conectar cuerpo y mente.',
   },
   {
     id: 10, nombre: 'Stride Cardio', tipo: 'Stryde X', fecha: '2026-05-16', dia: 'Viernes', hora: '08:00',
-    duracion: 45, coachId: 6, coachNombre: 'Ana Torres', ubicacion: 'Studio A',
+    duracion: 45, coachId: 6, coachNombre: 'Ana Torres',
     cupoMax: 20, cupoActual: 14,
     descripcion: 'Cardio de alta intensidad con intervalos diseñados para quemar calorías.',
   },
   {
     id: 11, nombre: 'Slow Pilates', tipo: 'Slow', fecha: '2026-05-16', dia: 'Viernes', hora: '18:00',
-    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
+    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes',
     cupoMax: 15, cupoActual: 9,
     descripcion: 'Pilates de base consciente para fortalecer el core y mejorar la postura.',
   },
   {
     id: 12, nombre: 'Stride Weekend', tipo: 'Stryde X', fecha: '2026-05-17', dia: 'Sábado', hora: '09:00',
-    duracion: 60, coachId: 2, coachNombre: 'Carlos Méndez', ubicacion: 'Studio A',
+    duracion: 60, coachId: 2, coachNombre: 'Carlos Méndez',
     cupoMax: 20, cupoActual: 6,
     descripcion: 'Sesión especial de fin de semana: alta energía para cerrar la semana fuerte.',
   },
   {
     id: 13, nombre: 'Slow Weekend', tipo: 'Slow', fecha: '2026-05-17', dia: 'Sábado', hora: '11:00',
-    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes', ubicacion: 'Studio B',
+    duracion: 60, coachId: 5, coachNombre: 'Sofía Reyes',
     cupoMax: 15, cupoActual: 4,
     descripcion: 'Sesión especial de fin de semana: flujo restaurativo para recargar energías.',
   },

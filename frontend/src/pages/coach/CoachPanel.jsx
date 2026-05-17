@@ -105,7 +105,8 @@ export default function CoachPanel() {
   const hoy = new Date()
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
-  const clasesHoy = misClases.filter(c => c.dia === diaHoy)
+  const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`
+  const clasesHoy = misClases.filter(c => c.fecha ? c.fecha === hoyISO : c.dia === diaHoy)
 
   // ── Semana dinámica ────────────────────────────────────────────────────────
   const inicioSem = calcInicioSemana(weekOffset)

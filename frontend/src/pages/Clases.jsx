@@ -11,7 +11,7 @@
  */
 import { useState, useMemo } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import ClassTypeFilter from '@/features/clases/ClassTypeFilter'
 import SeatSelector from '@/features/clases/SeatSelector'
 import { useClasesStore }   from '@/stores/clasesStore'
@@ -189,8 +189,6 @@ export default function Clases() {
               const { available, status } = getPublicAvailability(cls)
               const isFull  = status === 'full'
               const isLow   = status === 'low'
-              const location = cls.ubicacion ?? (!isSlow(cls.tipo) ? 'Studio A' : 'Studio B')
-
               const { bg, text } = avatarStyle(cls.coachNombre)
               const coachFoto   = coachFotoByName[cls.coachNombre] || null
 
@@ -244,9 +242,6 @@ export default function Clases() {
                     <div className={styles.classMeta}>
                       <span className={styles.metaItem}>
                         {cls.coachNombre}
-                      </span>
-                      <span className={styles.metaItem}>
-                        <MapPin size={11} />{location}
                       </span>
                     </div>
                   </div>

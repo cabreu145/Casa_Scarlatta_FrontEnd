@@ -225,40 +225,53 @@ export function getDatosCorteHoy() {
  * @returns {object[]}
  * // [BACKEND] → GET /api/reportes/coaches?periodo=mes
  */
-export function getReporteCoaches(periodo = 'mes', incluirPago = true) {
-  const { clases }  = useClasesStore.getState()
+export function getReporteCoaches(periodo = 'mes', incluirPago = true, rangoFecha = null) {
+  const { clases }   = useClasesStore.getState()
   const { reservas } = useReservasStore.getState()
-  const { coaches } = useCoachesStore.getState()
-  const tabulador            = useTabuladorStore.getState().tabulador
+  const { coaches }  = useCoachesStore.getState()
+  const tabulador    = useTabuladorStore.getState().tabulador
 
-  const hoy  = new Date()
-  const mes  = getMes()
-  let fechaInicio
+  const hoy    = new Date()
+  const hoyISO = getHoy()
+  const mes    = getMes()
+  let fechaInicio, fechaFin
 
-  if (periodo === 'quincena') {
-    const dia = hoy.getDate()
-    fechaInicio = dia <= 15
-      ? `${mes}-01`
-      : `${mes}-16`
+  if (rangoFecha && rangoFecha.tipo !== 'todos') {
+    if (rangoFecha.tipo === 'hoy') {
+      fechaInicio = hoyISO; fechaFin = hoyISO
+    } else if (rangoFecha.tipo === 'semana') {
+      fechaInicio = getSemana(); fechaFin = hoyISO
+    } else if (rangoFecha.tipo === 'mes') {
+      fechaInicio = `${mes}-01`; fechaFin = hoyISO
+    } else if (rangoFecha.tipo === 'fecha') {
+      fechaInicio = rangoFecha.fecha; fechaFin = rangoFecha.fecha
+    } else if (rangoFecha.tipo === 'rango' && rangoFecha.fechaDesde && rangoFecha.fechaHasta) {
+      fechaInicio = rangoFecha.fechaDesde; fechaFin = rangoFecha.fechaHasta
+    }
   } else {
-    fechaInicio = `${mes}-01`
+    if (periodo === 'quincena') {
+      const dia = hoy.getDate()
+      fechaInicio = dia <= 15 ? `${mes}-01` : `${mes}-16`
+    } else {
+      fechaInicio = `${mes}-01`
+    }
+    fechaFin = hoyISO
   }
 
   return coaches.filter(c => c.activo).map(coach => {
     const clasesCoach = clases.filter(c => c.coachId === coach.id)
 
-    // Reservas confirmadas en el período para las clases de este coach
-    const reservasCoach = reservas.filter(r =>
-      r.estado === 'confirmada' &&
-      r.fecha >= fechaInicio &&
-      clasesCoach.some(c => c.id === r.claseId)
-    )
+    // Filtrar clases por su fecha real dentro del período (no por fecha de reserva)
+    const clasesEnPeriodo = clasesCoach.filter(clase => {
+      const f = clase.fecha ?? ''
+      if (!f) return true // sin fecha: incluir siempre
+      return (!fechaInicio || f >= fechaInicio) && (!fechaFin || f <= fechaFin)
+    })
 
-    // Por cada clase, calcular ocupación promedio y pago
-    const detalleClases = clasesCoach.map(clase => {
-      const reservasClase = reservasCoach.filter(r => r.claseId === clase.id)
-      const asistentes    = clase.cupoActual
-      const ocupPct       = Math.round((asistentes / clase.cupoMax) * 100)
+    // Por cada clase del período, calcular ocupación y pago
+    const detalleClases = clasesEnPeriodo.map(clase => {
+      const asistentes = clase.cupoActual
+      const ocupPct    = Math.round((asistentes / clase.cupoMax) * 100)
 
       // Calcular pago según tabulador
       const tabDisciplina = tabulador[clase.tipo] ?? tabulador['Stryde X']
@@ -271,16 +284,16 @@ export function getReporteCoaches(periodo = 'mes', incluirPago = true) {
       }
 
       return {
-        claseId:      clase.id,
-        nombre:       clase.nombre,
-        tipo:         clase.tipo,
-        dia:          clase.dia,
-        hora:         clase.hora,
+        claseId:   clase.id,
+        nombre:    clase.nombre,
+        tipo:      clase.tipo,
+        fecha:     clase.fecha ?? null,
+        dia:       clase.dia,
+        hora:      clase.hora,
         asistentes,
-        cupoMax:      clase.cupoMax,
+        cupoMax:   clase.cupoMax,
         ocupPct,
-        pagoClase:    incluirPago ? pagoClase : undefined,
-        reservas:     reservasClase.length,
+        pagoClase: incluirPago ? pagoClase : undefined,
       }
     })
 

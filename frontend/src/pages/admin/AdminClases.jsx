@@ -9,9 +9,10 @@
  * Depende de: clasesStore, classService, useClasses, DashboardLayout
  * ─────────────────────────────────────────────────────
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2, MapPin, User, Clock, Users } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Pencil, Trash2, User, Clock, Users, Upload } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { adminLinks } from './AdminDashboard'
@@ -31,8 +32,6 @@ import {
 import styles from '@/styles/dashboard.module.css'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-const UBICACIONES = ['Studio A', 'Studio B', 'Sala Principal']
-
 const CLASE_VACIA_BASE = {
   nombre:      '',
   tipo:        'Stryde X',
@@ -43,7 +42,6 @@ const CLASE_VACIA_BASE = {
   duracion:    50,
   cupoMax:     20,
   cupoActual:  0,
-  ubicacion:   'Studio A',
 }
 
 // ─── Availability badge ───────────────────────────────────────────────────────
@@ -145,9 +143,6 @@ function ClassRow({ clase, onEdit, onDelete, onAlumnos }) {
             <User size={11} /> {clase.coachNombre}
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <MapPin size={11} /> {clase.ubicacion || 'Studio A'}
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <Clock size={11} /> {clase.cupoActual}/{clase.cupoMax} reservas
           </span>
         </div>
@@ -187,6 +182,291 @@ function ClassRow({ clase, onEdit, onDelete, onAlumnos }) {
   )
 }
 
+// ─── Import Excel modal ───────────────────────────────────────────────────────
+function ModalImportarClases({ coaches, onImportar, onClose }) {
+  const [clasesParseadas, setClasesParseadas] = useState([])
+  const [errores,         setErrores]         = useState([])
+  const [publicarEn,      setPublicarEn]      = useState(null)
+  const [cargando,        setCargando]        = useState(false)
+  const fileInputRef = useRef(null)
+
+  const normalizar = (s) => String(s ?? '').toLowerCase().trim().replace(/[\s_\-()áéíóú]/g, '')
+
+  const descargarPlantilla = () => {
+    const hoy = new Date()
+    const lunes = new Date(hoy)
+    lunes.setDate(hoy.getDate() + (7 - hoy.getDay() + 1) % 7 || 7)
+    const fmtFecha = (d) => d.toISOString().split('T')[0]
+    const addDias  = (d, n) => { const r = new Date(d); r.setDate(d.getDate() + n); return r }
+    const muestra = [
+      { Nombre: 'Stride Power', Tipo: 'Stryde X', Coach: coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,0)), Hora: '07:00', 'Duracion (min)': 50, 'Cupo maximo': 15, Descripcion: 'Clase de potencia y cardio' },
+      { Nombre: 'Slow Pilates', Tipo: 'Slow',     Coach: coaches[1]?.nombre ?? coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,0)), Hora: '09:00', 'Duracion (min)': 60, 'Cupo maximo': 12, Descripcion: 'Pilates consciente' },
+    ]
+    const ws = XLSX.utils.json_to_sheet(muestra)
+    ws['!cols'] = [
+      { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 14 },
+      { wch: 8 },  { wch: 16 }, { wch: 14 }, { wch: 35 },
+    ]
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 }
+    const range = XLSX.utils.decode_range(ws['!ref'])
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r:0, c:0 }, e: { r:0, c: range.e.c } }) }
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Clases')
+    XLSX.writeFile(wb, 'plantilla_clases_casa_scarlatta.xlsx')
+    toast.success('Plantilla descargada')
+  }
+
+  const parsearFecha = (val) => {
+    if (!val && val !== 0) return null
+    const s = String(val).trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+      const [d, m, y] = s.split('/'); return `${y}-${m}-${d}`
+    }
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+      const [d, m, y] = s.split('/'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
+    }
+    if (!isNaN(val) && Number(val) > 1000) {
+      try {
+        const info = XLSX.SSF.parse_date_code(Number(val))
+        if (info) return `${info.y}-${String(info.m).padStart(2,'0')}-${String(info.d).padStart(2,'0')}`
+      } catch {}
+    }
+    return null
+  }
+
+  const parsearHora = (val) => {
+    if (!val && val !== 0) return '07:00'
+    const s = String(val).trim()
+    if (/^\d{1,2}:\d{2}(:\d{2})?(\s?(AM|PM))?$/i.test(s)) {
+      const parts = s.match(/^(\d{1,2}):(\d{2}).*?(AM|PM)?$/i)
+      if (parts) {
+        let h = parseInt(parts[1]); const m = parts[2]; const ampm = parts[3]?.toUpperCase()
+        if (ampm === 'PM' && h < 12) h += 12
+        if (ampm === 'AM' && h === 12) h = 0
+        return `${String(h).padStart(2,'0')}:${m}`
+      }
+    }
+    if (!isNaN(val) && Number(val) > 0 && Number(val) < 1) {
+      const totalMins = Math.round(Number(val) * 24 * 60)
+      const h = Math.floor(totalMins / 60); const m = totalMins % 60
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`
+    }
+    return '07:00'
+  }
+
+  const calcPublicarEn = (clases) => {
+    const fechas = clases.map(c => c.fecha).filter(Boolean).sort()
+    if (!fechas.length) return null
+    const primeraFecha = new Date(fechas[0] + 'T00:00:00')
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+    if (primeraFecha <= hoy) return null
+
+    // Domingo anterior a la semana de la primera clase (lunes=inicio de semana)
+    const dow = primeraFecha.getDay()             // 0=Dom, 1=Lun…6=Sáb
+    const daysToMon = dow === 0 ? 6 : dow - 1    // días hasta el lunes de esa semana
+    const lunes = new Date(primeraFecha)
+    lunes.setDate(primeraFecha.getDate() - daysToMon)
+    const domingo = new Date(lunes)
+    domingo.setDate(lunes.getDate() - 1)
+    domingo.setHours(23, 59, 59, 0)
+
+    // Solo programar si ese domingo aún no pasó
+    return domingo.getTime() > Date.now()
+      ? domingo.toISOString().split('.')[0]
+      : null
+  }
+
+  const handleFile = async (file) => {
+    if (!file) return
+    setCargando(true); setClasesParseadas([]); setErrores([]); setPublicarEn(null)
+    try {
+      const buffer = await file.arrayBuffer()
+      const wb    = XLSX.read(buffer, { type: 'array', cellDates: false })
+      const ws    = wb.Sheets[wb.SheetNames[0]]
+      const raw   = XLSX.utils.sheet_to_json(ws, { defval: '' })
+
+      if (!raw.length) { setErrores(['El archivo está vacío o no tiene filas de datos.']); return }
+
+      const errs = []
+      const parsed = raw.map((row, i) => {
+        const keys = Object.keys(row)
+        const get  = (...candidatos) => {
+          const key = keys.find(k => candidatos.includes(normalizar(k)))
+          return key !== undefined ? row[key] : ''
+        }
+
+        const nombre = String(get('nombre','name','clase','class')).trim()
+        const tipo   = (() => {
+          const t = normalizar(String(get('tipo','type','disciplina')))
+          return t.includes('slow') ? 'Slow' : 'Stryde X'
+        })()
+        const coachRaw  = String(get('coach','instructor','entrenador','coachname')).trim()
+        const coachMatch = coaches.find(c =>
+          coachRaw && (
+            c.nombre.toLowerCase().includes(coachRaw.toLowerCase()) ||
+            coachRaw.toLowerCase().includes(c.nombre.toLowerCase())
+          )
+        )
+        const fecha    = parsearFecha(get('fecha','date','dia','día','fechaespecifica'))
+        const hora     = parsearHora(get('hora','time','horario','horainicio'))
+        const duracion = Number(get('duracion','duration','duracionmin','minutos','mins','min')) || 50
+        const cupoMax  = Number(get('cupomximo','cupomax','cupo','capacidad','capacity','cupomaxmo')) || 15
+        const descripcion = String(get('descripcion','descripción','description','desc')).trim()
+
+        if (!nombre) errs.push(`Fila ${i + 2}: "Nombre" vacío — se omitirá`)
+        if (!fecha)  errs.push(`Fila ${i + 2}: Fecha inválida («${get('fecha','date','dia')}») — se omitirá`)
+
+        return {
+          _valido: !!nombre && !!fecha,
+          nombre, tipo,
+          coachId:      coachMatch?.id ?? '',
+          coachNombre:  coachMatch?.nombre ?? coachRaw,
+          fecha,
+          dia:          fecha ? diaDesdefecha(fecha) : '',
+          hora, duracion,
+          cupoMax, cupoActual: 0,
+          descripcion,
+        }
+      }).filter(c => c._valido).map(({ _valido, ...c }) => c)
+
+      setErrores(errs)
+      setClasesParseadas(parsed)
+      setPublicarEn(calcPublicarEn(parsed))
+    } catch (e) {
+      setErrores([`Error leyendo el archivo: ${e.message}`])
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  const confirmar = () => {
+    onImportar(clasesParseadas.map(c => ({ ...c, ...(publicarEn ? { publicarEn } : {}) })))
+    onClose()
+  }
+
+  const fmtFechaPublicacion = (iso) => {
+    const d = new Date(iso)
+    return d.toLocaleString('es-MX', { weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })
+  }
+
+  return (
+    <div className={styles.modalOverlay} style={{ display: 'flex' }} onClick={onClose}>
+      <div className={styles.modal} style={{ maxWidth: 760, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        <h2 className={styles.modalTitle}>Importar clases desde Excel</h2>
+
+        {/* Botones */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <button
+            onClick={descargarPlantilla}
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              padding: '11px 16px', borderRadius: 10,
+              border: '1px solid rgba(34,197,94,0.35)', background: 'rgba(34,197,94,0.08)',
+              color: '#4ade80', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: 16 }}>📥</span> Descargar plantilla
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              padding: '11px 16px', borderRadius: 10,
+              border: '1px solid rgba(232,164,173,0.35)', background: 'rgba(232,164,173,0.07)',
+              color: '#E8A4AD', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ fontSize: 16 }}>📂</span> Seleccionar archivo
+          </button>
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
+            onChange={e => { handleFile(e.target.files?.[0]); e.target.value = '' }} />
+        </div>
+
+        {/* Cargando */}
+        {cargando && (
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+            Procesando archivo…
+          </div>
+        )}
+
+        {/* Errores */}
+        {errores.length > 0 && (
+          <div style={{ padding: '10px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, marginBottom: 14 }}>
+            {errores.map((e, i) => (
+              <div key={i} style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#ef4444', lineHeight: 1.7 }}>⚠ {e}</div>
+            ))}
+          </div>
+        )}
+
+        {/* Banner de publicación programada */}
+        {clasesParseadas.length > 0 && publicarEn && (
+          <div style={{ padding: '10px 14px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 8, marginBottom: 14, fontFamily: 'var(--font-body)', fontSize: 13, color: '#93c5fd', lineHeight: 1.6 }}>
+            🗓 <strong>Publicación programada:</strong> Los usuarios verán estas clases a partir del <strong>{fmtFechaPublicacion(publicarEn)}</strong>
+          </div>
+        )}
+        {clasesParseadas.length > 0 && !publicarEn && (
+          <div style={{ padding: '10px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 8, marginBottom: 14, fontFamily: 'var(--font-body)', fontSize: 13, color: '#86efac' }}>
+            ✓ Las clases se publicarán inmediatamente al cargar.
+          </div>
+        )}
+
+        {/* Tabla previa */}
+        {clasesParseadas.length > 0 && (
+          <>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
+              {clasesParseadas.length} clase{clasesParseadas.length !== 1 ? 's' : ''} detectadas:
+            </div>
+            <div style={{ overflowX: 'auto', marginBottom: 18 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'var(--font-body)' }}>
+                <thead>
+                  <tr>
+                    {['Nombre','Tipo','Coach','Fecha','Hora','Cupo'].map(h => (
+                      <th key={h} style={{ padding: '7px 10px', borderBottom: '1px solid var(--neutral-border)', color: 'var(--text-muted)', textAlign: 'left', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {clasesParseadas.slice(0, 20).map((c, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                      <td style={{ padding: '7px 10px', color: 'var(--text-primary)', fontWeight: 500 }}>{c.nombre}</td>
+                      <td style={{ padding: '7px 10px' }}>
+                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: c.tipo === 'Stryde X' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)', color: c.tipo === 'Stryde X' ? '#ef4444' : '#3b82f6' }}>{c.tipo}</span>
+                      </td>
+                      <td style={{ padding: '7px 10px', color: c.coachId ? 'var(--text-secondary)' : '#eab308' }}>
+                        {c.coachNombre || '—'}{!c.coachId && c.coachNombre ? ' ⚠' : ''}
+                      </td>
+                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{c.fecha}</td>
+                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)' }}>{c.hora}</td>
+                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)', textAlign: 'center' }}>{c.cupoMax}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {clasesParseadas.length > 20 && (
+                <div style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+                  … y {clasesParseadas.length - 20} más
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        <div className={styles.modalActions}>
+          <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={onClose}>Cancelar</button>
+          {clasesParseadas.length > 0 && (
+            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={confirmar}>
+              Cargar {clasesParseadas.length} clase{clasesParseadas.length !== 1 ? 's' : ''}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AdminClases() {
   const { clases, agregarClase, editarClase } = useClasesStore()
@@ -207,6 +487,12 @@ export default function AdminClases() {
   const [form,          setForm]          = useState(CLASE_VACIA_BASE)
   const [eliminandoId,  setEliminandoId]  = useState(null)
   const [modalAlumnos,  setModalAlumnos]  = useState(null)
+  const [modalImport,   setModalImport]   = useState(false)
+
+  const handleImportar = (clases) => {
+    clases.forEach(c => agregarClase(c))
+    toast.success(`${clases.length} clase${clases.length !== 1 ? 's' : ''} importadas correctamente`)
+  }
 
   // Week grid
   const days       = useMemo(() => getWeekDays(weekOffset), [weekOffset])
@@ -315,6 +601,13 @@ export default function AdminClases() {
               ))}
             </div>
 
+            <button
+              className={`${styles.btn} ${styles.btnSecondary}`}
+              onClick={() => setModalImport(true)}
+              title="Importar clases desde Excel"
+            >
+              <Upload size={15} /> Importar Excel
+            </button>
             <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={abrirNueva}>
               <Plus size={16} /> Nueva clase
             </button>
@@ -533,7 +826,7 @@ export default function AdminClases() {
 
         {/* ── Create / Edit modal ── */}
         {modalAbierto && createPortal(
-          <div className={styles.modalOverlay} onClick={() => setModalAbierto(false)}>
+          <div className={styles.modalOverlay} style={{ display: 'flex' }} onClick={() => setModalAbierto(false)}>
             <div className={styles.modal} style={{ maxWidth: 580 }} onClick={(e) => e.stopPropagation()}>
               <h2 className={styles.modalTitle}>{editando ? 'Editar clase' : 'Nueva clase'}</h2>
               <div className={styles.formGrid}>
@@ -581,12 +874,6 @@ export default function AdminClases() {
                   <label>Cupo máximo</label>
                   <input type="number" value={form.cupoMax} onChange={set('cupoMax')} min={1} max={50} />
                 </div>
-                <div className={styles.field}>
-                  <label>Ubicación</label>
-                  <select value={form.ubicacion || 'Studio A'} onChange={set('ubicacion')}>
-                    {UBICACIONES.map((u) => <option key={u}>{u}</option>)}
-                  </select>
-                </div>
               </div>
               <div className={styles.modalActions}>
                 <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={() => setModalAbierto(false)}>
@@ -603,7 +890,7 @@ export default function AdminClases() {
 
         {/* ── Delete confirm modal ── */}
         {eliminandoId && createPortal(
-          <div className={styles.modalOverlay} onClick={() => setEliminandoId(null)}>
+          <div className={styles.modalOverlay} style={{ display: 'flex' }} onClick={() => setEliminandoId(null)}>
             <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
               <h2 className={styles.modalTitle}>¿Eliminar clase?</h2>
               <p style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: 'var(--text-secondary)' }}>
@@ -626,7 +913,7 @@ export default function AdminClases() {
         {modalAlumnos && (() => {
           const alumnos = reservas.filter((r) => r.claseId === modalAlumnos.id)
           return createPortal(
-            <div className={styles.modalOverlay} onClick={() => setModalAlumnos(null)}>
+            <div className={styles.modalOverlay} style={{ display: 'flex' }} onClick={() => setModalAlumnos(null)}>
               <div className={styles.modal} style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
                 <h2 className={styles.modalTitle}>
                   Alumnos — {modalAlumnos.nombre}
@@ -705,6 +992,16 @@ export default function AdminClases() {
             document.body
           )
         })()}
+
+        {/* ── Import Excel modal ── */}
+        {modalImport && createPortal(
+          <ModalImportarClases
+            coaches={coaches}
+            onImportar={handleImportar}
+            onClose={() => setModalImport(false)}
+          />,
+          document.body
+        )}
 
       </div>
     </DashboardLayout>

@@ -389,6 +389,8 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
                 <div className={styles.machineGrid} style={{'--cols':cols}} role="group" aria-label="Selección de lugar">
                   {Array.from({length:rows},(_, r)=>r+1).map(row =>
                     Array.from({length:cols},(_,c)=>c+1).map(col => {
+                      const seatNum = (row-1)*cols + col
+                      if (seatNum > totalSeats) return null  // no generar celdas extra en la última fila
                       const id = `R${row}-S${col}`
                       const isOccupied = occupied.has(id)
                       const isSelected = selected === id
@@ -401,7 +403,7 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
                           aria-pressed={isSelected}>
                           <span className={[styles.statusIndicator, isOccupied?styles.indGray:isSelected?styles.indWine:styles.indGreen].join(' ')}/>
                           <div className={styles.matIconWrap}><YogaMatIcon state={state}/></div>
-                          <span className={styles.machineNumber}>{String((row-1)*cols+col).padStart(2,'0')}</span>
+                          <span className={styles.machineNumber}>{String(seatNum).padStart(2,'0')}</span>
                         </button>
                       )
                     })

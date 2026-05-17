@@ -237,6 +237,7 @@ export default function ClientPanel() {
 
   // ── Clases disponibles para reservar (solo las ya publicadas) ───────────
   const availableClases = clases.filter(isPublished).map((c) => ({
+    _raw:       c,                 // referencia directa al objeto original
     id:         c.id,
     title:      c.nombre,
     coach:      c.coachNombre,
@@ -703,10 +704,7 @@ export default function ClientPanel() {
                                 </span>
                                 <button
                                   className={s.pubReservarBtn}
-                                  onClick={() => {
-                                    const raw = clases.find(c => c.id === av.id)
-                                    setSeatSelectorClass(raw ?? null)
-                                  }}
+                                  onClick={() => setSeatSelectorClass(av._raw ?? null)}
                                 >
                                   RESERVAR
                                 </button>
