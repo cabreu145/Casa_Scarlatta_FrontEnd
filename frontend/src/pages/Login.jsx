@@ -222,7 +222,7 @@ function RegisterForm({ onSuccess, LegalModal: Modal }) {
         telefono: form.telefono,
         fechaNacimiento: form.fechaNacimiento,
       })
-      toast.success('¡Bienvenida a Casa Scarlatta!')
+      toast.success('¡Cuenta creada! Revisa tu correo de bienvenida 📧')
       navigate('/', { replace: true })
     } catch (err) {
       if (err.message?.includes('registrado')) {
