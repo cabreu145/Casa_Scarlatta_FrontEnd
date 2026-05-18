@@ -21,17 +21,9 @@ import NuevaContrasena from '@/pages/NuevaContrasena'
 
 import NotFound from '@/pages/NotFound'
 
-const ClientPanel    = lazy(() => import('@/pages/cliente/ClientPanel'))
-const CoachPanel     = lazy(() => import('@/pages/coach/CoachPanel'))
-const CoachDashboard = lazy(() => import('@/pages/coach/CoachDashboard'))
-const CoachMisClases = lazy(() => import('@/pages/coach/CoachMisClases'))
-const AdminPanel     = lazy(() => import('@/pages/admin/AdminPanel'))
-const AdminCoaches   = lazy(() => import('@/pages/admin/AdminCoaches'))
-const AdminUsuarios  = lazy(() => import('@/pages/admin/AdminUsuarios'))
-const AdminClases    = lazy(() => import('@/pages/admin/AdminClases'))
-const AdminPaquetes  = lazy(() => import('@/pages/admin/AdminPaquetes'))
-const AdminFinanzas  = lazy(() => import('@/pages/admin/AdminFinanzas'))
-const AdminReportes  = lazy(() => import('@/pages/admin/AdminReportes'))
+const ClientPanel = lazy(() => import('@/pages/cliente/ClientPanel'))
+const CoachPanel  = lazy(() => import('@/pages/coach/CoachPanel'))
+const AdminPanel  = lazy(() => import('@/pages/admin/AdminPanel'))
 
 const DASHBOARD_PREFIXES = ['/cliente/', '/coach/', '/admin/']
 
@@ -64,15 +56,15 @@ function AnimatedRoutes() {
             <Route path="/cliente/perfil" element={<Navigate to="/cliente/dashboard" replace />} />
 
             <Route path="/coach/dashboard" element={<ProtectedRoute rolRequerido="coach"><CoachPanel /></ProtectedRoute>} />
-            <Route path="/coach/mis-clases" element={<ProtectedRoute rolRequerido="coach"><CoachMisClases /></ProtectedRoute>} />
+            <Route path="/coach/mis-clases" element={<Navigate to="/coach/dashboard" replace />} />
 
             <Route path="/admin/dashboard" element={<ProtectedRoute rolRequerido="admin"><AdminPanel /></ProtectedRoute>} />
-            <Route path="/admin/coaches" element={<ProtectedRoute rolRequerido="admin"><AdminCoaches /></ProtectedRoute>} />
-            <Route path="/admin/usuarios" element={<ProtectedRoute rolRequerido="admin"><AdminUsuarios /></ProtectedRoute>} />
-            <Route path="/admin/clases" element={<ProtectedRoute rolRequerido="admin"><AdminClases /></ProtectedRoute>} />
-            <Route path="/admin/paquetes" element={<ProtectedRoute rolRequerido="admin"><AdminPaquetes /></ProtectedRoute>} />
-            <Route path="/admin/finanzas" element={<ProtectedRoute rolRequerido="admin"><AdminFinanzas /></ProtectedRoute>} />
-            <Route path="/admin/reportes" element={<ProtectedRoute rolRequerido="admin"><AdminReportes /></ProtectedRoute>} />
+            <Route path="/admin/coaches"  element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/usuarios" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/clases"   element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/paquetes" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/finanzas" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/reportes" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

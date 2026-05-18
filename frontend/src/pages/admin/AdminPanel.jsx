@@ -32,7 +32,7 @@ import { useReservasStore }    from '@/stores/reservasStore'
 import { usePaquetesStore }    from '@/stores/paquetesStore'
 import { useUsuariosStore }    from '@/stores/usuariosStore'
 import { useListaEsperaStore } from '@/stores/listaEsperaStore'
-import { reservarClase as reservarClaseService, cancelarReserva as cancelarReservaService, eliminarClaseConReservas } from '@/services/reservasService'
+import { reservarClase as reservarClaseService, cancelarReserva as cancelarReservaService, eliminarClaseConReservas, marcarNoAsistio } from '@/services/reservasService'
 import { borrarCoachService } from '@/services/coachesService'
 import { useDisciplinasStore } from '@/stores/disciplinasStore'
 import SeatSelector from '@/features/clases/SeatSelector'
@@ -1474,7 +1474,10 @@ export default function AdminPanel() {
       {/* ── ALUMNOS DE CLASE ── */}
       {modalAlumnosClase && (() => {
         const cls      = modalAlumnosClase
-        const inscritos = getReservasByClase(cls.id)   // solo confirmadas
+        const inscritos = todasReservas.filter(r =>
+          r.claseId === cls.id &&
+          (r.estado === 'confirmada' || r.estado === 'no_asistio')
+        )
         const inscrUser = inscritos.map(r => ({
           ...r,
           nombreUsuario: usuarios.find(u => u.id === r.userId)?.nombre ?? `Usuario #${r.userId}`,
@@ -1558,16 +1561,36 @@ export default function AdminPanel() {
                         <tr key={r.id}>
                           <td style={{ fontWeight: 500 }}>{r.nombreUsuario}</td>
                           <td>
-                            <span className={`${styles.miniTag} ${styles.tagGreen}`}>Confirmado</span>
+                            {r.estado === 'no_asistio'
+                              ? <span className={`${styles.miniTag} ${styles.tagYellow}`}>No asistió</span>
+                              : <span className={`${styles.miniTag} ${styles.tagGreen}`}>Confirmado</span>
+                            }
                           </td>
                           <td style={{ textAlign: 'right' }}>
-                            <button
-                              className={`${styles.btn} ${styles.btnGhost}`}
-                              style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
-                              onClick={() => handleCancelar(r)}
-                            >
-                              Cancelar reserva
-                            </button>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                              {r.estado === 'confirmada' && (
+                                <button
+                                  className={`${styles.btn} ${styles.btnGhost}`}
+                                  style={{ fontSize: 11, padding: '4px 10px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.3)' }}
+                                  onClick={() => {
+                                    const res = marcarNoAsistio(r.id)
+                                    if (res.ok) toast.success(`${r.nombreUsuario} marcado como no asistió`)
+                                    else toast.error(res.error)
+                                  }}
+                                >
+                                  Marcar ausente
+                                </button>
+                              )}
+                              {r.estado === 'confirmada' && (
+                                <button
+                                  className={`${styles.btn} ${styles.btnGhost}`}
+                                  style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
+                                  onClick={() => handleCancelar(r)}
+                                >
+                                  Cancelar reserva
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}

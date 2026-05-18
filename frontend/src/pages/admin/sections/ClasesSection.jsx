@@ -443,6 +443,7 @@ export default function ClasesSection({
     return hoy
   })
   const [modalImport, setModalImport] = useState(false)
+  const [vistaLista, setVistaLista]   = useState(false)
   const { agregarClase } = useClasesStore()
   const { getPorClase }  = useListaEsperaStore()
 
@@ -494,6 +495,33 @@ export default function ClasesSection({
           </button>
           {!selectMode && (
             <>
+              {/* Vista toggle */}
+              <div style={{ display: 'flex', gap: 4, marginRight: 4 }}>
+                <button
+                  onClick={() => setVistaLista(false)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 8, fontSize: 12,
+                    fontFamily: 'var(--font-body)', cursor: 'pointer',
+                    background: !vistaLista ? 'rgba(123,31,46,0.15)' : 'transparent',
+                    border: !vistaLista ? '1px solid rgba(123,31,46,0.4)' : '1px solid var(--neutral-border)',
+                    color: !vistaLista ? '#E8A4AD' : 'var(--text-muted)',
+                  }}
+                >
+                  📅 Calendario
+                </button>
+                <button
+                  onClick={() => setVistaLista(true)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 8, fontSize: 12,
+                    fontFamily: 'var(--font-body)', cursor: 'pointer',
+                    background: vistaLista ? 'rgba(123,31,46,0.15)' : 'transparent',
+                    border: vistaLista ? '1px solid rgba(123,31,46,0.4)' : '1px solid var(--neutral-border)',
+                    color: vistaLista ? '#E8A4AD' : 'var(--text-muted)',
+                  }}
+                >
+                  ☰ Lista
+                </button>
+              </div>
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalImport(true)}>
                 📊 Importar Excel
               </button>
@@ -505,206 +533,374 @@ export default function ClasesSection({
         </div>
       </div>
 
-      {/* Toolbar de selección */}
-      {selectMode && (() => {
-        const todosSeleccionados = clasesFiltradas.length > 0 && clasesFiltradas.every(c => selectedIds.has(c.id))
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', marginBottom: 8, fontFamily: 'var(--font-body)', fontSize: 13 }}>
-            <input
-              type="checkbox"
-              checked={todosSeleccionados}
-              onChange={() => {
-                if (todosSeleccionados) {
-                  setSelectedIds(new Set())
-                } else {
-                  setSelectedIds(new Set(clasesFiltradas.map(c => c.id)))
-                }
+      {/* ── Vista Calendario ── */}
+      {!vistaLista && (
+        <>
+          {/* Toolbar de selección */}
+          {selectMode && (() => {
+            const todosSeleccionados = clasesFiltradas.length > 0 && clasesFiltradas.every(c => selectedIds.has(c.id))
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', marginBottom: 8, fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={todosSeleccionados}
+                  onChange={() => {
+                    if (todosSeleccionados) {
+                      setSelectedIds(new Set())
+                    } else {
+                      setSelectedIds(new Set(clasesFiltradas.map(c => c.id)))
+                    }
+                  }}
+                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
+                />
+                <span style={{ color: 'var(--muted)' }}>
+                  {selectedIds.size === 0
+                    ? 'Selecciona las clases que deseas eliminar'
+                    : `${selectedIds.size} de ${clasesFiltradas.length} seleccionada${selectedIds.size > 1 ? 's' : ''}`}
+                </span>
+                {selectedIds.size > 0 && (
+                  <button
+                    style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    Deseleccionar todo
+                  </button>
+                )}
+              </div>
+            )
+          })()}
+
+          <DateNavigator
+            modo="dia"
+            darkMode={true}
+            onChange={(fecha) => {
+              setFechaSeleccionada(fecha)
+              setSelectedIds(new Set())
+            }}
+          />
+
+          <div className={styles.card}>
+            <InfiniteList
+              items={clasesFiltradas}
+              pageSize={12}
+              darkMode={true}
+              gap={10}
+              renderItem={(c) => {
+                const pct          = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
+                const isPasada = (() => {
+                  if (!c.fecha) return false
+                  const [h, m] = (c.hora || '00:00').split(':').map(Number)
+                  const fin = new Date(c.fecha + 'T00:00:00')
+                  fin.setHours(h + Math.floor((c.duracion || 50) / 60), m + (c.duracion || 50) % 60)
+                  return fin < new Date()
+                })()
+                const statusTag    = isPasada ? 'gray' : pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
+                const statusLabel  = isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
+                const isProgramada = c.publicarEn && new Date(c.publicarEn) > new Date()
+                const isSelected   = selectedIds.has(c.id)
+                return (
+                  <div
+                    key={c.id}
+                    className={styles.claseItem}
+                    style={{
+                      opacity:      isProgramada ? 0.75 : 1,
+                      background:   isSelected ? 'rgba(239,68,68,0.08)' : undefined,
+                      outline:      isSelected ? '1px solid rgba(239,68,68,0.3)' : undefined,
+                      borderRadius: isSelected ? 'var(--radius-md)' : undefined,
+                      cursor:       selectMode ? 'pointer' : undefined,
+                    }}
+                    onClick={selectMode ? () => {
+                      setSelectedIds(prev => {
+                        const next = new Set(prev)
+                        next.has(c.id) ? next.delete(c.id) : next.add(c.id)
+                        return next
+                      })
+                    } : undefined}
+                  >
+                    {selectMode && (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        onClick={e => e.stopPropagation()}
+                        style={{ width: 16, height: 16, flexShrink: 0, accentColor: '#ef4444', cursor: 'pointer' }}
+                      />
+                    )}
+                    <div className={styles.claseDay}>
+                      <span style={{ fontSize: 9 }}>{ABBR_DIA[c.dia] || c.dia}</span>
+                      <span className={styles.dayNum}>
+                        {(() => {
+                          if (c.fecha) return new Date(c.fecha + 'T12:00:00').getDate()
+                          const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(c.dia)
+                          const hoy = new Date()
+                          const diff = idx - hoy.getDay()
+                          const fecha = new Date(hoy)
+                          fecha.setDate(hoy.getDate() + (diff >= 0 ? diff : diff + 7))
+                          return fecha.getDate()
+                        })()}
+                      </span>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className={styles.claseName}>
+                        {c.nombre}
+                        {isProgramada && (
+                          <span style={{ marginLeft: 8, fontSize: 10, background: 'rgba(217,119,6,0.18)', color: '#d97706', padding: '2px 8px', borderRadius: 10, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+                            🕐 Prog. {new Date(c.publicarEn).toLocaleString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <div className={styles.claseMeta}>{c.hora} · {c.duracion} min · {c.coachNombre}</div>
+                    </div>
+                    <Tag color={!c.tipo?.toLowerCase().includes('slow') ? 'pink' : 'blue'}>{c.tipo}</Tag>
+                    <div className={styles.claseSpots}>
+                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.cupoActual}/{c.cupoMax} lugares</div>
+                      <div className={styles.spotsBar}>
+                        <div className={styles.spotsFill} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                    {!isProgramada && <Tag color={statusTag}>{statusLabel}</Tag>}
+                    {c.cupoActual >= c.cupoMax && (() => {
+                      const enEspera = getPorClase(c.id)
+                      if (!enEspera.length) return null
+                      return (
+                        <span style={{
+                          fontSize: 10, padding: '2px 8px', borderRadius: 10,
+                          background: 'rgba(245,158,11,0.12)',
+                          color: '#F59E0B',
+                          border: '1px solid rgba(245,158,11,0.25)',
+                          fontFamily: 'var(--font-body)',
+                          marginLeft: 4,
+                        }}>
+                          ⏳ {enEspera.length} en espera
+                        </span>
+                      )
+                    })()}
+                    {!selectMode && <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        className={`${styles.btn} ${styles.btnSecondary}`}
+                        style={{ padding: '6px 12px', fontSize: 12 }}
+                        onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
+                      >
+                        👥 {c.cupoActual}
+                      </button>
+                      <button
+                        className={`${styles.btn} ${styles.btnGhost}`}
+                        style={{ padding: '6px 12px', fontSize: 12 }}
+                        onClick={() => {
+                          setModalEditClase(c)
+                          const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
+                          setEditClaseForm({
+                            nombre:      c.nombre,
+                            tipo:        c.tipo,
+                            coach:       coachNombre,
+                            dia:         c.dia,
+                            hora:        c.hora,
+                            duracion:    String(c.duracion || 50),
+                            cupoMax:     String(c.cupoMax || 15),
+                            descripcion: c.descripcion || '',
+                            publicarEn:  c.publicarEn
+                              ? new Date(c.publicarEn).toISOString().slice(0, 16)
+                              : '',
+                            fecha:       c.fecha ?? '',
+                          })
+                        }}
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        className={`${styles.btn} ${styles.btnGhost}`}
+                        style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
+                        onClick={() => {
+                          if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
+                          eliminarClaseConReservas(c.id)
+                          logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                          toast.success('Clase eliminada')
+                        }}
+                      >
+                        🗑
+                      </button>
+                    </div>}
+                  </div>
+                )
               }}
-              style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
+              emptyNode={
+                <div style={{
+                  textAlign:  'center',
+                  padding:    '40px 0',
+                  color:      'rgba(255,255,255,0.35)',
+                  fontFamily: 'var(--font-body)',
+                }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
+                  <div style={{ fontSize: 14 }}>Sin clases para este día</div>
+                </div>
+              }
             />
-            <span style={{ color: 'var(--muted)' }}>
-              {selectedIds.size === 0
-                ? 'Selecciona las clases que deseas eliminar'
-                : `${selectedIds.size} de ${clasesFiltradas.length} seleccionada${selectedIds.size > 1 ? 's' : ''}`}
-            </span>
-            {selectedIds.size > 0 && (
-              <button
-                style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
-                onClick={() => setSelectedIds(new Set())}
-              >
-                Deseleccionar todo
-              </button>
-            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Vista Lista ── */}
+      {vistaLista && (() => {
+        const isSlow = (tipo) => tipo?.toLowerCase().includes('slow')
+        const filtradas = clases.filter(c => {
+          if (clasesFilter === 'Stryde X') return !isSlow(c.tipo)
+          if (clasesFilter === 'Slow')     return  isSlow(c.tipo)
+          return true
+        })
+        const ordenadas = [...filtradas].sort((a, b) => {
+          if (a.fecha && b.fecha) return a.fecha.localeCompare(b.fecha)
+          if (a.fecha) return -1
+          if (b.fecha) return 1
+          return (a.dia ?? '').localeCompare(b.dia ?? '')
+        })
+        return (
+          <div style={{
+            background: 'var(--neutral-card)',
+            border: '1px solid var(--neutral-border)',
+            borderRadius: 12,
+            overflow: 'hidden',
+          }}>
+            <table style={{
+              width: '100%', borderCollapse: 'collapse',
+              fontFamily: 'var(--font-body)', fontSize: 13,
+            }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                  {['Día / Fecha','Hora','Clase','Tipo','Coach','Cupo','Estado','Acciones'].map(h => (
+                    <th key={h} style={{
+                      padding: '12px 16px', textAlign: 'left',
+                      fontSize: 11, fontWeight: 700,
+                      color: 'var(--text-muted)',
+                      letterSpacing: '0.06em', textTransform: 'uppercase',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ordenadas.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                      No hay clases registradas
+                    </td>
+                  </tr>
+                ) : ordenadas.map((c, i) => {
+                  const pct = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
+                  const isFinalizada = (() => {
+                    if (!c.fecha) return false
+                    const [h, m] = (c.hora || '00:00').split(':').map(Number)
+                    const fin = new Date(c.fecha + 'T00:00:00')
+                    fin.setHours(h, m, 0, 0)
+                    return fin <= new Date()
+                  })()
+                  const esLlena  = c.cupoActual >= c.cupoMax
+                  const enEspera = getPorClase(c.id)
+                  return (
+                    <tr key={c.id} style={{
+                      borderBottom: i < ordenadas.length - 1 ? '1px solid var(--neutral-border)' : 'none',
+                      background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
+                    }}>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
+                        {c.fecha
+                          ? new Date(c.fecha + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+                          : c.dia}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {c.hora}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-primary)', fontWeight: 500 }}>
+                        {c.nombre}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700,
+                          letterSpacing: '0.06em',
+                          background: isSlow(c.tipo) ? 'rgba(59,130,246,0.15)' : 'rgba(239,68,68,0.15)',
+                          color: isSlow(c.tipo) ? '#3b82f6' : '#ef4444',
+                        }}>
+                          {isSlow(c.tipo) ? 'SLOW' : 'STRYDE X'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
+                        {c.coachNombre}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 48, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.08)' }}>
+                            <div style={{
+                              height: '100%', borderRadius: 2, width: `${pct}%`,
+                              background: pct >= 90 ? '#ef4444' : pct >= 60 ? '#eab308' : '#22c55e',
+                            }} />
+                          </div>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                            {c.cupoActual}/{c.cupoMax}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{
+                            fontSize: 10, padding: '2px 8px', borderRadius: 20,
+                            background: isFinalizada ? 'rgba(255,255,255,0.05)' : esLlena ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)',
+                            color: isFinalizada ? 'rgba(255,255,255,0.3)' : esLlena ? '#ef4444' : '#22c55e',
+                            border: `1px solid ${isFinalizada ? 'rgba(255,255,255,0.08)' : esLlena ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)'}`,
+                          }}>
+                            {isFinalizada ? 'Finalizada' : esLlena ? 'Llena' : 'Abierta'}
+                          </span>
+                          {esLlena && enEspera.length > 0 && (
+                            <span style={{
+                              fontSize: 10, padding: '2px 6px', borderRadius: 20,
+                              background: 'rgba(245,158,11,0.12)', color: '#F59E0B',
+                              border: '1px solid rgba(245,158,11,0.25)',
+                            }}>
+                              ⏳ {enEspera.length}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
+                            title="Ver alumnos"
+                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >👥</button>
+                          <button
+                            onClick={() => {
+                              setModalEditClase(c)
+                              const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
+                              setEditClaseForm({
+                                nombre: c.nombre, tipo: c.tipo, coach: coachNombre,
+                                dia: c.dia, hora: c.hora,
+                                duracion: String(c.duracion || 50),
+                                cupoMax: String(c.cupoMax || 15),
+                                descripcion: c.descripcion || '',
+                                publicarEn: c.publicarEn ? new Date(c.publicarEn).toISOString().slice(0, 16) : '',
+                                fecha: c.fecha ?? '',
+                              })
+                            }}
+                            title="Editar"
+                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >✏️</button>
+                          <button
+                            onClick={() => {
+                              if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
+                              eliminarClaseConReservas(c.id)
+                              logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                              toast.success('Clase eliminada')
+                            }}
+                            title="Eliminar"
+                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >🗑</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )
       })()}
-
-      <DateNavigator
-        modo="dia"
-        darkMode={true}
-        onChange={(fecha) => {
-          setFechaSeleccionada(fecha)
-          setSelectedIds(new Set())
-        }}
-      />
-
-      <div className={styles.card}>
-        <InfiniteList
-          items={clasesFiltradas}
-          pageSize={12}
-          darkMode={true}
-          gap={10}
-          renderItem={(c) => {
-            const pct          = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
-            const isPasada = (() => {
-              if (!c.fecha) return false
-              const [h, m] = (c.hora || '00:00').split(':').map(Number)
-              const fin = new Date(c.fecha + 'T00:00:00')
-              fin.setHours(h + Math.floor((c.duracion || 50) / 60), m + (c.duracion || 50) % 60)
-              return fin < new Date()
-            })()
-            const statusTag    = isPasada ? 'gray' : pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
-            const statusLabel  = isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
-            const isProgramada = c.publicarEn && new Date(c.publicarEn) > new Date()
-            const isSelected   = selectedIds.has(c.id)
-            return (
-              <div
-                key={c.id}
-                className={styles.claseItem}
-                style={{
-                  opacity:      isProgramada ? 0.75 : 1,
-                  background:   isSelected ? 'rgba(239,68,68,0.08)' : undefined,
-                  outline:      isSelected ? '1px solid rgba(239,68,68,0.3)' : undefined,
-                  borderRadius: isSelected ? 'var(--radius-md)' : undefined,
-                  cursor:       selectMode ? 'pointer' : undefined,
-                }}
-                onClick={selectMode ? () => {
-                  setSelectedIds(prev => {
-                    const next = new Set(prev)
-                    next.has(c.id) ? next.delete(c.id) : next.add(c.id)
-                    return next
-                  })
-                } : undefined}
-              >
-                {selectMode && (
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => {}}
-                    onClick={e => e.stopPropagation()}
-                    style={{ width: 16, height: 16, flexShrink: 0, accentColor: '#ef4444', cursor: 'pointer' }}
-                  />
-                )}
-                <div className={styles.claseDay}>
-                  <span style={{ fontSize: 9 }}>{ABBR_DIA[c.dia] || c.dia}</span>
-                  <span className={styles.dayNum}>
-                    {(() => {
-                      if (c.fecha) return new Date(c.fecha + 'T12:00:00').getDate()
-                      const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(c.dia)
-                      const hoy = new Date()
-                      const diff = idx - hoy.getDay()
-                      const fecha = new Date(hoy)
-                      fecha.setDate(hoy.getDate() + (diff >= 0 ? diff : diff + 7))
-                      return fecha.getDate()
-                    })()}
-                  </span>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div className={styles.claseName}>
-                    {c.nombre}
-                    {isProgramada && (
-                      <span style={{ marginLeft: 8, fontSize: 10, background: 'rgba(217,119,6,0.18)', color: '#d97706', padding: '2px 8px', borderRadius: 10, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
-                        🕐 Prog. {new Date(c.publicarEn).toLocaleString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
-                  </div>
-                  <div className={styles.claseMeta}>{c.hora} · {c.duracion} min · {c.coachNombre}</div>
-                </div>
-                <Tag color={!c.tipo?.toLowerCase().includes('slow') ? 'pink' : 'blue'}>{c.tipo}</Tag>
-                <div className={styles.claseSpots}>
-                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.cupoActual}/{c.cupoMax} lugares</div>
-                  <div className={styles.spotsBar}>
-                    <div className={styles.spotsFill} style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-                {!isProgramada && <Tag color={statusTag}>{statusLabel}</Tag>}
-                {c.cupoActual >= c.cupoMax && (() => {
-                  const enEspera = getPorClase(c.id)
-                  if (!enEspera.length) return null
-                  return (
-                    <span style={{
-                      fontSize: 10, padding: '2px 8px', borderRadius: 10,
-                      background: 'rgba(245,158,11,0.12)',
-                      color: '#F59E0B',
-                      border: '1px solid rgba(245,158,11,0.25)',
-                      fontFamily: 'var(--font-body)',
-                      marginLeft: 4,
-                    }}>
-                      ⏳ {enEspera.length} en espera
-                    </span>
-                  )
-                })()}
-                {!selectMode && <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    className={`${styles.btn} ${styles.btnSecondary}`}
-                    style={{ padding: '6px 12px', fontSize: 12 }}
-                    onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
-                  >
-                    👥 {c.cupoActual}
-                  </button>
-                  <button
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    style={{ padding: '6px 12px', fontSize: 12 }}
-                    onClick={() => {
-                      setModalEditClase(c)
-                      const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
-                      setEditClaseForm({
-                        nombre:      c.nombre,
-                        tipo:        c.tipo,
-                        coach:       coachNombre,
-                        dia:         c.dia,
-                        hora:        c.hora,
-                        duracion:    String(c.duracion || 50),
-                        cupoMax:     String(c.cupoMax || 15),
-                        descripcion: c.descripcion || '',
-                        publicarEn:  c.publicarEn
-                          ? new Date(c.publicarEn).toISOString().slice(0, 16)
-                          : '',
-                        fecha:       c.fecha ?? '',
-                      })
-                    }}
-                  >
-                    ✏️ Editar
-                  </button>
-                  <button
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
-                    onClick={() => {
-                      if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
-                      eliminarClaseConReservas(c.id)
-                      logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
-                      toast.success('Clase eliminada')
-                    }}
-                  >
-                    🗑
-                  </button>
-                </div>}
-              </div>
-            )
-          }}
-          emptyNode={
-            <div style={{
-              textAlign:  'center',
-              padding:    '40px 0',
-              color:      'rgba(255,255,255,0.35)',
-              fontFamily: 'var(--font-body)',
-            }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
-              <div style={{ fontSize: 14 }}>Sin clases para este día</div>
-            </div>
-          }
-        />
-      </div>
 
       {modalImport && createPortal(
         <ModalImportarClases

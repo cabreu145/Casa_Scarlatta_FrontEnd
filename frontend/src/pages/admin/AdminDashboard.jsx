@@ -121,6 +121,14 @@ export const adminLinks = [
 ]
 
 // ── Component ────────────────────────────────────────────────────────────────
+/**
+ * LEGACY: Este componente no tiene ruta asignada.
+ * AdminPanel.jsx es el panel principal (/admin/dashboard).
+ * Este archivo se mantiene únicamente porque exporta
+ * adminLinks que otros archivos del proyecto usan.
+ * El export default AdminDashboard() es código muerto
+ * y puede eliminarse cuando el backend esté conectado.
+ */
 export default function AdminDashboard() {
   const { clases } = useClasesStore()
   const [rango, setRango] = useState('mes')

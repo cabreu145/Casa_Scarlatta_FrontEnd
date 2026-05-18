@@ -7,6 +7,7 @@ import { ROUTES } from '@/constants/routes'
 import { reservarClase } from '@/services/reservasService'
 import { useReservasStore } from '@/stores/reservasStore'
 import { useClasesStore }   from '@/stores/clasesStore'
+import { useCoachesStore }  from '@/stores/coachesStore'
 import styles from './SeatSelector.module.css'
 
 // ── Stryde X room layout (dynamic) ────────────────────────────────────────────
@@ -254,8 +255,11 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
   const navigate = useNavigate()
   const { isAuthenticated, usuario } = useAuth()
   const { reservas } = useReservasStore()
+  const { getById: getCoachById } = useCoachesStore()
 
   const isSlow = cls.tipo?.toLowerCase().includes('slow')
+  const coachFoto = cls.coachId ? getCoachById(cls.coachId)?.foto ?? null : null
+  const instructorInitials = cls.coachNombre?.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
 
   const COLS = 5
   const totalSeats = cls.cupoMax > 0 ? cls.cupoMax : (isSlow ? 15 : 14)
@@ -385,31 +389,74 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
               {/* LEFT */}
               <div className={styles.machineSection}>
                 <div className={styles.frenteBanner}>
-                  <div className={styles.frenteLine}/><span className={styles.frenteLabel}>FRENTE · INSTRUCTOR</span><div className={styles.frenteLine}/>
+                  <div className={styles.frenteLine}/><span className={styles.frenteLabel}>FRENTE</span><div className={styles.frenteLine}/>
                 </div>
-                <div className={styles.machineGrid} style={{'--cols':cols}} role="group" aria-label="Selección de lugar">
-                  {Array.from({length:rows},(_, r)=>r+1).map(row =>
-                    Array.from({length:cols},(_,c)=>c+1).map(col => {
-                      const seatNum = (row-1)*cols + col
-                      if (seatNum > totalSeats) return null  // no generar celdas extra en la última fila
-                      const id = `R${row}-S${col}`
-                      const isOccupied = occupied.has(id)
-                      const isSelected = selected === id
-                      const state = isOccupied?'occupied':isSelected?'selected':'available'
-                      return (
-                        <button key={id}
-                          className={[styles.machineCard, isOccupied?styles.cardOccupied:styles.cardAvailable, isSelected?styles.cardSelected:''].join(' ')}
-                          onClick={() => !isOccupied && toggle(id)} disabled={isOccupied}
-                          aria-label={`${seatLabel(row,col)}${isOccupied?' — ocupado':isSelected?' — seleccionado':' — disponible'}`}
-                          aria-pressed={isSelected}>
-                          <span className={[styles.statusIndicator, isOccupied?styles.indGray:isSelected?styles.indWine:styles.indGreen].join(' ')}/>
-                          <div className={styles.matIconWrap}><YogaMatIcon state={state}/></div>
-                          <span className={styles.machineNumber}>{String(seatNum).padStart(2,'0')}</span>
-                        </button>
-                      )
-                    })
-                  )}
+
+                {/* Row 1 — fila frontal */}
+                <div className={styles.machineGrid} style={{'--cols':cols}} role="group" aria-label="Fila frontal">
+                  {Array.from({length:cols},(_,c)=>c+1).map(col => {
+                    const seatNum = col
+                    if (seatNum > totalSeats) return null
+                    const id = `R1-S${col}`
+                    const isOccupied = occupied.has(id)
+                    const isSelected = selected === id
+                    const state = isOccupied?'occupied':isSelected?'selected':'available'
+                    return (
+                      <button key={id}
+                        className={[styles.machineCard, isOccupied?styles.cardOccupied:styles.cardAvailable, isSelected?styles.cardSelected:''].join(' ')}
+                        onClick={() => !isOccupied && toggle(id)} disabled={isOccupied}
+                        aria-label={`${seatLabel(1,col)}${isOccupied?' — ocupado':isSelected?' — seleccionado':' — disponible'}`}
+                        aria-pressed={isSelected}>
+                        <span className={[styles.statusIndicator, isOccupied?styles.indGray:isSelected?styles.indWine:styles.indGreen].join(' ')}/>
+                        <div className={styles.matIconWrap}><YogaMatIcon state={state}/></div>
+                        <span className={styles.machineNumber}>{String(seatNum).padStart(2,'0')}</span>
+                      </button>
+                    )
+                  })}
                 </div>
+
+                {/* Zona instructor */}
+                <div className={styles.slowInstructorZone}>
+                  <div className={styles.slowZoneLine}/>
+                  <div className={styles.slowInstructorBadge}>
+                    <div className={styles.slowInstructorAvatar}>
+                      {coachFoto
+                        ? <img src={coachFoto} alt={cls.coachNombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 15%',borderRadius:'50%'}}/>
+                        : instructorInitials
+                      }
+                    </div>
+                    <span className={styles.slowInstructorName}>{cls.coachNombre}</span>
+                    <span className={styles.slowInstructorTitle}>INSTRUCTORA</span>
+                  </div>
+                  <div className={styles.slowZoneLine}/>
+                </div>
+
+                {/* Filas 2+ */}
+                {rows > 1 && (
+                  <div className={styles.machineGrid} style={{'--cols':cols}} role="group" aria-label="Filas traseras">
+                    {Array.from({length:rows-1},(_,r)=>r+2).flatMap(row =>
+                      Array.from({length:cols},(_,c)=>c+1).map(col => {
+                        const seatNum = (row-1)*cols + col
+                        if (seatNum > totalSeats) return null
+                        const id = `R${row}-S${col}`
+                        const isOccupied = occupied.has(id)
+                        const isSelected = selected === id
+                        const state = isOccupied?'occupied':isSelected?'selected':'available'
+                        return (
+                          <button key={id}
+                            className={[styles.machineCard, isOccupied?styles.cardOccupied:styles.cardAvailable, isSelected?styles.cardSelected:''].join(' ')}
+                            onClick={() => !isOccupied && toggle(id)} disabled={isOccupied}
+                            aria-label={`${seatLabel(row,col)}${isOccupied?' — ocupado':isSelected?' — seleccionado':' — disponible'}`}
+                            aria-pressed={isSelected}>
+                            <span className={[styles.statusIndicator, isOccupied?styles.indGray:isSelected?styles.indWine:styles.indGreen].join(' ')}/>
+                            <div className={styles.matIconWrap}><YogaMatIcon state={state}/></div>
+                            <span className={styles.machineNumber}>{String(seatNum).padStart(2,'0')}</span>
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                )}
                 <div className={styles.fitnessLegend}>
                   {[{ind:styles.indGreen,label:'Disponible'},{ind:styles.indGray,label:'Ocupado'},{ind:styles.indWine,label:'Tu lugar'}].map(({ind,label})=>(
                     <span key={label} className={styles.legendItem}>
@@ -512,7 +559,6 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
     )
   })
 
-  const instructorInitials = cls.coachNombre?.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() || '?'
   const selEq = selected ? getEquipmentInfo(strydeLayout, selected) : null
 
   return (
@@ -557,9 +603,14 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
                 <div className={styles.strydeInstructorZone}>
                   <div className={styles.strydeZoneLine}/>
                   <div className={styles.instructorBadge}>
-                    <div className={styles.instructorAvatar}>{instructorInitials}</div>
+                    <div className={styles.instructorAvatar}>
+                      {coachFoto
+                        ? <img src={coachFoto} alt={cls.coachNombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 15%',borderRadius:'50%'}}/>
+                        : instructorInitials
+                      }
+                    </div>
                     <span className={styles.instructorName}>{cls.coachNombre}</span>
-                    <span className={styles.instructorTitle}>Instructor</span>
+                    <span className={styles.instructorTitle}>INSTRUCTOR</span>
                   </div>
                   <div className={styles.strydeZoneLine}/>
                 </div>
