@@ -35,6 +35,10 @@ export default function UsuariosSection({
   const [usersExpandido, setUsersExpandido] = useState(false)
   const PAGE_SIZE = 10
 
+  const clientes = usuarios.filter((u) => u.rol !== 'coach' && u.rol !== 'admin')
+  const conPaquete = clientes.filter((u) => u.paquete).length
+  const sinPaquete = clientes.length - conPaquete
+
   const usuariosFiltrados = usuarios.filter((u) => {
     if (u.rol === 'coach' || u.rol === 'admin') return false
     if (usersSearch.trim()) {
@@ -57,10 +61,10 @@ export default function UsuariosSection({
     <>
       <div className={styles.kpiGrid} style={{ marginBottom: 24 }}>
         {[
-          { label: 'Total usuarios',      val: '142', change: '↑ 12 nuevos este mes',      up: true  },
-          { label: 'Con paquete activo',  val: '118', change: '83% del total',              up: true  },
-          { label: 'Sin paquete',         val: '24',  change: 'Por renovar',               up: false },
-          { label: 'Clases esta semana',  val: '387', change: '↑ 8% vs semana anterior',   up: true  },
+          { label: 'Total usuarios',      val: String(clientes.length),  change: 'Miembros registrados', up: true  },
+          { label: 'Con paquete activo',  val: String(conPaquete),        change: clientes.length > 0 ? `${Math.round((conPaquete/clientes.length)*100)}% del total` : '—', up: true  },
+          { label: 'Sin paquete',         val: String(sinPaquete),        change: 'Por renovar',          up: false },
+          { label: 'Clases esta semana',  val: '—',                       change: 'Ver en Clases',        up: true  },
         ].map(({ label, val, change, up }) => (
           <div key={label} className={styles.kpiCard}>
             <div className={styles.kpiLabel}>{label}</div>

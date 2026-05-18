@@ -223,7 +223,7 @@ function RegisterForm({ onSuccess, LegalModal: Modal }) {
         fechaNacimiento: form.fechaNacimiento,
       })
       toast.success('¡Cuenta creada! Revisa tu correo de bienvenida 📧')
-      navigate('/', { replace: true })
+      navigate('/cliente/dashboard', { replace: true })
     } catch (err) {
       if (err.message?.includes('registrado')) {
         setErrors({ email: 'Este email ya está registrado' })

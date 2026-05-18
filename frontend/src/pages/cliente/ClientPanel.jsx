@@ -245,16 +245,20 @@ export default function ClientPanel() {
 
   const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
 
+  const esMesActual = (r) => {
+    if (r.fecha) return r.fecha.startsWith(mesActual)
+    // Clases recurrentes (sin fecha) se consideran del mes actual si están confirmadas
+    return true
+  }
+
   const clasesTomadasEsteMes = reservasUsuario.filter(r => {
     if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
-    const fechaR = r.fecha ?? ''
-    return fechaR.startsWith(mesActual)
+    return esMesActual(r)
   }).length
 
   const strideEsteMes = reservasUsuario.filter(r => {
     if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
-    const fechaR = r.fecha ?? ''
-    return fechaR.startsWith(mesActual) && !r.tipo?.toLowerCase().includes('slow')
+    return esMesActual(r) && !r.tipo?.toLowerCase().includes('slow')
   }).length
 
   const slowEsteMes = reservasUsuario.filter(r => {
