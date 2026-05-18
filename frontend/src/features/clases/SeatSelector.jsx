@@ -307,6 +307,7 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
       return
     }
     setConfirmado(true)
+    toast.success('¡Reserva confirmada! Revisa tu correo con los detalles 📧', { duration: 5000 })
   }
 
   function handleCerrar() {
