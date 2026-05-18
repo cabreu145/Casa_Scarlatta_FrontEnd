@@ -116,7 +116,7 @@ export default function HeroCarousel() {
           <span className={styles.logoScarlatta}>Scarlatta</span>
         </div>
         <p className={styles.tagline}>Wellness Center</p>
-        <Link to="/reservar" className={styles.cta}>Reservar</Link>
+        <Link to="/clases" className={styles.cta}>Reservar</Link>
       </div>
 
       <div className={styles.dots} role="tablist" aria-label="Slides">

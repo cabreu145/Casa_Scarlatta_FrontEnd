@@ -36,6 +36,7 @@ export default function UsuariosSection({
   const PAGE_SIZE = 10
 
   const usuariosFiltrados = usuarios.filter((u) => {
+    if (u.rol === 'coach' || u.rol === 'admin') return false
     if (usersSearch.trim()) {
       const q = usersSearch.toLowerCase()
       const coincide = u.nombre?.toLowerCase().includes(q)

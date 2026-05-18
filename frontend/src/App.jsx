@@ -7,13 +7,13 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import PageWrapper from '@/components/layout/PageWrapper'
 
+import ScrollToTop from '@/components/layout/ScrollToTop'
 import Home from '@/pages/Home'
 import Clases from '@/pages/Clases'
 import Suet from '@/pages/Suet'
 import Flow from '@/pages/Flow'
 import Nosotros from '@/pages/Nosotros'
 import Contacto from '@/pages/Contacto'
-import Reservar from '@/pages/Reservar'
 import Login from '@/pages/Login'
 import Registro from '@/pages/Registro'
 import RecuperarContrasena from '@/pages/RecuperarContrasena'
@@ -91,7 +91,7 @@ function AnimatedRoutes() {
           <Route path="/flow" element={<PageWrapper><Flow /></PageWrapper>} />
           <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
           <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
-          <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
+          <Route path="/reservar" element={<Navigate to="/clases" replace />} />
           <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
           <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />
           <Route path="/recuperar-contrasena" element={<PageWrapper><RecuperarContrasena /></PageWrapper>} />
@@ -108,6 +108,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ScrollToTop />
         <AnimatedRoutes />
       </AuthProvider>
     </BrowserRouter>

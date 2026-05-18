@@ -220,9 +220,9 @@ export default function CoachPanel() {
                 <div className={s.coachName}>Coach · {usuario?.nombre ?? 'Coach'}</div>
                 <div className={s.coachRole}>{usuario?.especialidad ?? ''}</div>
               </div>
-              <div className={s.coachAvatar} style={{ width:36, height:36, fontSize:15, overflow:'hidden', padding:0 }}> 
-                {usuario?.foto
-                 ? <img src={usuario.foto} alt={usuario.nombre} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+              <div className={s.coachAvatar} style={{ width:36, height:36, fontSize:15, overflow:'hidden', padding:0 }}>
+                {coachData?.foto
+                 ? <img src={coachData.foto} alt={usuario?.nombre} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top center' }} />
                  : usuario?.nombre?.charAt(0).toUpperCase() ?? 'C'}
               </div>
             </div>

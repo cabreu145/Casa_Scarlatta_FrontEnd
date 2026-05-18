@@ -455,6 +455,7 @@ export default function AdminUsuarios() {
   const [modalDetalle,   setModalDetalle]   = useState(null)   // usuario | null
 
   const filtrados = (usuarios ?? []).filter((u) => {
+    if (u.rol === 'coach' || u.rol === 'admin') return false
     const matchBusqueda =
       u.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
       u.email.toLowerCase().includes(busqueda.toLowerCase())
