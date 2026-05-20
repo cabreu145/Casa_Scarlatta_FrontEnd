@@ -196,7 +196,7 @@ export default function AdminPanel() {
   const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo' })
   // Clase form — publicarEn: ISO datetime string o '' (publicar inmediatamente)
   //              fecha:      YYYY-MM-DD o '' (si vacío → clase recurrente cada semana)
-  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
   // Clase — ver alumnos
   const [modalAlumnosClase, setModalAlumnosClase] = useState(null) // clase | null
   const [alumnoAgregarId,   setAlumnoAgregarId]   = useState('')
@@ -208,7 +208,7 @@ export default function AdminPanel() {
   const [userSelectedIds,    setUserSelectedIds]    = useState(new Set())
   // Clase — editar
   const [modalEditClase,  setModalEditClase]  = useState(null)  // clase | null
-  const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+  const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
   // Paquete form (crear)
   const [paqueteForm, setPaqueteForm] = useState({ nombre: '', tipo: 'clases', numClases: '', precio: '', vigencia: '', descripcion: '', destacado: false })
   // Paquete — editar
@@ -860,11 +860,6 @@ export default function AdminPanel() {
                 <input className={styles.formInput} type="number" min="30" max="120" placeholder="50" value={claseForm.duracion}
                   onChange={e => setClaseForm(f => ({ ...f, duracion: e.target.value }))} />
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Cupo máximo</label>
-                <input className={styles.formInput} type="number" min="1" max="50" placeholder="15" value={claseForm.cupoMax}
-                  onChange={e => setClaseForm(f => ({ ...f, cupoMax: e.target.value }))} />
-              </div>
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                 <label className={styles.formLabel}>Descripción</label>
                 <textarea className={styles.formInput} rows={2} placeholder="Descripción breve de la clase…"
@@ -908,7 +903,7 @@ export default function AdminPanel() {
                     dia:         claseForm.dia,
                     hora:        claseForm.hora,
                     duracion:    Number(claseForm.duracion) || 50,
-                    cupoMax:     Number(claseForm.cupoMax) || 15,
+                    cupoMax:     claseForm.tipo === 'Slow' ? 10 : 14,
                     cupoActual:  0,
                     descripcion: claseForm.descripcion,
                     publicarEn:  claseForm.publicarEn || null,
@@ -1402,12 +1397,6 @@ export default function AdminPanel() {
                   value={editClaseForm.duracion}
                   onChange={e => setEditClaseForm(f => ({ ...f, duracion: e.target.value }))} />
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Cupo máximo</label>
-                <input className={styles.formInput} type="number" min="1" max="50"
-                  value={editClaseForm.cupoMax}
-                  onChange={e => setEditClaseForm(f => ({ ...f, cupoMax: e.target.value }))} />
-              </div>
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                 <label className={styles.formLabel}>Descripción</label>
                 <textarea className={styles.formInput} rows={2}
@@ -1455,7 +1444,7 @@ export default function AdminPanel() {
                     dia:         editClaseForm.dia,
                     hora:        editClaseForm.hora,
                     duracion:    Number(editClaseForm.duracion) || 50,
-                    cupoMax:     Number(editClaseForm.cupoMax) || 15,
+                    cupoMax:     editClaseForm.tipo === 'Slow' ? 10 : 14,
                     descripcion: editClaseForm.descripcion,
                     publicarEn:  editClaseForm.publicarEn || null,
                     fecha:       editClaseForm.fecha || null,

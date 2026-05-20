@@ -73,10 +73,10 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
     const addDias  = (d, n) => { const r = new Date(d); r.setDate(d.getDate() + n); return r }
 
     const muestra = [
-      { Nombre: 'Stride Power',  Tipo: 'Stryde X', Coach: coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,0)), Hora: '07:00', 'Duracion (min)': 50, 'Cupo maximo': 15, Descripcion: 'Clase de potencia y cardio' },
-      { Nombre: 'Slow Pilates',  Tipo: 'Slow',     Coach: coaches[1]?.nombre ?? coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,0)), Hora: '09:00', 'Duracion (min)': 60, 'Cupo maximo': 12, Descripcion: 'Pilates consciente' },
-      { Nombre: 'Stride HIIT',   Tipo: 'Stryde X', Coach: coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,1)), Hora: '19:00', 'Duracion (min)': 50, 'Cupo maximo': 15, Descripcion: 'Alta intensidad' },
-      { Nombre: 'Slow Stretch',  Tipo: 'Slow',     Coach: coaches[1]?.nombre ?? coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,2)), Hora: '07:30', 'Duracion (min)': 55, 'Cupo maximo': 12, Descripcion: 'Stretching profundo' },
+      { Nombre: 'Stride Power',  Tipo: 'Stryde X', Coach: coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,0)), Hora: '07:00', 'Duracion (min)': 50, Descripcion: 'Clase de potencia y cardio' },
+      { Nombre: 'Slow Pilates',  Tipo: 'Slow',     Coach: coaches[1]?.nombre ?? coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,0)), Hora: '09:00', 'Duracion (min)': 60, Descripcion: 'Pilates consciente' },
+      { Nombre: 'Stride HIIT',   Tipo: 'Stryde X', Coach: coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,1)), Hora: '19:00', 'Duracion (min)': 50, Descripcion: 'Alta intensidad' },
+      { Nombre: 'Slow Stretch',  Tipo: 'Slow',     Coach: coaches[1]?.nombre ?? coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,2)), Hora: '07:30', 'Duracion (min)': 55, Descripcion: 'Stretching profundo' },
     ]
     const ws = XLSX.utils.json_to_sheet(muestra)
     // Columnas con ancho óptimo
@@ -87,7 +87,6 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
       { wch: 14 }, // Fecha
       { wch: 8  }, // Hora
       { wch: 16 }, // Duracion (min)
-      { wch: 14 }, // Cupo maximo
       { wch: 35 }, // Descripcion
     ]
     // Encabezado fijo al hacer scroll
@@ -169,7 +168,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
         const fecha   = parsearFecha(get('fecha','date','dia','fechaespecifica'))
         const hora    = parsearHora(get('hora','time','horario','horainicio'))
         const duracion  = Number(get('duracion','duration','duracionmin','minutos')) || 50
-        const cupoMax   = Number(get('cupomaximo','cupomax','cupo','capacidad','capacity')) || 15
+        const cupoMax   = tipo === 'Slow' ? 10 : 14
         const descripcion = String(get('descripcion','descripcion','description','desc')).trim()
 
         if (!nombre) errs.push(`Fila ${i+2}: Nombre vacío — se omitirá`)
@@ -379,7 +378,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'var(--font-body)' }}>
                 <thead>
                   <tr>
-                    {['Nombre','Tipo','Coach','Fecha','Hora','Cupo'].map(h => (
+                    {['Nombre','Tipo','Coach','Fecha','Hora'].map(h => (
                       <th key={h} style={{ padding: '7px 10px', borderBottom: '1px solid var(--neutral-border)', color: 'var(--text-muted)', textAlign: 'left', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -394,7 +393,6 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
                       <td style={{ padding: '7px 10px', color: c.coachId ? 'var(--text-secondary)' : '#eab308' }}>{c.coachNombre || '—'}{!c.coachId && c.coachNombre ? ' ⚠' : ''}</td>
                       <td style={{ padding: '7px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{c.fecha}</td>
                       <td style={{ padding: '7px 10px', color: 'var(--text-muted)' }}>{c.hora}</td>
-                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)', textAlign: 'center' }}>{c.cupoMax}</td>
                     </tr>
                   ))}
                 </tbody>

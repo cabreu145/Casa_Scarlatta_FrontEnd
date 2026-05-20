@@ -50,7 +50,7 @@ export default function Reservar() {
         <SectionHeader
           label="Reservar"
           title="Asegura tu lugar"
-          subtitle="Cupos limitados. Cancela hasta 2 horas antes sin cargo."
+          subtitle="Cupos limitados. Cancela hasta 6 horas antes sin cargo."
           size="lg"
           titleStyle={{
             fontFamily: 'var(--font-body)',
