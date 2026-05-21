@@ -180,7 +180,7 @@ export default function AdminPanel() {
 
   // Coach — editar modal
   const [modalEditCoach,  setModalEditCoach]  = useState(null)
-  const [editCoachForm,   setEditCoachForm]   = useState({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '' })
+  const [editCoachForm,   setEditCoachForm]   = useState({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '' })
   const [editFotoPreview, setEditFotoPreview] = useState(null)
   const [editFotoPath,    setEditFotoPath]    = useState(null)
   const fotoEditRef = useRef(null)
@@ -193,7 +193,7 @@ export default function AdminPanel() {
   const [modalHorarioCoach, setModalHorarioCoach] = useState(null)
 
   // Coach form
-  const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo' })
+  const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', instagram: '' })
   // Clase form — publicarEn: ISO datetime string o '' (publicar inmediatamente)
   //              fecha:      YYYY-MM-DD o '' (si vacío → clase recurrente cada semana)
   const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
@@ -740,6 +740,11 @@ export default function AdminPanel() {
                   value={coachForm.bio} onChange={e => setCoachForm(f => ({ ...f, bio: e.target.value }))}
                   style={{ resize: 'vertical' }} />
               </div>
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel}>Instagram (URL)</label>
+                <input className={styles.formInput} type="url" placeholder="https://instagram.com/nombre_coach"
+                  value={coachForm.instagram} onChange={e => setCoachForm(f => ({ ...f, instagram: e.target.value }))} />
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
@@ -754,11 +759,12 @@ export default function AdminPanel() {
                     especialidad: coachForm.disciplina || 'Stryde X',
                     bio:          coachForm.bio,
                     foto:         coachFotoPath || null,
+                    instagram:    coachForm.instagram || null,
                   })
                   if (resultado.ok) {
                   toast.success(`${coachForm.nombre} agregado`)
                   logCoachAgregado({ nombre: coachForm.nombre })
-                  setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '' })
+                  setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '' })
                   setCoachFotoPreview(null)
                   setCoachFotoPath(null)
                   closeModal()
@@ -1270,6 +1276,16 @@ export default function AdminPanel() {
                   style={{ resize: 'vertical' }}
                 />
               </div>
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel}>Instagram (URL)</label>
+                <input
+                  className={styles.formInput}
+                  type="url"
+                  placeholder="https://instagram.com/nombre_coach"
+                  value={editCoachForm.instagram}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, instagram: e.target.value }))}
+                />
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
@@ -1287,6 +1303,7 @@ export default function AdminPanel() {
                     email:        editCoachForm.email,
                     telefono:     editCoachForm.telefono,
                     foto:         editFotoPath || modalEditCoach.foto || null,
+                    instagram:    editCoachForm.instagram || null,
                   })
                   // Sincronizar usuario de login asociado
                   const userLogin = usuarios.find(

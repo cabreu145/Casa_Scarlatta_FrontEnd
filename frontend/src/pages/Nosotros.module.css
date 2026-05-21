@@ -165,6 +165,11 @@
   transform: translateY(-2px);
 }
 
+@keyframes igFloat {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+
 /* ── SECCIÓN 2 — COACHES ── */
 .coachesSec {
   background: #1a0a0e;
@@ -186,6 +191,39 @@
   background: var(--brand-blush);
   opacity: 0.45;
   margin-top: var(--space-sm);
+}
+
+/* Filter bar */
+.filtros {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 36px;
+}
+
+.filtroBtn {
+  padding: 8px 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 237, 232, 0.22);
+  background: transparent;
+  color: rgba(245, 237, 232, 0.55);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.filtroBtn:hover {
+  border-color: rgba(245, 237, 232, 0.5);
+  color: rgba(245, 237, 232, 0.85);
+}
+
+.filtroBtnActive {
+  background: rgba(193, 18, 31, 0.85);
+  border-color: transparent;
+  color: #F5EDE8;
 }
 
 .coachesLabel {
@@ -271,12 +309,39 @@
   line-height: 1.1;
 }
 
+.coachDiscipline {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: rgba(245, 237, 232, 0.5);
+  margin-top: 4px;
+}
+
+/* Instagram icon inside overlay */
+.igLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  color: rgba(245, 237, 232, 0.65);
+  transition: color 0.2s ease;
+  text-decoration: none;
+}
+
+.igLink:hover {
+  color: #fff;
+  animation: igFloat 0.7s ease infinite;
+}
+
 .coachOverlay {
   position: absolute;
   inset: 0;
   background: rgba(20, 8, 12, 0.82);
   border-radius: 16px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 28px 22px;

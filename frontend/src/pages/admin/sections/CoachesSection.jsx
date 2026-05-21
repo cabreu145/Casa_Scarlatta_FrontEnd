@@ -62,6 +62,7 @@ export default function CoachesSection({
                         email:        c.email || '',
                         telefono:     c.telefono || '',
                         bio:          c.bio || '',
+                        instagram:    c.instagram || '',
                       })
                       setEditFotoPreview(c.foto || null)
                       setEditFotoPath(c.foto || null)

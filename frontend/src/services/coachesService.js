@@ -37,6 +37,7 @@ export async function crearCoachService(datos) {
     especialidad: datos.especialidad || 'Stryde X',
     bio:          datos.bio || '',
     foto:         datos.foto || null,
+    instagram:    datos.instagram || null,
     rating:       5.0,
     asist:        100,
     clases:       0,
