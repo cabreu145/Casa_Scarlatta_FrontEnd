@@ -1,8 +1,21 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PasswordInput from '@/components/ui/PasswordInput'
-import { getDashboardMetrics } from '@/services/dashboardService'
+import DashboardSection from './sections/DashboardSection'
+import CoachesSection from './sections/CoachesSection'
+import ClasesSection from './sections/ClasesSection'
+import PaquetesSection from './sections/PaquetesSection'
+import PuntoDeVentaSection from './sections/PuntoDeVentaSection'
+import UsuariosSection from './sections/UsuariosSection'
+import ActividadSection from './sections/ActividadSection'
+import ConfiguracionSection from './sections/ConfiguracionSection'
 import ModalPago from '../../features/pagos/ModalPago'
+import {
+  logReservaCreada, logReservaCancelada, logUsuarioNuevo,
+  logPaqueteVendido, logInsumoVendido, logCorteCaja,
+  logClaseCreada, logClaseEliminada,
+  logCoachAgregado, logCoachEliminado,
+} from '@/services/actividadService'
 import { procesarVentaService, getDailyIncome, getIncomeByCategory } from '../../services/ventaService'
 import { crearCoachService } from '@/services/coachesService'
 import { useNavigate } from 'react-router-dom'
@@ -14,11 +27,12 @@ import { useCortesStore }              from '@/stores/cortesStore'
 import { useAuthStore }                from '@/stores/authStore'
 import { useCoachesStore }   from '@/stores/coachesStore'
 import { useProductosStore } from '@/stores/productosStore'
-import { useClasesStore }    from '@/stores/clasesStore'
-import { useReservasStore }  from '@/stores/reservasStore'
-import { usePaquetesStore }  from '@/stores/paquetesStore'
-import { useUsuariosStore }  from '@/stores/usuariosStore'
-import { reservarClase as reservarClaseService, cancelarReserva as cancelarReservaService, eliminarClaseConReservas } from '@/services/reservasService'
+import { useClasesStore }      from '@/stores/clasesStore'
+import { useReservasStore }    from '@/stores/reservasStore'
+import { usePaquetesStore }    from '@/stores/paquetesStore'
+import { useUsuariosStore }    from '@/stores/usuariosStore'
+import { useListaEsperaStore } from '@/stores/listaEsperaStore'
+import { reservarClase as reservarClaseService, cancelarReserva as cancelarReservaService, eliminarClaseConReservas, marcarNoAsistio } from '@/services/reservasService'
 import { borrarCoachService } from '@/services/coachesService'
 import { useDisciplinasStore } from '@/stores/disciplinasStore'
 import SeatSelector from '@/features/clases/SeatSelector'
@@ -40,7 +54,7 @@ export const adminLinks = [
 
 // ── Section metadata ─────────────────────────────────────────────────────────
 const SECTIONS = {
-  dashboard: { title: 'Dashboard',        sub: 'Resumen general · Abril 2026'       },
+  dashboard: { title: 'Dashboard',        sub: ''                                    },
   coaches:   { title: 'Coaches',          sub: 'Gestión y perfiles del equipo'       },
   clases:    { title: 'Clases',           sub: 'Calendario y gestión de clases'      },
   paquetes:  { title: 'Paquetes',         sub: 'Gestión y venta de paquetes'         },
@@ -48,6 +62,8 @@ const SECTIONS = {
   usuarios:  { title: 'Usuarios',         sub: 'Gestión de miembros activos'         },
   finanzas:  { title: 'Finanzas',         sub: 'Resumen financiero del estudio'       },
   reportes:  { title: 'Reportes',         sub: 'Descarga y análisis de datos'        },
+  actividad:      { title: 'Actividad',      sub: 'Historial de eventos del sistema'    },
+  configuracion:  { title: 'Configuración', sub: 'Ajustes del estudio'                 },
 }
 
 // ── POS products ─────────────────────────────────────────────────────────────
@@ -69,8 +85,6 @@ const PAQUETES_POS = [
   { emoji: '⭐', name: 'Premium — Ilimitadas',  price: 1999 },
 ]
 
-const ABBR_DIA = { Lunes: 'LUN', Martes: 'MAR', Miércoles: 'MIÉ', Jueves: 'JUE', Viernes: 'VIE', Sábado: 'SÁB', Domingo: 'DOM' }
-
 // ── Tag helper ───────────────────────────────────────────────────────────────
 function Tag({ color, children }) {
   const cls = {
@@ -82,23 +96,6 @@ function Tag({ color, children }) {
     gray:   styles.tagGray,
   }[color] || styles.tagGreen
   return <span className={`${styles.miniTag} ${cls}`}>{children}</span>
-}
-
-// ── FilterChips ──────────────────────────────────────────────────────────────
-function FilterChips({ options, active, onChange }) {
-  return (
-    <div style={{ display: 'flex', gap: 8 }}>
-      {options.map((o) => (
-        <button
-          key={o}
-          className={`${styles.filterChip}${active === o ? ' ' + styles.active : ''}`}
-          onClick={() => onChange(o)}
-        >
-          {o}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 // ── Category emoji fallback ──────────────────────────────────────────────────
@@ -114,8 +111,6 @@ export default function AdminPanel() {
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
   const [rangoDash, setRangoDash]         = useState('mes')
   const [modalPago, setModalPago]         = useState(false)
-  const metricas = useMemo(() => getDashboardMetrics(rangoDash), [rangoDash])
-
   const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
   const { productos, agregarProducto,
           editarProducto, eliminarProducto }               = useProductosStore()
@@ -123,6 +118,7 @@ export default function AdminPanel() {
   const { reservas: todasReservas, getReservasByClase } = useReservasStore()
   const { paquetes, agregarPaquete, editarPaquete, eliminarPaquete, marcarDestacado } = usePaquetesStore()
   const { usuarios, agregarUsuario, editarUsuario, eliminarUsuario } = useUsuariosStore()
+  const { getPorClase: getListaEspera } = useListaEsperaStore()
   const { disciplinas, agregarDisciplina, eliminarDisciplina } = useDisciplinasStore()
 
   // ── Finanzas stores ──────────────────────────────────────────────────────────
@@ -184,7 +180,7 @@ export default function AdminPanel() {
 
   // Coach — editar modal
   const [modalEditCoach,  setModalEditCoach]  = useState(null)
-  const [editCoachForm,   setEditCoachForm]   = useState({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '' })
+  const [editCoachForm,   setEditCoachForm]   = useState({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '' })
   const [editFotoPreview, setEditFotoPreview] = useState(null)
   const [editFotoPath,    setEditFotoPath]    = useState(null)
   const fotoEditRef = useRef(null)
@@ -197,10 +193,10 @@ export default function AdminPanel() {
   const [modalHorarioCoach, setModalHorarioCoach] = useState(null)
 
   // Coach form
-  const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo' })
+  const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', instagram: '' })
   // Clase form — publicarEn: ISO datetime string o '' (publicar inmediatamente)
   //              fecha:      YYYY-MM-DD o '' (si vacío → clase recurrente cada semana)
-  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
   // Clase — ver alumnos
   const [modalAlumnosClase, setModalAlumnosClase] = useState(null) // clase | null
   const [alumnoAgregarId,   setAlumnoAgregarId]   = useState('')
@@ -212,7 +208,7 @@ export default function AdminPanel() {
   const [userSelectedIds,    setUserSelectedIds]    = useState(new Set())
   // Clase — editar
   const [modalEditClase,  setModalEditClase]  = useState(null)  // clase | null
-  const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+  const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
   // Paquete form (crear)
   const [paqueteForm, setPaqueteForm] = useState({ nombre: '', tipo: 'clases', numClases: '', precio: '', vigencia: '', descripcion: '', destacado: false })
   // Paquete — editar
@@ -318,6 +314,11 @@ export default function AdminPanel() {
     setIsSidebarOpen(false)
   }
 
+  function showSectionWithFilter(sectionId, filterKey, filterValue) {
+    showSection(sectionId)
+    if (filterKey === 'usersFilter') setUsersFilter(filterValue)
+  }
+
   useEffect(() => {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
@@ -345,6 +346,13 @@ export default function AdminPanel() {
       estado:             'cerrado',
     })
     toast.success('¡Corte de caja realizado!')
+    logCorteCaja({
+      total:          finIngresosDia.total,
+      efectivo:       finIngresosDia.efectivo,
+      tarjeta:        finIngresosDia.tarjeta,
+      transferencia:  finIngresosDia.transferencia,
+      ejecutadoPor:   usuario?.nombre ?? 'Administrador',
+    })
   }
 
   function handleGuardarGasto() {
@@ -447,8 +455,10 @@ export default function AdminPanel() {
         <div className={styles.navSection}>
           <div className={styles.navLabel}>Análisis</div>
           {[
-            { id: 'finanzas', icon: '💰', label: 'Finanzas' },
-            { id: 'reportes', icon: '📄', label: 'Reportes' },
+            { id: 'finanzas',      icon: '💰', label: 'Finanzas'       },
+            { id: 'reportes',      icon: '📄', label: 'Reportes'       },
+            { id: 'actividad',     icon: '📋', label: 'Actividad'      },
+            { id: 'configuracion', icon: '⚙️', label: 'Configuración'  },
           ].map(({ id, icon, label }) => (
             <button
               key={id}
@@ -489,7 +499,7 @@ export default function AdminPanel() {
             </button>
             <div className={styles.topbarHeading}>
               <h1>{sec.title}</h1>
-              <p>{sec.sub}</p>
+              {sec.sub && <p>{sec.sub}</p>}
             </div>
           </div>
           <div className={styles.topbarRight}>
@@ -507,935 +517,115 @@ export default function AdminPanel() {
 
           {/* ── DASHBOARD ── */}
           <section className={`${styles.section}${activeSection === 'dashboard' ? ' ' + styles.active : ''}`}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              {[
-                { value: 'dia',    label: 'Hoy'    },
-                { value: 'semana', label: 'Semana' },
-                { value: 'mes',    label: 'Mes'    },
-              ].map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setRangoDash(value)}
-                  style={{
-                    padding: '6px 16px',
-                    borderRadius: 6,
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 13,
-                    background: rangoDash === value
-                      ? 'var(--wine, #7B1E22)'
-                      : 'rgba(255,255,255,0.07)',
-                    color: rangoDash === value
-                      ? '#fff'
-                      : 'rgba(255,255,255,0.5)',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className={styles.kpiGrid}>
-              <div className={styles.kpiCard}>
-                <div className={styles.kpiIcon}>👥</div>
-                <div className={styles.kpiLabel}>Usuarios activos</div>
-                <div className={styles.kpiValue}>{metricas.totalUsuarios}</div>
-                <div className={`${styles.kpiChange} ${styles.up}`}>↑ 12% vs mes anterior</div>
-              </div>
-              <div className={styles.kpiCard}>
-                <div className={styles.kpiIcon}>📦</div>
-                <div className={styles.kpiLabel}>Paquetes vendidos</div>
-                <div className={styles.kpiValue}>{metricas.paquetesVendidos}</div>
-                <div className={`${styles.kpiChange} ${styles.up}`}>↑ 8% vs mes anterior</div>
-              </div>
-              <div className={styles.kpiCard}>
-                <div className={styles.kpiIcon}>💰</div>
-                <div className={styles.kpiLabel}>Ingresos del mes</div>
-                <div className={styles.kpiValue}>${metricas.ingresosTotales.toLocaleString()}</div>
-                <div className={`${styles.kpiChange} ${styles.up}`}>↑ 15% vs mes anterior</div>
-              </div>
-              <div className={styles.kpiCard}>
-                <div className={styles.kpiIcon}>🔄</div>
-                <div className={styles.kpiLabel}>Tasa renovación</div>
-                <div className={styles.kpiValue}>{metricas.ocupacionPromedio}%</div>
-                <div className={`${styles.kpiChange} ${styles.down}`}>↓ 3% vs mes anterior</div>
-              </div>
-            </div>
-
-            <div className={styles.dashGrid}>
-              {/* Bar chart */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div>
-                    <div className={styles.cardTitle}>Ingresos mensuales</div>
-                    <div className={styles.cardSub}>Últimos 8 meses</div>
-                  </div>
-                  <Tag color="green">↑ 15%</Tag>
-                </div>
-                <div className={styles.chartBars}>
-                  {[
-                    { h: '55%', label: 'Sep' },
-                    { h: '62%', label: 'Oct' },
-                    { h: '48%', label: 'Nov' },
-                    { h: '70%', label: 'Dic' },
-                    { h: '65%', label: 'Ene' },
-                    { h: '72%', label: 'Feb' },
-                    { h: '68%', label: 'Mar' },
-                    { h: '80%', label: 'Abr' },
-                  ].map(({ h, label }) => (
-                    <div key={label} className={styles.barWrap}>
-                      <div className={styles.bar} style={{ height: h }} />
-                      <div className={styles.barLabel}>{label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Donut + top coaches */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div>
-                    <div className={styles.cardTitle}>Distribución paquetes</div>
-                    <div className={styles.cardSub}>Mes actual</div>
-                  </div>
-                </div>
-                <div className={styles.donutWrap}>
-                  <div className={styles.donut} />
-                  <div className={styles.donutLegend}>
-                    <div className={styles.legendItem}>
-                      <div className={styles.legendDot} style={{ background: '#6B1F2A' }} />
-                      <span>Mensual — 45%</span>
-                    </div>
-                    <div className={styles.legendItem}>
-                      <div className={styles.legendDot} style={{ background: '#E8A4AD' }} />
-                      <span>Quincenal — 25%</span>
-                    </div>
-                    <div className={styles.legendItem}>
-                      <div className={styles.legendDot} style={{ background: 'rgba(255,255,255,0.15)' }} />
-                      <span>Por clase — 30%</span>
-                    </div>
-                  </div>
-                </div>
-                <div style={{ marginTop: 16 }}>
-                  <div className={styles.cardSub} style={{ marginBottom: 10 }}>Top coaches por clases</div>
-                  <div className={styles.miniList}>
-                    {[
-                      { i: 'M', name: 'Mafer', sub: 'Stryde X · Flow', val: '24' },
-                      { i: 'D', name: 'Daya',  sub: 'Flow',           val: '19' },
-                      { i: 'C', name: 'Coste', sub: 'Stryde X',       val: '17' },
-                    ].map(({ i, name, sub, val }) => (
-                      <div key={name} className={styles.miniItem}>
-                        <div className={styles.miniAvatar}>{i}</div>
-                        <div><div className={styles.miniName}>{name}</div><div className={styles.miniSub}>{sub}</div></div>
-                        <div className={styles.miniRight}><div className={styles.miniVal}>{val}</div></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.fullGrid}>
-              {/* Clases hoy */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardTitle}>Clases hoy</div>
-                  <Tag color="blue">4 clases</Tag>
-                </div>
-                <div className={styles.miniList}>
-                  {[
-                    { name: 'Stride Power',  meta: '7:00 AM · Mafer · 8/15 lugares',  tag: 'green', label: 'Abierta' },
-                    { name: 'Slow Flow',     meta: '9:00 AM · Majo · 15/15 lugares',  tag: 'red',   label: 'Llena'   },
-                    { name: 'Stride HIIT',   meta: '7:00 PM · Coste · 5/15 lugares',  tag: 'green', label: 'Abierta' },
-                  ].map(({ name, meta, tag, label }) => (
-                    <div key={name} className={styles.miniItem}>
-                      <div className={styles.claseDay}>
-                        <span style={{ fontSize: 9 }}>HOY</span>
-                        <span className={styles.dayNum}>25</span>
-                      </div>
-                      <div><div className={styles.miniName}>{name}</div><div className={styles.miniSub}>{meta}</div></div>
-                      <div className={styles.miniRight}><Tag color={tag}>{label}</Tag></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Últimas ventas */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardTitle}>Últimas ventas</div>
-                </div>
-                <div className={styles.miniList}>
-                  {[
-                    { i: 'S', name: 'Sofía R.',     sub: 'Paquete Mensual · hace 10 min', val: '$1,200', tag: 'green',  label: 'Pagado'   },
-                    { i: 'V', name: 'Valentina C.', sub: 'Agua + Smoothie · hace 25 min', val: '$120',   tag: 'green',  label: 'Pagado'   },
-                    { i: 'A', name: 'Ana T.',        sub: 'Paquete 10 clases · hace 1h',   val: '$850',   tag: 'yellow', label: 'Pendiente'},
-                  ].map(({ i, name, sub, val, tag, label }) => (
-                    <div key={name} className={styles.miniItem}>
-                      <div className={styles.miniAvatar}>{i}</div>
-                      <div><div className={styles.miniName}>{name}</div><div className={styles.miniSub}>{sub}</div></div>
-                      <div className={styles.miniRight}>
-                        <div className={styles.miniVal}>{val}</div>
-                        <Tag color={tag}>{label}</Tag>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Paquetes por vencer */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.cardTitle}>Paquetes por vencer</div>
-                  <Tag color="yellow">8 usuarios</Tag>
-                </div>
-                <div className={styles.miniList}>
-                  {[
-                    { i: 'L', name: 'Lucía M.',  sub: 'Vence en 2 días · 3 clases restantes', tag: 'red',    label: 'Urgente' },
-                    { i: 'P', name: 'Paula G.',  sub: 'Vence en 5 días · 1 clase restante',   tag: 'yellow', label: 'Pronto'  },
-                    { i: 'R', name: 'Regina H.', sub: 'Vence en 7 días · 5 clases restantes', tag: 'yellow', label: 'Pronto'  },
-                  ].map(({ i, name, sub, tag, label }) => (
-                    <div key={name} className={styles.miniItem}>
-                      <div className={styles.miniAvatar}>{i}</div>
-                      <div><div className={styles.miniName}>{name}</div><div className={styles.miniSub}>{sub}</div></div>
-                      <div className={styles.miniRight}><Tag color={tag}>{label}</Tag></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <DashboardSection
+              rangoDash={rangoDash}
+              setRangoDash={setRangoDash}
+              showSection={showSection}
+              showSectionWithFilter={showSectionWithFilter}
+            />
           </section>
 
           {/* ── COACHES ── */}
           <section className={`${styles.section}${activeSection === 'coaches' ? ' ' + styles.active : ''}`}>
-            <div className={styles.sectionTopRow}>
-              <div />
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('coach')}>
-                + Agregar Coach
-              </button>
-            </div>
-            <div className={styles.coachesGrid}>
-              {coaches.map((c) => {
-                const iniciales = c.nombre.split(' ').slice(0, 2).map((w) => w[0]).join('')
-                return (
-                  <div key={c.id} className={styles.coachCard}>
-                    <div className={styles.coachPhoto} style={{ overflow: 'hidden', padding: 0 }}>
-                      {c.foto
-                        ? <img src={c.foto} alt={c.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', borderRadius: '50%' }} />
-                        : iniciales}
-                    </div>
-                    <div className={styles.coachInfo}>
-                      <div className={styles.coachName}>{c.nombre}</div>
-                      <div className={styles.coachSpec}>{c.especialidad}</div>
-                      <div className={styles.coachStats}>
-                        <div className={styles.coachStat}>
-                          <div className={styles.coachStatVal}>{c.clases ?? 0}</div>
-                          <div className={styles.coachStatLabel}>Clases</div>
-                        </div>
-                        <div className={styles.coachStat}>
-                          <div className={styles.coachStatVal}>{c.rating ?? '—'}</div>
-                          <div className={styles.coachStatLabel}>Rating</div>
-                        </div>
-                        <div className={styles.coachStat}>
-                          <div className={styles.coachStatVal}>{c.asist ?? '—'}</div>
-                          <div className={styles.coachStatLabel}>Asistencia</div>
-                        </div>
-                      </div>
-                      <div className={styles.coachActions}>
-                        <button
-                          className={styles.coachBtn}
-                          onClick={() => {
-                            setModalEditCoach(c)
-                            const disc = ['Stryde X','Slow','Ambas'].includes(c.especialidad) ? c.especialidad : 'Stryde X'
-                            setEditCoachForm({
-                              nombre:       c.nombre,
-                              disciplina:   disc,
-                              especialidad: '',
-                              email:        c.email || '',
-                              telefono:     c.telefono || '',
-                              bio:          c.bio || '',
-                            })
-                            setEditFotoPreview(c.foto || null)
-                            setEditFotoPath(c.foto || null)
-                          }}
-                        >Editar</button>
-                        <button
-                          className={styles.coachBtn}
-                          onClick={() => setModalHorarioCoach(c)}
-                        >Horario</button>
-                        {c.activo === false ? (
-                          <button
-                            className={styles.coachBtn}
-                            style={{ color: '#4CAF50', borderColor: '#4CAF50' }}
-                            onClick={() => {
-                              editarCoach(c.id, { activo: true })
-                              toast.success(`${c.nombre} reactivado`)
-                            }}
-                          >Reactivar</button>
-                        ) : (
-                          <button
-                            className={styles.coachBtn}
-                            style={{ color: '#b45309', borderColor: '#b45309' }}
-                            onClick={() => {
-                              eliminarCoach(c.id)
-                              toast.success(`${c.nombre} dado de baja`)
-                            }}
-                          >Dar de baja</button>
-                        )}
-                        <button
-                          className={styles.coachBtn}
-                          style={{ color: '#ef4444', borderColor: '#ef4444' }}
-                          onClick={async () => {
-                            if (!window.confirm(`¿Eliminar permanentemente a ${c.nombre}? Esta acción no se puede deshacer.`)) return
-                            const resultado = await borrarCoachService(c.id)
-                            if (resultado.ok) toast.success(resultado.mensaje)
-                            else toast.error(resultado.mensaje)
-                          }}
-                        >Eliminar</button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <CoachesSection
+              coaches={coaches}
+              openModal={openModal}
+              setModalEditCoach={setModalEditCoach}
+              setEditCoachForm={setEditCoachForm}
+              setEditFotoPreview={setEditFotoPreview}
+              setEditFotoPath={setEditFotoPath}
+              setModalHorarioCoach={setModalHorarioCoach}
+              editarCoach={editarCoach}
+              eliminarCoach={eliminarCoach}
+            />
           </section>
 
           {/* ── CLASES ── */}
           <section className={`${styles.section}${activeSection === 'clases' ? ' ' + styles.active : ''}`}>
-            <div className={styles.sectionTopRow}>
-              <FilterChips
-                options={['Todas', 'Stryde X', 'Slow', 'Esta semana']}
-                active={clasesFilter}
-                onChange={setClasesFilter}
-              />
-              <div style={{ display: 'flex', gap: 8 }}>
-                {selectMode && selectedIds.size > 0 && (
-                  <button
-                    className={`${styles.btn} ${styles.btnPrimary}`}
-                    style={{ background: '#ef4444', borderColor: '#ef4444' }}
-                    onClick={() => {
-                      if (!window.confirm(`¿Eliminar ${selectedIds.size} clase${selectedIds.size > 1 ? 's' : ''}?`)) return
-                      selectedIds.forEach(id => eliminarClaseConReservas(id))
-                      toast.success(`${selectedIds.size} clase${selectedIds.size > 1 ? 's eliminadas' : ' eliminada'}`)
-                      setSelectedIds(new Set())
-                      setSelectMode(false)
-                    }}
-                  >
-                    🗑 Eliminar ({selectedIds.size})
-                  </button>
-                )}
-                <button
-                  className={`${styles.btn} ${selectMode ? styles.btnSecondary : styles.btnGhost}`}
-                  onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
-                >
-                  {selectMode ? '✕ Cancelar' : '☑ Seleccionar'}
-                </button>
-                {!selectMode && (
-                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('clase')}>
-                    + Nueva Clase
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Toolbar de selección */}
-            {selectMode && (() => {
-              const listaVisible = clasesFilter === 'Todas' || clasesFilter === 'Esta semana'
-                ? clases
-                : clases.filter(c => clasesFilter === 'Stryde X'
-                    ? !c.tipo?.toLowerCase().includes('slow')
-                    : c.tipo?.toLowerCase().includes('slow'))
-              const todosSeleccionados = listaVisible.length > 0 && listaVisible.every(c => selectedIds.has(c.id))
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', marginBottom: 8, fontFamily: 'var(--font-body)', fontSize: 13 }}>
-                  <input
-                    type="checkbox"
-                    checked={todosSeleccionados}
-                    onChange={() => {
-                      if (todosSeleccionados) {
-                        setSelectedIds(new Set())
-                      } else {
-                        setSelectedIds(new Set(listaVisible.map(c => c.id)))
-                      }
-                    }}
-                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
-                  />
-                  <span style={{ color: 'var(--muted)' }}>
-                    {selectedIds.size === 0
-                      ? 'Selecciona las clases que deseas eliminar'
-                      : `${selectedIds.size} de ${listaVisible.length} seleccionada${selectedIds.size > 1 ? 's' : ''}`}
-                  </span>
-                  {selectedIds.size > 0 && (
-                    <button
-                      style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
-                      onClick={() => setSelectedIds(new Set())}
-                    >
-                      Deseleccionar todo
-                    </button>
-                  )}
-                </div>
-              )
-            })()}
-
-            <div className={styles.card}>
-              <div className={styles.clasesList}>
-                {(clasesFilter === 'Todas' || clasesFilter === 'Esta semana'
-                  ? clases
-                  : clases.filter((c) =>
-                      clasesFilter === 'Stryde X'
-                        ? !c.tipo?.toLowerCase().includes('slow')
-                        : c.tipo?.toLowerCase().includes('slow')
-                    )
-                ).map((c) => {
-                  const pct          = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
-                  const isPasada = (() => {
-                    if (!c.fecha) return false
-                    const [h, m] = (c.hora || '00:00').split(':').map(Number)
-                    const fin = new Date(c.fecha + 'T00:00:00')
-                    fin.setHours(h + Math.floor((c.duracion || 50) / 60), m + (c.duracion || 50) % 60)
-                    return fin < new Date()
-                  })()
-                  const statusTag    = isPasada ? 'gray' : pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
-                  const statusLabel  = isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
-                  const isProgramada = c.publicarEn && new Date(c.publicarEn) > new Date()
-                  const isSelected  = selectedIds.has(c.id)
-                  return (
-                    <div
-                      key={c.id}
-                      className={styles.claseItem}
-                      style={{
-                        opacity: isProgramada ? 0.75 : 1,
-                        background: isSelected ? 'rgba(239,68,68,0.08)' : undefined,
-                        outline: isSelected ? '1px solid rgba(239,68,68,0.3)' : undefined,
-                        borderRadius: isSelected ? 'var(--radius-md)' : undefined,
-                        cursor: selectMode ? 'pointer' : undefined,
-                      }}
-                      onClick={selectMode ? () => {
-                        setSelectedIds(prev => {
-                          const next = new Set(prev)
-                          next.has(c.id) ? next.delete(c.id) : next.add(c.id)
-                          return next
-                        })
-                      } : undefined}
-                    >
-                      {selectMode && (
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {}}
-                          onClick={e => e.stopPropagation()}
-                          style={{ width: 16, height: 16, flexShrink: 0, accentColor: '#ef4444', cursor: 'pointer' }}
-                        />
-                      )}
-                      <div className={styles.claseDay}>
-                        <span style={{ fontSize: 9 }}>{ABBR_DIA[c.dia] || c.dia}</span>
-                        <span className={styles.dayNum}>
-                          {(() => {
-                            if (c.fecha) return new Date(c.fecha + 'T12:00:00').getDate()
-                            const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(c.dia)
-                            const hoy = new Date()
-                            const diff = idx - hoy.getDay()
-                            const fecha = new Date(hoy)
-                            fecha.setDate(hoy.getDate() + (diff >= 0 ? diff : diff + 7))
-                            return fecha.getDate()
-                          })()}
-                        </span>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div className={styles.claseName}>
-                          {c.nombre}
-                          {isProgramada && (
-                            <span style={{ marginLeft: 8, fontSize: 10, background: 'rgba(217,119,6,0.18)', color: '#d97706', padding: '2px 8px', borderRadius: 10, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
-                              🕐 Prog. {new Date(c.publicarEn).toLocaleString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          )}
-                        </div>
-                        <div className={styles.claseMeta}>{c.hora} · {c.duracion} min · {c.coachNombre}</div>
-                      </div>
-                      <Tag color={!c.tipo?.toLowerCase().includes('slow') ? 'pink' : 'blue'}>{c.tipo}</Tag>
-                      <div className={styles.claseSpots}>
-                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.cupoActual}/{c.cupoMax} lugares</div>
-                        <div className={styles.spotsBar}>
-                          <div className={styles.spotsFill} style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                      {!isProgramada && <Tag color={statusTag}>{statusLabel}</Tag>}
-                      {!selectMode && <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          className={`${styles.btn} ${styles.btnSecondary}`}
-                          style={{ padding: '6px 12px', fontSize: 12 }}
-                          onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
-                        >
-                          👥 {c.cupoActual}
-                        </button>
-                        <button
-                          className={`${styles.btn} ${styles.btnGhost}`}
-                          style={{ padding: '6px 12px', fontSize: 12 }}
-                          onClick={() => {
-                            setModalEditClase(c)
-                            const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
-                            setEditClaseForm({
-                              nombre:      c.nombre,
-                              tipo:        c.tipo,
-                              coach:       coachNombre,
-                              dia:         c.dia,
-                              hora:        c.hora,
-                              duracion:    String(c.duracion || 50),
-                              cupoMax:     String(c.cupoMax || 15),
-                              descripcion: c.descripcion || '',
-                              publicarEn:  c.publicarEn
-                                ? new Date(c.publicarEn).toISOString().slice(0, 16)
-                                : '',
-                              fecha:       c.fecha ?? '',
-                            })
-                          }}
-                        >
-                          ✏️ Editar
-                        </button>
-                        <button
-                          className={`${styles.btn} ${styles.btnGhost}`}
-                          style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
-                          onClick={() => {
-                            if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
-                            eliminarClaseConReservas(c.id)
-                            toast.success('Clase eliminada')
-                          }}
-                        >
-                          🗑
-                        </button>
-                      </div>}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+            <ClasesSection
+              clases={clases}
+              clasesFilter={clasesFilter}
+              setClasesFilter={setClasesFilter}
+              selectMode={selectMode}
+              setSelectMode={setSelectMode}
+              selectedIds={selectedIds}
+              setSelectedIds={setSelectedIds}
+              coaches={coaches}
+              disciplinas={disciplinas}
+              openModal={openModal}
+              setModalAlumnosClase={setModalAlumnosClase}
+              setAlumnoAgregarId={setAlumnoAgregarId}
+              setModalEditClase={setModalEditClase}
+              setEditClaseForm={setEditClaseForm}
+              claseForm={claseForm}
+              setClaseForm={setClaseForm}
+            />
           </section>
 
           {/* ── PAQUETES ── */}
           <section className={`${styles.section}${activeSection === 'paquetes' ? ' ' + styles.active : ''}`}>
-            <div className={styles.sectionTopRow}>
-              <div />
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('paquete')}>
-                + Nuevo Paquete
-              </button>
-            </div>
-            <div className={styles.paquetesGrid}>
-              {paquetes.map((p) => (
-                <div key={p.id} className={`${styles.paqueteCard} ${p.destacado ? styles.featured : ''}`}>
-                  {p.destacado && <div className={styles.paqueteBadge}>⭐ Más popular</div>}
-                  <div className={styles.paqueteName}>{p.nombre}</div>
-                  <div className={styles.paqueteClases}>
-                    {p.clases === 0 ? 'Clases ilimitadas' : `${p.clases} clases`}
-                    {p.vigencia ? ` · ${p.vigencia}` : ''}
-                  </div>
-                  <div className={styles.paquetePrice}>
-                    ${p.precio.toLocaleString()}<span>/{p.categoria === 'mensual' ? 'mes' : 'paquete'}</span>
-                  </div>
-                  <div className={styles.paqueteStats}>
-                    <div className={styles.paqueteStat}><strong>{p.beneficios.length}</strong>beneficios</div>
-                    <div className={styles.paqueteStat}><strong>{p.categoria}</strong></div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                    <button
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ fontSize: 11, padding: '6px' }}
-                      onClick={() => {
-                        setModalEditPaquete(p)
-                        setEditPaqueteForm({
-                          nombre:    p.nombre,
-                          precio:    String(p.precio),
-                          clases:    String(p.clases),
-                          vigencia:  p.vigencia || '',
-                          categoria: p.categoria,
-                          destacado: p.destacado || false,
-                          beneficios: [...(p.beneficios || [])],
-                        })
-                      }}
-                    >✏️ Editar</button>
-                    <button
-                      className={`${styles.btn} ${styles.btnGhost}`}
-                      style={{ fontSize: 11, padding: '6px', color: '#ef4444' }}
-                      onClick={() => {
-                        if (!window.confirm(`¿Eliminar el paquete "${p.nombre}"?`)) return
-                        eliminarPaquete(p.id)
-                        toast.success(`Paquete "${p.nombre}" eliminado`)
-                      }}
-                    >🗑 Eliminar</button>
-                    {!p.destacado && (
-                      <button
-                        className={`${styles.btn} ${styles.btnGhost}`}
-                        style={{ fontSize: 11, padding: '6px', gridColumn: '1/-1', color: '#d97706' }}
-                        onClick={() => { marcarDestacado(p.id); toast.success(`"${p.nombre}" marcado como popular`) }}
-                      >⭐ Marcar popular</button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div className={styles.cardTitle}>Historial de ventas de paquetes</div>
-                <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Descarga disponible en Reportes</span>
-              </div>
-              <div className={styles.tableWrap}>
-                {(() => {
-                  const ventasPaq = transacciones
-                    .filter(tx => tx.tipo === 'paquete')
-                    .slice().reverse()
-                  if (ventasPaq.length === 0) return (
-                    <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13, fontFamily: 'var(--font-body)' }}>
-                      No hay ventas de paquetes registradas.
-                    </div>
-                  )
-                  return (
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Usuario</th><th>Paquete</th><th>Fecha compra</th>
-                          <th>Vencimiento</th><th>Clases rest.</th><th>Monto</th><th>Método</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ventasPaq.map((tx, i) => {
-                          const usuario = usuarios.find(u => u.id === tx.userId)
-                          const paqInfo = paquetes.find(p => tx.concepto?.includes(p.nombre))
-                          const vencimiento = (() => {
-                            if (!tx.fecha || !paqInfo?.vigencia) return '—'
-                            const dias = parseInt(paqInfo.vigencia) || 30
-                            const d = new Date(tx.fecha + 'T00:00:00')
-                            d.setDate(d.getDate() + dias)
-                            return d.toISOString().split('T')[0]
-                          })()
-                          const clasesRest = usuario?.clasesPaquete ?? '—'
-                          return (
-                            <tr key={i}>
-                              <td>{usuario?.nombre ?? tx.userId ?? '—'}</td>
-                              <td>{tx.concepto ?? '—'}</td>
-                              <td>{tx.fecha ?? '—'}</td>
-                              <td>{vencimiento}</td>
-                              <td>{clasesRest}</td>
-                              <td className={styles.mono}>{tx.monto}</td>
-                              <td>{tx.metodoPago ?? '—'}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  )
-                })()}
-              </div>
-            </div>
+            <PaquetesSection
+              paquetes={paquetes}
+              transacciones={transacciones}
+              usuarios={usuarios}
+              openModal={openModal}
+              setModalEditPaquete={setModalEditPaquete}
+              setEditPaqueteForm={setEditPaqueteForm}
+              eliminarPaquete={eliminarPaquete}
+              marcarDestacado={marcarDestacado}
+            />
           </section>
 
           {/* ── PUNTO DE VENTA ── */}
           <section className={`${styles.section}${activeSection === 'pos' ? ' ' + styles.active : ''}`}>
-            <div className={styles.posGrid}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <FilterChips
-                    options={['Todos', '📦 Paquetes', 'Accesorios', 'Nutrición', 'Equipo', 'Ropa']}
-                    active={posFilter}
-                    onChange={setPosFilter}
-                  />
-                  {posFilter !== '📦 Paquetes' && (
-                    <button
-                      className={`${styles.btn} ${styles.btnPrimary}`}
-                      style={{ fontSize: 13, padding: '6px 14px' }}
-                      onClick={() => { setProdModal('nuevo'); setProdForm({ nombre: '', categoria: posFilter === 'Todos' ? 'Accesorios' : posFilter, precio: '', stock: '', emoji: '' }) }}
-                    >
-                      + Agregar producto
-                    </button>
-                  )}
-                </div>
-                <div className={styles.productGrid}>
-                  {(posFilter === '📦 Paquetes'
-                      ? paquetes.map(p => ({ ...p, emoji: p.clases === 0 ? '⭐' : '📦', name: `${p.nombre} — ${p.clases === 0 ? 'Ilimitadas' : p.clases + ' clases'}`, price: p.precio }))
-                      : productos.filter((p) => p.activo && (posFilter === 'Todos' || p.categoria === posFilter))
-                    ).map((p) => {
-                    const isPaquete = posFilter === '📦 Paquetes'
-                    const emoji  = p.emoji || categoryEmoji(p.categoria)
-                    const nombre = p.nombre ?? p.name
-                    const precio = p.precio ?? p.price
-                    return (
-                      <div key={p.id ?? p.name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <button
-                          className={styles.productCard}
-                          onClick={() => addToCart({ name: nombre, price: precio, emoji })}
-                        >
-                          <div className={styles.productEmoji}>{emoji}</div>
-                          <div className={styles.productName}>{nombre}</div>
-                          <div className={styles.productPrice}>${precio.toLocaleString()}</div>
-                        </button>
-                        {!isPaquete && (
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button
-                              style={{ flex: 1, fontSize: 11, padding: '3px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)' }}
-                              onClick={() => { setProdForm({ nombre: p.nombre, categoria: p.categoria, precio: String(p.precio), stock: String(p.stock), emoji: p.emoji || '' }); setProdModal({ producto: p }) }}
-                            >✏️</button>
-                            <button
-                              style={{ flex: 1, fontSize: 11, padding: '3px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: '#ef4444' }}
-                              onClick={() => setConfirmarEliminarProd(p)}
-                            >🗑</button>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className={styles.cartSection}>
-                <div className={styles.cartTitle}>🛒 Orden actual</div>
-                {/* Aviso de asignación pendiente */}
-                {pendingAsignacion && (
-                  <div style={{ margin: '0 0 10px', padding: '10px 12px', background: 'rgba(234,179,8,0.1)', borderRadius: 8, border: '1px solid rgba(234,179,8,0.3)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 13 }}>🔒</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#fbbf24', fontFamily: 'var(--font-body)' }}>
-                        Paquete pendiente de cobro
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
-                      👤 <strong style={{ color: 'rgba(255,255,255,0.85)' }}>{pendingAsignacion.userName}</strong> recibirá el paquete <strong style={{ color: 'rgba(255,255,255,0.85)' }}>{pendingAsignacion.paqSel.nombre}</strong> al confirmar el cobro.
-                    </div>
-                  </div>
-                )}
-                <div className={styles.cartItems}>
-                  {cart.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: 20, color: 'var(--muted)', fontSize: 13 }}>
-                      Selecciona productos para agregar
-                    </div>
-                  ) : (
-                    cart.map((item, idx) => (
-                      <div key={idx} className={styles.cartItem}>
-                        <span>{item.emoji} {item.name}</span>
-                        <span className={styles.cartItemPrice}>${item.price.toLocaleString()}</span>
-                        <button className={styles.cartRemoveBtn} onClick={() => removeFromCart(idx)}>×</button>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <div className={styles.cartTotal}>
-                  <div className={styles.cartTotalRow}><span>Subtotal</span><span>${cartSubtotal.toLocaleString()}</span></div>
-                  <div className={styles.cartTotalRow}><span>IVA (16%)</span><span>${cartIva.toLocaleString()}</span></div>
-                  <div className={styles.cartTotalMain}><span>Total</span><span>${cartTotal.toLocaleString()}</span></div>
-                </div>
-                <button
-                  className={`${styles.btn} ${styles.btnPrimary}`}
-                  style={{ width: '100%', justifyContent: 'center', padding: 12 }}
-                  onClick={handleCobrar}
-                >
-                  💳 Cobrar
-                </button>
-                <button
-                  className={`${styles.btn} ${styles.btnGhost}`}
-                  style={{ width: '100%', justifyContent: 'center', padding: 10, marginTop: 8 }}
-                  onClick={clearCart}
-                >
-                  Limpiar orden
-                </button>
-              </div>
-            </div>
+            <PuntoDeVentaSection
+              paquetes={paquetes}
+              productos={productos}
+              agregarProducto={agregarProducto}
+              editarProducto={editarProducto}
+              eliminarProducto={eliminarProducto}
+              cart={cart}
+              posFilter={posFilter}
+              setPosFilter={setPosFilter}
+              prodModal={prodModal}
+              setProdModal={setProdModal}
+              prodForm={prodForm}
+              setProdForm={setProdForm}
+              confirmarEliminarProd={confirmarEliminarProd}
+              setConfirmarEliminarProd={setConfirmarEliminarProd}
+              pendingAsignacion={pendingAsignacion}
+              cartSubtotal={cartSubtotal}
+              cartIva={cartIva}
+              cartTotal={cartTotal}
+              addToCart={addToCart}
+              removeFromCart={removeFromCart}
+              clearCart={clearCart}
+              handleCobrar={handleCobrar}
+              handleSaveProducto={handleSaveProducto}
+              handleEliminarProducto={handleEliminarProducto}
+            />
           </section>
 
           {/* ── USUARIOS ── */}
           <section className={`${styles.section}${activeSection === 'usuarios' ? ' ' + styles.active : ''}`}>
-            <div className={styles.kpiGrid} style={{ marginBottom: 24 }}>
-              {[
-                { label: 'Total usuarios',      val: '142', change: '↑ 12 nuevos este mes',      up: true  },
-                { label: 'Con paquete activo',  val: '118', change: '83% del total',              up: true  },
-                { label: 'Sin paquete',         val: '24',  change: 'Por renovar',               up: false },
-                { label: 'Clases esta semana',  val: '387', change: '↑ 8% vs semana anterior',   up: true  },
-              ].map(({ label, val, change, up }) => (
-                <div key={label} className={styles.kpiCard}>
-                  <div className={styles.kpiLabel}>{label}</div>
-                  <div className={styles.kpiValue}>{val}</div>
-                  <div className={`${styles.kpiChange} ${up ? styles.up : styles.down}`}>{change}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.card}>
-              <div className={styles.cardHeader}>
-                <div className={styles.usersFilters}>
-                  <input
-                    className={styles.searchInput}
-                    placeholder="🔍 Buscar usuario..."
-                    type="text"
-                    value={usersSearch}
-                    onChange={e => setUsersSearch(e.target.value)}
-                  />
-                  {['Todos', 'Activos', 'Sin paquete', 'Por vencer'].map((f) => (
-                    <button
-                      key={f}
-                      className={`${styles.filterChip}${usersFilter === f ? ' ' + styles.active : ''}`}
-                      onClick={() => setUsersFilter(f)}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {userSelectMode && userSelectedIds.size > 0 && (
-                    <button
-                      className={`${styles.btn} ${styles.btnPrimary}`}
-                      style={{ background: '#ef4444', borderColor: '#ef4444' }}
-                      onClick={() => {
-                        if (!window.confirm(`¿Eliminar ${userSelectedIds.size} usuario${userSelectedIds.size > 1 ? 's' : ''}?`)) return
-                        userSelectedIds.forEach(id => eliminarUsuario(id))
-                        toast.success(`${userSelectedIds.size} usuario${userSelectedIds.size > 1 ? 's eliminados' : ' eliminado'}`)
-                        setUserSelectedIds(new Set())
-                        setUserSelectMode(false)
-                      }}
-                    >
-                      🗑 Eliminar ({userSelectedIds.size})
-                    </button>
-                  )}
-                  <button
-                    className={`${styles.btn} ${userSelectMode ? styles.btnSecondary : styles.btnGhost}`}
-                    onClick={() => { setUserSelectMode(v => !v); setUserSelectedIds(new Set()) }}
-                  >
-                    {userSelectMode ? '✕ Cancelar' : '☑ Seleccionar'}
-                  </button>
-                  {!userSelectMode && (
-                    <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('usuario')}>
-                      + Nuevo usuario
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Toolbar de selección */}
-              {userSelectMode && (() => {
-                const listaVisible = usuarios.filter((u) => {
-                  if (usersSearch.trim()) {
-                    const q = usersSearch.toLowerCase()
-                    if (!u.nombre?.toLowerCase().includes(q) && !u.email?.toLowerCase().includes(q)) return false
-                  }
-                  if (usersFilter === 'Activos')     return u.activo && u.paquete
-                  if (usersFilter === 'Sin paquete') return !u.paquete
-                  if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
-                  return true
-                })
-                const todosSeleccionados = listaVisible.length > 0 && listaVisible.every(u => userSelectedIds.has(u.id))
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 'var(--radius-md)', marginBottom: 8, fontFamily: 'var(--font-body)', fontSize: 13 }}>
-                    <input
-                      type="checkbox"
-                      checked={todosSeleccionados}
-                      onChange={() => {
-                        if (todosSeleccionados) setUserSelectedIds(new Set())
-                        else setUserSelectedIds(new Set(listaVisible.map(u => u.id)))
-                      }}
-                      style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#ef4444' }}
-                    />
-                    <span style={{ color: 'var(--muted)' }}>
-                      {userSelectedIds.size === 0
-                        ? 'Selecciona los usuarios que deseas eliminar'
-                        : `${userSelectedIds.size} de ${listaVisible.length} seleccionado${userSelectedIds.size > 1 ? 's' : ''}`}
-                    </span>
-                    {userSelectedIds.size > 0 && (
-                      <button
-                        style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)' }}
-                        onClick={() => setUserSelectedIds(new Set())}
-                      >
-                        Deseleccionar todo
-                      </button>
-                    )}
-                  </div>
-                )
-              })()}
-
-              <div className={styles.tableWrap}>
-                <table>
-                  <thead>
-                    <tr>
-                      {userSelectMode && <th style={{ width: 36 }}></th>}
-                      <th>Usuario</th><th>Paquete</th><th>Clases restantes</th>
-                      <th>Vencimiento</th><th>Última clase</th><th>Total gastado</th>
-                      <th>Estado</th><th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {usuarios
-                      .filter((u) => {
-                        if (usersSearch.trim()) {
-                          const q = usersSearch.toLowerCase()
-                          const coincide = u.nombre?.toLowerCase().includes(q)
-                            || u.email?.toLowerCase().includes(q)
-                            || u.paquete?.toLowerCase().includes(q)
-                            || u.telefono?.toLowerCase().includes(q)
-                          if (!coincide) return false
-                        }
-                        if (usersFilter === 'Activos')     return u.activo && u.paquete
-                        if (usersFilter === 'Sin paquete') return !u.paquete
-                        if (usersFilter === 'Por vencer')  return u.clasesPaquete !== 999 && u.clasesPaquete > 0 && u.clasesPaquete <= 2
-                        return true
-                      })
-                      .map((u) => {
-                        const restantes  = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
-                        const tag        = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
-                        const label      = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
-                        const isSelected = userSelectedIds.has(u.id)
-                        return (
-                          <tr
-                            key={u.id}
-                            style={{ cursor: userSelectMode ? 'pointer' : undefined, background: isSelected ? 'rgba(239,68,68,0.08)' : undefined }}
-                            onClick={userSelectMode ? () => {
-                              setUserSelectedIds(prev => {
-                                const next = new Set(prev)
-                                next.has(u.id) ? next.delete(u.id) : next.add(u.id)
-                                return next
-                              })
-                            } : undefined}
-                          >
-                            {userSelectMode && (
-                              <td onClick={e => e.stopPropagation()}>
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    setUserSelectedIds(prev => {
-                                      const next = new Set(prev)
-                                      next.has(u.id) ? next.delete(u.id) : next.add(u.id)
-                                      return next
-                                    })
-                                  }}
-                                  style={{ width: 15, height: 15, accentColor: '#ef4444', cursor: 'pointer' }}
-                                />
-                              </td>
-                            )}
-                            <td style={{ whiteSpace: 'normal', minWidth: 140 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div className={styles.miniAvatar} style={{ width: 28, height: 28, fontSize: 12, flexShrink: 0 }}>{u.nombre[0]}</div>
-                                {u.nombre}
-                              </div>
-                            </td>
-                            <td>{u.paquete || '—'}</td>
-                            <td>{restantes}</td>
-                            <td>{(() => {
-                              if (u.paqueteInfo?.fechaVencimiento) return u.paqueteInfo.fechaVencimiento
-                              if (!u.paqueteInfo?.fechaCompra || !u.paquete) return '—'
-                              const paq = paquetes.find(p => p.nombre === u.paquete)
-                              if (!paq?.vigencia) return '—'
-                              const dias = parseInt(paq.vigencia) || 30
-                              const d = new Date(u.paqueteInfo.fechaCompra + 'T00:00:00')
-                              d.setDate(d.getDate() + dias)
-                              return d.toISOString().split('T')[0]
-                            })()}</td>
-                            <td>—</td>
-                            <td className={styles.mono}>—</td>
-                            <td><Tag color={tag}>{label}</Tag></td>
-                            <td>{!userSelectMode && <button className={styles.coachBtn} style={{ width: 60 }} onClick={() => { setModalVerUsuario(u); setAsignarPaqueteForm({ paqueteNombre: u.paquete || '', metodoPago: 'efectivo' }); setEditNotas(u.notas || ''); setCederClaseUserId('') }}>Ver</button>}</td>
-                          </tr>
-                        )
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <UsuariosSection
+              usuarios={usuarios}
+              paquetes={paquetes}
+              usersFilter={usersFilter}
+              setUsersFilter={setUsersFilter}
+              usersSearch={usersSearch}
+              setUsersSearch={setUsersSearch}
+              userSelectMode={userSelectMode}
+              setUserSelectMode={setUserSelectMode}
+              userSelectedIds={userSelectedIds}
+              setUserSelectedIds={setUserSelectedIds}
+              eliminarUsuario={eliminarUsuario}
+              openModal={openModal}
+              setModalVerUsuario={setModalVerUsuario}
+              setAsignarPaqueteForm={setAsignarPaqueteForm}
+              setEditNotas={setEditNotas}
+              setCederClaseUserId={setCederClaseUserId}
+            />
           </section>
 
           {/* ── FINANZAS ── */}
@@ -1446,6 +636,16 @@ export default function AdminPanel() {
           {/* ── REPORTES ── */}
           <section className={`${styles.section}${activeSection === 'reportes' ? ' ' + styles.active : ''}`}>
             <ReportesSection inPanel />
+          </section>
+
+          {/* ── ACTIVIDAD ── */}
+          <section className={`${styles.section}${activeSection === 'actividad' ? ' ' + styles.active : ''}`}>
+            <ActividadSection />
+          </section>
+
+          {/* ── CONFIGURACIÓN ── */}
+          <section className={`${styles.section}${activeSection === 'configuracion' ? ' ' + styles.active : ''}`}>
+            <ConfiguracionSection />
           </section>
 
         </div>
@@ -1540,6 +740,11 @@ export default function AdminPanel() {
                   value={coachForm.bio} onChange={e => setCoachForm(f => ({ ...f, bio: e.target.value }))}
                   style={{ resize: 'vertical' }} />
               </div>
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel}>Instagram (URL)</label>
+                <input className={styles.formInput} type="url" placeholder="https://instagram.com/nombre_coach"
+                  value={coachForm.instagram} onChange={e => setCoachForm(f => ({ ...f, instagram: e.target.value }))} />
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
@@ -1554,10 +759,12 @@ export default function AdminPanel() {
                     especialidad: coachForm.disciplina || 'Stryde X',
                     bio:          coachForm.bio,
                     foto:         coachFotoPath || null,
+                    instagram:    coachForm.instagram || null,
                   })
                   if (resultado.ok) {
                   toast.success(`${coachForm.nombre} agregado`)
-                  setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '' })
+                  logCoachAgregado({ nombre: coachForm.nombre })
+                  setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '' })
                   setCoachFotoPreview(null)
                   setCoachFotoPath(null)
                   closeModal()
@@ -1659,11 +866,6 @@ export default function AdminPanel() {
                 <input className={styles.formInput} type="number" min="30" max="120" placeholder="50" value={claseForm.duracion}
                   onChange={e => setClaseForm(f => ({ ...f, duracion: e.target.value }))} />
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Cupo máximo</label>
-                <input className={styles.formInput} type="number" min="1" max="50" placeholder="15" value={claseForm.cupoMax}
-                  onChange={e => setClaseForm(f => ({ ...f, cupoMax: e.target.value }))} />
-              </div>
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                 <label className={styles.formLabel}>Descripción</label>
                 <textarea className={styles.formInput} rows={2} placeholder="Descripción breve de la clase…"
@@ -1707,7 +909,7 @@ export default function AdminPanel() {
                     dia:         claseForm.dia,
                     hora:        claseForm.hora,
                     duracion:    Number(claseForm.duracion) || 50,
-                    cupoMax:     Number(claseForm.cupoMax) || 15,
+                    cupoMax:     claseForm.tipo === 'Slow' ? 10 : 14,
                     cupoActual:  0,
                     descripcion: claseForm.descripcion,
                     publicarEn:  claseForm.publicarEn || null,
@@ -1719,6 +921,12 @@ export default function AdminPanel() {
                       ? `Clase programada para ${new Date(claseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}`
                       : `Clase "${claseForm.nombre}" publicada`
                   toast.success(msg)
+                  logClaseCreada({
+                    nombre:      claseForm.nombre,
+                    coachNombre: claseForm.coach || 'Sin asignar',
+                    dia:         claseForm.dia,
+                    hora:        claseForm.hora,
+                  })
                   setClaseForm({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
                   closeModal()
                 }}
@@ -1900,6 +1108,7 @@ export default function AdminPanel() {
                     fechaRegistro:   new Date().toISOString().split('T')[0],
                   })
                   toast.success(`${usuarioForm.nombre} dado de alta`)
+                  logUsuarioNuevo({ nombre: usuarioForm.nombre, email: usuarioForm.email })
                   if (paqSel) {
                     // Guardar asignación pendiente: se ejecuta al cobrar en POS
                     setPendingAsignacion({
@@ -2067,6 +1276,16 @@ export default function AdminPanel() {
                   style={{ resize: 'vertical' }}
                 />
               </div>
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                <label className={styles.formLabel}>Instagram (URL)</label>
+                <input
+                  className={styles.formInput}
+                  type="url"
+                  placeholder="https://instagram.com/nombre_coach"
+                  value={editCoachForm.instagram}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, instagram: e.target.value }))}
+                />
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
@@ -2084,6 +1303,7 @@ export default function AdminPanel() {
                     email:        editCoachForm.email,
                     telefono:     editCoachForm.telefono,
                     foto:         editFotoPath || modalEditCoach.foto || null,
+                    instagram:    editCoachForm.instagram || null,
                   })
                   // Sincronizar usuario de login asociado
                   const userLogin = usuarios.find(
@@ -2194,12 +1414,6 @@ export default function AdminPanel() {
                   value={editClaseForm.duracion}
                   onChange={e => setEditClaseForm(f => ({ ...f, duracion: e.target.value }))} />
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Cupo máximo</label>
-                <input className={styles.formInput} type="number" min="1" max="50"
-                  value={editClaseForm.cupoMax}
-                  onChange={e => setEditClaseForm(f => ({ ...f, cupoMax: e.target.value }))} />
-              </div>
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                 <label className={styles.formLabel}>Descripción</label>
                 <textarea className={styles.formInput} rows={2}
@@ -2247,7 +1461,7 @@ export default function AdminPanel() {
                     dia:         editClaseForm.dia,
                     hora:        editClaseForm.hora,
                     duracion:    Number(editClaseForm.duracion) || 50,
-                    cupoMax:     Number(editClaseForm.cupoMax) || 15,
+                    cupoMax:     editClaseForm.tipo === 'Slow' ? 10 : 14,
                     descripcion: editClaseForm.descripcion,
                     publicarEn:  editClaseForm.publicarEn || null,
                     fecha:       editClaseForm.fecha || null,
@@ -2266,7 +1480,10 @@ export default function AdminPanel() {
       {/* ── ALUMNOS DE CLASE ── */}
       {modalAlumnosClase && (() => {
         const cls      = modalAlumnosClase
-        const inscritos = getReservasByClase(cls.id)   // solo confirmadas
+        const inscritos = todasReservas.filter(r =>
+          r.claseId === cls.id &&
+          (r.estado === 'confirmada' || r.estado === 'no_asistio')
+        )
         const inscrUser = inscritos.map(r => ({
           ...r,
           nombreUsuario: usuarios.find(u => u.id === r.userId)?.nombre ?? `Usuario #${r.userId}`,
@@ -2350,16 +1567,36 @@ export default function AdminPanel() {
                         <tr key={r.id}>
                           <td style={{ fontWeight: 500 }}>{r.nombreUsuario}</td>
                           <td>
-                            <span className={`${styles.miniTag} ${styles.tagGreen}`}>Confirmado</span>
+                            {r.estado === 'no_asistio'
+                              ? <span className={`${styles.miniTag} ${styles.tagYellow}`}>No asistió</span>
+                              : <span className={`${styles.miniTag} ${styles.tagGreen}`}>Confirmado</span>
+                            }
                           </td>
                           <td style={{ textAlign: 'right' }}>
-                            <button
-                              className={`${styles.btn} ${styles.btnGhost}`}
-                              style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
-                              onClick={() => handleCancelar(r)}
-                            >
-                              Cancelar reserva
-                            </button>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                              {r.estado === 'confirmada' && (
+                                <button
+                                  className={`${styles.btn} ${styles.btnGhost}`}
+                                  style={{ fontSize: 11, padding: '4px 10px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.3)' }}
+                                  onClick={() => {
+                                    const res = marcarNoAsistio(r.id)
+                                    if (res.ok) toast.success(`${r.nombreUsuario} marcado como no asistió`)
+                                    else toast.error(res.error)
+                                  }}
+                                >
+                                  Marcar ausente
+                                </button>
+                              )}
+                              {r.estado === 'confirmada' && (
+                                <button
+                                  className={`${styles.btn} ${styles.btnGhost}`}
+                                  style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
+                                  onClick={() => handleCancelar(r)}
+                                >
+                                  Cancelar reserva
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -2367,6 +1604,72 @@ export default function AdminPanel() {
                   </table>
                 )}
               </div>
+
+              {/* Lista de espera */}
+              {(() => {
+                const enEspera = getListaEspera(cls.id)
+                if (!enEspera.length) return null
+                return (
+                  <div style={{ marginTop: 20, borderTop: '1px solid var(--neutral-border)', paddingTop: 16 }}>
+                    <div style={{
+                      fontFamily: 'var(--font-body)', fontSize: 12,
+                      color: '#F59E0B', fontWeight: 600,
+                      textTransform: 'uppercase', letterSpacing: '0.06em',
+                      marginBottom: 10,
+                    }}>
+                      ⏳ Lista de espera ({enEspera.length})
+                    </div>
+                    {enEspera.map((e, i) => (
+                      <div key={e.id} style={{
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 0',
+                        borderBottom: i < enEspera.length - 1
+                          ? '1px solid var(--neutral-border)' : 'none',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{
+                            width: 22, height: 22, borderRadius: '50%',
+                            background: 'rgba(245,158,11,0.15)',
+                            color: '#F59E0B', fontSize: 11, fontWeight: 700,
+                            display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', flexShrink: 0,
+                          }}>
+                            {i + 1}
+                          </span>
+                          <span style={{
+                            fontFamily: 'var(--font-body)',
+                            fontSize: 13, color: '#fff',
+                          }}>
+                            {e.nombre}
+                          </span>
+                        </div>
+                        <span style={{
+                          fontFamily: 'var(--font-body)',
+                          fontSize: 11, color: 'var(--text-muted)',
+                        }}>
+                          {new Date(e.timestamp).toLocaleTimeString('es-MX',
+                            { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{
+                      marginTop: 10, padding: '8px 12px',
+                      background: 'rgba(245,158,11,0.06)',
+                      borderRadius: 8, border: '1px solid rgba(245,158,11,0.15)',
+                      fontFamily: 'var(--font-body)', fontSize: 11,
+                      color: 'rgba(245,158,11,0.7)',
+                    }}>
+                      {/* [BACKEND] → El backend notificará automáticamente al
+                          primero en la lista cuando se libere un lugar.
+                          Implementar: webhook en cancelarReserva →
+                          notificación push/email → link con token de 30min
+                          para confirmar la reserva. */}
+                      💡 El primero en la lista será notificado automáticamente cuando se libere un lugar.
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Agregar alumno manualmente */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>

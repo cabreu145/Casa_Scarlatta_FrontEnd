@@ -100,12 +100,13 @@ export function calcularStats(tipo, datos) {
   }
 
   if (tipo === 'coaches') {
-    const totalClases = datos.reduce((a, c) => a + (c.totalClases ?? 0), 0)
-    const totalPago   = datos.reduce((a, c) => a + (c.totalPago ?? 0), 0)
+    const coaches     = new Set(datos.map(c => c.Coach)).size
+    const totalClases = datos.length
+    const totalPago   = datos.reduce((a, c) => a + parseMonto(c['Pago clase'] ?? 0), 0)
     return [
-      { valor: datos.length.toLocaleString('es-MX'),    etiqueta: 'Coaches activos' },
-      { valor: totalClases.toLocaleString('es-MX'),     etiqueta: 'Clases impartidas' },
-      { valor: '$' + totalPago.toLocaleString('es-MX'), etiqueta: 'Pago total estimado' },
+      { valor: coaches.toLocaleString('es-MX'),          etiqueta: 'Coaches activos' },
+      { valor: totalClases.toLocaleString('es-MX'),      etiqueta: 'Clases impartidas' },
+      { valor: '$' + totalPago.toLocaleString('es-MX'),  etiqueta: 'Pago total estimado' },
     ]
   }
 

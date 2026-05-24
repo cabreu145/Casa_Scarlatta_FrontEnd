@@ -93,7 +93,7 @@ export default function CoachPanel() {
   const [selectedDay, setSelectedDay] = useState(KEYS[new Date().getDay()])
   const [weekOffset, setWeekOffset]   = useState(0)
   const [modalClass, setModalClass]       = useState(null)  // class object | null
-  const { usuario } = useAuth()
+  const { usuario, logout } = useAuth()
   const { clases } = useClasesStore()
   const { coaches } = useCoachesStore()
   // coachData: perfil del coach en coachesStore (id = "coach-xxx", distinto al id de usuario)
@@ -105,7 +105,8 @@ export default function CoachPanel() {
   const hoy = new Date()
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
-  const clasesHoy = misClases.filter(c => c.dia === diaHoy)
+  const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`
+  const clasesHoy = misClases.filter(c => c.fecha ? c.fecha === hoyISO : c.dia === diaHoy)
 
   // ── Semana dinámica ────────────────────────────────────────────────────────
   const inicioSem = calcInicioSemana(weekOffset)
@@ -128,12 +129,12 @@ export default function CoachPanel() {
       c.fecha ? c.fecha === isoDate : c.dia === diaNombre
     )
     return {
-      key:     WEEK_DAY_KEYS[i],
-      name:    WEEK_DAY_NAMES[i],
-      num:     d.getDate(),
+      key:       WEEK_DAY_KEYS[i],
+      name:      WEEK_DAY_NAMES[i],
+      num:       d.getDate(),
       isoDate,
-      isToday: d.toDateString() === hoy.toDateString(),
-      count:   clasesDelDia.length > 0 ? `${clasesDelDia.length} clase${clasesDelDia.length > 1 ? 's' : ''}` : '—',
+      isToday:   d.toDateString() === hoy.toDateString(),
+      hasClases: clasesDelDia.length > 0,
     }
   })
   // ESC closes modal
@@ -184,7 +185,7 @@ export default function CoachPanel() {
         </nav>
 
         <div className={s.sidebarFooter}>
-          <button className={s.logoutBtn} onClick={() => navigate('/login')}>
+          <button className={s.logoutBtn} onClick={() => { logout(); navigate('/') }}>
             <LogOut size={14} strokeWidth={2} />
             Cerrar sesión
           </button>
@@ -219,9 +220,9 @@ export default function CoachPanel() {
                 <div className={s.coachName}>Coach · {usuario?.nombre ?? 'Coach'}</div>
                 <div className={s.coachRole}>{usuario?.especialidad ?? ''}</div>
               </div>
-              <div className={s.coachAvatar} style={{ width:36, height:36, fontSize:15, overflow:'hidden', padding:0 }}> 
-                {usuario?.foto
-                 ? <img src={usuario.foto} alt={usuario.nombre} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+              <div className={s.coachAvatar} style={{ width:36, height:36, fontSize:15, overflow:'hidden', padding:0 }}>
+                {coachData?.foto
+                 ? <img src={coachData.foto} alt={usuario?.nombre} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top center' }} />
                  : usuario?.nombre?.charAt(0).toUpperCase() ?? 'C'}
               </div>
             </div>
@@ -373,7 +374,7 @@ export default function CoachPanel() {
                 >
                   <div className={s.wdbName}>{d.name}</div>
                   <div className={s.wdbNum}>{d.num}</div>
-                  <div className={s.wdbCount}>{d.count}</div>
+                  <span className={s.wdbDot} style={{ visibility: d.hasClases ? 'visible' : 'hidden' }} />
                 </button>
               ))}
             </div>

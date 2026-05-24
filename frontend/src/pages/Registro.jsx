@@ -94,8 +94,8 @@ export default function Registro() {
         genero: form.genero,
         fechaNacimiento: form.fechaNacimiento,
       })
-      toast.success('¡Bienvenida a Casa Scarlatta! Tu cuenta fue creada.')
-      navigate('/', { replace: true })
+      toast.success('¡Cuenta creada! Revisa tu correo de bienvenida 📧')
+      navigate('/cliente/dashboard', { replace: true })
     } catch (err) {
       if (err.message?.includes('registrado')) {
         setErrors({ email: 'Este email ya está registrado' })

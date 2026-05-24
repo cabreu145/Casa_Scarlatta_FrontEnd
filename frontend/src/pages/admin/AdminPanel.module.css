@@ -1077,7 +1077,7 @@
   margin-bottom: 24px;
 }
 
-.modalTitle { font-family: var(--font-display); font-size: 24px; font-style: italic; }
+.modalTitle { font-family: var(--font-display); font-size: 24px; font-style: italic; color: #fff; }
 
 .modalClose {
   width: 32px; height: 32px;

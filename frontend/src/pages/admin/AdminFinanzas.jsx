@@ -18,6 +18,7 @@ import { useGastosStore, TIPOS_GASTO } from '@/stores/gastosStore'
 import { getKpisFinanzas, getDatosCorteHoy, getTransaccionesParaExportar } from '@/services/finanzasService'
 import { abrirReportePDF } from '@/utils/reportePDF'
 import { hoyLocal, mesLocal } from '@/utils/fecha'
+import DateNavigator from '@/components/ui/DateNavigator'
 import styles from '@/styles/dashboard.module.css'
 
 const DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -50,25 +51,87 @@ function exportarExcelLocal(datos, nombre, hoja = 'Reporte') {
   toast.success('Excel exportado')
 }
 
-function MiniChart({ serie, color = '#7B1E22' }) {
+function BarraFinanzas({ serie }) {
+  const [hovIdx, setHovIdx] = useState(null)
   if (!serie?.length) return null
   const max = Math.max(...serie.map(s => s.ingresos), 1)
+
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 60, padding: '0 4px' }}>
-      {serie.map((s, i) => (
-        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <div style={{
-            width: '100%',
-            background: i === serie.length - 1 ? color : `${color}66`,
-            borderRadius: '3px 3px 0 0',
-            height: `${Math.max(4, Math.round((s.ingresos / max) * 50))}px`,
-            transition: 'height 0.4s ease',
-          }} />
-          <span style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
-            {s.label}
-          </span>
-        </div>
-      ))}
+    <div style={{
+      display:    'flex',
+      alignItems: 'flex-end',
+      gap:        6,
+      height:     120,
+      paddingTop: 24,
+      position:   'relative',
+    }}>
+      {serie.map((s, i) => {
+        const pct   = Math.max(6, Math.round((s.ingresos / max) * 100))
+        const hov   = hovIdx === i
+        const ratio = s.ingresos / max
+        const color = ratio >= 0.75 ? '#22C55E'
+          : ratio >= 0.40           ? '#3B82F6'
+          : s.ingresos === 0        ? '#3C2A2E'
+          :                           '#EF4444'
+
+        return (
+          <div
+            key={i}
+            style={{
+              flex:           1,
+              display:        'flex',
+              flexDirection:  'column',
+              alignItems:     'center',
+              gap:            4,
+              height:         '100%',
+              justifyContent: 'flex-end',
+              position:       'relative',
+              cursor:         'pointer',
+            }}
+            onMouseEnter={() => setHovIdx(i)}
+            onMouseLeave={() => setHovIdx(null)}
+          >
+            {hov && s.ingresos > 0 && (
+              <div style={{
+                position:     'absolute',
+                bottom:       `calc(${pct}% + 28px)`,
+                left:         '50%',
+                transform:    'translateX(-50%)',
+                background:   '#1E1014',
+                border:       '1px solid rgba(232,164,173,0.3)',
+                borderRadius: 6,
+                padding:      '4px 8px',
+                whiteSpace:   'nowrap',
+                zIndex:       10,
+                fontFamily:   'var(--font-body)',
+                fontSize:     11,
+                color:        '#E8A4AD',
+                fontWeight:   600,
+              }}>
+                ${s.ingresos.toLocaleString()}
+              </div>
+            )}
+            <div style={{
+              width:           '100%',
+              height:          `${pct}%`,
+              background:      color,
+              borderRadius:    '3px 3px 0 0',
+              opacity:         hov ? 1 : 0.75,
+              transform:       hov ? 'scaleY(1.04)' : 'none',
+              transformOrigin: 'bottom',
+              transition:      'all 0.15s',
+            }} />
+            <span style={{
+              fontSize:   9,
+              color:      'var(--text-muted)',
+              fontFamily: 'var(--font-body)',
+              whiteSpace: 'nowrap',
+            }}>
+              {s.label}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -133,6 +196,9 @@ export function FinanzasSection({ inPanel = false }) {
   const { gastos, registrarGasto, getGastosByRango, eliminarGasto } = useGastosStore()
 
   const [rango, setRango]               = useState('dia')
+  const [fechaFin, setFechaFin]         = useState(null)
+  const [fechaDesde, setFechaDesde]     = useState(null)
+  const [fechaHasta, setFechaHasta]     = useState(null)
   const [filtroActivo, setFiltroActivo] = useState(null)
   const [busqueda, setBusqueda]         = useState('')
   const [modalGasto, setModalGasto]     = useState(false)
@@ -142,6 +208,7 @@ export function FinanzasSection({ inPanel = false }) {
   const [formGasto, setFormGasto]       = useState({ concepto: '', monto: '', tipo: TIPOS_GASTO.OPERATIVO })
   const [filtroCortes, setFiltroCortes] = useState('todo')
   const [cortesPageDate, setCortesPageDate] = useState(() => hoyLocal())
+  const [txExpandidas, setTxExpandidas]     = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 30_000)
@@ -149,7 +216,10 @@ export function FinanzasSection({ inPanel = false }) {
   }, [])
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const kpis = useMemo(() => getKpisFinanzas(rango), [transacciones, gastos, rango, tick])
+  const kpis = useMemo(
+    () => getKpisFinanzas(rango, fechaFin, { fechaDesde, fechaHasta }),
+    [transacciones, gastos, rango, fechaFin, fechaDesde, fechaHasta, tick]
+  )
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const datosCorte = useMemo(() => getDatosCorteHoy(), [transacciones, cortes, tick])
@@ -170,12 +240,12 @@ export function FinanzasSection({ inPanel = false }) {
 
   const cortesFiltrados = useMemo(() => {
     const hoyStr = hoyLocal()
-    // Never show cortes with a future date (timezone-bug protection)
+    if (fechaFin) {
+      return [...cortes].reverse().filter(c => c.fecha === fechaFin)
+    }
     const todos = [...cortes].reverse().filter(c => c.fecha <= hoyStr)
     if (filtroCortes === 'todo') return todos
-    if (filtroCortes === 'hoy') {
-      return todos.filter(c => c.fecha === hoyStr)
-    }
+    if (filtroCortes === 'hoy')    return todos.filter(c => c.fecha === hoyStr)
     if (filtroCortes === 'semana') {
       const hace7 = hoyLocal(new Date(Date.now() - 7 * 86400000))
       return todos.filter(c => c.fecha >= hace7)
@@ -185,7 +255,7 @@ export function FinanzasSection({ inPanel = false }) {
       return todos.filter(c => c.fecha?.startsWith(mes))
     }
     return todos
-  }, [cortes, filtroCortes])
+  }, [cortes, filtroCortes, fechaFin])
 
   const alertas = useMemo(() => {
     const lista = []
@@ -205,8 +275,11 @@ export function FinanzasSection({ inPanel = false }) {
 
     let lista = [...transacciones]
       .filter(tx => {
+        if (rango === 'fecha')  return fechaFin ? tx.fecha === fechaFin : tx.fecha === hoy
+        if (rango === 'todos')  return true
         if (rango === 'dia')    return tx.fecha === hoy
         if (rango === 'semana') return tx.fecha >= semanaInicio
+        if (rango === 'rango')  return fechaDesde && fechaHasta ? tx.fecha >= fechaDesde && tx.fecha <= fechaHasta : false
         return tx.fecha?.slice(0, 7) === mesActual
       })
       .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
@@ -223,17 +296,43 @@ export function FinanzasSection({ inPanel = false }) {
       )
     }
     return lista
-  }, [transacciones, rango, filtroActivo, busqueda])
+  }, [transacciones, rango, filtroActivo, busqueda, fechaFin, fechaDesde, fechaHasta])
 
-  const gastosRango = useMemo(
-    () => getGastosByRango(rango),
-    [gastos, rango, getGastosByRango]
-  )
+  const gastosRango = useMemo(() => {
+    if (rango === 'fecha' && fechaFin) return gastos.filter(g => g.fecha === fechaFin)
+    if (rango === 'todos') return [...gastos]
+    if (rango === 'rango' && fechaDesde && fechaHasta) {
+      return gastos.filter(g => g.fecha >= fechaDesde && g.fecha <= fechaHasta)
+    }
+    return getGastosByRango(rango)
+  }, [gastos, rango, fechaFin, fechaDesde, fechaHasta, getGastosByRango])
 
   const hoy              = hoyLocal()
-  const yaHayManana      = cortes.some(c => c.fecha === hoy && c.turno === 'mañana')
-  const yaHayNoche       = cortes.some(c => c.fecha === hoy && (c.turno === 'tarde' || c.turno === 'noche'))
-  const ambosCompletos   = yaHayManana && yaHayNoche
+  const fechaCorteActiva = fechaFin ?? hoy
+  const esFechaFutura    = fechaCorteActiva > hoy
+  const puedeHacerCorte  = !fechaFin || fechaFin === hoy
+
+  const datosCorteActivos = useMemo(() => {
+    if (esFechaFutura) return { efectivo: 0, tarjeta: 0, transferencia: 0, total: 0 }
+    if (fechaFin) {
+      const txFecha = transacciones.filter(tx => tx.fecha === fechaFin && tx.monto > 0)
+      return txFecha.reduce(
+        (acc, tx) => {
+          const m = tx.metodoPago ?? 'efectivo'
+          acc[m]    = (acc[m] ?? 0) + tx.monto
+          acc.total = (acc.total ?? 0) + tx.monto
+          return acc
+        },
+        { efectivo: 0, tarjeta: 0, transferencia: 0, total: 0 }
+      )
+    }
+    return datosCorte
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transacciones, fechaFin, datosCorte, esFechaFutura])
+
+  const yaHayManana    = cortes.some(c => c.fecha === hoy && c.turno === 'mañana')
+  const yaHayNoche     = cortes.some(c => c.fecha === hoy && (c.turno === 'tarde' || c.turno === 'noche'))
+  const montoInicial   = parseFloat(formCorte.montoInicial) || 0
 
   const abrirModalCorte = (turno) => {
     setFormCorte({ turno, montoInicial: '' })
@@ -241,7 +340,7 @@ export function FinanzasSection({ inPanel = false }) {
   }
 
   const handleConfirmarCorte = () => {
-    const montoInicial = parseFloat(formCorte.montoInicial) || 0
+    const monto = parseFloat(formCorte.montoInicial) || 0
     const now  = new Date()
     const hora = now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false })
     const mes  = now.toLocaleString('es-MX', { month: 'long' })
@@ -252,14 +351,16 @@ export function FinanzasSection({ inPanel = false }) {
       turno:              formCorte.turno,
       periodo:            `${mes.charAt(0).toUpperCase() + mes.slice(1)} ${now.getFullYear()}`,
       tipo:               'diario',
-      montoInicial,
+      montoInicial:       monto,
       totalIngresos:      datosCorte.total,
       totalEfectivo:      datosCorte.efectivo,
       totalTarjeta:       datosCorte.tarjeta,
       totalTransferencia: datosCorte.transferencia,
       totalGastos:        totalGastosHoy,
-      neto:               datosCorte.total - totalGastosHoy,
-      montoCierre:        montoInicial + datosCorte.efectivo,
+      neto:           datosCorte.efectivo - totalGastosHoy,
+      aEntregar:      Math.max(0, datosCorte.efectivo - totalGastosHoy),
+      fondoSiguiente: monto,
+      montoCierre:    monto + datosCorte.efectivo,
       ejecutadoPor:       usuario?.id ?? null,
       estado:             'cerrado',
     })
@@ -286,12 +387,7 @@ export function FinanzasSection({ inPanel = false }) {
     const periodoLabel = { hoy: 'hoy', semana: '7dias', mes: 'mes', todo: 'historico' }[filtroCortes] ?? filtroCortes
     const nombre = `cortes_${periodoLabel}_${hoy}`
     if (formato === 'pdf') {
-      abrirReportePDF({
-        tipo:      'cortes',
-        titulo:    `Cortes de Caja — ${periodoLabel}`,
-        datos,
-        landscape: true,
-      })
+      abrirReportePDF({ tipo: 'cortes', titulo: `Cortes de Caja — ${periodoLabel}`, datos, landscape: true })
     } else {
       exportarExcelLocal(datos, `${nombre}.xlsx`, 'Cortes')
     }
@@ -312,36 +408,46 @@ export function FinanzasSection({ inPanel = false }) {
     setFormGasto({ concepto: '', monto: '', tipo: TIPOS_GASTO.OPERATIVO })
   }
 
-  const handleExportar = (formato) => {
+  const handleExportar = () => {
     const datos  = getTransaccionesParaExportar(rango)
     const nombre = `finanzas_casascarlatta_${rango}_${hoy}`
     exportarExcelLocal(datos, `${nombre}.xlsx`, 'Finanzas')
   }
 
+  const TX_VISIBLES = 5
+  const txVisibles  = txExpandidas ? txFiltradas : txFiltradas.slice(0, TX_VISIBLES)
+  const hayMasTx    = txFiltradas.length > TX_VISIBLES
+
   const panel = {
     background: 'var(--neutral-card)', border: '1px solid var(--neutral-border)',
     borderRadius: 12, padding: '20px 24px', marginBottom: 16,
   }
-  const labelRango = rango === 'dia' ? 'hoy' : rango === 'semana' ? 'esta semana' : 'este mes'
+  const labelRango = rango === 'rango' && fechaDesde && fechaHasta
+    ? `${fechaDesde} al ${fechaHasta}`
+    : rango === 'fecha' && fechaFin ? fechaFin
+    : rango === 'todos'  ? 'todo el historial'
+    : rango === 'dia'    ? 'hoy'
+    : rango === 'semana' ? 'esta semana'
+    : 'este mes'
 
   return (
     <>
       <div className={inPanel ? undefined : styles.page}>
 
         {/* Selector de rango */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
-          <div style={{ display: 'flex', gap: 4, background: '#1E1014', padding: 4, borderRadius: 8 }}>
-            {[{ v: 'dia', l: 'Hoy' }, { v: 'semana', l: 'Semana' }, { v: 'mes', l: 'Mes' }].map(({ v, l }) => (
-              <button key={v} onClick={() => setRango(v)} style={{
-                padding: '6px 16px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--font-body)', fontSize: 13,
-                background: rango === v ? '#7B1E22' : 'transparent',
-                color:      rango === v ? '#fff' : '#A69A93',
-                transition: 'all 0.15s',
-              }}>{l}</button>
-            ))}
-          </div>
-        </div>
+        <DateNavigator
+          modo="libre"
+          darkMode={true}
+          inicial="hoy"
+          onChange={(r) => {
+            const mapa = { hoy: 'dia', semana: 'semana', mes: 'mes', todos: 'todos', fecha: 'fecha', rango: 'rango' }
+            setRango(mapa[r.tipo] ?? 'dia')
+            setFechaFin(r.fecha ?? null)
+            setFechaDesde(r.fechaDesde ?? null)
+            setFechaHasta(r.fechaHasta ?? null)
+            setTxExpandidas(false)
+          }}
+        />
 
         {/* Alertas */}
         {alertas.length > 0 && (
@@ -358,13 +464,13 @@ export function FinanzasSection({ inPanel = false }) {
             sub={`${kpis.numTransacciones} transacciones`}
             crecimiento={kpis.crecimiento} color="#22c55e" icono="💹"
             activo={filtroActivo === 'ingresos'}
-            onClick={() => setFiltroActivo(f => f === 'ingresos' ? null : 'ingresos')}
+            onClick={() => { setFiltroActivo(f => f === 'ingresos' ? null : 'ingresos'); setTxExpandidas(false) }}
           />
           <KpiCard
             label="Gastos" valor={`$${kpis.totalGastos.toLocaleString()}`}
             sub={`${gastosRango.length} registros`} color="#ef4444" icono="📉"
             activo={filtroActivo === 'gastos'}
-            onClick={() => setFiltroActivo(f => f === 'gastos' ? null : 'gastos')}
+            onClick={() => { setFiltroActivo(f => f === 'gastos' ? null : 'gastos'); setTxExpandidas(false) }}
           />
           <KpiCard
             label="Utilidad neta"
@@ -389,7 +495,7 @@ export function FinanzasSection({ inPanel = false }) {
                 ${kpis.totalIngresos.toLocaleString()} total
               </span>
             </div>
-            <MiniChart serie={kpis.serieHistorica} color="#7B1E22" />
+            <BarraFinanzas serie={kpis.serieHistorica} />
           </div>
 
           <div style={panel}>
@@ -436,115 +542,89 @@ export function FinanzasSection({ inPanel = false }) {
           ))}
         </div>
 
-        {/* Corte de caja */}
-        <div style={panel}>
+        {/* Transacciones */}
+        <div style={panel} data-section="transacciones">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-primary)' }}>
-              Corte de caja — Hoy
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => abrirModalCorte('mañana')} disabled={yaHayManana} style={{
-                padding: '8px 16px', borderRadius: 8, border: 'none',
-                cursor: yaHayManana ? 'not-allowed' : 'pointer',
-                fontFamily: 'var(--font-body)', fontSize: 13,
-                background: yaHayManana ? '#2C1A1E' : '#7B1E22',
-                color: yaHayManana ? '#A69A93' : '#fff', opacity: yaHayManana ? 0.7 : 1,
-              }}>
-                {yaHayManana ? '✓ Mañana' : '☀️ Turno mañana'}
-              </button>
-              <button onClick={() => abrirModalCorte('tarde')} disabled={yaHayNoche} style={{
-                padding: '8px 16px', borderRadius: 8, border: 'none',
-                cursor: yaHayNoche ? 'not-allowed' : 'pointer',
-                fontFamily: 'var(--font-body)', fontSize: 13,
-                background: yaHayNoche ? '#2C1A1E' : '#4A1A3A',
-                color: yaHayNoche ? '#A69A93' : '#fff', opacity: yaHayNoche ? 0.7 : 1,
-              }}>
-                {yaHayNoche ? '✓ Tarde' : '🌙 Turno tarde'}
-              </button>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
-            {[
-              { label: '💵 Efectivo',        val: datosCorte.efectivo,                    color: 'var(--text-primary)' },
-              { label: '💳 Tarjeta',         val: datosCorte.tarjeta,                     color: 'var(--text-primary)' },
-              { label: '📱 Transferencia',   val: datosCorte.transferencia,               color: 'var(--text-primary)' },
-              { label: '📊 Total ingresos',  val: datosCorte.total,                       color: '#22c55e',  border: '#22c55e44' },
-              { label: '📉 Gastos del día',  val: totalGastosHoy,                         color: '#ef4444',  border: '#ef444444', neg: true },
-              { label: '💰 Neto a entregar', val: datosCorte.total - totalGastosHoy, color: '#E8A4AD',  border: '#7B1E22',   bold: true },
-            ].map(({ label, val, color, border, bold, neg }) => (
-              <div key={label} style={{
-                background: '#2C1A1E', borderRadius: 8, padding: '12px 14px',
-                border: `1px solid ${border ?? '#3C2A2E'}`,
-              }}>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color, fontWeight: bold ? 600 : 400 }}>
-                  {neg && (val ?? 0) > 0 ? '−' : ''}${(val ?? 0).toLocaleString()}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {cortes.length > 0 && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Historial de cortes
-                  </div>
-                  <div style={{ display: 'flex', gap: 2, background: '#1E1014', padding: 3, borderRadius: 6 }}>
-                    {[{ v: 'hoy', l: 'Hoy' }, { v: 'semana', l: '7 días' }, { v: 'mes', l: 'Mes' }, { v: 'todo', l: 'Todo' }].map(({ v, l }) => (
-                      <button key={v} onClick={() => setFiltroCortes(v)} style={{
-                        padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer',
-                        fontFamily: 'var(--font-body)', fontSize: 11,
-                        background: filtroCortes === v ? '#7B1E22' : 'transparent',
-                        color: filtroCortes === v ? '#fff' : '#A69A93',
-                      }}>{l}</button>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => handleExportarCortes('excel')} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #22c55e44', background: '#1a472a', color: '#22c55e', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>📊 Excel</button>
-                  <button onClick={() => handleExportarCortes('pdf')}   style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #ef444444', background: '#2d1b1b', color: '#ef4444', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>📋 PDF</button>
-                </div>
-              </div>
-
-              {cortesFiltrados.length === 0 ? (
-                <p style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
-                  Sin cortes en este período
-                </p>
-              ) : (
-                <div className={styles.tableContainer}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr><th>Fecha</th><th>Día</th><th>Hora</th><th>Turno</th><th>Inicio</th><th>Efectivo</th><th>Tarjeta</th><th>Ingresos</th><th>Gastos</th><th>Neto</th><th>Cierre</th><th>Estado</th></tr>
-                  </thead>
-                  <tbody>
-                    {cortesFiltrados.map(c => (
-                      <tr key={c.id}>
-                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.fecha}</td>
-                        <td style={{ fontSize: 12 }}>{c.dia ?? diaDesdefecha(c.fecha)}</td>
-                        <td style={{ fontSize: 12 }}>{c.hora ?? '—'}</td>
-                        <td>
-                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: (c.turno === 'tarde' || c.turno === 'noche') ? '#1A1A3A' : '#2A1A1A', color: (c.turno === 'tarde' || c.turno === 'noche') ? '#818CF8' : '#F59E0B' }}>
-                            {(c.turno === 'tarde' || c.turno === 'noche') ? '🌙 Tarde' : '☀️ Mañana'}
-                          </span>
-                        </td>
-                        <td>${(c.montoInicial ?? 0).toLocaleString()}</td>
-                        <td>${(c.totalEfectivo ?? 0).toLocaleString()}</td>
-                        <td>${(c.totalTarjeta ?? 0).toLocaleString()}</td>
-                        <td style={{ color: '#22c55e', fontWeight: 600 }}>${(c.totalIngresos ?? 0).toLocaleString()}</td>
-                        <td style={{ color: '#ef4444' }}>{c.totalGastos != null ? `−$${c.totalGastos.toLocaleString()}` : '—'}</td>
-                        <td style={{ fontWeight: 600, color: '#E8A4AD' }}>{c.neto != null ? (c.neto < 0 ? `−$${Math.abs(c.neto).toLocaleString()}` : `$${c.neto.toLocaleString()}`) : '—'}</td>
-                        <td style={{ color: '#E8A4AD' }}>${(c.montoCierre ?? 0).toLocaleString()}</td>
-                        <td><span className={`${styles.badge} ${styles.badgeCompletada}`}>{c.estado}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              Transacciones
+              <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontWeight: 400 }}>
+                ({txFiltradas.length} registros)
+              </span>
+              {filtroActivo && (
+                <button onClick={() => setFiltroActivo(null)} style={{
+                  marginLeft: 10, fontSize: 11, fontFamily: 'var(--font-body)',
+                  background: '#7B1E2233', border: '1px solid #7B1E22', color: '#E8A4AD',
+                  borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+                }}>
+                  Filtro: {filtroActivo} ×
+                </button>
               )}
-            </>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input
+                className={styles.searchInput} style={{ width: 180 }}
+                type="text" placeholder="Buscar..." value={busqueda}
+                onChange={e => { setBusqueda(e.target.value); setTxExpandidas(false) }}
+              />
+              <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={handleExportar}>CSV</button>
+              <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={handleExportar}>Excel</button>
+            </div>
+          </div>
+
+          <table className={styles.table}>
+            <thead>
+              <tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Método</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+              {txFiltradas.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', padding: 28, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                    Sin transacciones en este período
+                  </td>
+                </tr>
+              ) : txVisibles.map(tx => (
+                <tr key={tx.id}>
+                  <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{tx.fecha}</td>
+                  <td style={{ fontWeight: 500 }}>{tx.concepto}</td>
+                  <td>
+                    <span className={`${styles.badge} ${tx.tipo === 'paquete' ? styles.badgeSlow : styles.badgeCompletada}`}>
+                      {tx.tipo}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`${styles.badge} ${styles.badgeConfirmada}`}>
+                      {METODO_ICONS[tx.metodoPago ?? 'efectivo']} {tx.metodoPago ?? 'efectivo'}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 600, color: tx.monto < 0 ? '#ef4444' : '#22c55e' }}>
+                    {tx.monto < 0 ? '-' : ''}${Math.abs(tx.monto ?? 0).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {hayMasTx && (
+            <button
+              onClick={() => setTxExpandidas(v => !v)}
+              style={{
+                width: '100%', marginTop: 12, padding: '9px 0',
+                borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)',
+                fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer', transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background  = 'rgba(123,31,46,0.15)'
+                e.currentTarget.style.color       = '#E8A4AD'
+                e.currentTarget.style.borderColor = 'rgba(123,31,46,0.4)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background  = 'rgba(255,255,255,0.03)'
+                e.currentTarget.style.color       = 'rgba(255,255,255,0.5)'
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+              }}
+            >
+              {txExpandidas ? `▲ Ver menos` : `▼ Ver ${txFiltradas.length - TX_VISIBLES} más`}
+            </button>
           )}
         </div>
 
@@ -604,67 +684,192 @@ export function FinanzasSection({ inPanel = false }) {
           )}
         </div>
 
-        {/* Transacciones */}
+        {/* Corte de caja */}
         <div style={panel}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-primary)' }}>
-              Transacciones
-              <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontWeight: 400 }}>
-                ({txFiltradas.length} registros)
-              </span>
-              {filtroActivo && (
-                <button onClick={() => setFiltroActivo(null)} style={{
-                  marginLeft: 10, fontSize: 11, fontFamily: 'var(--font-body)',
-                  background: '#7B1E2233', border: '1px solid #7B1E22', color: '#E8A4AD',
-                  borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+              Corte de caja — {fechaCorteActiva}
+            </div>
+            {puedeHacerCorte && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => abrirModalCorte('mañana')} disabled={yaHayManana} style={{
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  cursor: yaHayManana ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font-body)', fontSize: 13,
+                  background: yaHayManana ? '#2C1A1E' : '#7B1E22',
+                  color: yaHayManana ? '#A69A93' : '#fff', opacity: yaHayManana ? 0.7 : 1,
                 }}>
-                  Filtro: {filtroActivo} ×
+                  {yaHayManana ? '✓ Mañana' : '☀️ Turno mañana'}
                 </button>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input
-                className={styles.searchInput} style={{ width: 180 }}
-                type="text" placeholder="Buscar..." value={busqueda}
-                onChange={e => setBusqueda(e.target.value)}
-              />
-              <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={() => handleExportar('csv')}>CSV</button>
-              <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`} onClick={() => handleExportar('excel')}>Excel</button>
-            </div>
+                <button onClick={() => abrirModalCorte('tarde')} disabled={yaHayNoche} style={{
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  cursor: yaHayNoche ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font-body)', fontSize: 13,
+                  background: yaHayNoche ? '#2C1A1E' : '#4A1A3A',
+                  color: yaHayNoche ? '#A69A93' : '#fff', opacity: yaHayNoche ? 0.7 : 1,
+                }}>
+                  {yaHayNoche ? '✓ Tarde' : '🌙 Turno tarde'}
+                </button>
+              </div>
+            )}
           </div>
 
-          <table className={styles.table}>
-            <thead>
-              <tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Método</th><th>Total</th></tr>
-            </thead>
-            <tbody>
-              {txFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: 28, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
-                    Sin transacciones en este período
-                  </td>
-                </tr>
-              ) : txFiltradas.map(tx => (
-                <tr key={tx.id}>
-                  <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{tx.fecha}</td>
-                  <td style={{ fontWeight: 500 }}>{tx.concepto}</td>
-                  <td>
-                    <span className={`${styles.badge} ${tx.tipo === 'paquete' ? styles.badgeSlow : styles.badgeCompletada}`}>
-                      {tx.tipo}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`${styles.badge} ${styles.badgeConfirmada}`}>
-                      {METODO_ICONS[tx.metodoPago ?? 'efectivo']} {tx.metodoPago ?? 'efectivo'}
-                    </span>
-                  </td>
-                  <td style={{ fontWeight: 600, color: tx.monto < 0 ? '#ef4444' : '#22c55e' }}>
-                    {tx.monto < 0 ? '-' : ''}${Math.abs(tx.monto ?? 0).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 16 }}>
+            {[
+              { label: '💵 Efectivo',        val: datosCorteActivos.efectivo,                        color: 'var(--text-primary)' },
+              { label: '💳 Tarjeta',         val: datosCorteActivos.tarjeta,                         color: 'var(--text-primary)' },
+              { label: '📱 Transferencia',   val: datosCorteActivos.transferencia,                   color: 'var(--text-primary)' },
+              { label: '📊 Total ingresos',  val: datosCorteActivos.total,                           color: '#22c55e', border: '#22c55e44' },
+              { label: '📉 Gastos del día',  val: totalGastosHoy,                                    color: '#ef4444', border: '#ef444444', neg: true },
+              { label: '💰 Neto a entregar', val: datosCorteActivos.efectivo - totalGastosHoy,       color: '#E8A4AD', border: '#7B1E22',   bold: true },
+            ].map(({ label, val, color, border, bold, neg }) => (
+              <div key={label} style={{
+                background: '#2C1A1E', borderRadius: 8, padding: '12px 14px',
+                border: `1px solid ${border ?? '#3C2A2E'}`,
+              }}>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color, fontWeight: bold ? 600 : 400 }}>
+                  {neg && (val ?? 0) > 0 ? '−' : ''}${(val ?? 0).toLocaleString()}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {cortes.length > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Historial de cortes
+                  </div>
+                  <div style={{ display: 'flex', gap: 2, background: '#1E1014', padding: 3, borderRadius: 6 }}>
+                    {[{ v: 'hoy', l: 'Hoy' }, { v: 'semana', l: '7 días' }, { v: 'mes', l: 'Mes' }, { v: 'todo', l: 'Todo' }].map(({ v, l }) => (
+                      <button key={v} onClick={() => setFiltroCortes(v)} style={{
+                        padding: '4px 10px', borderRadius: 4, border: 'none', cursor: 'pointer',
+                        fontFamily: 'var(--font-body)', fontSize: 11,
+                        background: filtroCortes === v ? '#7B1E22' : 'transparent',
+                        color: filtroCortes === v ? '#fff' : '#A69A93',
+                      }}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => handleExportarCortes('excel')} style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #22c55e44', background: '#1a472a', color: '#22c55e', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>📊 Excel</button>
+                  <button onClick={() => handleExportarCortes('pdf')}   style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid #ef444444', background: '#2d1b1b', color: '#ef4444', fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>📋 PDF</button>
+                </div>
+              </div>
+
+              {cortesFiltrados.length === 0 ? (
+                <p style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                  Sin cortes en este período
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {cortesFiltrados.map(c => {
+                    const esTarde = c.turno === 'tarde' || c.turno === 'noche'
+                    const neto    = c.neto ?? (c.totalEfectivo ?? 0) - (c.totalGastos ?? 0)
+                    const aEntregar = c.aEntregar ?? Math.max(0, neto)
+                    return (
+                      <div key={c.id} style={{
+                        borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)',
+                        background: '#1E1014', overflow: 'hidden',
+                      }}>
+                        {/* Header */}
+                        <div style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '10px 16px', background: 'rgba(255,255,255,0.03)',
+                          borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        }}>
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: '#F5EDE8' }}>
+                              {c.fecha} — {c.dia ?? diaDesdefecha(c.fecha)}
+                            </span>
+                            <span style={{ fontSize: 11, color: '#A69A93' }}>{c.hora ?? ''}</span>
+                            <span style={{
+                              fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                              background: esTarde ? '#1A1A3A' : '#2A1A1A',
+                              color:      esTarde ? '#818CF8' : '#F59E0B',
+                            }}>
+                              {esTarde ? '🌙 Tarde' : '☀️ Mañana'}
+                            </span>
+                          </div>
+                          <span className={`${styles.badge} ${styles.badgeCompletada}`} style={{ fontSize: 11 }}>
+                            {c.estado}
+                          </span>
+                        </div>
+
+                        {/* 3 columnas */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 0 }}>
+
+                          {/* Col 1 — Ingresos */}
+                          <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B5A55', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ingresos del turno</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {[
+                                { label: 'Total ingresos', val: c.totalIngresos ?? 0, color: '#22c55e', bold: true },
+                                { label: 'Efectivo',       val: c.totalEfectivo ?? 0, color: '#A3E635' },
+                                { label: 'Tarjeta',        val: c.totalTarjeta ?? 0,  color: '#60A5FA' },
+                                { label: 'Transferencia',  val: c.totalTransferencia ?? 0, color: '#A78BFA' },
+                              ].map(({ label, val, color, bold }) => (
+                                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: bold ? 15 : 13, fontWeight: bold ? 700 : 500, color }}>
+                                    ${val.toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Col 2 — Gastos y resultado */}
+                          <div style={{ padding: '12px 16px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B5A55', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Gastos y resultado</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {[
+                                { label: 'Gastos',  val: -(c.totalGastos ?? 0), color: '#ef4444' },
+                                { label: 'Neto',    val: neto,                   color: neto >= 0 ? '#22c55e' : '#ef4444', bold: true },
+                              ].map(({ label, val, color, bold }) => (
+                                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: bold ? 15 : 13, fontWeight: bold ? 700 : 500, color }}>
+                                    {val < 0 ? '−' : ''}${Math.abs(val).toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                              <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 6, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#F59E0B', fontWeight: 600 }}>A entregar</span>
+                                <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#F59E0B', fontWeight: 700 }}>${aEntregar.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Col 3 — Caja física */}
+                          <div style={{ padding: '12px 16px' }}>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B5A55', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Caja física</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {[
+                                { label: 'Fondo inicial',   val: c.montoInicial ?? 0,  color: '#A69A93' },
+                                { label: 'Fondo siguiente', val: c.fondoSiguiente ?? c.montoInicial ?? 0, color: '#60A5FA' },
+                                { label: 'Cierre de caja',  val: c.montoCierre ?? 0,   color: '#E8A4AD', bold: true },
+                              ].map(({ label, val, color, bold }) => (
+                                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
+                                  <span style={{ fontFamily: 'var(--font-body)', fontSize: bold ? 15 : 13, fontWeight: bold ? 700 : 500, color }}>
+                                    ${val.toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
       </div>
@@ -676,68 +881,128 @@ export function FinanzasSection({ inPanel = false }) {
           onClick={() => setModalCorte(false)}
         >
           <div
-            style={{ background: '#1E1014', borderRadius: 16, padding: 32, width: '90%', maxWidth: 400, border: '1px solid #3C2A2E' }}
+            style={{ background: '#1E1014', borderRadius: 16, padding: 32, width: '90%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', border: '1px solid #3C2A2E' }}
             onClick={e => e.stopPropagation()}
           >
-            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 20, margin: '0 0 6px', color: '#F5EDE8' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 22, margin: '0 0 4px', color: '#F5EDE8' }}>
               Corte de caja
             </h2>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', margin: '0 0 24px' }}>
-              {formCorte.turno === 'mañana' ? '☀️ Turno mañana' : '🌙 Turno tarde'} — {hoy}
+            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', margin: '0 0 20px' }}>
+              {formCorte.turno === 'mañana' ? '☀️ Turno mañana' : '🌙 Turno tarde'} · {hoy}
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', marginBottom: 6 }}>Turno</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {['mañana', 'tarde'].map(t => (
-                    <button key={t} onClick={() => setFormCorte(p => ({ ...p, turno: t }))} style={{
-                      flex: 1, padding: '10px 0', borderRadius: 8,
-                      border: `1px solid ${formCorte.turno === t ? '#7B1E22' : '#3C2A2E'}`,
-                      background: formCorte.turno === t ? '#7B1E22' : '#2C1A1E',
-                      color: formCorte.turno === t ? '#fff' : '#A69A93',
-                      fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer',
-                    }}>
-                      {t === 'mañana' ? '☀️ Mañana' : '🌙 Tarde'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', marginBottom: 4 }}>
-                  Fondo de cambio del turno ($)
-                </label>
-                <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B5A55', margin: '0 0 8px', lineHeight: 1.5 }}>
-                  El monto fijo que pusiste en caja <strong style={{ color: '#A69A93' }}>al iniciar este turno</strong> para dar cambio (ej. $1,000). <strong style={{ color: '#ef4444' }}>No</strong> incluyas ventas del turno anterior.
-                </p>
-                <input
-                  type="number" placeholder="1000" value={formCorte.montoInicial} autoFocus
-                  onChange={e => setFormCorte(p => ({ ...p, montoInicial: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', background: '#2C1A1E', border: '1px solid #3C2A2E', borderRadius: 8, color: 'white', fontFamily: 'var(--font-body)', fontSize: 14, boxSizing: 'border-box' }}
-                />
-              </div>
 
-              {/* Resumen del corte */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[
-                  { label: 'Fondo de cambio',            val: (parseFloat(formCorte.montoInicial) || 0),                                    color: '#A69A93' },
-                  { label: '+ Ventas en efectivo',       val: datosCorte.efectivo,                                                          color: '#22c55e' },
-                  { label: '− Gastos del turno',         val: totalGastosHoy,                                                               color: '#ef4444', neg: true },
-                  { label: '= Total físico en caja',     val: (parseFloat(formCorte.montoInicial) || 0) + datosCorte.efectivo,              color: '#E8A4AD', border: true },
-                  { label: '💰 A extraer (entregar)',    val: Math.max(0, datosCorte.efectivo - totalGastosHoy),                            color: '#F59E0B', bold: true, hilite: true },
-                ].map(({ label, val, color, bold, border, neg, hilite }) => (
-                  <div key={label} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '8px 12px', background: hilite ? '#2A1E0A' : '#2C1A1E', borderRadius: 6,
-                    border: `1px solid ${hilite ? '#F59E0B44' : border ? '#7B1E22' : '#3C2A2E'}`,
+            {/* Selector de turno */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {['mañana', 'tarde'].map(t => (
+                  <button key={t} onClick={() => setFormCorte(p => ({ ...p, turno: t }))} style={{
+                    flex: 1, padding: '10px 0', borderRadius: 8,
+                    border: `1px solid ${formCorte.turno === t ? '#7B1E22' : '#3C2A2E'}`,
+                    background: formCorte.turno === t ? '#7B1E22' : '#2C1A1E',
+                    color: formCorte.turno === t ? '#fff' : '#A69A93',
+                    fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer',
                   }}>
-                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, color, fontWeight: bold ? 700 : 400 }}>
-                      {neg ? '−' : ''}${val.toLocaleString()}
-                    </span>
-                  </div>
+                    {t === 'mañana' ? '☀️ Mañana' : '🌙 Tarde'}
+                  </button>
                 ))}
               </div>
             </div>
+
+            {/* Fondo de cambio */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontFamily: 'var(--font-body)', fontSize: 14, color: '#F5EDE8', marginBottom: 4, fontWeight: 500 }}>
+                ¿Cuánto dinero pusiste en caja para dar cambio?
+              </label>
+              <p style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#6B5A55', margin: '0 0 10px', lineHeight: 1.5 }}>
+                Solo el efectivo inicial del turno. No incluyas ventas.
+              </p>
+              <input
+                type="number" placeholder="1000" value={formCorte.montoInicial} autoFocus
+                onChange={e => setFormCorte(p => ({ ...p, montoInicial: e.target.value }))}
+                style={{ width: '100%', padding: '10px 12px', background: '#2C1A1E', border: '1px solid #3C2A2E', borderRadius: 8, color: 'white', fontFamily: 'var(--font-body)', fontSize: 14, boxSizing: 'border-box' }}
+              />
+            </div>
+
+            {/* Resumen en 3 grupos */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+              {/* Grupo A — Ingresos del turno */}
+              <div style={{ background: '#2C1A1E', borderRadius: 8, padding: '12px 14px', border: '1px solid #3C2A2E' }}>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#6B5A55', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                  Ingresos del turno
+                </div>
+                {[
+                  { label: '💵 Efectivo cobrado', val: datosCorte.efectivo },
+                  { label: '💳 Tarjeta cobrada',  val: datosCorte.tarjeta },
+                  { label: '📱 Transferencia',    val: datosCorte.transferencia },
+                ].map(({ label, val }) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-primary)' }}>${(val ?? 0).toLocaleString()}</span>
+                  </div>
+                ))}
+                <div style={{ borderTop: '1px solid #3C2A2E', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>📊 Total ingresos</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#22c55e', fontWeight: 700 }}>${datosCorte.total.toLocaleString()} ✓</span>
+                </div>
+              </div>
+
+              {/* Grupo B — Gastos y resultado */}
+              <div style={{ background: '#2C1A1E', borderRadius: 8, padding: '12px 14px', border: '1px solid #3C2A2E' }}>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#6B5A55', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                  Gastos y resultado
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>📉 Gastos del turno</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#ef4444' }}>−${totalGastosHoy.toLocaleString()}</span>
+                </div>
+                <div style={{ borderTop: '1px solid #3C2A2E', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>💼 Neto (ingresos − gastos)</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#E8A4AD', fontWeight: 700 }}>
+                    {datosCorte.total - totalGastosHoy < 0 ? '−' : ''}${Math.abs(datosCorte.total - totalGastosHoy).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Grupo C — Caja física */}
+              <div style={{ background: '#2C1A1E', borderRadius: 8, padding: '12px 14px', border: '1px solid #3C2A2E' }}>
+                <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#6B5A55', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                  Caja física
+                </div>
+                {[
+                  { label: '🏦 Fondo inicial',  val: montoInicial },
+                  { label: '+ Efectivo cobrado', val: datosCorte.efectivo },
+                ].map(({ label, val }) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{label}</span>
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-primary)' }}>${(val ?? 0).toLocaleString()}</span>
+                  </div>
+                ))}
+                <div style={{ borderTop: '1px solid #3C2A2E', marginTop: 6, paddingTop: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>💰 Total físico en caja</span>
+                  <span style={{ fontFamily: 'var(--font-body)', fontSize: 14, color: '#E8A4AD', fontWeight: 700 }}>${(montoInicial + datosCorte.efectivo).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Resaltado final — A entregar */}
+              <div style={{ background: '#2A1E0A', borderRadius: 8, padding: '14px 16px', border: '1px solid #F59E0B44' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#F59E0B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      🏧 A entregar al cierre
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#6B5A55', marginTop: 2 }}>
+                      = Efectivo cobrado − Gastos
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, color: '#F59E0B', fontWeight: 700 }}>
+                    ${Math.max(0, datosCorte.efectivo - totalGastosHoy).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
               <button onClick={handleConfirmarCorte}
                 style={{ padding: 14, borderRadius: 8, border: 'none', background: '#7B1E22', color: '#fff', fontFamily: 'var(--font-body)', fontSize: 15, cursor: 'pointer' }}>

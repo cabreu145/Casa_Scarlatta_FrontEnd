@@ -35,7 +35,7 @@ export const useClasesStore = create(
 
       agregarClase: (nuevaClase) =>
         set((state) => ({
-          clases: [...state.clases, { ...nuevaClase, id: Date.now() }],
+          clases: [...state.clases, { ...nuevaClase, id: Date.now() + Math.floor(Math.random() * 100000) }],
         })),
 
       editarClase: (id, cambios) =>

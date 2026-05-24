@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import LiquidButton from '@/components/ui/LiquidButton'
 import { useAuth } from '@/context/AuthContext'
+import { useCoachesStore } from '@/stores/coachesStore'
 import { ROUTES } from '@/constants/routes'
 import toast from 'react-hot-toast'
 import styles from './Navbar.module.css'
@@ -38,7 +39,12 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { isAuthenticated, usuario, logout } = useAuth()
+  const coaches = useCoachesStore((s) => s.coaches)
   const dropdownRef = useRef(null)
+
+  const avatarFoto = usuario?.rol === 'coach'
+    ? coaches.find((c) => c.email === usuario.email)?.foto ?? null
+    : null
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
@@ -122,8 +128,12 @@ export default function Navbar() {
                 className={styles.avatar}
                 onClick={() => setDropdownOpen((v) => !v)}
                 aria-label="Menu de usuario"
+                style={avatarFoto ? { padding: 0, overflow: 'hidden' } : {}}
               >
-                {usuario.nombre.charAt(0).toUpperCase()}
+                {avatarFoto
+                  ? <img src={avatarFoto} alt={usuario.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }} />
+                  : usuario.nombre.charAt(0).toUpperCase()
+                }
               </button>
 
               {dropdownOpen && (

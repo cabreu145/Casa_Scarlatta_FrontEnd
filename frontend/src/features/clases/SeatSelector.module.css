@@ -63,7 +63,8 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  justify-content: center;
+  gap: 16px;
   padding: 28px 28px 28px;
   min-width: 0;
 }
@@ -106,6 +107,23 @@
   margin-top: 6px;
   font-style: italic;
   font-family: 'Inter', var(--font-body);
+}
+
+/* ── Slow mirrors decoration ───────────────────────────────────────────────── */
+.slowMirrors {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  padding: 0 20px 4px;
+}
+
+.slowMirrorArch {
+  width: 56px;
+  height: 42px;
+  border: 2px solid rgba(176, 80, 96, 0.20);
+  border-bottom: none;
+  border-radius: 50px 50px 0 0;
+  background: linear-gradient(180deg, rgba(176, 80, 96, 0.06) 0%, transparent 100%);
 }
 
 /* ── Frente banner ─────────────────────────────────────────────────────────── */
@@ -721,8 +739,8 @@
   background: #070B14;
   border-radius: 28px;
   width: 100%;
-  max-width: 880px;
-  max-height: 90vh;
+  max-width: 1020px;
+  max-height: 94vh;
   overflow-y: auto;
   animation: fadeSlideUp var(--duration-base) var(--ease-out) both;
   box-shadow:
@@ -802,7 +820,6 @@
   flex-direction: column;
   gap: 10px;
   padding: 16px 24px 14px;
-  flex: 1;
 }
 
 /* ── Front wall indicator ───────────────────────────────────────────────────── */
@@ -830,11 +847,18 @@
   text-shadow: 0 0 10px rgba(123, 31, 46, 0.6);
 }
 
-/* ── Bench row — 4 columns ──────────────────────────────────────────────────── */
+/* ── Bench row — 4 columns (back row) ──────────────────────────────────────── */
 .strydeBenchRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
+}
+
+/* ── Bench row — 5 columns (front row) ─────────────────────────────────────── */
+.strydeBenchRowFront {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
 }
 
 /* ── Treadmill row — 6 columns ──────────────────────────────────────────────── */
@@ -878,6 +902,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   box-shadow:
     0 0 0 2px rgba(123, 31, 46, 0.4),
     0 0 16px rgba(123, 31, 46, 0.35);
@@ -896,6 +921,63 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.35);
+  font-family: 'Inter', var(--font-body);
+}
+
+/* ── Slow instructor zone (light theme) ─────────────────────────────────────── */
+.slowInstructorZone {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 2px 0;
+}
+
+.slowZoneLine {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(176, 80, 96, 0.22), transparent);
+}
+
+.slowInstructorBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.slowInstructorAvatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8849a 0%, #7B1F2E 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Inter', var(--font-body);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 2px rgba(176, 80, 96, 0.25),
+    0 4px 14px rgba(123, 31, 46, 0.22);
+}
+
+.slowInstructorName {
+  font-size: 10px;
+  font-weight: 600;
+  color: #3d1f1f;
+  font-family: 'Inter', var(--font-body);
+  white-space: nowrap;
+}
+
+.slowInstructorTitle {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(123, 31, 46, 0.55);
   font-family: 'Inter', var(--font-body);
 }
 
@@ -999,8 +1081,8 @@
 
 /* ── Icon wrappers ──────────────────────────────────────────────────────────── */
 .benchIconWrap {
-  width: 44px;
-  height: 28px;
+  width: 56px;
+  height: 18px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -1008,8 +1090,8 @@
 }
 
 .treadIconWrap {
-  width: 28px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -1202,7 +1284,8 @@
   display: flex;
   gap: 20px;
   justify-content: center;
-  padding: 4px 24px 14px;
+  padding: 2px 24px 6px;
+  margin-top: -6px;
 }
 
 .strydeLegend .legendItem {
@@ -1659,8 +1742,8 @@
   .strydeCardBench { min-height: 52px; }
   .strydeCardTread { min-height: 62px; }
 
-  .benchIconWrap { width: 34px; height: 20px; }
-  .treadIconWrap { width: 20px; height: 28px; }
+  .benchIconWrap { width: 34px; height: 11px; }
+  .treadIconWrap { width: 28px; height: 28px; }
 
   .strydeEquipNum { font-size: 10px; }
 
@@ -1674,7 +1757,7 @@
   .instructorName { font-size: 9px; }
   .instructorTitle { font-size: 7px; }
 
-  .strydeLegend { padding: 4px 12px 10px; gap: 14px; }
+  .strydeLegend { padding: 2px 12px 6px; gap: 14px; margin-top: -4px; }
 
   .strydeSidebar {
     width: 100%;
@@ -1719,5 +1802,6 @@
   }
 
   .strydeCardTread { min-height: 68px; }
-  .treadIconWrap { width: 22px; height: 32px; }
+  .benchIconWrap { width: 44px; height: 15px; }
+  .treadIconWrap { width: 34px; height: 34px; }
 }

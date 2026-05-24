@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { AuthProvider } from '@/context/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
@@ -6,34 +7,23 @@ import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import PageWrapper from '@/components/layout/PageWrapper'
 
+import ScrollToTop from '@/components/layout/ScrollToTop'
 import Home from '@/pages/Home'
 import Clases from '@/pages/Clases'
 import Suet from '@/pages/Suet'
 import Flow from '@/pages/Flow'
 import Nosotros from '@/pages/Nosotros'
 import Contacto from '@/pages/Contacto'
-import Reservar from '@/pages/Reservar'
 import Login from '@/pages/Login'
 import Registro from '@/pages/Registro'
 import RecuperarContrasena from '@/pages/RecuperarContrasena'
 import NuevaContrasena from '@/pages/NuevaContrasena'
 
-import ClientPanel from '@/pages/cliente/ClientPanel'
-import { Navigate } from 'react-router-dom'
-
-import CoachPanel from '@/pages/coach/CoachPanel'
-import CoachDashboard from '@/pages/coach/CoachDashboard'
-import CoachMisClases from '@/pages/coach/CoachMisClases'
-
-import AdminDashboard from '@/pages/admin/AdminDashboard'
-import AdminPanel from '@/pages/admin/AdminPanel'
-import AdminCoaches from '@/pages/admin/AdminCoaches'
-import AdminUsuarios from '@/pages/admin/AdminUsuarios'
-import AdminClases from '@/pages/admin/AdminClases'
-import AdminPaquetes from '@/pages/admin/AdminPaquetes'
-import AdminFinanzas from '@/pages/admin/AdminFinanzas'
-import AdminReportes from '@/pages/admin/AdminReportes'
 import NotFound from '@/pages/NotFound'
+
+const ClientPanel = lazy(() => import('@/pages/cliente/ClientPanel'))
+const CoachPanel  = lazy(() => import('@/pages/coach/CoachPanel'))
+const AdminPanel  = lazy(() => import('@/pages/admin/AdminPanel'))
 
 const DASHBOARD_PREFIXES = ['/cliente/', '/coach/', '/admin/']
 
@@ -49,25 +39,35 @@ function AnimatedRoutes() {
     return (
       <>
         <Navbar />
-      <Routes location={location} key={location.pathname}>
-        <Route path="/cliente/dashboard" element={<ProtectedRoute rolRequerido="cliente"><ClientPanel /></ProtectedRoute>} />
-        <Route path="/cliente/calendario" element={<Navigate to="/cliente/dashboard" replace />} />
-        <Route path="/cliente/mis-clases" element={<Navigate to="/cliente/dashboard" replace />} />
-        <Route path="/cliente/pagos" element={<Navigate to="/cliente/dashboard" replace />} />
-        <Route path="/cliente/perfil" element={<Navigate to="/cliente/dashboard" replace />} />
+        <Suspense fallback={
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: '100vh', fontFamily: 'var(--font-body)',
+            fontSize: 14, color: 'var(--text-muted)'
+          }}>
+            Cargando...
+          </div>
+        }>
+          <Routes location={location} key={location.pathname}>
+            <Route path="/cliente/dashboard" element={<ProtectedRoute rolRequerido="cliente"><ClientPanel /></ProtectedRoute>} />
+            <Route path="/cliente/calendario" element={<Navigate to="/cliente/dashboard" replace />} />
+            <Route path="/cliente/mis-clases" element={<Navigate to="/cliente/dashboard" replace />} />
+            <Route path="/cliente/pagos" element={<Navigate to="/cliente/dashboard" replace />} />
+            <Route path="/cliente/perfil" element={<Navigate to="/cliente/dashboard" replace />} />
 
-        <Route path="/coach/dashboard" element={<ProtectedRoute rolRequerido="coach"><CoachPanel /></ProtectedRoute>} />
-        <Route path="/coach/mis-clases" element={<ProtectedRoute rolRequerido="coach"><CoachMisClases /></ProtectedRoute>} />
+            <Route path="/coach/dashboard" element={<ProtectedRoute rolRequerido="coach"><CoachPanel /></ProtectedRoute>} />
+            <Route path="/coach/mis-clases" element={<Navigate to="/coach/dashboard" replace />} />
 
-        <Route path="/admin/dashboard" element={<ProtectedRoute rolRequerido="admin"><AdminPanel /></ProtectedRoute>} />
-        <Route path="/admin/coaches" element={<ProtectedRoute rolRequerido="admin"><AdminCoaches /></ProtectedRoute>} />
-        <Route path="/admin/usuarios" element={<ProtectedRoute rolRequerido="admin"><AdminUsuarios /></ProtectedRoute>} />
-        <Route path="/admin/clases" element={<ProtectedRoute rolRequerido="admin"><AdminClases /></ProtectedRoute>} />
-        <Route path="/admin/paquetes" element={<ProtectedRoute rolRequerido="admin"><AdminPaquetes /></ProtectedRoute>} />
-        <Route path="/admin/finanzas" element={<ProtectedRoute rolRequerido="admin"><AdminFinanzas /></ProtectedRoute>} />
-        <Route path="/admin/reportes" element={<ProtectedRoute rolRequerido="admin"><AdminReportes /></ProtectedRoute>} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+            <Route path="/admin/dashboard" element={<ProtectedRoute rolRequerido="admin"><AdminPanel /></ProtectedRoute>} />
+            <Route path="/admin/coaches"  element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/usuarios" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/clases"   element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/paquetes" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/finanzas" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/reportes" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </>
     )
   }
@@ -83,7 +83,7 @@ function AnimatedRoutes() {
           <Route path="/flow" element={<PageWrapper><Flow /></PageWrapper>} />
           <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
           <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
-          <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
+          <Route path="/reservar" element={<Navigate to="/clases" replace />} />
           <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
           <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />
           <Route path="/recuperar-contrasena" element={<PageWrapper><RecuperarContrasena /></PageWrapper>} />
@@ -100,6 +100,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ScrollToTop />
         <AnimatedRoutes />
       </AuthProvider>
     </BrowserRouter>

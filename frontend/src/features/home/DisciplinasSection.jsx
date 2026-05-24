@@ -1,32 +1,34 @@
 import { useNavigate } from 'react-router-dom'
 import MotionButton from '@/components/ui/MotionButton'
+import { useConfiguracionStore } from '@/stores/configuracionStore'
 import styles from './DisciplinasSection.module.css'
-
-const disciplinas = [
-  {
-    key: 'stride',
-    logo: '/brand/STRYDE_X_T.png',
-    logoAlt: 'STRYDE X',
-    subtexto: 'Alta intensidad',
-    ruta: '/clases?tipo=Stride',
-    rutaInfo: '/suet',
-    img: '/fotos/stride-hero.jpg',
-    alt: 'Sala Stride — treadmills con iluminación LED roja',
-  },
-  {
-    key: 'slow',
-    logo: '/brand/LOGO_SLOW.png',
-    logoAlt: 'slow.',
-    subtexto: 'Movimiento consciente',
-    ruta: '/clases?tipo=Slow',
-    rutaInfo: '/flow',
-    img: '/fotos/slow-hero.jpg',
-    alt: 'Sala Slow — pilates y movimiento consciente',
-  },
-]
 
 export default function DisciplinasSection() {
   const navigate = useNavigate()
+  const cfg = useConfiguracionStore()
+
+  const disciplinas = [
+    {
+      key: 'stride',
+      logo: '/brand/STRYDE_X_T.png',
+      logoAlt: 'STRYDE X',
+      subtexto: 'Alta intensidad',
+      ruta: '/clases?tipo=Stride',
+      rutaInfo: '/suet',
+      img: cfg.get('imagenStryde'),
+      alt: 'Sala Stride — treadmills con iluminación LED roja',
+    },
+    {
+      key: 'slow',
+      logo: '/brand/LOGO_SLOW.png',
+      logoAlt: 'slow.',
+      subtexto: 'Movimiento consciente',
+      ruta: '/clases?tipo=Slow',
+      rutaInfo: '/flow',
+      img: cfg.get('imagenSlow'),
+      alt: 'Sala Slow — pilates y movimiento consciente',
+    },
+  ]
 
   return (
     <section className={styles.wrapper}>

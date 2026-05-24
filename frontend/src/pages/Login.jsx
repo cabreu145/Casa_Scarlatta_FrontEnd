@@ -163,9 +163,6 @@ function LoginForm({ from }) {
       <button type="submit" className={styles.submitBtn} disabled={loading}>
         {loading ? 'Entrando...' : 'Entrar'}
       </button>
-      <p className={styles.hint}>
-        Prueba: cliente@casascarlatta.com / 123456
-      </p>
     </form>
   )
 }
@@ -225,8 +222,8 @@ function RegisterForm({ onSuccess, LegalModal: Modal }) {
         telefono: form.telefono,
         fechaNacimiento: form.fechaNacimiento,
       })
-      toast.success('¡Bienvenida a Casa Scarlatta!')
-      navigate('/', { replace: true })
+      toast.success('¡Cuenta creada! Revisa tu correo de bienvenida 📧')
+      navigate('/cliente/dashboard', { replace: true })
     } catch (err) {
       if (err.message?.includes('registrado')) {
         setErrors({ email: 'Este email ya está registrado' })

@@ -19,6 +19,7 @@ import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import { adminLinks }          from './AdminDashboard'
+import DateNavigator           from '@/components/ui/DateNavigator'
 import { useClasesStore }      from '@/stores/clasesStore'
 import { useCoachesStore }     from '@/stores/coachesStore'
 import { useTransaccionesStore } from '@/stores/transaccionesStore'
@@ -58,6 +59,32 @@ function parseMonto(v) {
   return isNaN(n) ? 0 : n
 }
 
+function labelPeriodo(p) {
+  if (!p) return 'historico'
+  if (p.tipo === 'hoy')    return 'hoy'
+  if (p.tipo === 'semana') return 'semana'
+  if (p.tipo === 'mes')    return 'mes'
+  if (p.tipo === 'fecha')  return p.fecha ?? 'fecha'
+  if (p.tipo === 'rango') {
+    const { fechaDesde, fechaHasta } = p
+    return fechaDesde && fechaHasta ? `${fechaDesde}_${fechaHasta}` : 'rango'
+  }
+  return 'historico'
+}
+
+function tituloPeriodo(p) {
+  if (!p) return 'Historial completo'
+  if (p.tipo === 'hoy')    return 'Hoy'
+  if (p.tipo === 'semana') return 'Esta semana'
+  if (p.tipo === 'mes')    return 'Este mes'
+  if (p.tipo === 'fecha')  return p.fecha ?? ''
+  if (p.tipo === 'rango') {
+    const { fechaDesde, fechaHasta } = p
+    return fechaDesde && fechaHasta ? `Del ${fechaDesde} al ${fechaHasta}` : 'Rango de fechas'
+  }
+  return 'Historial completo'
+}
+
 function exportarExcel(datos, nombre, filasTotales = []) {
   if (!datos?.length) { toast.error('Sin datos para exportar'); return }
   const cols       = Object.keys(datos[0])
@@ -95,7 +122,7 @@ function exportarExcelFinanciero(datos, nombre) {
 
 
 // ── Datos para cada reporte ───────────────────────────────────────────────────
-function useReporteData() {
+function useReporteData(periodoReporte = { tipo: 'todos' }) {
   const { clases }             = useClasesStore()
   const { coaches }            = useCoachesStore()
   const { transacciones }      = useTransaccionesStore()
@@ -103,7 +130,24 @@ function useReporteData() {
   const { usuarios: todos }    = useUsuariosStore()
   const clientes               = mockUsers.filter(u => u.rol === 'cliente')
 
-  const financiero = useMemo(() => transacciones.map(tx => ({
+  const hoy    = new Date().toISOString().split('T')[0]
+  const semana = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
+  const mes    = hoy.slice(0, 7)
+
+  const txFiltradas = useMemo(() => transacciones.filter(tx => {
+    if (periodoReporte.tipo === 'hoy')    return tx.fecha === hoy
+    if (periodoReporte.tipo === 'semana') return tx.fecha >= semana
+    if (periodoReporte.tipo === 'mes')    return tx.fecha?.slice(0, 7) === mes
+    if (periodoReporte.tipo === 'fecha')  return tx.fecha === periodoReporte.fecha
+    if (periodoReporte.tipo === 'rango') {
+      const { fechaDesde, fechaHasta } = periodoReporte
+      if (!fechaDesde || !fechaHasta) return true
+      return tx.fecha >= fechaDesde && tx.fecha <= fechaHasta
+    }
+    return true
+  }), [transacciones, periodoReporte, hoy, semana, mes])
+
+  const financiero = useMemo(() => txFiltradas.map(tx => ({
     Fecha:     tx.fecha,
     Día:       diaSemana(tx.fecha),
     Hora:      tx.hora ?? '—',
@@ -112,7 +156,7 @@ function useReporteData() {
     Canal:     tx.canal ?? '—',
     Método:    tx.metodoPago ?? '—',
     Monto:     tx.monto,
-  })), [transacciones])
+  })), [txFiltradas])
 
   const usuarios = useMemo(() => clientes.map(u => {
     const txPaquetes = transacciones
@@ -145,7 +189,7 @@ function useReporteData() {
   })), [clases])
 
   const paquetes = useMemo(() => {
-    const ventas = transacciones.filter(tx => tx.tipo === 'paquete')
+    const ventas = txFiltradas.filter(tx => tx.tipo === 'paquete')
     return ventas.map(tx => {
       const usuario = todos.find(u => u.id === tx.userId)
       const paqInfo = catalogo.find(p => tx.concepto?.includes(p.nombre))
@@ -168,10 +212,10 @@ function useReporteData() {
         Monto:       tx.monto,
       }
     })
-  }, [transacciones, todos, catalogo])
+  }, [txFiltradas, todos, catalogo])
 
   const pdv = useMemo(() => {
-    const ventas = transacciones.filter(tx => tx.tipo === 'producto')
+    const ventas = txFiltradas.filter(tx => tx.tipo === 'producto')
     return ventas.map(tx => ({
       Fecha:     tx.fecha,
       Día:       diaSemana(tx.fecha),
@@ -181,7 +225,7 @@ function useReporteData() {
       Método:    tx.metodoPago ?? '—',
       Monto:     tx.monto,
     }))
-  }, [transacciones])
+  }, [txFiltradas])
 
   return { financiero, usuarios, clasesData, paquetes, pdv }
 }
@@ -407,8 +451,22 @@ const inputTabStyle = {
 
 // ── Tabla de coaches ──────────────────────────────────────────────────────────
 function TablaCoaches({ periodo, setPeriodo }) {
-  const reporte = useMemo(() => getReporteCoaches(periodo, true), [periodo])
-  const [expandido, setExpandido] = useState(null)
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
+  const [expandido, setExpandido]   = useState(null)
+
+  const rangoFecha = (fechaDesde && fechaHasta)
+    ? { tipo: 'rango', fechaDesde, fechaHasta }
+    : null
+
+  const reporte = useMemo(() => getReporteCoaches(periodo, true, rangoFecha), [periodo, rangoFecha])
+
+  const periodoLabel = rangoFecha
+    ? `Del ${fechaDesde} al ${fechaHasta}`
+    : (periodo === 'quincena' ? 'Quincena actual' : 'Mes actual')
+  const periodoKey = rangoFecha
+    ? `${fechaDesde}_${fechaHasta}`
+    : periodo
 
   const datosCoachesPlanos = useMemo(() => reporte.flatMap(coach =>
     coach.detalleClases.map(c => ({
@@ -416,6 +474,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
       Especialidad:  coach.especialidad,
       Clase:         c.nombre,
       Tipo:          c.tipo,
+      Fecha:         c.fecha ?? '—',
       Día:           c.dia,
       Hora:          c.hora,
       Asistentes:    c.asistentes,
@@ -426,7 +485,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
   ), [reporte])
 
   const exportarCoaches = () => {
-    exportarExcel(datosCoachesPlanos, `reporte_coaches_${periodo}_${new Date().toISOString().split('T')[0]}`)
+    exportarExcel(datosCoachesPlanos, `reporte_coaches_${periodoKey}_${new Date().toISOString().split('T')[0]}`)
   }
 
   const exportarCoachesPDF = () => {
@@ -434,8 +493,16 @@ function TablaCoaches({ periodo, setPeriodo }) {
       tipo:    'coaches',
       titulo:  'Reporte de Coaches',
       datos:   datosCoachesPlanos,
-      periodo: periodo === 'quincena' ? 'Quincena actual' : periodoActual(),
+      periodo: periodoLabel,
     })
+  }
+
+  const inputDateStyle = {
+    padding: '6px 10px', borderRadius: 8,
+    border: '1px solid var(--neutral-border)',
+    background: '#1E1014', color: 'var(--text-primary)',
+    fontFamily: 'var(--font-body)', fontSize: 12,
+    cursor: 'pointer',
   }
 
   return (
@@ -446,7 +513,8 @@ function TablaCoaches({ periodo, setPeriodo }) {
       padding:      '20px 24px',
       marginBottom: 16,
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <div style={{ fontFamily: 'var(--font-heading)', fontSize: 15, color: 'var(--text-primary)' }}>
             Reporte de coaches
@@ -455,7 +523,8 @@ function TablaCoaches({ periodo, setPeriodo }) {
             Clases impartidas, ocupación y pago calculado automáticamente
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Quincena/Mes — siempre visible */}
           <div style={{ display: 'flex', gap: 4, background: '#1E1014', padding: 4, borderRadius: 8 }}>
             {[{ v: 'quincena', l: 'Quincena' }, { v: 'mes', l: 'Mes' }].map(({ v, l }) => (
               <button key={v} onClick={() => setPeriodo(v)} style={{
@@ -482,6 +551,58 @@ function TablaCoaches({ periodo, setPeriodo }) {
           </button>
         </div>
       </div>
+
+      {/* Filtro por rango de fechas */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)' }}>
+          Filtrar por período:
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)' }}>Desde</span>
+          <input
+            type="date"
+            value={fechaDesde}
+            onChange={e => setFechaDesde(e.target.value)}
+            style={inputDateStyle}
+          />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)' }}>Hasta</span>
+          <input
+            type="date"
+            value={fechaHasta}
+            min={fechaDesde || undefined}
+            onChange={e => setFechaHasta(e.target.value)}
+            style={inputDateStyle}
+          />
+        </div>
+        {(fechaDesde || fechaHasta) && (
+          <button
+            onClick={() => { setFechaDesde(''); setFechaHasta('') }}
+            style={{
+              padding: '5px 12px', borderRadius: 8, border: '1px solid var(--neutral-border)',
+              background: 'transparent', color: 'var(--text-muted)',
+              fontFamily: 'var(--font-body)', fontSize: 12, cursor: 'pointer',
+            }}
+          >
+            × Limpiar
+          </button>
+        )}
+      </div>
+
+      {/* Indicador período activo cuando hay rango personalizado */}
+      {rangoFecha && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
+          padding: '7px 12px',
+          background: 'rgba(123,31,46,0.1)', border: '1px solid rgba(123,31,46,0.25)', borderRadius: 8,
+        }}>
+          <span style={{ fontSize: 13 }}>📅</span>
+          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#E8A4AD' }}>
+            Mostrando: <strong>{periodoLabel}</strong>
+          </span>
+        </div>
+      )}
 
       {reporte.map(coach => (
         <div key={coach.coachId} style={{
@@ -545,7 +666,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
                 <thead>
                   <tr>
-                    {['Clase', 'Tipo', 'Día', 'Hora', 'Asistentes', 'Capacidad', 'Ocupación', 'Pago clase'].map(h => (
+                    {['Clase', 'Tipo', 'Fecha', 'Hora', 'Asistentes', 'Capacidad', 'Ocupación', 'Pago clase'].map(h => (
                       <th key={h} style={{
                         fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)',
                         textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)',
@@ -565,7 +686,14 @@ function TablaCoaches({ periodo, setPeriodo }) {
                           color:      c.tipo === 'Stryde X' ? '#ef4444' : '#3b82f6',
                         }}>{c.tipo}</span>
                       </td>
-                      <td style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>{c.dia}</td>
+                      <td style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {c.fecha
+                          ? (() => {
+                              const d = new Date(c.fecha + 'T00:00:00')
+                              return d.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+                            })()
+                          : (c.dia ?? '—')}
+                      </td>
                       <td style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>{c.hora}</td>
                       <td style={{ padding: '10px 10px', textAlign: 'center' }}>
                         <span style={{
@@ -603,7 +731,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
                 <tfoot>
                   <tr>
                     <td colSpan={7} style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', textAlign: 'right' }}>
-                      Total a pagar ({periodo}):
+                      Total a pagar ({periodoLabel}):
                     </td>
                     <td style={{ padding: '10px 10px', fontFamily: 'var(--font-display)', fontSize: 18, color: '#22c55e', fontWeight: 600, textAlign: 'right' }}>
                       ${(coach.totalPago ?? 0).toLocaleString()}
@@ -623,7 +751,9 @@ function TablaCoaches({ periodo, setPeriodo }) {
 export function ReportesSection({ inPanel = false }) {
   const { clases }           = useClasesStore()
   const { transacciones }    = useTransaccionesStore()
-  const [periodoCoach, setPeriodoCoach] = useState('mes')
+  const [periodoCoach, setPeriodoCoach]     = useState('mes')
+  const [periodoReporte, setPeriodoReporte] = useState({ tipo: 'todos' })
+  const [navKey, setNavKey]                 = useState(0)
 
   const clientes         = mockUsers.filter(u => u.rol === 'cliente')
   const clientesActivos  = clientes.filter(u => u.activo)
@@ -641,7 +771,11 @@ export function ReportesSection({ inPanel = false }) {
     .sort((a,b) => b.cupoActual - a.cupoActual)
     .slice(0,5)
 
-  const { financiero, usuarios, clasesData, paquetes, pdv } = useReporteData()
+  const { financiero, usuarios, clasesData, paquetes, pdv } = useReporteData(periodoReporte)
+
+  const label  = labelPeriodo(periodoReporte)
+  const titulo = tituloPeriodo(periodoReporte)
+  const hoyStr = new Date().toISOString().split('T')[0]
 
   const panelStyle = {
     background:   'var(--neutral-card)',
@@ -654,25 +788,62 @@ export function ReportesSection({ inPanel = false }) {
   return (
     <>
       <div className={inPanel ? undefined : styles.page}>
+        {/* ── Filtro de período ── */}
+        <DateNavigator
+          key={navKey}
+          modo="libre"
+          darkMode={true}
+          inicial="todos"
+          onChange={(r) => setPeriodoReporte(r)}
+        />
+
+        {/* ── Indicador visual del período activo ── */}
+        {periodoReporte.tipo !== 'todos' && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            marginBottom: 16, marginTop: -8,
+            padding: '8px 14px',
+            background: 'rgba(123,31,46,0.1)',
+            border: '1px solid rgba(123,31,46,0.25)',
+            borderRadius: 8,
+          }}>
+            <span style={{ fontSize: 14 }}>📋</span>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#E8A4AD' }}>
+              Los reportes incluyen datos de: <strong>{titulo}</strong>
+            </span>
+            <button
+              onClick={() => { setPeriodoReporte({ tipo: 'todos' }); setNavKey(k => k + 1) }}
+              style={{
+                marginLeft: 'auto', background: 'none', border: 'none',
+                color: 'rgba(255,255,255,0.35)', cursor: 'pointer',
+                fontSize: 16, lineHeight: 1, padding: '0 4px',
+              }}
+              title="Limpiar filtro"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* ── Tarjetas de descarga rápida ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 24 }}>
           <ReportCard
             icono="💰" titulo="Reporte financiero"
             descripcion="Ingresos, gastos, desglose por categoría y período"
-            onExcel={() => exportarExcelFinanciero(financiero, `financiero_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => abrirReportePDF({ tipo: 'financiero', titulo: 'Reporte Financiero', datos: financiero })}
+            onExcel={() => exportarExcelFinanciero(financiero, `financiero_${label}_${hoyStr}`)}
+            onPDF={() => abrirReportePDF({ tipo: 'financiero', titulo: `Reporte Financiero — ${titulo}`, datos: financiero, periodo: titulo })}
           />
           <ReportCard
             icono="👥" titulo="Reporte de usuarios"
             descripcion="Lista completa, paquetes activos e historial"
-            onExcel={() => exportarExcel(usuarios, `usuarios_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => abrirReportePDF({ tipo: 'usuarios', titulo: 'Reporte de Usuarios', datos: usuarios })}
+            onExcel={() => exportarExcel(usuarios, `usuarios_${label}_${hoyStr}`)}
+            onPDF={() => abrirReportePDF({ tipo: 'usuarios', titulo: `Reporte de Usuarios — ${titulo}`, datos: usuarios, periodo: titulo })}
           />
           <ReportCard
             icono="🏃" titulo="Reporte de clases"
             descripcion="Asistencia por clase, ocupación y horarios pico"
-            onExcel={() => exportarExcel(clasesData, `clases_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => abrirReportePDF({ tipo: 'clases', titulo: 'Reporte de Clases', datos: clasesData })}
+            onExcel={() => exportarExcel(clasesData, `clases_${label}_${hoyStr}`)}
+            onPDF={() => abrirReportePDF({ tipo: 'clases', titulo: `Reporte de Clases — ${titulo}`, datos: clasesData, periodo: titulo })}
           />
           <ReportCard
             icono="📦" titulo="Reporte de paquetes"
@@ -680,15 +851,15 @@ export function ReportesSection({ inPanel = false }) {
             onExcel={() => {
               const total = paquetes.reduce((a, r) => a + parseMonto(r.Monto), 0)
               const vacio = Object.fromEntries(Object.keys(paquetes[0] ?? {}).map(k => [k, '']))
-              exportarExcel(paquetes, `paquetes_${new Date().toISOString().split('T')[0]}`, [{ ...vacio, Concepto: 'TOTAL', Monto: total }])
+              exportarExcel(paquetes, `paquetes_${label}_${hoyStr}`, [{ ...vacio, Concepto: 'TOTAL', Monto: total }])
             }}
-            onPDF={() => abrirReportePDF({ tipo: 'paquetes', titulo: 'Reporte de Paquetes', datos: paquetes })}
+            onPDF={() => abrirReportePDF({ tipo: 'paquetes', titulo: `Reporte de Paquetes — ${titulo}`, datos: paquetes, periodo: titulo })}
           />
           <ReportCard
             icono="🛒" titulo="Reporte punto de venta"
             descripcion="Ventas de productos e inventario"
-            onExcel={() => exportarExcel(pdv, `pdv_${new Date().toISOString().split('T')[0]}`)}
-            onPDF={() => abrirReportePDF({ tipo: 'pdv', titulo: 'Reporte Punto de Venta', datos: pdv })}
+            onExcel={() => exportarExcel(pdv, `pdv_${label}_${hoyStr}`)}
+            onPDF={() => abrirReportePDF({ tipo: 'pdv', titulo: `Reporte Punto de Venta — ${titulo}`, datos: pdv, periodo: titulo })}
           />
         </div>
 

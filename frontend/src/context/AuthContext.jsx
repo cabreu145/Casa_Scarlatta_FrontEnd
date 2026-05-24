@@ -15,6 +15,8 @@ import { useAuthStore }   from '@/stores/authStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import { mockUsers } from '@/data/mockUsers'
 import { hoyLocal } from '@/utils/fecha'
+import { logUsuarioNuevo, logLoginCliente } from '@/services/actividadService'
+import { emailBienvenida, emailResetPassword } from '@/services/emailService'
 
 const AuthContext = createContext(null)
 
@@ -44,6 +46,9 @@ export function AuthProvider({ children }) {
     const { password: _, ...safeUser } = user
     setUsuario(safeUser)
     setLocalLoading(false)
+    if (safeUser.rol === 'cliente') {
+      logLoginCliente({ nombre: safeUser.nombre ?? safeUser.name, email: safeUser.email })
+    }
     return safeUser
   }
 
@@ -66,11 +71,20 @@ export function AuthProvider({ children }) {
       activo: true,
       fechaRegistro: hoyLocal(),
     }
-    mockUsers.push(nuevoUsuario)
     useUsuariosStore.getState().agregarUsuario(nuevoUsuario)
     const { password: _, ...safeUser } = nuevoUsuario
     setUsuario(safeUser)
     setLocalLoading(false)
+    logUsuarioNuevo({
+      nombre: datos.nombre ?? datos.name ?? 'Usuario nuevo',
+      email:  datos.email,
+    })
+    // Enviar email de bienvenida
+    // [BACKEND] → POST /api/email/send { plantilla: 'bienvenida' }
+    emailBienvenida({
+      nombre: datos.nombre ?? datos.name ?? 'Cliente',
+      email:  datos.email,
+    }).catch(() => {}) // No bloquear el flujo si falla el email
     return safeUser
   }
 
@@ -78,15 +92,18 @@ export function AuthProvider({ children }) {
     setLocalLoading(true)
     await new Promise((r) => setTimeout(r, 600))
     const { usuarios, actualizarUsuario } = useUsuariosStore.getState()
-    const mu = mockUsers.find((u) => u.email === email)
     const su = usuarios.find((u) => u.email === email)
-    if (!mu && !su) {
+    if (!su) {
       setLocalLoading(false)
       throw new Error('No existe una cuenta con ese correo')
     }
-    if (mu) mu.password = newPassword
-    if (su) actualizarUsuario(su.id, { password: newPassword })
+    actualizarUsuario(su.id, { password: newPassword })
     setLocalLoading(false)
+    // [BACKEND] → El backend genera el token y envía el link real.
+    emailResetPassword({
+      nombre: su.nombre ?? su.name ?? 'Cliente',
+      email:  su.email,
+    }).catch(() => {})
   }
 
   const logout = () => {

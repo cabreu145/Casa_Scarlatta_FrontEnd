@@ -14,52 +14,22 @@ import { useUsuariosStore }      from '@/stores/usuariosStore'
 import { useCoachesStore }       from '@/stores/coachesStore'
 import { usePaquetesStore }      from '@/stores/paquetesStore'
 import { useTransaccionesStore } from '@/stores/transaccionesStore'
+import { useListaEsperaStore }   from '@/stores/listaEsperaStore'
 import { reservarClase, cancelarReserva } from '@/services/reservasService'
 import { editarPerfilService }            from '@/services/usuariosService'
 import { isPublished }                    from '@/services/classService'
-import { hoyLocal }                       from '@/utils/fecha'
+import { logListaEsperaUnirse, logListaEsperaSalir } from '@/services/actividadService'
+import {
+  hoyLocal,
+  DAYS_ES, DAYS_ABBR, MONTHS_ES,
+  buildWeek, weekRangeLabel, formatHour, formatFechaISO,
+} from '@/utils/formatters'
 import s from './ClientPanel.module.css'
-
-// ── Week helpers ───────────────────────────────────────────────────────────────
-const DAYS_ES   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
-const DAYS_ABBR = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB']
-const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
-
-function buildWeek(off) {
-  const base = new Date()
-  base.setDate(base.getDate() + off * 7)
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(base); d.setDate(base.getDate() + i)
-    const y  = d.getFullYear()
-    const m  = String(d.getMonth() + 1).padStart(2, '0')
-    const dd = String(d.getDate()).padStart(2, '0')
-    return {
-      fullName: DAYS_ES[d.getDay()],
-      abbr:     DAYS_ABBR[d.getDay()],
-      num:      d.getDate(),
-      month:    d.getMonth(),
-      year:     d.getFullYear(),
-      isoDate:  `${y}-${m}-${dd}`,
-    }
-  })
-}
-
-function weekRangeLabel(days) {
-  const f = days[0], l = days[6]
-  return f.month === l.month
-    ? `${MONTHS_ES[f.month]} ${f.year}`
-    : `${MONTHS_ES[f.month]} – ${MONTHS_ES[l.month]} ${l.year}`
-}
-
-function formatHour(time) {
-  const [h, m] = time.split(':').map(Number)
-  const suffix = h >= 12 ? 'p.m.' : 'a.m.'
-  const hr     = h > 12 ? h - 12 : h === 0 ? 12 : h
-  return `${hr}:${String(m || 0).padStart(2, '0')} ${suffix}`
-}
+import MisClasesCard from './MisClasesCard'
+import ClassCard from './ClassCard'
 
 const AVATAR_COLORS = [
-  { bg: 'rgba(123,30,43,0.13)',  text: '#7B1E2B' },
+  { bg: 'var(--brand-wine-13)',  text: '#7B1E2B' },
   { bg: 'rgba(194,107,122,0.18)', text: '#b05060' },
   { bg: 'rgba(154,123,107,0.18)', text: '#7A6560' },
   { bg: 'rgba(92,16,24,0.13)',   text: '#5C1018'  },
@@ -68,13 +38,6 @@ const AVATAR_COLORS = [
 function avatarStyle(name) {
   const idx = name.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % AVATAR_COLORS.length
   return AVATAR_COLORS[idx]
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function formatFechaISO(iso) {
-  if (!iso) return null
-  const [y, m, d] = iso.split('-').map(Number)
-  return `${d} de ${MONTHS_ES[m - 1]} de ${y}`
 }
 
 const SECTION_META = {
@@ -128,7 +91,7 @@ function toClsShape(r) {
 
 export default function ClientPanel() {
   const navigate = useNavigate()
-  const { usuario } = useAuth()
+  const { usuario, logout } = useAuth()
 
   // ── Stores ────────────────────────────────────────────────────────────────
   const { reservas } = useReservasStore()
@@ -137,6 +100,7 @@ export default function ClientPanel() {
   const { coaches }   = useCoachesStore()
   const { paquetes }  = usePaquetesStore()
   const { getTransaccionesByUsuario } = useTransaccionesStore()
+  const listaEsperaStore = useListaEsperaStore()
 
   // Historial real de pagos del usuario
   const historialPagos = usuario?.id ? getTransaccionesByUsuario(usuario.id) : []
@@ -274,8 +238,52 @@ export default function ClientPanel() {
     (r) => r.estado === 'completada' || r.estado === 'no_asistio'
   ).length
 
+  // ── Métricas de progreso mensual ─────────────────────────────────────
+  // [BACKEND] → GET /api/usuarios/:id/progreso?mes=YYYY-MM
+  // Cuando haya backend: reemplazar este bloque por una llamada HTTP
+  // y mostrar los datos del servidor directamente.
+
+  const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+
+  const esMesActual = (r) => {
+    if (r.fecha) return r.fecha.startsWith(mesActual)
+    // Clases recurrentes (sin fecha) se consideran del mes actual si están confirmadas
+    return true
+  }
+
+  const clasesTomadasEsteMes = reservasUsuario.filter(r => {
+    if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
+    return esMesActual(r)
+  }).length
+
+  const strideEsteMes = reservasUsuario.filter(r => {
+    if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
+    return esMesActual(r) && !r.tipo?.toLowerCase().includes('slow')
+  }).length
+
+  const slowEsteMes = reservasUsuario.filter(r => {
+    if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
+    const fechaR = r.fecha ?? ''
+    return fechaR.startsWith(mesActual) && r.tipo?.toLowerCase().includes('slow')
+  }).length
+
+  // [BACKEND] → Este valor debería venir del perfil del usuario
+  // como usuario.metaMensual o del paquete activo.
+  const metaMensual = clasesTotal > 0 && usuario?.clasesPaquete !== 999
+    ? clasesTotal
+    : 20
+
+  const pctProgreso = metaMensual > 0
+    ? Math.min(100, Math.round((clasesTomadasEsteMes / metaMensual) * 100))
+    : 0
+
+  const pctPaquete = clasesTotal > 0 && usuario?.clasesPaquete !== 999
+    ? Math.min(100, Math.round((clasesUsadas / clasesTotal) * 100))
+    : 0
+
   // ── Clases disponibles para reservar (solo las ya publicadas) ───────────
   const availableClases = clases.filter(isPublished).map((c) => ({
+    _raw:       c,                 // referencia directa al objeto original
     id:         c.id,
     title:      c.nombre,
     coach:      c.coachNombre,
@@ -290,7 +298,7 @@ export default function ClientPanel() {
   // ── Handlers ─────────────────────────────────────────────────────────────
   function handleCancelReserva(reservaId) {
     const resultado = cancelarReserva(reservaId, usuario.id)
-    if (resultado.ok) toast.success('Reserva cancelada')
+    if (resultado.ok) toast.success('Reserva cancelada. Te enviamos confirmación por correo 📧')
     else toast.error(resultado.error)
   }
 
@@ -301,8 +309,57 @@ export default function ClientPanel() {
       toast.error(resultado.error)
       return
     }
-    toast.success('¡Reserva confirmada!')
+    toast.success('Tu reserva quedó confirmada. Revisa tu correo con los detalles 📧')
     goTo('clases')
+  }
+
+  function handleUnirseListaEspera(av) {
+    if (!usuario?.id) return
+    const resultado = listaEsperaStore.unirse({
+      claseId: av.id,
+      userId:  usuario.id,
+      nombre:  userName,
+    })
+    if (!resultado.ok) {
+      toast.error(resultado.error)
+      return
+    }
+    const posicion = listaEsperaStore.getPosicion(av.id, usuario.id)
+    toast.success(
+      `¡Estás en la lista de espera! Posición #${posicion}. ` +
+      `Te enviaremos un correo si se libera un lugar 📧`,
+      { duration: 5000 }
+    )
+    logListaEsperaUnirse({
+      usuarioNombre: userName,
+      usuarioId:     usuario.id,
+      claseNombre:   av.title,
+      posicion,
+    })
+    // [BACKEND] → POST /api/email/send { plantilla: 'lista_espera_unirse' }
+    const uData = usuarios.find(u => u.id === usuario?.id)
+    if (uData?.email) {
+      import('@/services/emailService').then(({ emailListaEsperaUnirse }) => {
+        emailListaEsperaUnirse({
+          nombre:      userName,
+          email:       uData.email,
+          claseNombre: av.title,
+          posicion,
+          dia:         av.date,
+          hora:        av.time,
+        }).catch(() => {})
+      })
+    }
+  }
+
+  function handleSalirListaEspera(av) {
+    listaEsperaStore.salir({ claseId: av.id, userId: usuario.id })
+    toast('Saliste de la lista de espera', { icon: '↩️' })
+    logListaEsperaSalir({
+      usuarioNombre: userName,
+      usuarioId:     usuario.id,
+      claseNombre:   av.title,
+    })
   }
 
   const navGroups = [
@@ -357,7 +414,7 @@ export default function ClientPanel() {
         ))}
 
         <div className={s.sidebarFooter}>
-          <button className={s.logoutLink} onClick={() => { setIsSidebarOpen(false); navigate('/login') }}>
+          <button className={s.logoutLink} onClick={() => { logout(); setIsSidebarOpen(false); navigate('/') }}>
             <LogOut size={14} strokeWidth={2} />
             Cerrar sesión
           </button>
@@ -434,7 +491,7 @@ export default function ClientPanel() {
             {/* Banner créditos bajos */}
             {typeof clasesRestantes === 'number' && clasesRestantes <= 2 && (
               <div style={{
-                background: 'rgba(123,31,46,0.08)', border: '1px solid rgba(123,31,46,0.22)',
+                background: 'var(--brand-wine-08)', border: '1px solid var(--brand-wine-22)',
                 borderRadius: 12, padding: '10px 16px', marginBottom: 16,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
                 fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--wine)',
@@ -530,34 +587,82 @@ export default function ClientPanel() {
               <div className={s.card}>
                 <div className={s.cardHeader}>
                   <div className={s.cardTitle}>Mi progreso</div>
-                  <div className={s.cardSubtitle}>Abril 2025</div>
+                  <div className={s.cardSubtitle}>{MONTHS_ES[new Date().getMonth()]} {new Date().getFullYear()}</div>
                 </div>
                 <div className={s.cardBody}>
+                  {/* Clases completadas este mes */}
                   <div style={{ marginBottom: 18 }}>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Clases completadas</div>
+                    <div style={{
+                      fontSize: 12, color: 'var(--muted)', marginBottom: 10,
+                      fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
+                    }}>
+                      Clases este mes
+                    </div>
                     <div className={s.progressWrap}>
-                      <div className={s.progressLabel}><span>12 de 20 <strong>meta mensual</strong></span><strong>60%</strong></div>
-                      <div className={s.progressBar}><div className={s.progressFill} style={{ width: '60%' }} /></div>
+                      <div className={s.progressLabel}>
+                        <span>
+                          {clasesTomadasEsteMes} de {metaMensual}{' '}
+                          <strong>meta mensual</strong>
+                        </span>
+                        <strong>{pctProgreso}%</strong>
+                      </div>
+                      <div className={s.progressBar}>
+                        <div className={s.progressFill} style={{ width: `${pctProgreso}%` }} />
+                      </div>
                     </div>
                   </div>
-                  <div style={{ marginBottom: 18 }}>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Paquete utilizado</div>
-                    <div className={s.progressWrap}>
-                      <div className={s.progressLabel}><span>2 de 10 <strong>clases usadas</strong></span><strong>20%</strong></div>
-                      <div className={s.progressBar}><div className={s.progressFill} style={{ width: '20%' }} /></div>
+
+                  {/* Paquete utilizado */}
+                  {usuario?.clasesPaquete !== 999 && clasesTotal > 0 && (
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{
+                        fontSize: 12, color: 'var(--muted)', marginBottom: 10,
+                        fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
+                      }}>
+                        Paquete utilizado
+                      </div>
+                      <div className={s.progressWrap}>
+                        <div className={s.progressLabel}>
+                          <span>
+                            {clasesUsadas} de {clasesTotal}{' '}
+                            <strong>clases usadas</strong>
+                          </span>
+                          <strong>{pctPaquete}%</strong>
+                        </div>
+                        <div className={s.progressBar}>
+                          <div className={s.progressFill} style={{ width: `${pctPaquete}%` }} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Desglose por disciplina */}
                   <div className={s.miniGrid}>
                     <div className={s.miniGridItem}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: 'var(--wine)' }}>5</div>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontSize: 26,
+                        fontWeight: 600, color: 'var(--wine)',
+                      }}>
+                        {strideEsteMes}
+                      </div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>STRYDE</div>
                     </div>
                     <div className={s.miniGridItem}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: '#2464B4' }}>7</div>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontSize: 26,
+                        fontWeight: 600, color: '#2464B4',
+                      }}>
+                        {slowEsteMes}
+                      </div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>SLOW</div>
                     </div>
                     <div className={s.miniGridItem}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: 'var(--ink)' }}>12</div>
+                      <div style={{
+                        fontFamily: 'var(--font-display)', fontSize: 26,
+                        fontWeight: 600, color: 'var(--ink)',
+                      }}>
+                        {clasesTomadasEsteMes}
+                      </div>
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>Total</div>
                     </div>
                   </div>
@@ -589,7 +694,9 @@ export default function ClientPanel() {
               ><ChevronLeft size={18} /></button>
               <div className={s.dayTabs}>
                 {weekDays.map((day, i) => {
-                  const hasCls = reservasUsuario.some(r => r.claseDia === day.fullName && r.estado !== 'cancelada')
+                  const hasCls = reservasUsuario.some(r =>
+                    (r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName) && r.estado !== 'cancelada'
+                  )
                   return (
                     <button
                       key={i}
@@ -614,7 +721,7 @@ export default function ClientPanel() {
             {(() => {
               const day = weekDays[dayIdx]
               const dayClasses = reservasUsuario
-                .filter(r => r.claseDia === day.fullName)
+                .filter(r => r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName)
                 .map(toClsShape)
               return dayClasses.length > 0 ? (
                 <div>
@@ -713,36 +820,84 @@ export default function ClientPanel() {
                           </div>
                         </div>
                         <div className={s.pubActions}>
-                          {alreadyBooked ? (() => {
+                          {(() => {
                             const classTime = new Date(day.isoDate + 'T' + av.time + ':00')
-                            if (classTime <= new Date()) {
-                              return (
+                            const isPast = classTime <= new Date()
+                            if (alreadyBooked) {
+                              if (isPast) return (
                                 <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
                                   Clase finalizada
                                 </span>
                               )
+                              return <span className={`${s.statusPill} ${s.statusConfirmada}`}>Reservada</span>
                             }
-                            return <span className={`${s.statusPill} ${s.statusConfirmada}`}>Reservada</span>
-                          })() : isFull ? (
-                            <span className={s.pubFullTag}>LLENO</span>
-                          ) : (
-                            <>
-                              <span className={`${s.pubAvailTag} ${isLow ? s.pubAvailLow : s.pubAvailOk}`}>
-                                <span className={s.pubAvailDot} />
-                                {av.spots} {av.spots === 1 ? 'lugar' : 'lugares'}
+                            if (isPast) return (
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
+                                Clase finalizada
                               </span>
-                              <button
-                                className={s.pubReservarBtn}
-                                onClick={() => {
-                                  const raw = clases.find(c => c.id === av.id)
-                                  setSeatSelectorClass(raw ?? null)
-                                }}
-                              >
-                                RESERVAR
-                              </button>
-                            </>
-                          )}
+                            )
+                            if (isFull) {
+                              const estaEnEspera = listaEsperaStore.estaEnLista(av.id, usuario?.id)
+                              const posicion     = estaEnEspera
+                                ? listaEsperaStore.getPosicion(av.id, usuario?.id)
+                                : null
+                              return estaEnEspera ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                  <span style={{
+                                    fontSize: 11, color: '#F59E0B', fontWeight: 600,
+                                    fontFamily: 'var(--font-body)',
+                                  }}>
+                                    ⏳ Lista de espera #{posicion}
+                                  </span>
+                                  <button
+                                    onClick={() => handleSalirListaEspera(av)}
+                                    style={{
+                                      fontSize: 10, padding: '4px 10px', borderRadius: 6,
+                                      border: '1px solid rgba(245,158,11,0.3)',
+                                      background: 'transparent', color: '#F59E0B',
+                                      fontFamily: 'var(--font-body)', cursor: 'pointer',
+                                    }}
+                                  >
+                                    Salir de lista
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                  <span className={s.pubFullTag}>LLENO</span>
+                                  {usuario?.id && (
+                                    <button
+                                      onClick={() => handleUnirseListaEspera(av)}
+                                      style={{
+                                        fontSize: 10, padding: '4px 10px', borderRadius: 6,
+                                        border: '1px solid rgba(245,158,11,0.3)',
+                                        background: 'rgba(245,158,11,0.08)',
+                                        color: '#F59E0B', fontFamily: 'var(--font-body)',
+                                        cursor: 'pointer', whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      ⏳ Unirse a lista de espera
+                                    </button>
+                                  )}
+                                </div>
+                              )
+                            }
+                            return (
+                              <>
+                                <span className={`${s.pubAvailTag} ${isLow ? s.pubAvailLow : s.pubAvailOk}`}>
+                                  <span className={s.pubAvailDot} />
+                                  {av.spots} {av.spots === 1 ? 'lugar' : 'lugares'}
+                                </span>
+                                <button
+                                  className={s.pubReservarBtn}
+                                  onClick={() => setSeatSelectorClass(av._raw ?? null)}
+                                >
+                                  RESERVAR
+                                </button>
+                              </>
+                            )
+                          })()}
                         </div>
                       </div>
                     )
@@ -1001,105 +1156,3 @@ export default function ClientPanel() {
   )
 }
 
-// ── MisClasesCard sub-component ───────────────────────────────────────────────
-function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) {
-  const initials = cls.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const { bg, text } = avatarStyle(cls.coach)
-  return (
-    <div className={s.mcCard}>
-      <div className={s.mcAvatarCol}>
-        <div className={s.mcAvatar} style={{ background: coachFoto ? 'transparent' : bg, overflow: 'hidden', padding: 0 }}>
-          {coachFoto ? (
-            <img src={coachFoto} alt={cls.coach} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }} />
-          ) : (
-            <span style={{ color: text }}>{initials}</span>
-          )}
-        </div>
-      </div>
-      <div className={s.mcTimeCol}>
-        <div className={s.mcTimeVal}>{formatHour(cls.time)}</div>
-        <div className={s.mcTimeSub}>50 min</div>
-      </div>
-      <div className={s.mcBody}>
-        <div className={s.mcTitle}>{cls.title}</div>
-        <div className={s.mcMeta}>{cls.coach} · {cls.location || 'Sala Principal'}</div>
-        <div style={{ marginTop: 6 }}><DisciplinePill d={cls.discipline} /></div>
-      </div>
-      <div className={s.mcActions}>
-        {(() => {
-          if (cls.status !== 'confirmada') return <StatusPill status={cls.status} />
-          const fechaRef = dayIsoDate ?? cls.claseFecha
-          if (!fechaRef || !cls.time) return <StatusPill status="confirmada" />
-          const classTime = new Date(fechaRef + 'T' + cls.time + ':00')
-          const n = new Date()
-          if (classTime <= n) {
-            return (
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
-                Clase finalizada
-              </span>
-            )
-          }
-          const canCancel = (classTime - n) > 6 * 60 * 60 * 1000
-          return (
-            <>
-              <StatusPill status="confirmada" />
-              {canCancel
-                ? <button className={s.btnCancelSm} onClick={onCancel}>Cancelar</button>
-                : <span style={{ fontSize: 10, color: 'var(--text-muted)', opacity: 0.7, textAlign: 'center' }}>Sin cancelación disponible</span>
-              }
-            </>
-          )
-        })()}
-      </div>
-    </div>
-  )
-}
-
-// ── ClassCard sub-component ───────────────────────────────────────────────────
-function ClassCard({ cls, showCancel, onCancel, coachFoto }) {
-  const initials  = cls.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const { bg, text } = avatarStyle(cls.coach)
-  return (
-    <div className={s.classCard}>
-      <div className={s.classDateBlock}>
-        <div className={s.classDateDay}>{cls.date.slice(0, 3)}</div>
-        <div className={s.classDateTime}>{cls.time}</div>
-      </div>
-      <div className={s.classInfo}>
-        <div className={s.classTitle}>{cls.title}</div>
-        <div className={s.classCoach} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: coachFoto ? 'transparent' : bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: text }}>
-            {coachFoto
-              ? <img src={coachFoto} alt={cls.coach} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }} />
-              : initials}
-          </div>
-          {cls.coach}{cls.location ? ` · ${cls.location}` : ''}
-        </div>
-        <div style={{ marginTop: 5 }}><DisciplinePill d={cls.discipline} /></div>
-      </div>
-      <div className={s.classRight}>
-        {(() => {
-          if (cls.status !== 'confirmada') return <StatusPill status={cls.status} />
-          if (cls.claseFecha && cls.time) {
-            const classTime = new Date(cls.claseFecha + 'T' + cls.time + ':00')
-            if (classTime <= new Date()) {
-              return (
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
-                  Clase finalizada
-                </span>
-              )
-            }
-          }
-          return (
-            <>
-              <StatusPill status="confirmada" />
-              {showCancel && <button className={s.btnCancelSm} onClick={onCancel}>Cancelar</button>}
-            </>
-          )
-        })()}
-      </div>
-    </div>
-  )
-}

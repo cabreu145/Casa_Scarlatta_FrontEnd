@@ -472,7 +472,7 @@
 }
 
 .statIcon.green { background: rgba(61,153,112,0.1);  color: var(--success); }
-.statIcon.wine  { background: rgba(123,30,43,0.08);  color: var(--wine); }
+.statIcon.wine  { background: var(--brand-wine-08);  color: var(--wine); }
 .statIcon.muted { background: rgba(201,184,168,0.25);color: var(--sand); }
 .statIcon.amber { background: rgba(198,124,42,0.1);  color: var(--warning); }
 
@@ -620,7 +620,7 @@
 
 .classCard:hover {
   border-color: var(--rose-light);
-  box-shadow: 0 4px 20px rgba(123,30,43,0.08);
+  box-shadow: 0 4px 20px var(--brand-wine-08);
   transform: translateX(4px);
 }
 
@@ -669,7 +669,7 @@
   text-transform: uppercase;
 }
 
-.pillStride { background: rgba(123,30,43,0.08); color: var(--wine); border: 1px solid rgba(123,30,43,0.15); }
+.pillStride { background: var(--brand-wine-08); color: var(--wine); border: 1px solid rgba(123,30,43,0.15); }
 .pillSlow   { background: rgba(33,100,180,0.07); color: #2464B4; border: 1px solid rgba(33,100,180,0.15); }
 
 .statusPill {
@@ -1285,7 +1285,7 @@
   transition: box-shadow 0.2s, transform 0.2s;
 }
 
-.pubCard:hover { box-shadow: 0 4px 16px rgba(123,30,43,0.12), 0 12px 32px rgba(123,30,43,0.08); transform: translateY(-1px); }
+.pubCard:hover { box-shadow: 0 4px 16px rgba(123,30,43,0.12), 0 12px 32px var(--brand-wine-08); transform: translateY(-1px); }
 .pubCardFull   { opacity: 0.55; }
 
 .pubAvatarWrap {

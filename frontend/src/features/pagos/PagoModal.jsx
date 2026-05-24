@@ -10,10 +10,12 @@
  * ─────────────────────────────────────────────────────
  */
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { asignarPaqueteService } from '@/services/usuariosService'
 import { useAuth } from '@/context/AuthContext'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
+import { logPaqueteVendido } from '@/services/actividadService'
 import s from './PagoModal.module.css'
 
 const STEPS = ['resumen', 'pago', 'procesando', 'exito']
@@ -106,10 +108,22 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
 
     actualizarPerfil({ paquete: paquete.nombre })
 
-    console.log('resultado pago:', resultado)
-    console.log('usuario.id:', usuario.id)
+    const metodoPagoLabel = metodo === 'transfer' ? 'transferencia' : metodo
+    logPaqueteVendido({
+      usuarioNombre: usuario?.nombre ?? usuario?.name ?? 'Cliente',
+      usuarioId:     usuario?.id,
+      paqueteNombre: paquete.nombre,
+      precio:        paquete.precio,
+      metodoPago:    metodoPagoLabel,
+    })
+
     setStep('exito')
-    // onSuccess?.()
+    toast.success(
+      `¡Pago exitoso! Tu paquete está activo. ` +
+      `Revisa tu correo con los detalles 📧`,
+      { duration: 5000 }
+    )
+    onSuccess?.()
   }
 
   function handleOverlayClick(e) {

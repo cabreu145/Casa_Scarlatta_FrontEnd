@@ -18,6 +18,11 @@ export default function RecuperarContrasena() {
     setLoading(true)
     await new Promise((r) => setTimeout(r, 900))
     setLoading(false)
+    toast.success(
+      'Te hemos enviado un correo para restablecer tu contraseña. ' +
+      'Revisa tu bandeja de entrada y spam 📧',
+      { duration: 6000 }
+    )
     setEnviado(true)
   }
 

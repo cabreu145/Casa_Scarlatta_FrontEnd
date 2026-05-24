@@ -18,6 +18,7 @@ import { useUsuariosStore }       from '../stores/usuariosStore'
 import { useNotificacionesStore } from '../stores/notificacionesStore'
 import { TIPOS_TRANSACCION }      from '../data/mockData'
 import { hoyLocal, fechaLocal }   from '../utils/fecha'
+import { logPaqueteVendido, logInsumoVendido } from '@/services/actividadService'
 
 /**
  * Procesa una venta completa del POS.
@@ -97,6 +98,19 @@ export async function procesarVentaService({
         mensaje: `${paqSel.nombre} activado para ${userName} — vía POS.`,
         fecha:   hoyLocal(),
       })
+    }
+
+    if (pendingAsignacion) {
+      const { userId, userName, paqSel } = pendingAsignacion
+      logPaqueteVendido({
+        usuarioNombre: userName,
+        usuarioId:     userId,
+        paqueteNombre: paqSel.nombre,
+        precio:        paqSel.precio,
+        metodoPago,
+      })
+    } else {
+      logInsumoVendido({ items, total, metodoPago })
     }
 
     return { ok: true, mensaje: '¡Venta registrada correctamente!' }

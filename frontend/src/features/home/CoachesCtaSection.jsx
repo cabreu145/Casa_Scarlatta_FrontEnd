@@ -1,14 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import MotionButton from '@/components/ui/MotionButton'
+import { useConfiguracionStore } from '@/stores/configuracionStore'
 import styles from './CoachesCtaSection.module.css'
 
 export default function CoachesCtaSection() {
   const navigate = useNavigate()
+  const cfg = useConfiguracionStore()
 
   return (
     <section className={styles.section}>
       <img
-        src="/fotos/coaches_banner.jpg"
+        src={cfg.get('imagenCoachesBanner')}
         alt="Equipo de instructores Casa Scarlatta"
         className={styles.bg}
         loading="lazy"

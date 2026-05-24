@@ -16,8 +16,15 @@ import { useClasesStore }         from '@/stores/clasesStore'
 import { useUsuariosStore }       from '@/stores/usuariosStore'
 import { useNotificacionesStore } from '@/stores/notificacionesStore'
 import { useAuthStore }           from '@/stores/authStore'
+import { useListaEsperaStore }    from '@/stores/listaEsperaStore'
 import { ESTADOS_RESERVA, TIPOS_NOTIFICACION } from '@/data/mockData'
 import { hoyLocal } from '@/utils/fecha'
+import { logReservaCreada, logReservaCancelada } from '@/services/actividadService'
+import {
+  emailReservaConfirmada,
+  emailReservaCancelada,
+  emailLugarAsignado,
+} from '@/services/emailService'
 
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -112,12 +119,37 @@ export function reservarClase(userId, claseId, asiento = null) {
     })
   }
 
+  logReservaCreada({
+    usuarioNombre: usuario?.nombre ?? `Usuario #${userId}`,
+    usuarioId:     userId,
+    claseNombre:   clase.nombre,
+    claseHora:     clase.hora,
+    claseDia:      clase.dia,
+  })
+
+  // 10. Email de confirmación de reserva
+  // [BACKEND] → POST /api/email/send { plantilla: 'reserva_confirmada' }
+  if (usuario?.email) {
+    emailReservaConfirmada({
+      nombre:      usuario.nombre ?? 'Cliente',
+      email:       usuario.email,
+      claseNombre: clase.nombre,
+      coachNombre: clase.coachNombre ?? '—',
+      dia:         clase.dia,
+      hora:        clase.hora,
+      fecha:       clase.fecha ?? null,
+      asiento:     asiento ?? null, // [BACKEND] pasar asiento cuando SeatSelector lo guarde
+    }).catch(() => {})
+  }
+
   return { ok: true }
 }
 
 /**
  * Cancela una reserva confirmada.
  * Devuelve el crédito al usuario y reduce el cupoActual.
+ * Si hay personas en lista de espera, asigna automáticamente
+ * el lugar al primero y le envía un email.
  * @returns {{ ok: boolean, error?: string }}
  */
 export function cancelarReserva(reservaId, userId) {
@@ -145,7 +177,103 @@ export function cancelarReserva(reservaId, userId) {
   }
 
   // Reducir cupoActual
-  clasesStore.actualizarCupo(reserva.claseId, -1)
+  const claseId = reserva.claseId
+  clasesStore.actualizarCupo(claseId, -1)
+
+  logReservaCancelada({
+    usuarioNombre: usuario?.nombre ?? `Usuario #${userId}`,
+    usuarioId:     userId,
+    claseNombre:   reserva.claseNombre ?? 'Clase',
+  })
+
+  // Email de confirmación de cancelación
+  // [BACKEND] → POST /api/email/send { plantilla: 'reserva_cancelada' }
+  const claseCancel = clasesStore.clases.find(c => c.id === claseId)
+  if (usuario?.email && claseCancel) {
+    emailReservaCancelada({
+      nombre:      usuario.nombre ?? 'Cliente',
+      email:       usuario.email,
+      claseNombre: claseCancel.nombre,
+      dia:         claseCancel.dia,
+      hora:        claseCancel.hora,
+    }).catch(() => {})
+  }
+
+  // ── Asignación automática de lista de espera ──────────
+  // Cuando alguien cancela, el primero en lista de espera
+  // recibe el lugar AUTOMÁTICAMENTE sin necesidad de confirmar.
+  // [BACKEND] → Este proceso lo maneja el backend con un trigger
+  // en la tabla de reservas. El backend también envía el email.
+  // En frontend: simular la asignación directa.
+  const listaStore  = useListaEsperaStore.getState()
+  const listaEspera = listaStore.getPorClase(claseId)
+
+  if (listaEspera.length > 0) {
+    const primero   = listaEspera[0]
+    const claseObj  = clasesStore.clases.find(c => c.id === claseId)
+    const uEspera   = usuariosStore.usuarios.find(u => u.id === primero.userId)
+
+    // 1. Crear la reserva automáticamente para el primero en lista
+    const { agregarReserva } = useReservasStore.getState()
+    agregarReserva({
+      userId:      primero.userId,
+      claseId,
+      claseNombre: claseObj?.nombre ?? '—',
+      claseHora:   claseObj?.hora ?? '—',
+      claseDia:    claseObj?.dia ?? '—',
+      coachNombre: claseObj?.coachNombre ?? '—',
+      tipo:        claseObj?.tipo ?? '—',
+      asiento:     null,
+      estado:      'confirmada',
+      fecha:       claseObj?.fecha ?? new Date().toISOString().split('T')[0],
+    })
+
+    // 2. Descontar un crédito al usuario asignado (si no es ilimitado)
+    if (uEspera && uEspera.clasesPaquete !== 999) {
+      usuariosStore.editarUsuario(primero.userId, {
+        clasesPaquete: Math.max(0, (uEspera.clasesPaquete ?? 0) - 1),
+      })
+    }
+
+    // 3. El cupo: cancelarReserva lo bajó en -1, la nueva reserva lo sube +1 → neto 0.
+    //    Restaurar cupoActual al valor antes de la cancelación.
+    clasesStore.actualizarCupo(claseId, 1)
+
+    // 4. Eliminar al usuario de la lista de espera
+    listaStore.salir({ claseId, userId: primero.userId })
+
+    // 5. Registrar en actividad
+    import('@/services/actividadService').then(({ logReservaCreada: logRA }) => {
+      logRA({
+        usuarioNombre: primero.nombre,
+        usuarioId:     primero.userId,
+        claseNombre:   claseObj?.nombre ?? '—',
+        claseHora:     claseObj?.hora ?? '—',
+        claseDia:      claseObj?.dia ?? '—',
+      })
+    })
+
+    // 6. Email al usuario asignado automáticamente
+    // [BACKEND] → POST /api/email/send { plantilla: 'lista_espera_lugar' }
+    if (uEspera?.email) {
+      import('@/services/emailService').then(({ emailLugarAsignado: emailLA }) => {
+        emailLA({
+          nombre:      primero.nombre,
+          email:       uEspera.email,
+          claseNombre: claseObj?.nombre ?? '—',
+          coachNombre: claseObj?.coachNombre ?? '—',
+          dia:         claseObj?.dia ?? '—',
+          hora:        claseObj?.hora ?? '—',
+          fecha:       claseObj?.fecha ?? null,
+        }).catch(() => {})
+      })
+    }
+
+    console.info(
+      `[listaEspera] ✅ Lugar asignado automáticamente a` +
+      ` ${primero.nombre} en clase ${claseObj?.nombre}`
+    )
+  }
 
   return { ok: true }
 }
@@ -178,4 +306,6 @@ export function eliminarClaseConReservas(claseId) {
 
   reservasStore.cancelarReservasByClase(claseId)
   clasesStore.eliminarClase(claseId)
+  useListaEsperaStore.getState().limpiarClase(claseId)
+  // [BACKEND] → DEL /api/lista-espera?claseId=X
 }

@@ -65,25 +65,39 @@ function filtrarTxPeriodoAnterior(transacciones, rango) {
  *
  * // [BACKEND] → GET /api/finanzas/kpis?rango=mes
  */
-export function getKpisFinanzas(rango = 'mes') {
+export function getKpisFinanzas(rango = 'mes', fechaFin = null, { fechaDesde = null, fechaHasta = null } = {}) {
   const { transacciones } = useTransaccionesStore.getState()
   const gastosStore       = useGastosStore.getState()
 
-  const txActual   = filtrarTxPorRango(transacciones, rango).filter(tx => tx.monto > 0)
+  const esRango = rango === 'rango' && fechaDesde && fechaHasta
+
+  const txActual   = fechaFin
+    ? transacciones.filter(tx => tx.fecha === fechaFin && tx.monto > 0)
+    : esRango
+      ? transacciones.filter(tx => tx.fecha >= fechaDesde && tx.fecha <= fechaHasta && tx.monto > 0)
+      : filtrarTxPorRango(transacciones, rango).filter(tx => tx.monto > 0)
   const txAnterior = filtrarTxPeriodoAnterior(transacciones, rango).filter(tx => tx.monto > 0)
 
   const totalIngresos   = txActual.reduce((a,tx) => a + tx.monto, 0)
   const totalAnt        = txAnterior.reduce((a,tx) => a + tx.monto, 0)
   const crecimiento     = totalAnt > 0 ? Math.round(((totalIngresos - totalAnt) / totalAnt) * 100) : null
 
-  const gastosRango    = gastosStore.getGastosByRango(rango)
+  const gastosRango    = fechaFin
+    ? gastosStore.gastos.filter(g => g.fecha === fechaFin)
+    : esRango
+      ? gastosStore.gastos.filter(g => g.fecha >= fechaDesde && g.fecha <= fechaHasta)
+      : gastosStore.getGastosByRango(rango)
   const totalGastos    = gastosRango.reduce((a,g) => a + g.monto, 0)
   const utilidad       = totalIngresos - totalGastos
   const numTx          = txActual.length
   const ticketPromedio = numTx > 0 ? Math.round(totalIngresos / numTx) : 0
 
   // Desglose por método de pago (rango actual)
-  const txAll = filtrarTxPorRango(transacciones, rango)
+  const txAll = fechaFin
+    ? transacciones.filter(tx => tx.fecha === fechaFin)
+    : esRango
+      ? transacciones.filter(tx => tx.fecha >= fechaDesde && tx.fecha <= fechaHasta)
+      : filtrarTxPorRango(transacciones, rango)
   const desglosePago = txAll.reduce(
     (acc, tx) => {
       const m = tx.metodoPago ?? 'efectivo'
@@ -104,7 +118,7 @@ export function getKpisFinanzas(rango = 'mes') {
   )
 
   // Datos para gráfica de línea (últimos 7 días o 6 semanas o 6 meses)
-  const serieHistorica = getSerieHistorica(transacciones, rango)
+  const serieHistorica = getSerieHistorica(transacciones, rango, fechaFin)
 
   return {
     totalIngresos,
@@ -120,7 +134,17 @@ export function getKpisFinanzas(rango = 'mes') {
 }
 
 // ── Serie histórica para gráfica ──────────────────────────────────────────────
-function getSerieHistorica(transacciones, rango) {
+function getSerieHistorica(transacciones, rango, fechaFin = null) {
+  if (fechaFin) {
+    return Array.from({ length: 8 }, (_, i) => {
+      const h     = i * 3
+      const label = `${String(h).padStart(2,'0')}:00`
+      const ingresos = transacciones
+        .filter(tx => tx.monto > 0 && tx.fecha === fechaFin)
+        .reduce((a, tx) => a + tx.monto, 0)
+      return { label, ingresos: Math.round(ingresos / 8), gastos: 0 }
+    })
+  }
   if (rango === 'dia') {
     // Últimas 24 horas por hora
     return Array.from({ length: 8 }, (_, i) => {
@@ -201,40 +225,53 @@ export function getDatosCorteHoy() {
  * @returns {object[]}
  * // [BACKEND] → GET /api/reportes/coaches?periodo=mes
  */
-export function getReporteCoaches(periodo = 'mes', incluirPago = true) {
-  const { clases }  = useClasesStore.getState()
+export function getReporteCoaches(periodo = 'mes', incluirPago = true, rangoFecha = null) {
+  const { clases }   = useClasesStore.getState()
   const { reservas } = useReservasStore.getState()
-  const { coaches } = useCoachesStore.getState()
-  const tabulador            = useTabuladorStore.getState().tabulador
+  const { coaches }  = useCoachesStore.getState()
+  const tabulador    = useTabuladorStore.getState().tabulador
 
-  const hoy  = new Date()
-  const mes  = getMes()
-  let fechaInicio
+  const hoy    = new Date()
+  const hoyISO = getHoy()
+  const mes    = getMes()
+  let fechaInicio, fechaFin
 
-  if (periodo === 'quincena') {
-    const dia = hoy.getDate()
-    fechaInicio = dia <= 15
-      ? `${mes}-01`
-      : `${mes}-16`
+  if (rangoFecha && rangoFecha.tipo !== 'todos') {
+    if (rangoFecha.tipo === 'hoy') {
+      fechaInicio = hoyISO; fechaFin = hoyISO
+    } else if (rangoFecha.tipo === 'semana') {
+      fechaInicio = getSemana(); fechaFin = hoyISO
+    } else if (rangoFecha.tipo === 'mes') {
+      fechaInicio = `${mes}-01`; fechaFin = hoyISO
+    } else if (rangoFecha.tipo === 'fecha') {
+      fechaInicio = rangoFecha.fecha; fechaFin = rangoFecha.fecha
+    } else if (rangoFecha.tipo === 'rango' && rangoFecha.fechaDesde && rangoFecha.fechaHasta) {
+      fechaInicio = rangoFecha.fechaDesde; fechaFin = rangoFecha.fechaHasta
+    }
   } else {
-    fechaInicio = `${mes}-01`
+    if (periodo === 'quincena') {
+      const dia = hoy.getDate()
+      fechaInicio = dia <= 15 ? `${mes}-01` : `${mes}-16`
+    } else {
+      fechaInicio = `${mes}-01`
+    }
+    fechaFin = hoyISO
   }
 
   return coaches.filter(c => c.activo).map(coach => {
     const clasesCoach = clases.filter(c => c.coachId === coach.id)
 
-    // Reservas confirmadas en el período para las clases de este coach
-    const reservasCoach = reservas.filter(r =>
-      r.estado === 'confirmada' &&
-      r.fecha >= fechaInicio &&
-      clasesCoach.some(c => c.id === r.claseId)
-    )
+    // Filtrar clases por su fecha real dentro del período (no por fecha de reserva)
+    const clasesEnPeriodo = clasesCoach.filter(clase => {
+      const f = clase.fecha ?? ''
+      if (!f) return true // sin fecha: incluir siempre
+      return (!fechaInicio || f >= fechaInicio) && (!fechaFin || f <= fechaFin)
+    })
 
-    // Por cada clase, calcular ocupación promedio y pago
-    const detalleClases = clasesCoach.map(clase => {
-      const reservasClase = reservasCoach.filter(r => r.claseId === clase.id)
-      const asistentes    = clase.cupoActual
-      const ocupPct       = Math.round((asistentes / clase.cupoMax) * 100)
+    // Por cada clase del período, calcular ocupación y pago
+    const detalleClases = clasesEnPeriodo.map(clase => {
+      const asistentes = clase.cupoActual
+      const ocupPct    = Math.round((asistentes / clase.cupoMax) * 100)
 
       // Calcular pago según tabulador
       const tabDisciplina = tabulador[clase.tipo] ?? tabulador['Stryde X']
@@ -247,16 +284,16 @@ export function getReporteCoaches(periodo = 'mes', incluirPago = true) {
       }
 
       return {
-        claseId:      clase.id,
-        nombre:       clase.nombre,
-        tipo:         clase.tipo,
-        dia:          clase.dia,
-        hora:         clase.hora,
+        claseId:   clase.id,
+        nombre:    clase.nombre,
+        tipo:      clase.tipo,
+        fecha:     clase.fecha ?? null,
+        dia:       clase.dia,
+        hora:      clase.hora,
         asistentes,
-        cupoMax:      clase.cupoMax,
+        cupoMax:   clase.cupoMax,
         ocupPct,
-        pagoClase:    incluirPago ? pagoClase : undefined,
-        reservas:     reservasClase.length,
+        pagoClase: incluirPago ? pagoClase : undefined,
       }
     })
 
