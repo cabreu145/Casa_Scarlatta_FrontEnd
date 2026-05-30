@@ -171,3 +171,37 @@ Ordenar ejecuciÃ³n de estabilizaciÃ³n core para BUG-001 a BUG-013 antes de nuevo
   - compra self-service real y transacciones reales de cliente (BUG-009 / Fase pagos).
 
 
+
+## Actualización 2026-05-30 (BUG-010 cierre frontend)
+- Estado BUG-010: **Corregido (frontend)**.
+- Tabla “Todas mis clases esta semana” en API mode usa `agenda.occurrences` desde `GET /api/v1/coaches/me/agenda?from&to`.
+- En API mode ya no depende de `clasesStore`, `coachesStore` ni matching por nombre.
+- BUG-011 y BUG-012 quedan como siguientes.
+
+## Actualización 2026-05-30 (BUG-011 cierre frontend)
+- Estado BUG-011: **Corregido (frontend)**.
+- En API mode, métricas de coach derivan de `agenda.occurrences` (`GET /api/v1/coaches/me/agenda?from&to`).
+- Ya no se usan métricas hardcodeadas ni fuentes mock/local como verdad en API mode.
+- Siguiente bug recomendado: BUG-012.
+
+## Actualización 2026-05-30 (BUG-012 cierre frontend)
+- Estado BUG-012: **Corregido (frontend)**.
+- “Clases de hoy” en API mode deriva de `agenda.occurrences` (`GET /api/v1/coaches/me/agenda?from&to`).
+- Filtro por `occurrenceDate` (fecha real), orden por hora, sin depender de `dia` de clase base.
+- Sin uso de `clasesStore/coachesStore/coachNombre` como verdad en API mode para este bloque.
+- Bloque coach P0 (BUG-010/011/012) queda cerrado funcionalmente en frontend.
+
+## Actualización 2026-05-30 (BUG-002 cierre frontend)
+- Estado BUG-002: **Corregido (frontend)**.
+- “Mis clases” ahora permite filtro por estado: `all`, `confirmada`, `cancelada`, `completada`, `no_asistio`.
+- Source of truth en API mode: `GET /api/v1/reservas/me`.
+- El filtro también funciona en fallback mock/local cuando flags API están en false.
+
+## Actualización 2026-05-30 (BUG-005 diagnóstico)
+- Estado BUG-005: **Diagnosticado (frontend-only)**.
+- Hallazgo principal: bloque “Mis próximas clases” en dashboard cliente aplica límite hardcodeado (`.slice(0, 2)`), recortando listado real.
+- Source of truth en API mode confirmado: reservas adaptadas desde `GET /api/v1/reservas/me`.
+- Pendiente implementación:
+  - criterio explícito de “próximas” (hoy/futuras, estado `confirmada`, orden por ocurrencia),
+  - límite UX configurable/no estático (3-5),
+  - CTA “Ver todas” hacia “Mis clases” filtrado.

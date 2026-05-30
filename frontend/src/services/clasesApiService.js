@@ -1,5 +1,5 @@
 import { ENDPOINTS } from '@/constants/api'
-import { httpGet } from '@/lib/http'
+import { httpGet, httpPost, httpPut } from '@/lib/http'
 import {
   mapBackendAvailabilityToFrontend,
   mapBackendClassToFrontendClass,
@@ -19,4 +19,14 @@ export async function getClaseByIdApi(id) {
 export async function getDisponibilidadClaseApi(id) {
   const payload = await httpGet(ENDPOINTS.claseDisponibilidad(id))
   return mapBackendAvailabilityToFrontend(payload ?? {})
+}
+
+export async function createClaseApi(payload) {
+  const response = await httpPost(ENDPOINTS.clases, payload)
+  return mapBackendClassToFrontendClass(response ?? {})
+}
+
+export async function updateClaseApi(id, payload) {
+  const response = await httpPut(ENDPOINTS.claseById(id), payload)
+  return mapBackendClassToFrontendClass(response ?? {})
 }

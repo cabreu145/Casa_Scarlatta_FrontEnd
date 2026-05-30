@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import { useClasesStore } from '@/stores/clasesStore'
 import { useCoachesStore } from '@/stores/coachesStore'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { getMyCoachAgendaApi } from '@/services/coachAgendaApiService'
+import { buildCoachMetricsFromOccurrences, getTodayOccurrences, mapAgendaToCoachClassRows } from './coachAgendaUtils'
 import {
   LayoutDashboard, CalendarDays,
   LogOut, ArrowLeft, X, ChevronLeft, ChevronRight, Menu
@@ -11,10 +13,10 @@ import { useReservasStore } from '@/stores/reservasStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import s from './CoachPanel.module.css'
 
-// ── Data ──────────────────────────────────────────────────────────────────────
+// â”€â”€ Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DAY_KEY_TO_NAME = {
-  lun: 'Lunes', mar: 'Martes', mie: 'Miércoles',
-  jue: 'Jueves', vie: 'Viernes', sab: 'Sábado', dom: 'Domingo',
+  lun: 'Lunes', mar: 'Martes', mie: 'MiÃ©rcoles',
+  jue: 'Jueves', vie: 'Viernes', sab: 'SÃ¡bado', dom: 'Domingo',
 }
 
 const PERF_BARS = [
@@ -26,12 +28,12 @@ const PERF_BARS = [
 
 const hoyFecha = new Date()
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+const DIAS_SEMANA = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
 
 const SECTION_META = {
   dashboard:    {
     title: 'Dashboard',
-    sub: `${DIAS_SEMANA[hoyFecha.getDay()]}, ${hoyFecha.getDate()} de ${MESES[hoyFecha.getMonth()]} · Casa Scarlatta`
+    sub: `${DIAS_SEMANA[hoyFecha.getDay()]}, ${hoyFecha.getDate()} de ${MESES[hoyFecha.getMonth()]} Â· Casa Scarlatta`
   },
   'mis-clases': { title: 'Mis Clases', sub: '' },
 }
@@ -44,7 +46,7 @@ function calcInicioSemana(offsetSemanas) {
   return base
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function availColor(booked, cap) {
   const ratio = booked / cap
   if (ratio >= 0.9) return 'red'
@@ -67,7 +69,7 @@ function isClasePasada(c) {
     return fin <= new Date()
   }
   const today = new Date()
-  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const DIAS = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
   const targetDow = DIAS.indexOf(c.dia)
   if (targetDow === -1) return false
   const diff = targetDow - today.getDay()
@@ -84,7 +86,7 @@ function statusColor(cls) {
   return                        { background:'rgba(92,185,122,0.12)', color:'#5CB97A', border:'1px solid rgba(92,185,122,0.2)' }
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function CoachPanel() {
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('dashboard')
@@ -96,27 +98,87 @@ export default function CoachPanel() {
   const { usuario, logout } = useAuth()
   const { clases } = useClasesStore()
   const { coaches } = useCoachesStore()
+  const useApiMode = (
+    import.meta.env.VITE_USE_API_AUTH === 'true' &&
+    import.meta.env.VITE_USE_API_CLASSES === 'true' &&
+    import.meta.env.VITE_USE_API_RESERVATIONS === 'true' &&
+    import.meta.env.VITE_USE_API_WAITLIST === 'true'
+  )
+  const [agendaLoading, setAgendaLoading] = useState(false)
+  const [agendaError, setAgendaError] = useState(null)
+  const [agendaOccurrences, setAgendaOccurrences] = useState([])
   // coachData: perfil del coach en coachesStore (id = "coach-xxx", distinto al id de usuario)
   const coachData = coaches.find(c => c.email === usuario?.email)
-  const misClases = clases.filter(c =>
+  const misClasesFallback = clases.filter(c =>
     (coachData && (String(c.coachId) === String(coachData.id) || c.coachNombre === coachData.nombre)) ||
     c.coachNombre === usuario?.nombre
   )
+  const misClases = useApiMode
+    ? mapAgendaToCoachClassRows(agendaOccurrences, usuario?.nombre ?? 'Coach')
+    : misClasesFallback
   const hoy = new Date()
-  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const DIAS = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
   const diaHoy = DIAS[hoy.getDay()]
   const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`
-  const clasesHoy = misClases.filter(c => c.fecha ? c.fecha === hoyISO : c.dia === diaHoy)
+  const clasesHoy = useMemo(() => {
+    if (useApiMode) {
+      const todayOccurrences = getTodayOccurrences(agendaOccurrences, hoy)
+      return mapAgendaToCoachClassRows(todayOccurrences, usuario?.nombre ?? 'Coach')
+    }
+    return misClases.filter(c => c.fecha ? c.fecha === hoyISO : c.dia === diaHoy)
+  }, [agendaOccurrences, diaHoy, hoy, hoyISO, misClases, useApiMode, usuario?.nombre])
+  const coachMetricsApi = useMemo(
+    () => buildCoachMetricsFromOccurrences(agendaOccurrences, hoy),
+    [agendaOccurrences, hoy]
+  )
+  const perfBars = useMemo(() => {
+    if (!useApiMode) return PERF_BARS
+    const cuposPct = coachMetricsApi.capacidadTotal > 0
+      ? Math.round((coachMetricsApi.cuposDisponibles / coachMetricsApi.capacidadTotal) * 100)
+      : 0
+    return [
+      { label: 'Clases semana', pct: Math.max(0, Math.min(100, coachMetricsApi.totalClasesSemana * 10)) },
+      { label: 'Clases hoy', pct: Math.max(0, Math.min(100, coachMetricsApi.clasesHoy * 20)) },
+      { label: 'Ocupacion promedio', pct: Math.max(0, Math.min(100, coachMetricsApi.ocupacionPromedioPct)) },
+      { label: 'Cupos libres', pct: Math.max(0, Math.min(100, cuposPct)) },
+    ]
+  }, [coachMetricsApi, useApiMode])
 
-  // ── Semana dinámica ────────────────────────────────────────────────────────
-  const inicioSem = calcInicioSemana(weekOffset)
-  const finSem    = new Date(inicioSem); finSem.setDate(inicioSem.getDate() + 6)
+  // â”€â”€ Semana dinÃ¡mica â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const inicioSem = useMemo(() => calcInicioSemana(weekOffset), [weekOffset])
+  const finSem = useMemo(() => {
+    const d = new Date(inicioSem)
+    d.setDate(inicioSem.getDate() + 6)
+    return d
+  }, [inicioSem])
+  useEffect(() => {
+    if (!useApiMode || usuario?.rol !== 'coach') return
+    const from = `${inicioSem.getFullYear()}-${String(inicioSem.getMonth() + 1).padStart(2, '0')}-${String(inicioSem.getDate()).padStart(2, '0')}`
+    const to = `${finSem.getFullYear()}-${String(finSem.getMonth() + 1).padStart(2, '0')}-${String(finSem.getDate()).padStart(2, '0')}`
+    let active = true
+    setAgendaLoading(true)
+    setAgendaError(null)
+    getMyCoachAgendaApi({ from, to })
+      .then((agenda) => {
+        if (!active) return
+        setAgendaOccurrences(agenda?.occurrences ?? [])
+      })
+      .catch((err) => {
+        if (!active) return
+        setAgendaOccurrences([])
+        setAgendaError(err?.message ?? 'No se pudo cargar agenda de coach')
+      })
+      .finally(() => {
+        if (active) setAgendaLoading(false)
+      })
+    return () => { active = false }
+  }, [finSem, inicioSem, useApiMode, usuario?.rol])
   const semanaLabel = inicioSem.getMonth() === finSem.getMonth()
     ? `Semana del ${inicioSem.getDate()} al ${finSem.getDate()} de ${MESES[finSem.getMonth()]}`
     : `Semana del ${inicioSem.getDate()} de ${MESES[inicioSem.getMonth()]} al ${finSem.getDate()} de ${MESES[finSem.getMonth()]}`
 
   const WEEK_DAY_KEYS  = ['lun','mar','mie','jue','vie','sab','dom']
-  const WEEK_DAY_NAMES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
+  const WEEK_DAY_NAMES = ['Lun','Mar','MiÃ©','Jue','Vie','SÃ¡b','Dom']
   const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => {
     const d    = new Date(inicioSem)
     d.setDate(inicioSem.getDate() + i)
@@ -161,7 +223,7 @@ export default function CoachPanel() {
 
   return (
     <div className={s.root}>
-      {/* ── SIDEBAR ── */}
+      {/* â”€â”€ SIDEBAR â”€â”€ */}
       <aside id="coach-sidebar" className={`${s.sidebar} ${isSidebarOpen ? s.sidebarOpen : ''}`}>
         <div className={s.sidebarLogo}>
           <span className={s.logoBrand}>casa</span>
@@ -187,7 +249,7 @@ export default function CoachPanel() {
         <div className={s.sidebarFooter}>
           <button className={s.logoutBtn} onClick={() => { logout(); navigate('/') }}>
             <LogOut size={14} strokeWidth={2} />
-            Cerrar sesión
+            Cerrar sesiÃ³n
           </button>
           <button className={s.backBtn} onClick={() => navigate('/')}>
             <ArrowLeft size={13} /> Volver al sitio
@@ -195,7 +257,7 @@ export default function CoachPanel() {
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
+      {/* â”€â”€ MAIN â”€â”€ */}
       <main className={s.main}>
         {/* TOPBAR */}
         <div className={s.topbar}>
@@ -217,7 +279,7 @@ export default function CoachPanel() {
           <div className={s.topbarRight}>
             <div className={s.topbarProfile}>
               <div>
-                <div className={s.coachName}>Coach · {usuario?.nombre ?? 'Coach'}</div>
+                <div className={s.coachName}>Coach Â· {usuario?.nombre ?? 'Coach'}</div>
                 <div className={s.coachRole}>{usuario?.especialidad ?? ''}</div>
               </div>
               <div className={s.coachAvatar} style={{ width:36, height:36, fontSize:15, overflow:'hidden', padding:0 }}>
@@ -232,13 +294,13 @@ export default function CoachPanel() {
         {/* CONTENT */}
         <div className={s.content}>
 
-          {/* ═══ DASHBOARD ═══ */}
+          {/* â•â•â• DASHBOARD â•â•â• */}
           <div className={`${s.section} ${activeSection === 'dashboard' ? s.active : ''}`}>
             {/* Greeting */}
             <div className={s.greeting}>
-              <h1 className={s.greetingTitle}>Hola, {usuario?.nombre?.split(' ')[0] ?? 'Coach'} 👋</h1>
+              <h1 className={s.greetingTitle}>Hola, {usuario?.nombre?.split(' ')[0] ?? 'Coach'} ðŸ‘‹</h1>
               <p className={s.greetingSub}>
-                Tienes <strong style={{ color:'var(--blush)' }}>{clasesHoy.length} {clasesHoy.length === 1 ? 'clase' : 'clases'}</strong> hoy · {diaHoy}, {hoy.getDate()} de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][hoy.getMonth()]}
+                Tienes <strong style={{ color:'var(--blush)' }}>{clasesHoy.length} {clasesHoy.length === 1 ? 'clase' : 'clases'}</strong> hoy Â· {diaHoy}, {hoy.getDate()} de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][hoy.getMonth()]}
               </p>
             </div>
 
@@ -253,7 +315,19 @@ export default function CoachPanel() {
                   <span className={`${s.pill} ${s.pillStride}`}>{clasesHoy.length} {clasesHoy.length === 1 ? 'clase' : 'clases'}</span>
                 </div>
                 <div className={s.cardBody}>
-                  {clasesHoy.map(cls => {
+                  {useApiMode && agendaLoading ? (
+                    <p style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
+                      Cargando clases de hoy...
+                    </p>
+                  ) : useApiMode && agendaError ? (
+                    <p style={{ textAlign:'center', color:'#e85a5a', fontSize:13, padding:'20px 0' }}>
+                      No se pudieron cargar las clases de hoy.
+                    </p>
+                  ) : useApiMode && clasesHoy.length === 0 ? (
+                    <p style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
+                      No tienes clases asignadas hoy.
+                    </p>
+                  ) : clasesHoy.map(cls => {
                     const booked = cls.cupoActual
                     const cap = cls.cupoMax
                     const color = availColor(booked, cap)
@@ -290,34 +364,57 @@ export default function CoachPanel() {
                 <div className={s.cardHeader}>
                   <div>
                     <div className={s.cardTitle}>Esta semana</div>
-                    <div className={s.cardSubtitle}>Ocupación por clase</div>
+                    <div className={s.cardSubtitle}>
+                      {useApiMode
+                        ? `${coachMetricsApi.totalClasesSemana} clases · ${coachMetricsApi.alumnosTotales}/${coachMetricsApi.capacidadTotal} inscritos`
+                        : 'Ocupación por clase'}
+                    </div>
                   </div>
                 </div>
                 <div className={s.cardBody}>
-                  {PERF_BARS.map(({ label, pct }) => (
-                    <div key={label} className={s.perfRow}>
-                      <div className={s.perfLabel}>{label}</div>
-                      <div className={s.perfBar}><div className={s.perfFill} style={{ width: `${pct}%` }} /></div>
-                      <div className={s.perfPct}>{pct}%</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Full week table */}
-            <div className={s.card}>
+                  {useApiMode && agendaLoading ? (
+                    <p style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
+                      Cargando métricas semanales...
+                    </p>
+                  ) : useApiMode && agendaError ? (
+                    <p style={{ textAlign:'center', color:'#e85a5a', fontSize:13, padding:'20px 0' }}>
+                      No se pudieron calcular métricas de agenda.
+                    </p>
+                  ) : (
+                    perfBars.map(({ label, pct }) => (
+                      <div key={label} className={s.perfRow}>
+                        <div className={s.perfLabel}>{label}</div>
+                        <div className={s.perfBar}><div className={s.perfFill} style={{ width: `${pct}%` }} /></div>
+                        <div className={s.perfPct}>{pct}%</div>
+                      </div>
+                    ))
+                  )}
+	                </div>
+	              </div>
+	            </div>
+	            {/* Full week table */}
+	            <div className={s.card}>
               <div className={s.cardHeader}>
                 <div>
                   <div className={s.cardTitle}>Todas mis clases esta semana</div>
                   <div className={s.cardSubtitle}>{semanaLabel}</div>
                 </div>
               </div>
-              <WeekTable classes={misClases} onOpen={openModal} />
+              {useApiMode && agendaLoading ? (
+                <div style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
+                  Cargando agenda semanal...
+                </div>
+              ) : useApiMode && !agendaLoading && !agendaError && misClases.length === 0 ? (
+                <div style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
+                  No tienes clases asignadas esta semana.
+                </div>
+              ) : (
+                <WeekTable classes={misClases} onOpen={openModal} />
+              )}
             </div>
           </div>
 
-          {/* ═══ MIS CLASES ═══ */}
+          {/* â•â•â• MIS CLASES â•â•â• */}
           <div className={`${s.section} ${activeSection === 'mis-clases' ? s.active : ''}`}>
             <div style={{ marginBottom: 24 }}>
               <h1 style={{ fontFamily:'var(--font-display)', fontSize:30, fontStyle:'italic', fontWeight:400 }}>Mis Clases</h1>
@@ -393,8 +490,8 @@ export default function CoachPanel() {
               ) : (
                 <div className={s.card}>
                   <div style={{ textAlign:'center', padding:'48px 24px' }}>
-                    <div style={{ fontSize:32, marginBottom:12, opacity:0.4 }}>📅</div>
-                    <p style={{ fontFamily:'var(--font-display)', fontSize:18, fontStyle:'italic', color:'rgba(255,255,255,0.5)', marginBottom:6 }}>Sin clases este día</p>
+                    <div style={{ fontSize:32, marginBottom:12, opacity:0.4 }}>ðŸ“…</div>
+                    <p style={{ fontFamily:'var(--font-display)', fontSize:18, fontStyle:'italic', color:'rgba(255,255,255,0.5)', marginBottom:6 }}>Sin clases este dÃ­a</p>
                     <p style={{ fontSize:12, color:'var(--muted)' }}>No tienes clases programadas para el {dayName.toLowerCase()}</p>
                   </div>
                 </div>
@@ -410,7 +507,7 @@ export default function CoachPanel() {
         onClick={() => setIsSidebarOpen(false)}
       />
 
-      {/* ── MODAL ── */}
+      {/* â”€â”€ MODAL â”€â”€ */}
       <div
         className={`${s.modalOverlay} ${modalClass ? s.open : ''}`}
         onClick={e => { if (e.target === e.currentTarget) closeModal() }}
@@ -421,23 +518,23 @@ export default function CoachPanel() {
   )
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function WeekTable({ classes, onOpen }) {
   const s2 = s
   const hoy = new Date()
-  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const DIAS = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
   const diaHoy = DIAS[hoy.getDay()]
   return (
     <div className={s2.tableContainer}>
     <table className={s2.weekTable}>
       <thead>
         <tr>
-          <th>Día</th>
+          <th>DÃ­a</th>
           <th>Hora</th>
           <th>Clase</th>
           <th>Tipo</th>
           <th>Alumnos</th>
-          <th>Ocupación</th>
+          <th>OcupaciÃ³n</th>
           <th></th>
         </tr>
       </thead>
@@ -454,14 +551,14 @@ function WeekTable({ classes, onOpen }) {
             >
               <td>
                 {esHoy
-                   ? <strong style={{ color:'var(--blush)' }}>{cls.dia} · hoy</strong>
+                   ? <strong style={{ color:'var(--blush)' }}>{cls.dia} Â· hoy</strong>
                   : (() => {
                     const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
                     if (cls.fecha) {
                       const d = new Date(cls.fecha + 'T12:00:00')
                       return `${cls.dia} ${d.getDate()} de ${MESES[d.getMonth()]}`
                     }
-                    const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(cls.dia)
+                    const idx = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado'].indexOf(cls.dia)
                     const d = new Date()
                     const diff = idx - d.getDay()
                     const fecha = new Date(d)
@@ -505,14 +602,14 @@ function WeekTable({ classes, onOpen }) {
 function MisClasesTable({ classes, onOpen }) {
   const s2 = s
   const hoy = new Date()
-  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
+  const DIAS = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
   const diaHoy = DIAS[hoy.getDay()]
   return (
     <div className={s2.tableContainer}>
     <table className={s2.weekTable}>
       <thead>
         <tr>
-          <th>Día</th>
+          <th>DÃ­a</th>
           <th>Hora</th>
           <th>Clase</th>
           <th>Tipo</th>
@@ -536,14 +633,14 @@ function MisClasesTable({ classes, onOpen }) {
             >
               <td>
                 {esHoy
-                  ? <strong style={{ color: 'var(--blush)' }}>{cls.dia} · hoy</strong>
+                  ? <strong style={{ color: 'var(--blush)' }}>{cls.dia} Â· hoy</strong>
                   : (() => {
                   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
                   if (cls.fecha) {
                     const d = new Date(cls.fecha + 'T12:00:00')
                     return `${cls.dia} ${d.getDate()} de ${MESES[d.getMonth()]}`
                   }
-                  const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(cls.dia)
+                  const idx = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado'].indexOf(cls.dia)
                   const d = new Date()
                   const diff = idx - d.getDay()
                   const fecha = new Date(d)
@@ -595,7 +692,7 @@ function ClassModal({ cls, onClose }) {
     ? { label: 'Finalizada', cls: 'gray' }
     : classStatusLabel(cls.cupoActual, cls.cupoMax)
   const statusClr = pasada ? '#888' : stCls === 'danger' ? 'var(--danger)' : stCls === 'warning' ? 'var(--warning)' : 'var(--success)'
-  const dayInfo = `${cls.dia} · ${cls.hora} · ${cls.cupoActual}/${cls.cupoMax} inscritos`
+  const dayInfo = `${cls.dia} Â· ${cls.hora} Â· ${cls.cupoActual}/${cls.cupoMax} inscritos`
 
   return (
     <div className={s2.modal}>
@@ -615,7 +712,7 @@ function ClassModal({ cls, onClose }) {
       <div className={s2.modalBody}>
         {alumnos.length === 0 ? (
           <p style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
-            No hay alumnos inscritos aún
+            No hay alumnos inscritos aÃºn
           </p>
         ) : alumnos.map(r => (
           <div key={r.id} className={s2.studentRow}>

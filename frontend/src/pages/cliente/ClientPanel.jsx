@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+﻿import { useState, useMemo, useEffect } from 'react'
 import PagoModal from '@/features/pagos/PagoModal'
 import SeatSelector from '@/features/clases/SeatSelector'
 import { useNavigate } from 'react-router-dom'
@@ -29,6 +29,9 @@ import {
 import s from './ClientPanel.module.css'
 import MisClasesCard from './MisClasesCard'
 import ClassCard from './ClassCard'
+import { buildPerfilFormFromUser, resolvePerfilCompleto } from './profileFormUtils'
+import { resolveFinancialUiState } from './financialUiUtils'
+import { filterReservationsByStatus } from './reservationFilters'
 
 const AVATAR_COLORS = [
   { bg: 'var(--brand-wine-13)',  text: '#7B1E2B' },
@@ -43,14 +46,14 @@ function avatarStyle(name) {
 }
 
 const SECTION_META = {
-  inicio:   { title: 'Inicio',             sub: 'Jueves, 24 de abril · Casa Scarlatta' },
+  inicio:   { title: 'Inicio',             sub: 'Jueves, 24 de abril Â· Casa Scarlatta' },
   clases:   { title: 'Mis Clases',         sub: 'Clases reservadas'                    },
   reservar: { title: 'Reservar Clase',     sub: 'Clases disponibles esta semana'       },
-  perfil:   { title: 'Mi Perfil',          sub: 'Información personal'                 },
+  perfil:   { title: 'Mi Perfil',          sub: 'InformaciÃ³n personal'                 },
   pagos:    { title: 'Paquetes & Pagos',   sub: 'Plan actual y transacciones'          },
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function DisciplinePill({ d }) {
   return d === 'STRYDE'
     ? <span className={`${s.pill} ${s.pillStride}`}>STRYDE</span>
@@ -69,13 +72,13 @@ function StatusPill({ status }) {
     confirmada: 'Confirmada',
     cancelada:  'Cancelada',
     pendiente:  'Pendiente',
-    no_asistio: 'No asistió',
+    no_asistio: 'No asistiÃ³',
     completada: 'Completada',
   }
   return <span className={`${s.statusPill} ${map[status] ?? ''}`}>{labels[status] ?? status}</span>
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Mapea una reserva al shape interno usado por MisClasesCard / ClassCard
 function toClsShape(r) {
   return {
@@ -91,11 +94,19 @@ function toClsShape(r) {
   }
 }
 
+const MIS_CLASES_FILTERS = [
+  { value: 'all', label: 'Todas' },
+  { value: 'confirmada', label: 'Confirmadas' },
+  { value: 'cancelada', label: 'Canceladas' },
+  { value: 'completada', label: 'Completadas' },
+  { value: 'no_asistio', label: 'No asistió' },
+]
+
 export default function ClientPanel() {
   const navigate = useNavigate()
   const { usuario, logout } = useAuth()
 
-  // ── Stores ────────────────────────────────────────────────────────────────
+  // â”€â”€ Stores â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const { reservas, loadMisReservasFromApi } = useReservasStore()
   const { clases, loadClasesFromApi }   = useClasesStore()
   const { usuarios } = useUsuariosStore()
@@ -104,10 +115,13 @@ export default function ClientPanel() {
   const { getTransaccionesByUsuario } = useTransaccionesStore()
   const listaEsperaStore = useListaEsperaStore()
   const {
+    financialState,
     creditsBalance,
     activeMembership,
     creditMovements,
     transactions,
+    isLoading: isFinancialStateLoading,
+    error: financialStateError,
     loadFinancialState,
   } = useFinancialStateStore()
 
@@ -122,18 +136,19 @@ export default function ClientPanel() {
     : (usuario?.id ? getTransaccionesByUsuario(usuario.id) : [])
   const historialMovimientosCredito = useApiFinancialState ? (creditMovements ?? []) : []
 
-  // Mapa nombre → foto para todos los componentes de esta página
+  // Mapa nombre â†’ foto para todos los componentes de esta pÃ¡gina
   const coachFotoByName = useMemo(
     () => Object.fromEntries(coaches.map((c) => [c.nombre, c.foto]).filter(([, f]) => f)),
     [coaches]
   )
 
-  // ── Secciones UI ─────────────────────────────────────────────────────────
+  // â”€â”€ Secciones UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [activeSection, setActiveSection] = useState('inicio')
   const [weekOff,    setWeekOff]    = useState(0)
   const [dayIdx,     setDayIdx]     = useState(0)
   const [resWeekOff, setResWeekOff] = useState(0)
   const [resDayIdx,  setResDayIdx]  = useState(0)
+  const [misClasesStatusFilter, setMisClasesStatusFilter] = useState('all')
   const [pagoModal, setPagoModal] = useState(null)
   const [seatSelectorClass, setSeatSelectorClass] = useState(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -195,38 +210,51 @@ export default function ClientPanel() {
     }
   }, [clases, resWeekDays, useApiClasses])
 
-  // ── Datos del usuario ────────────────────────────────────────────────────
-  const userName        = usuario?.nombre ?? 'Cliente'
-  const userInitial     = userName.charAt(0).toUpperCase()
-  const planNombre      = useApiFinancialState
-    ? (activeMembership?.packageName ?? 'Sin plan')
-    : (usuario?.paquete ?? 'Sin plan')
-  const clasesTotal     = useApiFinancialState
-    ? (activeMembership?.creditsTotal ?? 0)
-    : (usuario?.clasesPaqueteTotal ?? 0)
+  // â”€â”€ Datos del usuario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const userName = usuario?.nombre ?? 'Cliente'
+  const userInitial = userName.charAt(0).toUpperCase()
+  const financialUiState = useMemo(() => resolveFinancialUiState({
+    useApiFinancialState,
+    financialState,
+    activeMembership,
+    creditsBalance,
+    isFinancialStateLoading,
+    financialStateError,
+    usuario,
+  }), [
+    useApiFinancialState,
+    financialState,
+    activeMembership,
+    creditsBalance,
+    isFinancialStateLoading,
+    financialStateError,
+    usuario,
+  ])
+  const planNombre = financialUiState.planNombre
+  const clasesTotal = financialUiState.clasesTotal
 
   // Perfil completo desde el store (incluye campos que authStore no persiste)
   const perfilCompleto  = useMemo(
-    () => usuarios.find((u) => u.id === usuario?.id) ?? usuario,
-    [usuarios, usuario?.id]
+    () => resolvePerfilCompleto({ useApiAuth, usuario, usuarios }),
+    [useApiAuth, usuario, usuarios]
   )
 
   // Estado del formulario de perfil
-  const [perfilForm, setPerfilForm] = useState(null)   // se inicializa al abrir la sección
+  const [perfilForm, setPerfilForm] = useState(null)   // se inicializa al abrir la secciÃ³n
+  const [isPerfilDirty, setIsPerfilDirty] = useState(false)
   const [guardandoPerfil, setGuardandoPerfil] = useState(false)
 
   function initPerfilForm() {
-    if (perfilForm) return
-    const partes = (perfilCompleto?.nombre ?? '').split(' ')
-    setPerfilForm({
-      nombre:         partes[0] ?? '',
-      apellido:       partes.slice(1).join(' '),
-      email:          perfilCompleto?.email ?? '',
-      telefono:       perfilCompleto?.telefono ?? '',
-      genero:         perfilCompleto?.genero ?? 'Prefiero no decir',
-      fechaNacimiento: perfilCompleto?.fechaNacimiento ?? '',
-    })
+    if (!perfilCompleto) return
+    setPerfilForm(buildPerfilFormFromUser(perfilCompleto))
+    setIsPerfilDirty(false)
   }
+
+  useEffect(() => {
+    if (!perfilCompleto) return
+    if (isPerfilDirty && perfilForm) return
+    setPerfilForm(buildPerfilFormFromUser(perfilCompleto))
+  }, [isPerfilDirty, perfilCompleto, perfilForm])
 
   async function handleGuardarPerfil(e) {
     e.preventDefault()
@@ -241,14 +269,11 @@ export default function ClientPanel() {
     })
     if (resultado.ok) toast.success(resultado.mensaje)
     else toast.error(resultado.mensaje)
+    if (resultado.ok) setIsPerfilDirty(false)
     setGuardandoPerfil(false)
   }
-  const clasesRestantes = useApiFinancialState
-    ? creditsBalance
-    : (usuario?.clasesPaquete === 999 ? '∞' : (usuario?.clasesPaquete ?? 0))
-  const clasesUsadas    = useApiFinancialState
-    ? (activeMembership?.creditsUsed ?? 0)
-    : (usuario?.clasesPaquete === 999 ? 0 : (clasesTotal - (usuario?.clasesPaquete ?? 0)))
+  const clasesRestantes = financialUiState.clasesRestantes
+  const clasesUsadas = financialUiState.clasesUsadas
 
   const meta = SECTION_META[activeSection]
 
@@ -258,23 +283,27 @@ export default function ClientPanel() {
     setIsSidebarOpen(false)
   }
 
-  // ── Reservas del usuario ─────────────────────────────────────────────────
+  // â”€â”€ Reservas del usuario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const reservasUsuario = usuario?.id
     ? reservas.filter((r) => r.userId === usuario.id)
     : []
+  const reservasUsuarioFiltradas = useMemo(
+    () => filterReservationsByStatus(reservasUsuario, misClasesStatusFilter),
+    [misClasesStatusFilter, reservasUsuario]
+  )
 
   const now   = new Date()
   const today = hoyLocal()
 
-  // Dynamic date string for header/hero (e.g. "Miércoles, 13 de mayo")
+  // Dynamic date string for header/hero (e.g. "MiÃ©rcoles, 13 de mayo")
   const fechaHoyStr = `${DAYS_ES[now.getDay()]}, ${now.getDate()} de ${MONTHS_ES[now.getMonth()].toLowerCase()}`
 
   // Returns the real ISO date of a recurring class based on its day-of-week,
   // so corrupted r.fecha (UTC offset bug) doesn't make a past class look future.
   function realClassDate(r) {
     const clase = clases.find(c => c.id === r.claseId)
-    if (clase?.fecha) return clase.fecha          // specific-date class → trust it
-    if (!clase?.dia)  return r.fecha ?? today      // no weekday info → fallback
+    if (clase?.fecha) return clase.fecha          // specific-date class â†’ trust it
+    if (!clase?.dia)  return r.fecha ?? today      // no weekday info â†’ fallback
     const targetIdx = DAYS_ES.indexOf(clase.dia)
     if (targetIdx < 0) return r.fecha ?? today
     const diff = targetIdx - now.getDay()
@@ -321,7 +350,7 @@ export default function ClientPanel() {
     ? reservasUsuario.filter((r) => r.estado === 'confirmada' && !getReservationOccurrenceDate(r))
     : []
 
-  // Métricas reales para el dashboard
+  // MÃ©tricas reales para el dashboard
   const confirmadas   = reservasUsuario.filter((r) => r.estado === 'confirmada').length
   const canceladas    = reservasUsuario.filter((r) => r.estado === 'cancelada').length
   const noAsistio     = reservasUsuario.filter((r) => r.estado === 'no_asistio').length
@@ -329,8 +358,8 @@ export default function ClientPanel() {
     (r) => r.estado === 'completada' || r.estado === 'no_asistio'
   ).length
 
-  // ── Métricas de progreso mensual ─────────────────────────────────────
-  // [BACKEND] → GET /api/usuarios/:id/progreso?mes=YYYY-MM
+  // â”€â”€ MÃ©tricas de progreso mensual â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // [BACKEND] â†’ GET /api/usuarios/:id/progreso?mes=YYYY-MM
   // Cuando haya backend: reemplazar este bloque por una llamada HTTP
   // y mostrar los datos del servidor directamente.
 
@@ -338,7 +367,7 @@ export default function ClientPanel() {
 
   const esMesActual = (r) => {
     if (r.fecha) return r.fecha.startsWith(mesActual)
-    // Clases recurrentes (sin fecha) se consideran del mes actual si están confirmadas
+    // Clases recurrentes (sin fecha) se consideran del mes actual si estÃ¡n confirmadas
     return true
   }
 
@@ -358,7 +387,7 @@ export default function ClientPanel() {
     return fechaR.startsWith(mesActual) && r.tipo?.toLowerCase().includes('slow')
   }).length
 
-  // [BACKEND] → Este valor debería venir del perfil del usuario
+  // [BACKEND] â†’ Este valor deberÃ­a venir del perfil del usuario
   // como usuario.metaMensual o del paquete activo.
   const metaMensual = clasesTotal > 0 && (useApiFinancialState || usuario?.clasesPaquete !== 999)
     ? clasesTotal
@@ -411,10 +440,10 @@ export default function ClientPanel() {
     }))
   }
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+  // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function handleCancelReserva(reservaId) {
     const resultado = await cancelarReserva(reservaId, usuario.id)
-    if (resultado.ok) toast.success('Reserva cancelada. Te enviamos confirmación por correo 📧')
+    if (resultado.ok) toast.success('Reserva cancelada. Te enviamos confirmaciÃ³n por correo ðŸ“§')
     else toast.error(resultado.error)
   }
 
@@ -425,7 +454,7 @@ export default function ClientPanel() {
       toast.error(resultado.error)
       return
     }
-    toast.success('Tu reserva quedó confirmada. Revisa tu correo con los detalles 📧')
+    toast.success('Tu reserva quedÃ³ confirmada. Revisa tu correo con los detalles ðŸ“§')
     goTo('clases')
   }
 
@@ -443,8 +472,8 @@ export default function ClientPanel() {
     }
     const posicion = listaEsperaStore.getPosicion(av.occurrenceId ?? av._raw?.occurrenceId ?? av.id, usuario.id)
     toast.success(
-      `¡Estás en la lista de espera! Posición #${posicion}. ` +
-      `Te enviaremos un correo si se libera un lugar 📧`,
+      `Â¡EstÃ¡s en la lista de espera! PosiciÃ³n #${posicion}. ` +
+      `Te enviaremos un correo si se libera un lugar ðŸ“§`,
       { duration: 5000 }
     )
     logListaEsperaUnirse({
@@ -453,7 +482,7 @@ export default function ClientPanel() {
       claseNombre:   av.title,
       posicion,
     })
-    // [BACKEND] → POST /api/email/send { plantilla: 'lista_espera_unirse' }
+    // [BACKEND] â†’ POST /api/email/send { plantilla: 'lista_espera_unirse' }
     const uData = usuarios.find(u => u.id === usuario?.id)
     if (uData?.email) {
       import('@/services/emailService').then(({ emailListaEsperaUnirse }) => {
@@ -479,7 +508,7 @@ export default function ClientPanel() {
       toast.error(resultado?.error || 'No se pudo salir de lista de espera')
       return
     }
-    toast('Saliste de la lista de espera', { icon: '↩️' })
+    toast('Saliste de la lista de espera', { icon: 'â†©ï¸' })
     logListaEsperaSalir({
       usuarioNombre: userName,
       usuarioId:     usuario.id,
@@ -510,7 +539,7 @@ export default function ClientPanel() {
       {isSidebarOpen && (
         <div className={s.sidebarBackdrop} onClick={() => setIsSidebarOpen(false)} />
       )}
-      {/* ── SIDEBAR ── */}
+      {/* â”€â”€ SIDEBAR â”€â”€ */}
       <aside className={`${s.sidebar} ${isSidebarOpen ? s.sidebarOpen : ''}`}>
         <div className={s.sidebarLogo}>
           <span className={s.brandTag}>casa</span>
@@ -541,7 +570,7 @@ export default function ClientPanel() {
         <div className={s.sidebarFooter}>
           <button className={s.logoutLink} onClick={() => { logout(); setIsSidebarOpen(false); navigate('/') }}>
             <LogOut size={14} strokeWidth={2} />
-            Cerrar sesión
+            Cerrar sesiÃ³n
           </button>
           <button className={s.backBtn} onClick={() => { setIsSidebarOpen(false); navigate('/') }}>
             <ArrowLeft size={13} /> Volver al sitio
@@ -549,27 +578,27 @@ export default function ClientPanel() {
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
+      {/* â”€â”€ MAIN â”€â”€ */}
       <main className={s.main}>
         {/* TOPBAR */}
         <div className={s.topbar}>
           <button
             className={s.mobileMenuBtn}
             onClick={() => setIsSidebarOpen((v) => !v)}
-            aria-label={isSidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-label={isSidebarOpen ? 'Cerrar menÃº' : 'Abrir menÃº'}
             aria-expanded={isSidebarOpen}
           >
             {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
           <div>
             <div className={s.topbarTitle}>{meta.title}</div>
-            <div className={s.topbarSub}>{activeSection === 'inicio' ? `${fechaHoyStr} · Casa Scarlatta` : meta.sub}</div>
+            <div className={s.topbarSub}>{activeSection === 'inicio' ? `${fechaHoyStr} Â· Casa Scarlatta` : meta.sub}</div>
           </div>
           <div className={s.topbarRight}>
             <div className={s.topbarProfile}>
               <div>
                 <div className={s.topbarName}>{userName}</div>
-                <div className={s.topbarPlan}>Paquete {planNombre} · {clasesRestantes} clases</div>
+                <div className={s.topbarPlan}>Paquete {planNombre} Â· {clasesRestantes} clases</div>
               </div>
               <div className={s.topbarAvatar}>{userInitial}</div>
             </div>
@@ -579,19 +608,19 @@ export default function ClientPanel() {
         {/* CONTENT */}
         <div className={s.content}>
 
-          {/* ═══ INICIO ═══ */}
+          {/* â•â•â• INICIO â•â•â• */}
           <div className={`${s.section} ${activeSection === 'inicio' ? s.active : ''}`}>
             {/* Hero */}
             <div className={s.heroCard}>
               <div className={s.heroLeft}>
-                <div className={s.heroGreeting}>Hola, {userName.split(' ')[0]} 👋</div>
-                <div className={s.heroSub}>Bienvenido de vuelta a tu espacio · {fechaHoyStr}</div>
+                <div className={s.heroGreeting}>Hola, {userName.split(' ')[0]} ðŸ‘‹</div>
+                <div className={s.heroSub}>Bienvenido de vuelta a tu espacio Â· {fechaHoyStr}</div>
                 {nextClass && (
                   <div className={s.heroNext}>
                     <div>
-                      <div className={s.heroNextLabel}>Próxima clase</div>
+                      <div className={s.heroNextLabel}>PrÃ³xima clase</div>
                       <div className={s.heroNextClass}>{nextClass.title}</div>
-                      <div className={s.heroNextMeta}>{nextClass.coach} · {nextClass.location || 'Sala Principal'}</div>
+                      <div className={s.heroNextMeta}>{nextClass.coach} Â· {nextClass.location || 'Sala Principal'}</div>
                     </div>
                     <div className={s.heroNextDivider} />
                     <div>
@@ -613,7 +642,7 @@ export default function ClientPanel() {
               </div>
             </div>
 
-            {/* Banner créditos bajos */}
+            {/* Banner crÃ©ditos bajos */}
             {typeof clasesRestantes === 'number' && clasesRestantes <= 2 && (
               <div style={{
                 background: 'var(--brand-wine-08)', border: '1px solid var(--brand-wine-22)',
@@ -621,7 +650,7 @@ export default function ClientPanel() {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
                 fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--wine)',
               }}>
-                <span>⚠️ Solo te quedan <strong>{clasesRestantes}</strong> crédito{clasesRestantes !== 1 ? 's' : ''}. ¡Renueva tu paquete pronto!</span>
+                <span>âš ï¸ Solo te quedan <strong>{clasesRestantes}</strong> crÃ©dito{clasesRestantes !== 1 ? 's' : ''}. Â¡Renueva tu paquete pronto!</span>
                 <button
                   onClick={() => goTo('pagos')}
                   style={{
@@ -665,7 +694,7 @@ export default function ClientPanel() {
                 <div className={`${s.statIcon} ${s.muted}`}>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                 </div>
-                <div className={s.statLabel}>No asistió</div>
+                <div className={s.statLabel}>No asistiÃ³</div>
                 <div className={s.statValue}>{noAsistio}</div>
                 <div className={s.statSub}>Historial</div>
               </div>
@@ -692,7 +721,7 @@ export default function ClientPanel() {
               <div className={s.card}>
                 <div className={s.cardHeader}>
                   <div>
-                    <div className={s.cardTitle}>Mis próximas clases</div>
+                    <div className={s.cardTitle}>Mis prÃ³ximas clases</div>
                     <div className={s.cardSubtitle}>Esta semana</div>
                   </div>
                   <span className={`${s.pill} ${s.pillStride}`} style={{ alignSelf: 'center' }}>{upcoming.length} reservadas</span>
@@ -702,8 +731,8 @@ export default function ClientPanel() {
                     <ClassCard key={c.id} cls={c} showCancel={false} coachFoto={coachFotoByName[c.coach] || null} />
                   )) : (
                     <div className={s.empty}>
-                      <div className={s.emptyIcon}>📅</div>
-                      <div className={s.emptyText}>No tienes clases próximas</div>
+                      <div className={s.emptyIcon}>ðŸ“…</div>
+                      <div className={s.emptyText}>No tienes clases prÃ³ximas</div>
                     </div>
                   )}
                 </div>
@@ -796,19 +825,34 @@ export default function ClientPanel() {
             </div>
           </div>
 
-          {/* ═══ MIS CLASES ═══ */}
+          {/* â•â•â• MIS CLASES â•â•â• */}
           <div className={`${s.section} ${activeSection === 'clases' ? s.active : ''}`}>
-            <div className={s.clasesTopRow}>
-              <div>
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', fontWeight: 400, color: 'var(--ink)', marginBottom: 4 }}>Mis Clases</h1>
-                <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-                  {reservasUsuario.filter(r => r.estado !== 'cancelada').length} clases reservadas en total
-                </p>
-              </div>
-              <button className={`${s.btn} ${s.btnPrimary}`} onClick={() => goTo('reservar')}>
-                + Reservar clase
-              </button>
-            </div>
+	            <div className={s.clasesTopRow}>
+	              <div>
+	                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', fontWeight: 400, color: 'var(--ink)', marginBottom: 4 }}>Mis Clases</h1>
+	                <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+	                  {misClasesStatusFilter === 'all'
+	                    ? `${reservasUsuario.filter(r => r.estado !== 'cancelada').length} clases reservadas en total`
+	                    : `${reservasUsuarioFiltradas.length} clases en este estado`}
+	                </p>
+	              </div>
+	              <button className={`${s.btn} ${s.btnPrimary}`} onClick={() => goTo('reservar')}>
+	                + Reservar clase
+	              </button>
+	            </div>
+	            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+	              {MIS_CLASES_FILTERS.map((opt) => (
+	                <button
+	                  key={opt.value}
+	                  type="button"
+	                  onClick={() => setMisClasesStatusFilter(opt.value)}
+	                  className={`${s.pill} ${misClasesStatusFilter === opt.value ? s.pillStride : s.pillSlow}`}
+	                  style={{ cursor: 'pointer' }}
+	                >
+	                  {opt.label}
+	                </button>
+	              ))}
+	            </div>
 
             {/* Day nav row */}
             <div className={s.dayNavRow}>
@@ -819,12 +863,11 @@ export default function ClientPanel() {
               ><ChevronLeft size={18} /></button>
               <div className={s.dayTabs}>
                 {weekDays.map((day, i) => {
-                  const hasCls = reservasUsuario.some((r) => {
-                    if (r.estado === 'cancelada') return false
-                    if (!useApiReservations) return (r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName)
-                    const occurrenceDate = getReservationOccurrenceDate(r)
-                    if (!occurrenceDate) return false
-                    return occurrenceDate === day.isoDate
+	                  const hasCls = reservasUsuarioFiltradas.some((r) => {
+	                    if (!useApiReservations) return (r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName)
+	                    const occurrenceDate = getReservationOccurrenceDate(r)
+	                    if (!occurrenceDate) return false
+	                    return occurrenceDate === day.isoDate
                   })
                   return (
                     <button
@@ -849,10 +892,10 @@ export default function ClientPanel() {
             {/* Classes for selected day */}
             {(() => {
               const day = weekDays[dayIdx]
-              const dayClasses = reservasUsuario
-                .filter((r) => {
-                  if (!useApiReservations) return r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName
-                  const occurrenceDate = getReservationOccurrenceDate(r)
+	              const dayClasses = reservasUsuarioFiltradas
+	                .filter((r) => {
+	                  if (!useApiReservations) return r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName
+	                  const occurrenceDate = getReservationOccurrenceDate(r)
                   if (!occurrenceDate) return false
                   return occurrenceDate === day.isoDate
                 })
@@ -865,11 +908,15 @@ export default function ClientPanel() {
                 </div>
               ) : (
                 <div className={s.emptyDay}>
-                  <div className={s.emptyDayIcon}>📅</div>
-                  <div className={s.emptyDayTitle}>Sin clases el {day.fullName.toLowerCase()}</div>
-                  <p className={s.emptyDaySub}>No tienes ninguna clase reservada este día</p>
+	                  <div className={s.emptyDayIcon}>ðŸ“…</div>
+	                  <div className={s.emptyDayTitle}>Sin clases el {day.fullName.toLowerCase()}</div>
+	                  <p className={s.emptyDaySub}>
+	                    {misClasesStatusFilter === 'all'
+	                      ? 'No tienes ninguna clase reservada este dÃ­a'
+	                      : 'No tienes clases en este estado.'}
+	                  </p>
                   {useApiReservations && reservasSinFechaSesion.length > 0 && (
-                    <p className={s.emptyDaySub}>Reserva sin fecha de sesión disponible</p>
+                    <p className={s.emptyDaySub}>Reserva sin fecha de sesiÃ³n disponible</p>
                   )}
                   <button className={`${s.btn} ${s.btnPrimary}`} style={{ marginTop: 16 }} onClick={() => goTo('reservar')}>
                     Reservar clase
@@ -879,7 +926,7 @@ export default function ClientPanel() {
             })()}
           </div>
 
-          {/* ═══ RESERVAR ═══ */}
+          {/* â•â•â• RESERVAR â•â•â• */}
           <div className={`${s.section} ${activeSection === 'reservar' ? s.active : ''}`}>
 
             {/* Day nav row */}
@@ -987,7 +1034,7 @@ export default function ClientPanel() {
                                     fontSize: 11, color: '#F59E0B', fontWeight: 600,
                                     fontFamily: 'var(--font-body)',
                                   }}>
-                                    ⏳ Lista de espera #{posicion}
+                                    â³ Lista de espera #{posicion}
                                   </span>
                                   <button
                                     onClick={() => handleSalirListaEspera(av)}
@@ -1015,7 +1062,7 @@ export default function ClientPanel() {
                                         cursor: 'pointer', whiteSpace: 'nowrap',
                                       }}
                                     >
-                                      ⏳ Unirse a lista de espera
+                                      â³ Unirse a lista de espera
                                     </button>
                                   )}
                                 </div>
@@ -1043,23 +1090,19 @@ export default function ClientPanel() {
                 </div>
               ) : (
                 <div className={s.emptyDay}>
-                  <div className={s.emptyDayIcon}>📅</div>
+                  <div className={s.emptyDayIcon}>ðŸ“…</div>
                   <div className={s.emptyDayTitle}>Sin clases el {day.fullName.toLowerCase()}</div>
-                  <p className={s.emptyDaySub}>No hay clases disponibles este día</p>
+                  <p className={s.emptyDaySub}>No hay clases disponibles este dÃ­a</p>
                 </div>
               )
             })()}
           </div>
 
-          {/* ═══ PERFIL ═══ */}
-          <div
-            className={`${s.section} ${activeSection === 'perfil' ? s.active : ''}`}
-            onFocus={initPerfilForm}
-            onClick={initPerfilForm}
-          >
+          {/* â•â•â• PERFIL â•â•â• */}
+          <div className={`${s.section} ${activeSection === 'perfil' ? s.active : ''}`}>
             <div style={{ marginBottom: 28 }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', fontWeight: 400, color: 'var(--ink)' }}>Mi Perfil</h1>
-              <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>Gestiona tu información personal</p>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>Gestiona tu informaciÃ³n personal</p>
             </div>
             <div className={s.grid2} style={{ alignItems: 'start' }}>
               <div className={s.card}>
@@ -1093,7 +1136,7 @@ export default function ClientPanel() {
 
               <div className={s.card}>
                 <div className={s.cardHeader}>
-                  <div className={s.cardTitle}>Información personal</div>
+                  <div className={s.cardTitle}>InformaciÃ³n personal</div>
                 </div>
                 <div className={s.cardBody}>
                   <form onSubmit={handleGuardarPerfil}>
@@ -1104,7 +1147,10 @@ export default function ClientPanel() {
                           className={s.formInput}
                           type="text"
                           value={perfilForm?.nombre ?? ''}
-                          onChange={(e) => setPerfilForm((p) => ({ ...p, nombre: e.target.value }))}
+                          onChange={(e) => {
+                            setIsPerfilDirty(true)
+                            setPerfilForm((p) => ({ ...(p ?? {}), nombre: e.target.value }))
+                          }}
                         />
                       </div>
                       <div className={s.formGroup}>
@@ -1113,31 +1159,40 @@ export default function ClientPanel() {
                           className={s.formInput}
                           type="text"
                           value={perfilForm?.apellido ?? ''}
-                          onChange={(e) => setPerfilForm((p) => ({ ...p, apellido: e.target.value }))}
+                          onChange={(e) => {
+                            setIsPerfilDirty(true)
+                            setPerfilForm((p) => ({ ...(p ?? {}), apellido: e.target.value }))
+                          }}
                         />
                       </div>
                     </div>
                     <div className={s.formGroup}>
-                      <label className={s.formLabel}>Correo electrónico</label>
+                      <label className={s.formLabel}>Correo electrÃ³nico</label>
                       <input className={s.formInput} type="email" value={perfilForm?.email ?? ''} readOnly
                         style={{ opacity: 0.6, cursor: 'not-allowed' }} />
                     </div>
                     <div className={s.formRow}>
                       <div className={s.formGroup}>
-                        <label className={s.formLabel}>Teléfono</label>
+                        <label className={s.formLabel}>TelÃ©fono</label>
                         <input
                           className={s.formInput}
                           type="tel"
                           value={perfilForm?.telefono ?? ''}
-                          onChange={(e) => setPerfilForm((p) => ({ ...p, telefono: e.target.value }))}
+                          onChange={(e) => {
+                            setIsPerfilDirty(true)
+                            setPerfilForm((p) => ({ ...(p ?? {}), telefono: e.target.value }))
+                          }}
                         />
                       </div>
                       <div className={s.formGroup}>
-                        <label className={s.formLabel}>Género</label>
+                        <label className={s.formLabel}>GÃ©nero</label>
                         <select
                           className={s.formInput}
                           value={perfilForm?.genero ?? 'Prefiero no decir'}
-                          onChange={(e) => setPerfilForm((p) => ({ ...p, genero: e.target.value }))}
+                          onChange={(e) => {
+                            setIsPerfilDirty(true)
+                            setPerfilForm((p) => ({ ...(p ?? {}), genero: e.target.value }))
+                          }}
                         >
                           <option>Masculino</option>
                           <option>Femenino</option>
@@ -1160,7 +1215,7 @@ export default function ClientPanel() {
                         style={{ fontSize: 12, padding: '9px 20px' }}
                         disabled={guardandoPerfil}
                       >
-                        {guardandoPerfil ? 'Guardando…' : 'Guardar cambios'}
+                        {guardandoPerfil ? 'Guardandoâ€¦' : 'Guardar cambios'}
                       </button>
                     </div>
                   </form>
@@ -1169,7 +1224,7 @@ export default function ClientPanel() {
             </div>
           </div>
 
-          {/* ═══ PAGOS ═══ */}
+          {/* â•â•â• PAGOS â•â•â• */}
           <div className={`${s.section} ${activeSection === 'pagos' ? s.active : ''}`}>
             <div style={{ marginBottom: 28 }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', fontWeight: 400, color: 'var(--ink)' }}>Paquetes & Pagos</h1>
@@ -1180,10 +1235,27 @@ export default function ClientPanel() {
               <div className={s.planNameTag}>Plan activo</div>
               <div className={s.planName}>{planNombre}</div>
               <div className={s.planClassesRow}>
-                <div className={s.planClassesNum}>{clasesRestantes}</div>
+                <div className={s.planClassesNum}>
+                  {financialUiState.isLoading ? '...' : clasesRestantes}
+                </div>
                 <div className={s.planClassesSub}>clases restantes</div>
               </div>
-              {clasesRestantes !== '∞' && clasesTotal > 0 && (
+              {useApiFinancialState && financialUiState.status === 'loading' && (
+                <div className={s.planProgressLabel} style={{ color: 'var(--muted)' }}>
+                  Cargando estado financiero...
+                </div>
+              )}
+              {useApiFinancialState && financialUiState.status === 'error' && (
+                <div className={s.planProgressLabel} style={{ color: '#b42318' }}>
+                  No se pudo cargar estado financiero. Reintenta en unos segundos.
+                </div>
+              )}
+              {useApiFinancialState && financialUiState.status === 'no_membership' && (
+                <div className={s.planProgressLabel} style={{ color: 'var(--muted)' }}>
+                  Sin membresía activa
+                </div>
+              )}
+              {financialUiState.canShowProgress && (
                 <>
                   <div className={s.planProgressBar}>
                     <div
@@ -1194,12 +1266,12 @@ export default function ClientPanel() {
                   <div className={s.planProgressLabel}>
                     {clasesUsadas} de {clasesTotal} clases usadas
                     {usuario?.paqueteInfo?.fechaVencimiento
-                      ? ` · Vence ${formatFechaISO(usuario.paqueteInfo.fechaVencimiento)}`
+                      ? ` Â· Vence ${formatFechaISO(usuario.paqueteInfo.fechaVencimiento)}`
                       : ''}
                   </div>
                 </>
               )}
-              {planNombre === 'Sin plan' && (
+              {!useApiFinancialState && planNombre === 'Sin plan' && (
                 <div className={s.planProgressLabel} style={{ color: 'var(--muted)' }}>
                   No tienes un paquete activo
                 </div>
@@ -1242,22 +1314,22 @@ export default function ClientPanel() {
 
             <div className={s.card}>
               <div className={s.cardHeader}>
-                <div className={s.cardTitle}>{useApiFinancialState ? 'Movimientos de crédito' : 'Historial de pagos'}</div>
-                <div className={s.cardSubtitle}>{useApiFinancialState ? 'Actividad reciente de membresía' : 'Últimas transacciones'}</div>
+                <div className={s.cardTitle}>{useApiFinancialState ? 'Movimientos de crÃ©dito' : 'Historial de pagos'}</div>
+                <div className={s.cardSubtitle}>{useApiFinancialState ? 'Actividad reciente de membresÃ­a' : 'Ãšltimas transacciones'}</div>
               </div>
               <div className={s.cardBody}>
                 {useApiFinancialState && historialMovimientosCredito.length === 0 && historialPagos.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>
-                    Aún no hay movimientos ni transacciones registradas.
+                    Aún no hay movimientos registrados.
                   </div>
                 ) : useApiFinancialState && historialMovimientosCredito.length > 0 ? (
                   [...historialMovimientosCredito]
                     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
                     .map((mv) => (
                       <div key={`mv-${mv.id ?? mv.createdAt}`} className={s.historyRow}>
-                        <div className={s.historyIcon}>🎟️</div>
+                        <div className={s.historyIcon}>ðŸŽŸï¸</div>
                         <div style={{ flex: 1 }}>
-                          <div className={s.historyDesc}>{mv.type ?? 'Movimiento de crédito'}</div>
+                          <div className={s.historyDesc}>{mv.type ?? 'Movimiento de crÃ©dito'}</div>
                           <div className={s.historyDate}>{mv.createdAt ? formatFechaISO(mv.createdAt.slice(0, 10)) : 'Sin fecha'}</div>
                         </div>
                         <div className={s.historyAmount} style={mv.amount < 0 ? { color: '#e53e3e' } : { color: '#16a34a' }}>
@@ -1275,7 +1347,7 @@ export default function ClientPanel() {
                     .map(tx => (
                       <div key={tx.id} className={s.historyRow}>
                         <div className={s.historyIcon}>
-                          {tx.tipo === 'reembolso' ? '↩️' : tx.tipo === 'producto' ? '🛍️' : '💳'}
+                          {tx.tipo === 'reembolso' ? 'â†©ï¸' : tx.tipo === 'producto' ? 'ðŸ›ï¸' : 'ðŸ’³'}
                         </div>
                         <div style={{ flex: 1 }}>
                           <div className={s.historyDesc}>{tx.concepto}</div>
@@ -1312,5 +1384,6 @@ export default function ClientPanel() {
     </div>
   )
 }
+
 
 

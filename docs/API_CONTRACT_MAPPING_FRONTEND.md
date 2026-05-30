@@ -58,3 +58,17 @@ Los siguientes contratos se mantienen solo por compatibilidad de fallback/mock c
 - `syncClaseApi(claseId)` como ruta principal en API mode
 - `POST /api/v1/reservas` sin `occurrence_id`
 - matching de reservas por `class_id` plano
+## Mapeo Coach Agenda (vigente)
+| Archivo frontend | Función actual | Endpoint backend | Request esperado | Response esperado | Transformación necesaria | Prioridad |
+|---|---|---|---|---|---|---|
+| `frontend/src/services/coachAgendaApiService.js` | `getMyCoachAgendaApi({from,to})` | `GET /api/v1/coaches/me/agenda?from=...&to=...` | query `from`,`to` (max 30 días) + Bearer coach | `{ coach, from, to, occurrences[] }` | `coachAgendaAdapter` (snake_case -> camelCase) | Alta |
+
+Notas:
+- Coach dashboard en API mode consume agenda por ocurrencia real.
+- No usar matching por `coachNombre` ni `class_id` plano como criterio principal en API mode.
+| `frontend/src/services/clasesApiService.js` | `createClaseApi(payload)` | `POST /api/v1/clases` | `{ name, tipo, coach_id, day_name, start_time, duration_min, capacity_max, description, status }` | `ClassRead` | `classAdapter` + refresh store | Alta |
+| `frontend/src/services/clasesApiService.js` | `updateClaseApi(id,payload)` | `PUT /api/v1/clases/{id}` | `{ name, tipo, coach_id, day_name, start_time, duration_min, capacity_max, description, status }` | `ClassRead` | `classAdapter` + refresh store | Alta |
+
+Notas BUG-013:
+- En API mode admin no debe usar `coachNombre` como identidad.
+- Identidad canónica de asignación coach: `coach_id` (coaches.id backend).

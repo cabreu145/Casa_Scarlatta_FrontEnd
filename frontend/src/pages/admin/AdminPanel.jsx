@@ -39,6 +39,9 @@ import SeatSelector from '@/features/clases/SeatSelector'
 import { FinanzasSection } from './AdminFinanzas'
 import { ReportesSection } from './AdminReportes'
 import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
+import { createClaseApi, updateClaseApi } from '@/services/clasesApiService'
+import { getCoachesApi } from '@/services/coachesApiService'
+import { buildClaseApiPayload } from './classApiPayload'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
@@ -109,12 +112,14 @@ export default function AdminPanel() {
   const [activeSection, setActiveSection] = useState('dashboard')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
+  const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
+  const [apiCoaches, setApiCoaches] = useState([])
   const [rangoDash, setRangoDash]         = useState('mes')
   const [modalPago, setModalPago]         = useState(false)
   const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
   const { productos, agregarProducto,
           editarProducto, eliminarProducto }               = useProductosStore()
-  const { clases, agregarClase, editarClase } = useClasesStore()
+  const { clases, agregarClase, editarClase, loadClasesFromApi } = useClasesStore()
   const { reservas: todasReservas, getReservasByClase } = useReservasStore()
   const { paquetes, agregarPaquete, editarPaquete, eliminarPaquete, marcarDestacado } = usePaquetesStore()
   const { usuarios, agregarUsuario, editarUsuario, eliminarUsuario } = useUsuariosStore()
@@ -228,6 +233,22 @@ export default function AdminPanel() {
   // null | { userId, userName, paqSel, fechaVencimiento, metodoPago }
   // Notas editables en modal Ver
   const [editNotas, setEditNotas] = useState('')
+  const coachesForClassForms = useApiClasses ? apiCoaches : coaches
+
+  useEffect(() => {
+    if (!useApiClasses) return
+    let active = true
+    Promise.all([getCoachesApi(), loadClasesFromApi()])
+      .then(([coachesData]) => {
+        if (!active) return
+        setApiCoaches(coachesData)
+      })
+      .catch(() => {
+        if (!active) return
+        setApiCoaches([])
+      })
+    return () => { active = false }
+  }, [loadClasesFromApi, useApiClasses])
 
   function closeModal() { setModalType(null) }
   function openModal(type) { setModalType(type) }
@@ -550,7 +571,7 @@ export default function AdminPanel() {
               setSelectMode={setSelectMode}
               selectedIds={selectedIds}
               setSelectedIds={setSelectedIds}
-              coaches={coaches}
+              coaches={coachesForClassForms}
               disciplinas={disciplinas}
               openModal={openModal}
               setModalAlumnosClase={setModalAlumnosClase}
@@ -805,7 +826,7 @@ export default function AdminPanel() {
                 <select className={styles.formSelect} value={claseForm.coach}
                   onChange={e => setClaseForm(f => ({ ...f, coach: e.target.value }))}>
                   <option value="">Seleccionar coach…</option>
-                  {coaches.filter(c => {
+                  {coachesForClassForms.filter(c => {
                     if (c.activo === false) return false
                     const esp = c.especialidad
                     if (!esp || esp === 'Ambas') return true
@@ -898,27 +919,37 @@ export default function AdminPanel() {
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => {
+                onClick={async () => {
                   if (!claseForm.nombre.trim()) return
-                  const coachObj = coaches.find(c => c.nombre === claseForm.coach)
-                  agregarClase({
-                    nombre:      claseForm.nombre,
-                    tipo:        claseForm.tipo,
-                    coachId:     coachObj?.id ?? null,
-                    coachNombre: claseForm.coach || 'Sin asignar',
-                    dia:         claseForm.dia,
-                    hora:        claseForm.hora,
-                    duracion:    Number(claseForm.duracion) || 50,
-                    cupoMax:     claseForm.tipo === 'Slow' ? 10 : 14,
-                    cupoActual:  0,
-                    descripcion: claseForm.descripcion,
-                    publicarEn:  claseForm.publicarEn || null,
-                    fecha:       claseForm.fecha || null,
-                  })
+                  const payload = buildClaseApiPayload({ form: claseForm, coaches: coachesForClassForms })
+                  if (useApiClasses) {
+                    if (payload.coach_id == null) {
+                      toast.error('Selecciona un coach válido para guardar en API mode')
+                      return
+                    }
+                    await createClaseApi(payload)
+                    await loadClasesFromApi()
+                  } else {
+                    const coachObj = coaches.find(c => c.nombre === claseForm.coach)
+                    agregarClase({
+                      nombre:      claseForm.nombre,
+                      tipo:        claseForm.tipo,
+                      coachId:     coachObj?.id ?? null,
+                      coachNombre: claseForm.coach || 'Sin asignar',
+                      dia:         claseForm.dia,
+                      hora:        claseForm.hora,
+                      duracion:    Number(claseForm.duracion) || 50,
+                      cupoMax:     claseForm.tipo === 'Slow' ? 10 : 14,
+                      cupoActual:  0,
+                      descripcion: claseForm.descripcion,
+                      publicarEn:  claseForm.publicarEn || null,
+                      fecha:       claseForm.fecha || null,
+                    })
+                  }
                   const msg = claseForm.fecha
                     ? `Clase "${claseForm.nombre}" creada para el ${new Date(claseForm.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}`
                     : claseForm.publicarEn
-                      ? `Clase programada para ${new Date(claseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}`
+                          ? `Clase programada para ${new Date(claseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}`
                       : `Clase "${claseForm.nombre}" publicada`
                   toast.success(msg)
                   logClaseCreada({
@@ -1357,7 +1388,7 @@ export default function AdminPanel() {
                 <select className={styles.formSelect} value={editClaseForm.coach}
                   onChange={e => setEditClaseForm(f => ({ ...f, coach: e.target.value }))}>
                   <option value="">Sin asignar</option>
-                  {coaches.filter(c => {
+                  {coachesForClassForms.filter(c => {
                     if (c.activo === false) return false
                     const esp = c.especialidad
                     if (!esp || esp === 'Ambas') return true
@@ -1450,22 +1481,36 @@ export default function AdminPanel() {
               </button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => {
+                onClick={async () => {
                   if (!editClaseForm.nombre.trim()) return
-                  const coachObj = coaches.find(c => c.nombre === editClaseForm.coach)
-                  editarClase(modalEditClase.id, {
-                    nombre:      editClaseForm.nombre,
-                    tipo:        editClaseForm.tipo,
-                    coachId:     coachObj?.id ?? modalEditClase.coachId ?? null,
-                    coachNombre: editClaseForm.coach || 'Sin asignar',
-                    dia:         editClaseForm.dia,
-                    hora:        editClaseForm.hora,
-                    duracion:    Number(editClaseForm.duracion) || 50,
-                    cupoMax:     editClaseForm.tipo === 'Slow' ? 10 : 14,
-                    descripcion: editClaseForm.descripcion,
-                    publicarEn:  editClaseForm.publicarEn || null,
-                    fecha:       editClaseForm.fecha || null,
+                  const payload = buildClaseApiPayload({
+                    form: editClaseForm,
+                    coaches: coachesForClassForms,
+                    fallbackCoachId: modalEditClase?.coachId,
                   })
+                  if (useApiClasses) {
+                    if (payload.coach_id == null) {
+                      toast.error('Selecciona un coach válido para guardar en API mode')
+                      return
+                    }
+                    await updateClaseApi(modalEditClase.id, payload)
+                    await loadClasesFromApi()
+                  } else {
+                    const coachObj = coaches.find(c => c.nombre === editClaseForm.coach)
+                    editarClase(modalEditClase.id, {
+                      nombre:      editClaseForm.nombre,
+                      tipo:        editClaseForm.tipo,
+                      coachId:     coachObj?.id ?? modalEditClase.coachId ?? null,
+                      coachNombre: editClaseForm.coach || 'Sin asignar',
+                      dia:         editClaseForm.dia,
+                      hora:        editClaseForm.hora,
+                      duracion:    Number(editClaseForm.duracion) || 50,
+                      cupoMax:     editClaseForm.tipo === 'Slow' ? 10 : 14,
+                      descripcion: editClaseForm.descripcion,
+                      publicarEn:  editClaseForm.publicarEn || null,
+                      fecha:       editClaseForm.fecha || null,
+                    })
+                  }
                   toast.success(`Clase "${editClaseForm.nombre}" actualizada`)
                   setModalEditClase(null)
                 }}

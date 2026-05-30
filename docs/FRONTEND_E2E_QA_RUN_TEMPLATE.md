@@ -206,3 +206,35 @@ Marcar al ejecutar QA en navegador:
 - [ ] `PagoModal` en API mode muestra “Compra en línea aún no disponible en modo API”.
 - [ ] No usar `/auth/me` para balance ni stores mock como source of truth en API mode.
 
+
+## QA específico BUG-010 (tabla semanal coach)
+- [ ] Login con coach demo.
+- [ ] Validar `GET /api/v1/coaches/me/agenda?from=...&to=...` en Network.
+- [ ] Validar que “Todas mis clases esta semana” renderiza desde `agenda.occurrences`.
+- [ ] Validar estados de loading, error controlado y empty state.
+- [ ] Confirmar que en API mode no usa datos mock/local como fuente principal.
+
+## QA específico BUG-011 (métricas coach)
+- [ ] Login coach con flags API activos.
+- [ ] Validar `GET /api/v1/coaches/me/agenda?from=...&to=...` en Network.
+- [ ] Validar que métricas “Esta semana” derivan de `agenda.occurrences`.
+- [ ] Con `occurrences=[]`, validar métricas en 0 real (sin números hardcodeados).
+- [ ] Validar estados controlados de loading/error de métricas.
+- [ ] Confirmar que en API mode no usa fuentes mock/local para métricas.
+
+## QA específico BUG-012 (clases de hoy coach)
+- [ ] Login coach con flags API activos.
+- [ ] Validar `GET /api/v1/coaches/me/agenda?from=...&to=...` en Network.
+- [ ] Confirmar que “Clases de hoy” se llena por `occurrenceDate` del día actual.
+- [ ] Confirmar orden por hora (`startTime/startAt`).
+- [ ] Validar estado loading: “Cargando clases de hoy...”.
+- [ ] Validar empty state real: “No tienes clases asignadas hoy.”.
+- [ ] Confirmar que en API mode no usa `dia` base, `coachNombre` ni fuentes mock/local como verdad.
+
+## QA específico BUG-002 (filtro Mis Clases)
+- [ ] Login cliente con flags API activos.
+- [ ] Validar `GET /api/v1/reservas/me` en Network.
+- [ ] Probar filtros: Todas, Confirmadas, Canceladas, Completadas, No asistió.
+- [ ] Validar que cada filtro muestra solo estados correspondientes.
+- [ ] Validar empty state por filtro: “No tienes clases en este estado.”.
+- [ ] Confirmar que con flags API false el filtro funciona sobre fallback local/mock.

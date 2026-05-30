@@ -227,3 +227,26 @@ Nota PagoModal en modo API:
 Pendiente separado:
 - Compra self-service real + transacciones reales de cliente.
 - Se mueve a BUG-009 / Fase pagos.
+
+## Estado BUG-010 (cerrado frontend)
+- BUG-010 corregido.
+- Tabla "Todas mis clases esta semana" usa agenda real por ocurrencias.
+- Source of truth: `GET /api/v1/coaches/me/agenda?from&to`.
+
+## Estado BUG-011 (cerrado frontend)
+- Métricas de coach en API mode derivan de `agenda.occurrences`.
+- Source of truth: `GET /api/v1/coaches/me/agenda?from&to`.
+- Sin hardcode ni fuente mock/local en API mode para card “Esta semana”.
+- Siguiente bug recomendado: BUG-012.
+
+## Estado BUG-012 (cerrado frontend)
+- Sección “Clases de hoy” en CoachPanel API mode ahora deriva de `agenda.occurrences`.
+- Source of truth: `GET /api/v1/coaches/me/agenda?from&to`.
+- Filtro por `occurrenceDate` del día actual y orden por hora.
+- Sin dependencia de `clasesStore`, `coachesStore`, `coachNombre` o `dia` de clase base en API mode.
+- Bloque coach P0 (BUG-010/011/012) cerrado funcionalmente.
+
+## Estado BUG-002 (cerrado frontend)
+- “Mis clases” permite filtro por estado (`all`, `confirmada`, `cancelada`, `completada`, `no_asistio`).
+- En API mode usa reservas adaptadas desde `GET /api/v1/reservas/me`.
+- En modo fallback (`flags=false`) se mantiene soporte sobre reservas mock/local.

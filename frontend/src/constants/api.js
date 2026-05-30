@@ -58,6 +58,7 @@ export const ENDPOINTS = {
 
   coaches: withPrefix('/coaches'),
   coachById: (id) => withPrefix(`/coaches/${id}`),
+  coachAgendaMe: ({ from, to }) => withPrefix(`/coaches/me/agenda?from=${from ?? ''}&to=${to ?? ''}`),
 
   reportes: withPrefix('/admin/reportes'),
   finanzas: withPrefix('/admin/finanzas'),
