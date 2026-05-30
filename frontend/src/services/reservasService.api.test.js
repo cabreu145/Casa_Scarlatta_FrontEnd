@@ -11,6 +11,7 @@ const useClasesState = {
 }
 const syncOccurrenceApi = vi.fn()
 const syncClaseApi = vi.fn()
+const loadFinancialState = vi.fn()
 
 vi.mock('@/services/reservasApiService', () => ({
   cancelarReservaApi: (...args) => cancelarReservaApi(...args),
@@ -37,6 +38,11 @@ vi.mock('@/stores/listaEsperaStore', () => ({
     getState: () => ({ syncOccurrenceApi, syncClaseApi }),
   },
 }))
+vi.mock('@/stores/financialStateStore', () => ({
+  useFinancialStateStore: {
+    getState: () => ({ loadFinancialState }),
+  },
+}))
 
 vi.mock('@/stores/usuariosStore', () => ({ useUsuariosStore: { getState: () => ({}) } }))
 vi.mock('@/stores/notificacionesStore', () => ({ useNotificacionesStore: { getState: () => ({}) } }))
@@ -60,6 +66,7 @@ describe('reservasService waitlist occurrence-only', () => {
     useClasesState.loadClasesFromApi.mockReset()
     syncOccurrenceApi.mockReset()
     syncClaseApi.mockReset()
+    loadFinancialState.mockReset()
 
     cancelarReservaApi.mockResolvedValue({ ok: true })
     getMisReservasApi.mockResolvedValue([])
@@ -74,6 +81,7 @@ describe('reservasService waitlist occurrence-only', () => {
 
     expect(result.ok).toBe(true)
     expect(syncOccurrenceApi).toHaveBeenCalledWith(77)
+    expect(loadFinancialState).toHaveBeenCalled()
     expect(syncClaseApi).not.toHaveBeenCalled()
   })
 
@@ -84,6 +92,7 @@ describe('reservasService waitlist occurrence-only', () => {
     const result = await cancelarReserva(101, 5)
 
     expect(result.ok).toBe(true)
+    expect(loadFinancialState).toHaveBeenCalled()
     expect(syncOccurrenceApi).not.toHaveBeenCalled()
     expect(syncClaseApi).not.toHaveBeenCalled()
   })

@@ -197,3 +197,33 @@ Checklist detallado multi-rol:
 
 
 
+## Integración BUG-004 Estado Financiero (2026-05-30)
+- Endpoint fuente de verdad en modo API cliente:
+  - `GET /api/v1/clientes/me/estado-financiero`
+- En modo API, `/auth/me` se mantiene para identidad/sesión; no para balance de créditos.
+- Frontend refresca estado financiero en:
+  - bootstrap/login cliente
+  - reserva (`POST /reservas`)
+  - cancelación (`POST /reservas/{id}/cancelar`)
+
+Campos usados en UI cliente:
+- `credits_balance`
+- `active_membership.package_name`
+- `active_membership.credits_total|credits_used|credits_available`
+- `credit_movements`
+- `transactions` (puede venir `[]` temporalmente)
+
+Nota PagoModal en modo API:
+- Compra self-service aún no implementada.
+- El modal muestra estado controlado: `Compra en línea aún no disponible en modo API`.
+- El flujo local/mock de compra se mantiene solo como fallback cuando flags API están en `false`.
+
+## Estado BUG-004 Core (cerrado)
+- Estado: **Cerrado (core)**.
+- Cubre: créditos/membresía persistentes tras login, refresh, reservar y cancelar usando `GET /api/v1/clientes/me/estado-financiero`.
+- `/auth/me` no se usa para balance financiero.
+- `PagoModal` en modo API no simula compra persistente.
+
+Pendiente separado:
+- Compra self-service real + transacciones reales de cliente.
+- Se mueve a BUG-009 / Fase pagos.

@@ -15,6 +15,7 @@ import { useCoachesStore }       from '@/stores/coachesStore'
 import { usePaquetesStore }      from '@/stores/paquetesStore'
 import { useTransaccionesStore } from '@/stores/transaccionesStore'
 import { useListaEsperaStore }   from '@/stores/listaEsperaStore'
+import { useFinancialStateStore } from '@/stores/financialStateStore'
 import { reservarClase, cancelarReserva } from '@/services/reservasService'
 import { editarPerfilService }            from '@/services/usuariosService'
 import { getPublicClassesByDate, getReservationOccurrenceDate, isPublished } from '@/services/classService'
@@ -102,9 +103,24 @@ export default function ClientPanel() {
   const { paquetes }  = usePaquetesStore()
   const { getTransaccionesByUsuario } = useTransaccionesStore()
   const listaEsperaStore = useListaEsperaStore()
+  const {
+    creditsBalance,
+    activeMembership,
+    creditMovements,
+    transactions,
+    loadFinancialState,
+  } = useFinancialStateStore()
 
-  // Historial real de pagos del usuario
-  const historialPagos = usuario?.id ? getTransaccionesByUsuario(usuario.id) : []
+  const useApiAuth = import.meta.env.VITE_USE_API_AUTH === 'true'
+  const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
+  const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
+  const useApiWaitlist = import.meta.env.VITE_USE_API_WAITLIST === 'true'
+  const useApiFinancialState = useApiAuth && useApiReservations
+
+  const historialPagos = useApiFinancialState
+    ? (transactions ?? [])
+    : (usuario?.id ? getTransaccionesByUsuario(usuario.id) : [])
+  const historialMovimientosCredito = useApiFinancialState ? (creditMovements ?? []) : []
 
   // Mapa nombre → foto para todos los componentes de esta página
   const coachFotoByName = useMemo(
@@ -122,9 +138,6 @@ export default function ClientPanel() {
   const [seatSelectorClass, setSeatSelectorClass] = useState(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
-  const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
-  const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
-  const useApiWaitlist = import.meta.env.VITE_USE_API_WAITLIST === 'true'
   const weekDays = useMemo(() => buildWeek(weekOff), [weekOff])
   const resWeekDays = useMemo(() => buildWeek(resWeekOff), [resWeekOff])
 
@@ -152,6 +165,15 @@ export default function ClientPanel() {
   }, [loadMisReservasFromApi, useApiReservations])
 
   useEffect(() => {
+    if (!useApiFinancialState || usuario?.rol !== 'cliente') return
+    loadFinancialState().catch((err) => {
+      if (import.meta.env.DEV) {
+        console.error('[ClientPanel] No se pudo cargar estado financiero API', err)
+      }
+    })
+  }, [loadFinancialState, useApiFinancialState, usuario?.rol])
+
+  useEffect(() => {
     if (!useApiClasses || !clases.length) return
     const from = resWeekDays[0]?.isoDate
     const to = resWeekDays[resWeekDays.length - 1]?.isoDate
@@ -176,8 +198,12 @@ export default function ClientPanel() {
   // ── Datos del usuario ────────────────────────────────────────────────────
   const userName        = usuario?.nombre ?? 'Cliente'
   const userInitial     = userName.charAt(0).toUpperCase()
-  const planNombre      = usuario?.paquete ?? 'Sin plan'
-  const clasesTotal     = usuario?.clasesPaqueteTotal ?? 0
+  const planNombre      = useApiFinancialState
+    ? (activeMembership?.packageName ?? 'Sin plan')
+    : (usuario?.paquete ?? 'Sin plan')
+  const clasesTotal     = useApiFinancialState
+    ? (activeMembership?.creditsTotal ?? 0)
+    : (usuario?.clasesPaqueteTotal ?? 0)
 
   // Perfil completo desde el store (incluye campos que authStore no persiste)
   const perfilCompleto  = useMemo(
@@ -217,8 +243,12 @@ export default function ClientPanel() {
     else toast.error(resultado.mensaje)
     setGuardandoPerfil(false)
   }
-  const clasesRestantes = usuario?.clasesPaquete === 999 ? '∞' : (usuario?.clasesPaquete ?? 0)
-  const clasesUsadas    = usuario?.clasesPaquete === 999 ? 0 : (clasesTotal - (usuario?.clasesPaquete ?? 0))
+  const clasesRestantes = useApiFinancialState
+    ? creditsBalance
+    : (usuario?.clasesPaquete === 999 ? '∞' : (usuario?.clasesPaquete ?? 0))
+  const clasesUsadas    = useApiFinancialState
+    ? (activeMembership?.creditsUsed ?? 0)
+    : (usuario?.clasesPaquete === 999 ? 0 : (clasesTotal - (usuario?.clasesPaquete ?? 0)))
 
   const meta = SECTION_META[activeSection]
 
@@ -330,7 +360,7 @@ export default function ClientPanel() {
 
   // [BACKEND] → Este valor debería venir del perfil del usuario
   // como usuario.metaMensual o del paquete activo.
-  const metaMensual = clasesTotal > 0 && usuario?.clasesPaquete !== 999
+  const metaMensual = clasesTotal > 0 && (useApiFinancialState || usuario?.clasesPaquete !== 999)
     ? clasesTotal
     : 20
 
@@ -338,7 +368,7 @@ export default function ClientPanel() {
     ? Math.min(100, Math.round((clasesTomadasEsteMes / metaMensual) * 100))
     : 0
 
-  const pctPaquete = clasesTotal > 0 && usuario?.clasesPaquete !== 999
+  const pctPaquete = clasesTotal > 0 && (useApiFinancialState || usuario?.clasesPaquete !== 999)
     ? Math.min(100, Math.round((clasesUsadas / clasesTotal) * 100))
     : 0
 
@@ -1212,11 +1242,30 @@ export default function ClientPanel() {
 
             <div className={s.card}>
               <div className={s.cardHeader}>
-                <div className={s.cardTitle}>Historial de pagos</div>
-                <div className={s.cardSubtitle}>Últimas transacciones</div>
+                <div className={s.cardTitle}>{useApiFinancialState ? 'Movimientos de crédito' : 'Historial de pagos'}</div>
+                <div className={s.cardSubtitle}>{useApiFinancialState ? 'Actividad reciente de membresía' : 'Últimas transacciones'}</div>
               </div>
               <div className={s.cardBody}>
-                {historialPagos.length === 0 ? (
+                {useApiFinancialState && historialMovimientosCredito.length === 0 && historialPagos.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>
+                    Aún no hay movimientos ni transacciones registradas.
+                  </div>
+                ) : useApiFinancialState && historialMovimientosCredito.length > 0 ? (
+                  [...historialMovimientosCredito]
+                    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+                    .map((mv) => (
+                      <div key={`mv-${mv.id ?? mv.createdAt}`} className={s.historyRow}>
+                        <div className={s.historyIcon}>🎟️</div>
+                        <div style={{ flex: 1 }}>
+                          <div className={s.historyDesc}>{mv.type ?? 'Movimiento de crédito'}</div>
+                          <div className={s.historyDate}>{mv.createdAt ? formatFechaISO(mv.createdAt.slice(0, 10)) : 'Sin fecha'}</div>
+                        </div>
+                        <div className={s.historyAmount} style={mv.amount < 0 ? { color: '#e53e3e' } : { color: '#16a34a' }}>
+                          {mv.amount > 0 ? '+' : ''}{mv.amount}
+                        </div>
+                      </div>
+                    ))
+                ) : historialPagos.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>
                     No hay transacciones registradas.
                   </div>

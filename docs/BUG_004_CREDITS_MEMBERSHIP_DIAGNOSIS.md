@@ -109,3 +109,28 @@ Cierre robusto requiere backend disponible y contrato claro para:
 
 ## Recomendaci贸n de siguiente paso
 Implementaci贸n en frontend enfocada a BUG-004 con contrato backend vigente de membres铆a/cr茅ditos/transacciones. Si contrato user-centric no existe o es parcial, abrir mini-ajuste backend primero (endpoint de lectura consolidada de estado financiero del cliente).
+
+## Actualizaci贸n implementaci贸n (2026-05-30)
+- Integrado endpoint `GET /api/v1/clientes/me/estado-financiero` como fuente financiera en modo API.
+- Nuevo adapter: `frontend/src/adapters/financialStateAdapter.js`.
+- Nuevo servicio: `frontend/src/services/financialStateApiService.js`.
+- Nuevo store: `frontend/src/stores/financialStateStore.js`.
+- Refetch financiero aplicado en:
+  - bootstrap/login de `AuthContext` para rol cliente.
+  - post-reserva y post-cancelaci贸n en `reservasService`.
+- Dashboard cliente (`ClientPanel`) consume cr茅ditos/membres铆a/movimientos desde estado financiero API cuando flags API est谩n activos.
+- `PagoModal` en modo API no simula compra persistente; muestra mensaje controlado de no disponibilidad.
+
+## Cierre formal BUG-004 Core (2026-05-30)
+Estado: **Cerrado (core frontend)**.
+
+Alcance cerrado:
+- Fuente de verdad de cr閐itos/membres韆 en modo API: `GET /api/v1/clientes/me/estado-financiero`.
+- Persistencia correcta tras login, refresh, reservar y cancelar.
+- `/auth/me` queda solo para identidad/sesi髇 (no balance financiero).
+- `PagoModal` en modo API no muta cr閐itos localmente y muestra estado controlado.
+
+Fuera de alcance BUG-004:
+- Compra self-service real.
+- `transactions` enriquecidas de pagos reales.
+- Integraci髇 pasarela Mercado Pago (BUG-009 / Fase pagos).

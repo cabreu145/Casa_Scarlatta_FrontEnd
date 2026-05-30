@@ -38,6 +38,7 @@ export const ENDPOINTS = {
   usuarios: withPrefix('/usuarios'),
   usuarioById: (id) => withPrefix(`/usuarios/${id}`),
   miPerfil: withPrefix('/usuarios/me'),
+  miEstadoFinanciero: withPrefix('/clientes/me/estado-financiero'),
 
   paquetes: withPrefix('/paquetes'),
   comprarPaquete: withPrefix('/paquetes/comprar'),

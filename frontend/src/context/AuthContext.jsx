@@ -7,6 +7,7 @@ import { logUsuarioNuevo, logLoginCliente } from '@/services/actividadService'
 import { emailBienvenida, emailResetPassword } from '@/services/emailService'
 import { ENDPOINTS } from '@/constants/api'
 import { httpGet, httpPost } from '@/lib/http'
+import { useFinancialStateStore } from '@/stores/financialStateStore'
 import {
   mapAuthPayloadToSession,
   mapBackendUserToFrontendUser,
@@ -36,6 +37,8 @@ export function AuthProvider({ children }) {
     actualizarClasesPaquete,
   } = useAuthStore()
   const [loading, setLocalLoading] = useState(true)
+  const loadFinancialState = useFinancialStateStore((s) => s.loadFinancialState)
+  const clearFinancialState = useFinancialStateStore((s) => s.clearFinancialState)
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -53,7 +56,12 @@ export function AuthProvider({ children }) {
       try {
         const mePayload = await httpGet(ENDPOINTS.me)
         const meUser = mapBackendUserToFrontendUser(mePayload?.user ?? mePayload)
-        if (meUser) setSession({ usuario: meUser, token })
+        if (meUser) {
+          setSession({ usuario: meUser, token })
+          if (meUser.rol === 'cliente') {
+            await loadFinancialState().catch(() => {})
+          }
+        }
       } catch {
         clearToken()
         storeLogout()
@@ -63,7 +71,7 @@ export function AuthProvider({ children }) {
     }
 
     bootstrap()
-  }, [setSession, storeLogout])
+  }, [loadFinancialState, setSession, storeLogout])
 
   const login = async (email, password) => {
     setLocalLoading(true)
@@ -75,6 +83,9 @@ export function AuthProvider({ children }) {
         if (!user) throw new Error('No fue posible obtener usuario autenticado')
         saveToken(token)
         setSession({ usuario: user, token })
+        if (user.rol === 'cliente') {
+          await loadFinancialState().catch(() => {})
+        }
         if (user.rol === 'cliente') {
           logLoginCliente({ nombre: user.nombre ?? user.name, email: user.email })
         }
@@ -118,6 +129,9 @@ export function AuthProvider({ children }) {
         if (!user) throw new Error('No fue posible crear la cuenta')
         if (session.token) saveToken(session.token)
         setSession({ usuario: user, token: session.token ?? localStorage.getItem('token') })
+        if (user.rol === 'cliente') {
+          await loadFinancialState().catch(() => {})
+        }
         return user
       } catch (err) {
         if (import.meta.env.DEV && err?.details) {
@@ -203,9 +217,11 @@ export function AuthProvider({ children }) {
         // noop: siempre limpiar estado local
       }
       clearToken()
+      clearFinancialState()
       storeLogout()
       return
     }
+    clearFinancialState()
     storeLogout()
   }
 

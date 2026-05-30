@@ -44,18 +44,19 @@ Ordenar ejecuci贸n de estabilizaci贸n core para BUG-001 a BUG-013 antes de nuevo
   - o `class_start_at/class_date` reales no nulos de forma consistente.
 
 ## BUG-004 - Cr閐itos no descuentan/persisten correctamente
-- Tipo: frontend data source + posible gap de contrato
+- Tipo: frontend data source + contrato backend integrado
 - Owner sugerido: Frontend + Backend
 - Dependencias: BUG-003
-- Estado: Diagnosticado (2026-05-30) / Pendiente implementaci髇
-- Done esperado:
-  - cr閐itos consistentes tras reservar/cancelar y tras refresh/relogin.
-- Hallazgo de diagn髎tico:
-  - En modo API, reservas ya usan backend pero cr閐itos/paquete/transacciones visibles siguen mezclando `authStore` persistido + stores/local mocks (`usuariosStore`, `transaccionesStore`, `paquetesStore`).
-  - No existe refresco expl韈ito de membres韆/cr閐itos tras mutaciones de reserva.
-  - `PagoModal` y `usuariosService` conservan flujo local de compra/asignaci髇.
-- Clasificaci髇:
-  - Mixto (frontend + integraci髇 de contrato backend de membres韆/cr閐itos/transacciones).
+- Estado: Cerrado Core (2026-05-30)
+- Alcance core cerrado:
+  - cr閐itos/membres韆 persistentes tras login, refresh, reservar y cancelar.
+  - source of truth en modo API: `GET /api/v1/clientes/me/estado-financiero`.
+  - `/auth/me` se mantiene para identidad/sesi髇, no para balance financiero.
+  - `PagoModal` en modo API no simula compra persistente ni muta cr閐itos localmente.
+- Fuera de alcance BUG-004 (pendiente separado):
+  - compra self-service real.
+  - transacciones reales de cliente enriquecidas.
+  - integraci髇 de pagos/pasarela => BUG-009 / Fase pagos.
 ## BUG-007 - Perfil no muestra datos personales correctamente
 - Tipo: frontend UI/data hydration
 - Owner sugerido: Frontend
@@ -158,4 +159,15 @@ Ordenar ejecuci贸n de estabilizaci贸n core para BUG-001 a BUG-013 antes de nuevo
   - waitlist migrada a `occurrenceId`.
 - Pendiente posterior:
   - BUG-004 (cr茅ditos/paquetes) como siguiente prioridad P0.
+
+`r`n
+## Actualizaci髇 2026-05-30 (BUG-004 cierre core)
+- Estado BUG-004 Core: **Cerrado**.
+- Criterio de cierre cumplido:
+  - cr閐itos/membres韆 persisten tras login/reload/logout-login.
+  - cr閐itos se refrescan tras reservar/cancelar.
+  - dashboard cliente en modo API usa estado financiero backend como verdad.
+- Pendiente separado (no bloquea cierre core):
+  - compra self-service real y transacciones reales de cliente (BUG-009 / Fase pagos).
+
 

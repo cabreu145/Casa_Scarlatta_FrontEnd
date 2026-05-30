@@ -32,6 +32,7 @@ Reglas clave:
 | `frontend/src/services/waitlistApiService.js` | `unirseWaitlistApi({occurrenceId,userId})` | `POST /api/v1/lista-espera` | `{ occurrence_id, user_id }` | `WaitlistEntryRead` | `mapJoinWaitlistPayload` | Alta |
 | `frontend/src/services/waitlistApiService.js` | `salirWaitlistApi(entryId)` | `DELETE /api/v1/lista-espera/{id}` | path `id` | `WaitlistEntryRead` | sync cache/refetch | Alta |
 | `frontend/src/features/clases/SeatSelector.jsx` | `confirm()` reserva con asiento | `POST /api/v1/reservas` | incluye `occurrence_id` | reserva confirmada | no reservar por `class_id` plano | Alta |
+| `frontend/src/services/financialStateApiService.js` | `getMyFinancialStateApi()` | `GET /api/v1/clientes/me/estado-financiero` | Bearer token (rol cliente) | `{ user_id, credits_balance, active_membership, credit_movements, transactions }` | `financialStateAdapter` (snake_case -> camelCase) | Alta |
 
 ## Waitlist en modo API (vigente)
 - `GET /api/v1/lista-espera?occurrenceId=...`
@@ -42,6 +43,12 @@ Reglas clave:
 - `reserved_at` => `fechaCreacionReserva`.
 - Fecha/hora de sesión => `class_date` o `class_start_at`.
 - Si faltan datos de ocurrencia, UI no debe afirmar reserva diaria por `class_id`.
+
+## Notas BUG-004 (vigente)
+- En modo API, `/auth/me` se usa para identidad/sesión, no para balance financiero.
+- Créditos y membresía visibles en dashboard cliente salen de `GET /clientes/me/estado-financiero`.
+- Tras reservar/cancelar, frontend debe refrescar estado financiero.
+- `transactions` puede venir temporalmente vacío (`[]`) y la UI debe mostrar estado controlado.
 
 ## Legacy / histórico (no usar en modo API actual)
 Los siguientes contratos se mantienen solo por compatibilidad de fallback/mock cuando flags API están en `false`:

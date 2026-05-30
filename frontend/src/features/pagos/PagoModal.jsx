@@ -21,6 +21,9 @@ import s from './PagoModal.module.css'
 const STEPS = ['resumen', 'pago', 'procesando', 'exito']
 
 export default function PagoModal({ paquete, onClose, onSuccess }) {
+  const useApiAuth = import.meta.env.VITE_USE_API_AUTH === 'true'
+  const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
+  const useApiFinancialMode = useApiAuth && useApiReservations
   const { usuario, actualizarClasesPaquete, actualizarPerfil } = useAuth()
   const { asignarPaquete, asignarPaqueteCompartido } = useUsuariosStore()
   const [step, setStep]       = useState('resumen')
@@ -53,6 +56,10 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
   }
 
   async function handlePagar() {
+    if (useApiFinancialMode) {
+      toast('Compra en línea aún no disponible en modo API')
+      return
+    }
     setError('')
 
     // Validaciones básicas de tarjeta

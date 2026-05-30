@@ -4,6 +4,7 @@ import { useUsuariosStore } from '@/stores/usuariosStore'
 import { useNotificacionesStore } from '@/stores/notificacionesStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useListaEsperaStore } from '@/stores/listaEsperaStore'
+import { useFinancialStateStore } from '@/stores/financialStateStore'
 import { ESTADOS_RESERVA, TIPOS_NOTIFICACION } from '@/data/mockData'
 import { hoyLocal } from '@/utils/fecha'
 import { logReservaCreada, logReservaCancelada } from '@/services/actividadService'
@@ -47,6 +48,11 @@ export async function reservarClase(userId, claseId, asiento = null, occurrenceI
       await syncReservasFromApi()
       try {
         await useClasesStore.getState().loadClasesFromApi?.()
+      } catch {
+        // noop
+      }
+      try {
+        await useFinancialStateStore.getState().loadFinancialState?.()
       } catch {
         // noop
       }
@@ -157,6 +163,11 @@ export async function cancelarReserva(reservaId, userId) {
       await syncReservasFromApi()
       try {
         await useClasesStore.getState().loadClasesFromApi?.()
+      } catch {
+        // noop
+      }
+      try {
+        await useFinancialStateStore.getState().loadFinancialState?.()
       } catch {
         // noop
       }
