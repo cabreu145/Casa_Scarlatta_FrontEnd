@@ -1492,18 +1492,18 @@ export default function AdminPanel() {
         const idsInscritos = new Set(inscritos.map(r => r.userId))
         const disponibles  = usuarios.filter(u => !idsInscritos.has(u.id) && u.rol === 'cliente')
 
-        function handleCancelar(r) {
-          const res = cancelarReservaService(r.id, r.userId)
+        async function handleCancelar(r) {
+          const res = await cancelarReservaService(r.id, r.userId)
           if (res.ok) toast.success(`Reserva de ${r.nombreUsuario} cancelada`)
           else toast.error(res.error)
         }
 
-        function handleAgregar() {
+        async function handleAgregar() {
           if (!alumnoAgregarId) return
           const userId = Number(alumnoAgregarId)
           const usuario = usuarios.find(u => u.id === userId)
           // Admin override: si el usuario no tiene créditos, igual lo metemos directo
-          const res = reservarClaseService(userId, cls.id)
+          const res = await reservarClaseService(userId, cls.id)
           if (res.ok) {
             toast.success(`${usuario?.nombre} inscrito en ${cls.nombre}`)
             setAlumnoAgregarId('')
@@ -1578,8 +1578,8 @@ export default function AdminPanel() {
                                 <button
                                   className={`${styles.btn} ${styles.btnGhost}`}
                                   style={{ fontSize: 11, padding: '4px 10px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.3)' }}
-                                  onClick={() => {
-                                    const res = marcarNoAsistio(r.id)
+                                  onClick={async () => {
+                                    const res = await marcarNoAsistio(r.id)
                                     if (res.ok) toast.success(`${r.nombreUsuario} marcado como no asistió`)
                                     else toast.error(res.error)
                                   }}

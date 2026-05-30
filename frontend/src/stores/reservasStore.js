@@ -15,6 +15,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { RESERVAS_MOCK, ESTADOS_RESERVA } from '@/data/mockData'
+import { getMisReservasApi } from '@/services/reservasApiService'
+
+const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
 
 export const useReservasStore = create(
   persist(
@@ -28,6 +31,15 @@ export const useReservasStore = create(
         get().reservas.filter(
           (r) => r.claseId === claseId && r.estado === ESTADOS_RESERVA.CONFIRMADA
         ),
+
+      setReservas: (reservas) => set({ reservas: Array.isArray(reservas) ? reservas : [] }),
+
+      loadMisReservasFromApi: async () => {
+        if (!useApiReservations) return get().reservas
+        const reservasApi = await getMisReservasApi()
+        set({ reservas: reservasApi })
+        return reservasApi
+      },
 
       agregarReserva: (reserva) =>
         set((state) => ({

@@ -1,35 +1,89 @@
-/**
- * AuthContext.jsx
- * ─────────────────────────────────────────────────────
- * Contexto global de autenticación. Expone useAuth() a toda la app.
- * Encapsula useAuthStore para que ningún componente lo llame directo.
- * Cuando haya backend: reemplazar mockUsers por llamadas a
- * ENDPOINTS.login y ENDPOINTS.registro vía httpPost().
- *
- * Usado en: App.jsx (AuthProvider), todos los componentes con useAuth()
- * Depende de: authStore, mockUsers
- * ─────────────────────────────────────────────────────
- */
-import { createContext, useContext, useEffect, useState } from 'react'
-import { useAuthStore }   from '@/stores/authStore'
+﻿import { createContext, useContext, useEffect, useState } from 'react'
+import { useAuthStore } from '@/stores/authStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import { mockUsers } from '@/data/mockUsers'
 import { hoyLocal } from '@/utils/fecha'
 import { logUsuarioNuevo, logLoginCliente } from '@/services/actividadService'
 import { emailBienvenida, emailResetPassword } from '@/services/emailService'
+import { ENDPOINTS } from '@/constants/api'
+import { httpGet, httpPost } from '@/lib/http'
+import {
+  mapAuthPayloadToSession,
+  mapBackendUserToFrontendUser,
+  mapRegisterRequestToApiPayload,
+} from '@/adapters/authAdapter'
 
 const AuthContext = createContext(null)
+const useApiAuth = import.meta.env.VITE_USE_API_AUTH === 'true'
+
+function saveToken(token) {
+  if (token) localStorage.setItem('token', token)
+}
+
+function clearToken() {
+  localStorage.removeItem('token')
+}
 
 export function AuthProvider({ children }) {
-  const { usuario, isAuthenticated, setUsuario, setLoading, logout: storeLogout, actualizarPerfil, actualizarClasesPaquete } = useAuthStore()
+  const {
+    usuario,
+    isAuthenticated,
+    setUsuario,
+    setSession,
+    setLoading,
+    logout: storeLogout,
+    actualizarPerfil,
+    actualizarClasesPaquete,
+  } = useAuthStore()
   const [loading, setLocalLoading] = useState(true)
 
   useEffect(() => {
-    setLocalLoading(false)
-  }, [])
+    const bootstrap = async () => {
+      if (!useApiAuth) {
+        setLocalLoading(false)
+        return
+      }
+
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setLocalLoading(false)
+        return
+      }
+
+      try {
+        const mePayload = await httpGet(ENDPOINTS.me)
+        const meUser = mapBackendUserToFrontendUser(mePayload?.user ?? mePayload)
+        if (meUser) setSession({ usuario: meUser, token })
+      } catch {
+        clearToken()
+        storeLogout()
+      } finally {
+        setLocalLoading(false)
+      }
+    }
+
+    bootstrap()
+  }, [setSession, storeLogout])
 
   const login = async (email, password) => {
     setLocalLoading(true)
+
+    if (useApiAuth) {
+      try {
+        const payload = await httpPost(ENDPOINTS.login, { email, password })
+        const { token, user } = mapAuthPayloadToSession(payload)
+        if (!user) throw new Error('No fue posible obtener usuario autenticado')
+        saveToken(token)
+        setSession({ usuario: user, token })
+        if (user.rol === 'cliente') {
+          logLoginCliente({ nombre: user.nombre ?? user.name, email: user.email })
+        }
+        return user
+      } finally {
+        setLocalLoading(false)
+      }
+    }
+
     await new Promise((r) => setTimeout(r, 600))
     const storeUsuarios = useUsuariosStore.getState().usuarios
     const user =
@@ -54,6 +108,27 @@ export function AuthProvider({ children }) {
 
   const register = async (datos) => {
     setLocalLoading(true)
+
+    if (useApiAuth) {
+      try {
+        const requestPayload = mapRegisterRequestToApiPayload(datos)
+        const payload = await httpPost(ENDPOINTS.registro, requestPayload)
+        const session = mapAuthPayloadToSession(payload)
+        const user = session.user ?? mapBackendUserToFrontendUser(payload?.user ?? payload)
+        if (!user) throw new Error('No fue posible crear la cuenta')
+        if (session.token) saveToken(session.token)
+        setSession({ usuario: user, token: session.token ?? localStorage.getItem('token') })
+        return user
+      } catch (err) {
+        if (import.meta.env.DEV && err?.details) {
+          console.error('[Auth register] backend validation details:', err.details)
+        }
+        throw err
+      } finally {
+        setLocalLoading(false)
+      }
+    }
+
     await new Promise((r) => setTimeout(r, 600))
     const storeUsuariosCheck = useUsuariosStore.getState().usuarios
     const existe = storeUsuariosCheck.find((u) => u.email === datos.email)
@@ -77,19 +152,34 @@ export function AuthProvider({ children }) {
     setLocalLoading(false)
     logUsuarioNuevo({
       nombre: datos.nombre ?? datos.name ?? 'Usuario nuevo',
-      email:  datos.email,
+      email: datos.email,
     })
-    // Enviar email de bienvenida
-    // [BACKEND] → POST /api/email/send { plantilla: 'bienvenida' }
     emailBienvenida({
       nombre: datos.nombre ?? datos.name ?? 'Cliente',
-      email:  datos.email,
-    }).catch(() => {}) // No bloquear el flujo si falla el email
+      email: datos.email,
+    }).catch(() => {})
     return safeUser
   }
 
-  const resetPassword = async (email, newPassword) => {
+  const requestPasswordReset = async (email) => {
+    if (!useApiAuth) return
+    await httpPost(ENDPOINTS.resetPasswordRequest, { email })
+  }
+
+  const resetPassword = async (email, newPassword, token) => {
     setLocalLoading(true)
+
+    if (useApiAuth) {
+      try {
+        const confirmToken = token ?? null
+        if (!confirmToken) throw new Error('Token de recuperación requerido para confirmar contraseña')
+        await httpPost(ENDPOINTS.resetPasswordConfirm, { token: confirmToken, password: newPassword, email })
+        return
+      } finally {
+        setLocalLoading(false)
+      }
+    }
+
     await new Promise((r) => setTimeout(r, 600))
     const { usuarios, actualizarUsuario } = useUsuariosStore.getState()
     const su = usuarios.find((u) => u.email === email)
@@ -99,14 +189,23 @@ export function AuthProvider({ children }) {
     }
     actualizarUsuario(su.id, { password: newPassword })
     setLocalLoading(false)
-    // [BACKEND] → El backend genera el token y envía el link real.
     emailResetPassword({
       nombre: su.nombre ?? su.name ?? 'Cliente',
-      email:  su.email,
+      email: su.email,
     }).catch(() => {})
   }
 
-  const logout = () => {
+  const logout = async () => {
+    if (useApiAuth) {
+      try {
+        await httpPost(ENDPOINTS.logout, {})
+      } catch {
+        // noop: siempre limpiar estado local
+      }
+      clearToken()
+      storeLogout()
+      return
+    }
     storeLogout()
   }
 
@@ -120,6 +219,7 @@ export function AuthProvider({ children }) {
         logout,
         register,
         resetPassword,
+        requestPasswordReset,
         actualizarPerfil,
         actualizarClasesPaquete,
       }}
@@ -134,3 +234,4 @@ export function useAuth() {
   if (!ctx) throw new Error('useAuth debe usarse dentro de AuthProvider')
   return ctx
 }
+

@@ -1,26 +1,19 @@
-/**
- * authStore.js
- * ─────────────────────────────────────────────────────
- * Store de Zustand para el estado de autenticación.
- * Persiste en localStorage bajo la clave 'casa-scarlatta-auth'.
- *
- * Usado en: AuthContext.jsx (único consumidor directo)
- * Depende de: zustand, zustand/middleware
- * ─────────────────────────────────────────────────────
- */
-import { create } from 'zustand'
+﻿import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export const useAuthStore = create(
   persist(
     (set) => ({
       usuario: null,
+      token: null,
       isAuthenticated: false,
       loading: false,
 
-      setUsuario: (usuario) => set({ usuario, isAuthenticated: !!usuario }),
+      setUsuario: (usuario) => set((state) => ({ usuario, isAuthenticated: !!(usuario && (state.token || true)) })),
+      setToken: (token) => set((state) => ({ token, isAuthenticated: !!(state.usuario && token) || !!state.usuario })),
+      setSession: ({ usuario, token }) => set({ usuario: usuario ?? null, token: token ?? null, isAuthenticated: !!usuario }),
       setLoading: (loading) => set({ loading }),
-      logout: () => set({ usuario: null, isAuthenticated: false }),
+      logout: () => set({ usuario: null, token: null, isAuthenticated: false }),
 
       actualizarPerfil: (cambios) =>
         set((state) => ({
@@ -37,3 +30,4 @@ export const useAuthStore = create(
     { name: 'casa-scarlatta-auth' }
   )
 )
+

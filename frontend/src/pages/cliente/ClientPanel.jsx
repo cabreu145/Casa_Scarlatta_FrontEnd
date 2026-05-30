@@ -17,7 +17,8 @@ import { useTransaccionesStore } from '@/stores/transaccionesStore'
 import { useListaEsperaStore }   from '@/stores/listaEsperaStore'
 import { reservarClase, cancelarReserva } from '@/services/reservasService'
 import { editarPerfilService }            from '@/services/usuariosService'
-import { isPublished }                    from '@/services/classService'
+import { getPublicClassesByDate, getReservationOccurrenceDate, isPublished } from '@/services/classService'
+import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { logListaEsperaUnirse, logListaEsperaSalir } from '@/services/actividadService'
 import {
   hoyLocal,
@@ -94,8 +95,8 @@ export default function ClientPanel() {
   const { usuario, logout } = useAuth()
 
   // ── Stores ────────────────────────────────────────────────────────────────
-  const { reservas } = useReservasStore()
-  const { clases }   = useClasesStore()
+  const { reservas, loadMisReservasFromApi } = useReservasStore()
+  const { clases, loadClasesFromApi }   = useClasesStore()
   const { usuarios } = useUsuariosStore()
   const { coaches }   = useCoachesStore()
   const { paquetes }  = usePaquetesStore()
@@ -120,11 +121,57 @@ export default function ClientPanel() {
   const [pagoModal, setPagoModal] = useState(null)
   const [seatSelectorClass, setSeatSelectorClass] = useState(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [occurrencesByClass, setOccurrencesByClass] = useState({})
+  const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
+  const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
+  const useApiWaitlist = import.meta.env.VITE_USE_API_WAITLIST === 'true'
+  const weekDays = useMemo(() => buildWeek(weekOff), [weekOff])
+  const resWeekDays = useMemo(() => buildWeek(resWeekOff), [resWeekOff])
 
   useEffect(() => {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [isSidebarOpen])
+
+  useEffect(() => {
+    if (!useApiClasses) return
+    loadClasesFromApi().catch((err) => {
+      if (import.meta.env.DEV) {
+        console.error('[ClientPanel] No se pudo cargar clases API, fallback cache/store', err)
+      }
+    })
+  }, [loadClasesFromApi, useApiClasses])
+
+  useEffect(() => {
+    if (!useApiReservations) return
+    loadMisReservasFromApi().catch((err) => {
+      if (import.meta.env.DEV) {
+        console.error('[ClientPanel] No se pudo cargar reservas API, fallback cache/store', err)
+      }
+    })
+  }, [loadMisReservasFromApi, useApiReservations])
+
+  useEffect(() => {
+    if (!useApiClasses || !clases.length) return
+    const from = resWeekDays[0]?.isoDate
+    const to = resWeekDays[resWeekDays.length - 1]?.isoDate
+    if (!from || !to) return
+    const controller = new AbortController()
+    let active = true
+    getOccurrencesForDateRangeApi(clases.map((c) => c.id), { from, to, signal: controller.signal })
+      .then((data) => {
+        if (active) setOccurrencesByClass(data)
+      })
+      .catch((err) => {
+        if (err?.name === 'AbortError') return
+        if (active) setOccurrencesByClass({})
+      })
+    return () => {
+      active = false
+      controller.abort()
+      clearOccurrencesInflightCache()
+    }
+  }, [clases, resWeekDays, useApiClasses])
 
   // ── Datos del usuario ────────────────────────────────────────────────────
   const userName        = usuario?.nombre ?? 'Cliente'
@@ -172,8 +219,6 @@ export default function ClientPanel() {
   }
   const clasesRestantes = usuario?.clasesPaquete === 999 ? '∞' : (usuario?.clasesPaquete ?? 0)
   const clasesUsadas    = usuario?.clasesPaquete === 999 ? 0 : (clasesTotal - (usuario?.clasesPaquete ?? 0))
-  const weekDays    = buildWeek(weekOff)
-  const resWeekDays = buildWeek(resWeekOff)
 
   const meta = SECTION_META[activeSection]
 
@@ -211,12 +256,25 @@ export default function ClientPanel() {
   const upcomingReservas = [...reservasUsuario]
     .filter((r) => {
       if (r.estado !== 'confirmada') return false
+      if (useApiReservations) {
+        const occurrenceDate = getReservationOccurrenceDate(r)
+        if (!occurrenceDate) return false
+        const hora = r.classStartTime ?? r.claseHora ?? clases.find(c => c.id === r.claseId)?.hora
+        if (!hora) return false
+        return new Date(occurrenceDate + 'T' + hora + ':00') > now
+      }
       const hora = r.claseHora ?? clases.find(c => c.id === r.claseId)?.hora
       if (!hora) return (r.fecha ?? '') >= today
       const fechaReal = realClassDate(r)
       return new Date(fechaReal + 'T' + hora + ':00') > now
     })
     .sort((a, b) => {
+      if (useApiReservations) {
+        const fa = getReservationOccurrenceDate(a) ?? ''
+        const fb = getReservationOccurrenceDate(b) ?? ''
+        if (fa !== fb) return fa.localeCompare(fb)
+        return (a.classStartTime ?? a.claseHora ?? '').localeCompare(b.classStartTime ?? b.claseHora ?? '')
+      }
       const fa = realClassDate(a), fb = realClassDate(b)
       if (fa !== fb) return fa.localeCompare(fb)
       return (a.claseHora ?? '').localeCompare(b.claseHora ?? '')
@@ -225,10 +283,13 @@ export default function ClientPanel() {
 
   const upcoming = upcomingReservas.map(r => {
     const cls = toClsShape(r)
-    cls.claseFecha = realClassDate(r)   // ensure ClassCard gets the correct date
+    cls.claseFecha = useApiReservations ? (getReservationOccurrenceDate(r) ?? null) : realClassDate(r)
     return cls
   })
   const nextClass = upcoming[0] ?? null
+  const reservasSinFechaSesion = useApiReservations
+    ? reservasUsuario.filter((r) => r.estado === 'confirmada' && !getReservationOccurrenceDate(r))
+    : []
 
   // Métricas reales para el dashboard
   const confirmadas   = reservasUsuario.filter((r) => r.estado === 'confirmada').length
@@ -281,30 +342,55 @@ export default function ClientPanel() {
     ? Math.min(100, Math.round((clasesUsadas / clasesTotal) * 100))
     : 0
 
-  // ── Clases disponibles para reservar (solo las ya publicadas) ───────────
-  const availableClases = clases.filter(isPublished).map((c) => ({
-    _raw:       c,                 // referencia directa al objeto original
-    id:         c.id,
-    title:      c.nombre,
-    coach:      c.coachNombre,
-    date:       c.dia,
-    fecha:      c.fecha ?? null,   // YYYY-MM-DD si clase de fecha específica, null si recurrente
-    time:       c.hora,
-    discipline: !c.tipo?.toLowerCase().includes('slow') ? 'STRYDE' : 'SLOW',
-    spots:      Math.max(0, c.cupoMax - c.cupoActual),
-    capacity:   c.cupoMax,
-  }))
+  const getDayAvail = (day) => {
+    if (useApiClasses) {
+      const sessions = []
+      for (const c of clases.filter(isPublished)) {
+        const occs = occurrencesByClass?.[c.id] ?? []
+        for (const occ of occs) {
+          if (occ.fecha !== day.isoDate) continue
+          sessions.push({
+            _raw: { ...c, occurrenceId: occ.occurrenceId, fecha: occ.fecha, hora: occ.inicio ? new Date(occ.inicio).toISOString().slice(11, 16) : c.hora },
+            id: c.id,
+            occurrenceId: occ.occurrenceId,
+            title: occ.claseNombre ?? c.nombre,
+            coach: c.coachNombre,
+            date: c.dia,
+            fecha: occ.fecha,
+            time: occ.inicio ? new Date(occ.inicio).toISOString().slice(11, 16) : c.hora,
+            discipline: !c.tipo?.toLowerCase().includes('slow') ? 'STRYDE' : 'SLOW',
+            spots: Math.max(0, (occ.cupoMax ?? c.cupoMax) - (occ.cupoActual ?? c.cupoActual)),
+            capacity: occ.cupoMax ?? c.cupoMax,
+          })
+        }
+      }
+      return sessions
+    }
+    return getPublicClassesByDate(clases.filter(isPublished), new Date(`${day.isoDate}T00:00:00`)).map((c) => ({
+      _raw:       c,
+      id:         c.id,
+      occurrenceId: c.occurrenceId ?? null,
+      title:      c.nombre,
+      coach:      c.coachNombre,
+      date:       c.dia,
+      fecha:      c.fecha ?? null,
+      time:       c.hora,
+      discipline: !c.tipo?.toLowerCase().includes('slow') ? 'STRYDE' : 'SLOW',
+      spots:      Math.max(0, c.cupoMax - c.cupoActual),
+      capacity:   c.cupoMax,
+    }))
+  }
 
   // ── Handlers ─────────────────────────────────────────────────────────────
-  function handleCancelReserva(reservaId) {
-    const resultado = cancelarReserva(reservaId, usuario.id)
+  async function handleCancelReserva(reservaId) {
+    const resultado = await cancelarReserva(reservaId, usuario.id)
     if (resultado.ok) toast.success('Reserva cancelada. Te enviamos confirmación por correo 📧')
     else toast.error(resultado.error)
   }
 
-  function handleReserveClass(av) {
+  async function handleReserveClass(av) {
     if (!usuario?.id) return
-    const resultado = reservarClase(usuario.id, av.id)
+    const resultado = await reservarClase(usuario.id, av.id, null, av.occurrenceId ?? av._raw?.occurrenceId ?? null)
     if (!resultado.ok) {
       toast.error(resultado.error)
       return
@@ -313,10 +399,11 @@ export default function ClientPanel() {
     goTo('clases')
   }
 
-  function handleUnirseListaEspera(av) {
+  async function handleUnirseListaEspera(av) {
     if (!usuario?.id) return
-    const resultado = listaEsperaStore.unirse({
+    const resultado = await listaEsperaStore.unirse({
       claseId: av.id,
+      occurrenceId: av.occurrenceId ?? av._raw?.occurrenceId ?? null,
       userId:  usuario.id,
       nombre:  userName,
     })
@@ -324,7 +411,7 @@ export default function ClientPanel() {
       toast.error(resultado.error)
       return
     }
-    const posicion = listaEsperaStore.getPosicion(av.id, usuario.id)
+    const posicion = listaEsperaStore.getPosicion(av.occurrenceId ?? av._raw?.occurrenceId ?? av.id, usuario.id)
     toast.success(
       `¡Estás en la lista de espera! Posición #${posicion}. ` +
       `Te enviaremos un correo si se libera un lugar 📧`,
@@ -352,8 +439,16 @@ export default function ClientPanel() {
     }
   }
 
-  function handleSalirListaEspera(av) {
-    listaEsperaStore.salir({ claseId: av.id, userId: usuario.id })
+  async function handleSalirListaEspera(av) {
+    const resultado = await listaEsperaStore.salir({
+      claseId: av.id,
+      occurrenceId: av.occurrenceId ?? av._raw?.occurrenceId ?? null,
+      userId: usuario.id,
+    })
+    if (!resultado?.ok) {
+      toast.error(resultado?.error || 'No se pudo salir de lista de espera')
+      return
+    }
     toast('Saliste de la lista de espera', { icon: '↩️' })
     logListaEsperaSalir({
       usuarioNombre: userName,
@@ -694,9 +789,13 @@ export default function ClientPanel() {
               ><ChevronLeft size={18} /></button>
               <div className={s.dayTabs}>
                 {weekDays.map((day, i) => {
-                  const hasCls = reservasUsuario.some(r =>
-                    (r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName) && r.estado !== 'cancelada'
-                  )
+                  const hasCls = reservasUsuario.some((r) => {
+                    if (r.estado === 'cancelada') return false
+                    if (!useApiReservations) return (r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName)
+                    const occurrenceDate = getReservationOccurrenceDate(r)
+                    if (!occurrenceDate) return false
+                    return occurrenceDate === day.isoDate
+                  })
                   return (
                     <button
                       key={i}
@@ -721,7 +820,12 @@ export default function ClientPanel() {
             {(() => {
               const day = weekDays[dayIdx]
               const dayClasses = reservasUsuario
-                .filter(r => r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName)
+                .filter((r) => {
+                  if (!useApiReservations) return r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName
+                  const occurrenceDate = getReservationOccurrenceDate(r)
+                  if (!occurrenceDate) return false
+                  return occurrenceDate === day.isoDate
+                })
                 .map(toClsShape)
               return dayClasses.length > 0 ? (
                 <div>
@@ -734,6 +838,9 @@ export default function ClientPanel() {
                   <div className={s.emptyDayIcon}>📅</div>
                   <div className={s.emptyDayTitle}>Sin clases el {day.fullName.toLowerCase()}</div>
                   <p className={s.emptyDaySub}>No tienes ninguna clase reservada este día</p>
+                  {useApiReservations && reservasSinFechaSesion.length > 0 && (
+                    <p className={s.emptyDaySub}>Reserva sin fecha de sesión disponible</p>
+                  )}
                   <button className={`${s.btn} ${s.btnPrimary}`} style={{ marginTop: 16 }} onClick={() => goTo('reservar')}>
                     Reservar clase
                   </button>
@@ -754,9 +861,7 @@ export default function ClientPanel() {
               ><ChevronLeft size={18} /></button>
               <div className={s.dayTabs}>
                 {resWeekDays.map((day, i) => {
-                  const hasCls = availableClases.some(av =>
-                    av.fecha ? av.fecha === day.isoDate : av.date === day.fullName
-                  )
+                  const hasCls = getDayAvail(day).length > 0
                   return (
                     <button
                       key={i}
@@ -780,13 +885,15 @@ export default function ClientPanel() {
             {/* Filtered class list */}
             {(() => {
               const day      = resWeekDays[resDayIdx]
-              const dayAvail = availableClases.filter(av =>
-                av.fecha ? av.fecha === day.isoDate : av.date === day.fullName
-              )
+              const dayAvail = getDayAvail(day)
               return dayAvail.length > 0 ? (
                 <div className={s.pubList}>
                   {dayAvail.map(av => {
-                    const alreadyBooked = reservasUsuario.find(r => r.claseId === av.id && r.estado === 'confirmada')
+                    const alreadyBooked = reservasUsuario.find((r) => {
+                      if (r.estado !== 'confirmada') return false
+                      if (useApiReservations && av.occurrenceId) return Number(r.occurrenceId) === Number(av.occurrenceId)
+                      return r.claseId === av.id
+                    })
                     const isFull  = av.spots === 0
                     const isLow   = av.spots > 0 && av.spots <= 3
                     const initials  = av.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -839,9 +946,10 @@ export default function ClientPanel() {
                               </span>
                             )
                             if (isFull) {
-                              const estaEnEspera = listaEsperaStore.estaEnLista(av.id, usuario?.id)
+                              const waitlistKey = av.occurrenceId ?? av.id
+                              const estaEnEspera = listaEsperaStore.estaEnLista(waitlistKey, usuario?.id)
                               const posicion     = estaEnEspera
-                                ? listaEsperaStore.getPosicion(av.id, usuario?.id)
+                                ? listaEsperaStore.getPosicion(waitlistKey, usuario?.id)
                                 : null
                               return estaEnEspera ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -1155,4 +1263,5 @@ export default function ClientPanel() {
     </div>
   )
 }
+
 

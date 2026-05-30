@@ -27,7 +27,11 @@ export function getClassesByDate(classes, date) {
   const d  = String(date.getDate()).padStart(2, '0')
   const isoDate = `${y}-${mo}-${d}`
   return [...classes]
-    .filter((c) => c.fecha ? c.fecha === isoDate : c.dia === dayName)
+    .filter((c) => {
+      if (c.fecha) return c.fecha === isoDate
+      if (c.dia) return c.dia === dayName
+      return true
+    })
     .sort((a, b) => a.hora.localeCompare(b.hora))
 }
 
@@ -69,8 +73,9 @@ export function getPublicClassesByDate(classes, date) {
   const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
   return [...classes]
     .filter((c) => {
-      // Specific-date class → match isoDate; recurring class → match day name
-      const matchDay = c.fecha ? c.fecha === isoDate : c.dia === dayName
+      // Specific-date class → match isoDate; recurring class → match day name;
+      // no schedule info yet from API → render as always visible
+      const matchDay = c.fecha ? c.fecha === isoDate : (c.dia ? c.dia === dayName : true)
       return matchDay && isPublished(c)
     })
     .sort((a, b) => toMin(a.hora) - toMin(b.hora))
@@ -85,6 +90,24 @@ export function getPublicAvailability(cls) {
   const pct = cls.cupoMax > 0 ? available / cls.cupoMax : 0
   if (available <= 0) return { available: 0, pct: 0, status: 'full' }
   return { available, pct, status: pct > 0.5 ? 'ok' : 'low' }
+}
+
+export function getReservationOccurrenceDate(reservation) {
+  if (!reservation) return null
+  if (reservation.classDate && /^\d{4}-\d{2}-\d{2}$/.test(reservation.classDate)) {
+    return reservation.classDate
+  }
+  if (reservation.classStartAt) {
+    const d = new Date(reservation.classStartAt)
+    if (!Number.isNaN(d.getTime())) return d.toISOString().split('T')[0]
+  }
+  if (reservation.fechaSesion && /^\d{4}-\d{2}-\d{2}$/.test(reservation.fechaSesion)) {
+    return reservation.fechaSesion
+  }
+  if (reservation.fecha && /^\d{4}-\d{2}-\d{2}$/.test(reservation.fecha)) {
+    return reservation.fecha
+  }
+  return null
 }
 
 // ─────────────────────────────────────────────────────────────────

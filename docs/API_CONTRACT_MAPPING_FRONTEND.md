@@ -1,0 +1,53 @@
+﻿# API_CONTRACT_MAPPING_FRONTEND.md
+
+## Contrato vigente (modo API actual)
+Aplica cuando:
+- `VITE_USE_API_AUTH=true`
+- `VITE_USE_API_CLASSES=true`
+- `VITE_USE_API_RESERVATIONS=true`
+- `VITE_USE_API_WAITLIST=true`
+
+Reglas clave:
+- Backend es source of truth en modo API.
+- `POST /api/v1/reservas` requiere `occurrence_id`.
+- Si falta `occurrence_id`, error esperado: `OCCURRENCE_REQUIRED`.
+- Waitlist se consulta por ocurrencia, no por clase.
+- Matching de reserva en UI: por `occurrence_id` (no por `class_id` plano).
+- `reserved_at` solo representa fecha/hora de creación de reserva.
+
+## Mapeo frontend -> backend (vigente)
+
+| Archivo frontend | Función actual | Endpoint backend | Request esperado | Response esperado | Transformación necesaria | Prioridad |
+|---|---|---|---|---|---|---|
+| `frontend/src/context/AuthContext.jsx` | `login(email,password)` | `POST /api/v1/auth/login` | `{ email, password }` | `{ access_token, token_type, user }` | Guardar token + map user backend a shape UI | Alta |
+| `frontend/src/context/AuthContext.jsx` | bootstrap sesión | `GET /api/v1/auth/me` | Header `Authorization: Bearer <token>` | `user` autenticado | map snake_case/camelCase | Alta |
+| `frontend/src/context/AuthContext.jsx` | `register(datos)` | `POST /api/v1/auth/registro` | `{ email, name, password, phone?, birth_date?, gender? }` | user/auth payload | normalizar aliases de UI | Alta |
+| `frontend/src/services/clasesApiService.js` | `getClasesApi()` | `GET /api/v1/clases` | Bearer token | `ClassRead[]` | `classAdapter.mapBackendClassesToFrontend` | Alta |
+| `frontend/src/services/clasesApiService.js` | `getClaseByIdApi(id)` | `GET /api/v1/clases/{id}` | Bearer token | `ClassRead` | `classAdapter.mapBackendClassToFrontendClass` | Alta |
+| `frontend/src/services/occurrencesApiService.js` | `getOccurrencesByClassApi(claseId,{from,to})` | `GET /api/v1/clases/{id}/ocurrencias` | query `from,to` | `ClassOccurrenceRead[]` | `occurrenceAdapter` (`id -> occurrenceId`) | Alta |
+| `frontend/src/services/reservasApiService.js` | `getMisReservasApi()` | `GET /api/v1/reservas/me` | Bearer token | `ReservationRead[]` | `reservationAdapter` | Alta |
+| `frontend/src/services/reservasApiService.js` | `crearReservaApi({claseId,userId,occurrenceId,asiento})` | `POST /api/v1/reservas` | `{ clase_id, user_id, occurrence_id, seat_number? }` | `ReservationRead` | `occurrence_id` obligatorio | Alta |
+| `frontend/src/services/reservasApiService.js` | `cancelarReservaApi(id)` | `POST /api/v1/reservas/{id}/cancelar` | `{}` | `ReservationActionRead` | refetch/invalidate | Alta |
+| `frontend/src/services/waitlistApiService.js` | `getWaitlistByOccurrenceApi(occurrenceId)` | `GET /api/v1/lista-espera?occurrenceId=...` | query `occurrenceId` | `{ occurrence_id, entries[] }` | `waitlistAdapter` | Alta |
+| `frontend/src/services/waitlistApiService.js` | `unirseWaitlistApi({occurrenceId,userId})` | `POST /api/v1/lista-espera` | `{ occurrence_id, user_id }` | `WaitlistEntryRead` | `mapJoinWaitlistPayload` | Alta |
+| `frontend/src/services/waitlistApiService.js` | `salirWaitlistApi(entryId)` | `DELETE /api/v1/lista-espera/{id}` | path `id` | `WaitlistEntryRead` | sync cache/refetch | Alta |
+| `frontend/src/features/clases/SeatSelector.jsx` | `confirm()` reserva con asiento | `POST /api/v1/reservas` | incluye `occurrence_id` | reserva confirmada | no reservar por `class_id` plano | Alta |
+
+## Waitlist en modo API (vigente)
+- `GET /api/v1/lista-espera?occurrenceId=...`
+- `POST /api/v1/lista-espera` con `occurrence_id`
+- `DELETE /api/v1/lista-espera/{id}`
+
+## Notas de mapeo de reservas (vigente)
+- `reserved_at` => `fechaCreacionReserva`.
+- Fecha/hora de sesión => `class_date` o `class_start_at`.
+- Si faltan datos de ocurrencia, UI no debe afirmar reserva diaria por `class_id`.
+
+## Legacy / histórico (no usar en modo API actual)
+Los siguientes contratos se mantienen solo por compatibilidad de fallback/mock cuando flags API están en `false`:
+
+- `GET /api/v1/lista-espera?claseId=...`
+- `getWaitlistByClaseApi(claseId)`
+- `syncClaseApi(claseId)` como ruta principal en API mode
+- `POST /api/v1/reservas` sin `occurrence_id`
+- matching de reservas por `class_id` plano

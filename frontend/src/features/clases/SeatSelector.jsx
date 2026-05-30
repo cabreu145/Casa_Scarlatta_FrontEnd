@@ -8,6 +8,7 @@ import { reservarClase } from '@/services/reservasService'
 import { useReservasStore } from '@/stores/reservasStore'
 import { useClasesStore }   from '@/stores/clasesStore'
 import { useCoachesStore }  from '@/stores/coachesStore'
+import { getReservationOccurrenceDate } from '@/services/classService'
 import styles from './SeatSelector.module.css'
 
 // ── Slow room layout (fixed) ──────────────────────────────────────────────────
@@ -243,6 +244,7 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
   const { isAuthenticated, usuario } = useAuth()
   const { reservas } = useReservasStore()
   const { getById: getCoachById } = useCoachesStore()
+  const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
 
   const isSlow = cls.tipo?.toLowerCase().includes('slow')
   const coachFoto = cls.coachId ? getCoachById(cls.coachId)?.foto ?? null : null
@@ -253,21 +255,37 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
   const rows = Math.ceil(totalSeats / COLS)
   const cols = COLS
   const userId = targetUserId ?? usuario?.id
+  const selectedIsoDate = fecha
+    ? (fecha instanceof Date ? `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}` : String(fecha).slice(0, 10))
+    : null
+  const selectedOccurrenceId = cls.occurrenceId ?? cls.occurrence_id ?? null
 
   // Dynamic Stryde X layout derived from cupoMax
   const strydeLayout = useMemo(() => buildStrydeLayout(), [])
 
   const occupied = useMemo(() => new Set(
     reservas
-      .filter(r => r.claseId === cls.id && r.estado === 'confirmada')
+      .filter((r) => {
+        if (r.estado !== 'confirmada') return false
+        if (!useApiReservations) return true
+        if (selectedOccurrenceId) return Number(r.occurrenceId) === Number(selectedOccurrenceId)
+        const occurrenceDate = getReservationOccurrenceDate(r)
+        if (!occurrenceDate || !selectedIsoDate || Number(r.claseId) !== Number(cls.id)) return false
+        return occurrenceDate === selectedIsoDate
+      })
       .map(r => isSlow ? slowIdFromAsiento(r.asiento) : seatIdFromLabel(r.asiento))
       .filter(Boolean)
-  ), [reservas, cls.id, isSlow])
+  ), [reservas, cls.id, isSlow, selectedIsoDate, useApiReservations])
 
   const [selected, setSelected] = useState(() => {
-    const myReserva = reservas.find(
-      r => r.claseId === cls.id && r.userId === userId && r.estado === 'confirmada'
-    )
+    const myReserva = reservas.find((r) => {
+      if (!(r.userId === userId && r.estado === 'confirmada')) return false
+      if (!useApiReservations) return true
+      if (selectedOccurrenceId) return Number(r.occurrenceId) === Number(selectedOccurrenceId)
+      const occurrenceDate = getReservationOccurrenceDate(r)
+      if (!occurrenceDate || !selectedIsoDate || Number(r.claseId) !== Number(cls.id)) return false
+      return occurrenceDate === selectedIsoDate
+    })
     return myReserva ? (isSlow ? slowIdFromAsiento(myReserva.asiento) : seatIdFromLabel(myReserva.asiento)) : null
   })
 
@@ -276,7 +294,7 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
 
   function toggle(id) { setSelected(prev => (prev === id ? null : id)) }
 
-  function confirm() {
+  async function confirm() {
     if (!adminForce && !isAuthenticated) {
       navigate(ROUTES.login, { state: { selectedClass: cls, selectedSeat: selected } })
       return
@@ -284,7 +302,7 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
     const asientoLabel = isSlow
       ? `Mat ${slowMatNum(selected)}`
       : seatLabel(parseSeat(selected).row, parseSeat(selected).col)
-    const resultado = reservarClase(userId, cls.id, asientoLabel)
+    const resultado = await reservarClase(userId, cls.id, asientoLabel, selectedOccurrenceId)
     if (!resultado.ok) {
       if (resultado.error === 'Sin créditos disponibles') {
         if (adminForce) {

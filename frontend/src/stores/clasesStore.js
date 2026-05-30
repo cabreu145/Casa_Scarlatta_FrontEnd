@@ -12,11 +12,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { CLASES_MOCK } from '@/data/mockData'
+import { getClasesApi } from '@/services/clasesApiService'
+
+const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
 
 export const useClasesStore = create(
   persist(
     (set, get) => ({
-      clases: CLASES_MOCK,
+      clases: useApiClasses ? [] : CLASES_MOCK,
 
       getClasesByCoach: (coachId) =>
         get().clases.filter((c) => c.coachId === coachId),
@@ -24,14 +27,25 @@ export const useClasesStore = create(
       getById: (claseId) =>
         get().clases.find((c) => c.id === claseId),
 
-      actualizarCupo: (claseId, delta) =>
+      actualizarCupo: (claseId, delta) => {
+        if (useApiClasses) return
         set((state) => ({
           clases: state.clases.map((c) =>
             c.id === claseId
               ? { ...c, cupoActual: Math.max(0, Math.min(c.cupoMax, c.cupoActual + delta)) }
               : c
           ),
-        })),
+        }))
+      },
+
+      setClases: (clases) => set({ clases: Array.isArray(clases) ? clases : [] }),
+
+      loadClasesFromApi: async () => {
+        if (!useApiClasses) return get().clases
+        const clasesApi = await getClasesApi()
+        set({ clases: clasesApi })
+        return clasesApi
+      },
 
       agregarClase: (nuevaClase) =>
         set((state) => ({

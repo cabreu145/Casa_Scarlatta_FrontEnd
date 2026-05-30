@@ -1,68 +1,63 @@
-/**
- * api.js
- * ─────────────────────────────────────────────────────
- * Configuración central de conexión con el backend.
- *
- * ✅ CÓMO CONECTAR EL BACKEND CUANDO ESTÉ LISTO:
- *    1. Cambia BASE_URL por la URL real del servidor
- *    2. Ajusta los ENDPOINTS si el backend usa rutas distintas
- *    3. No necesitas tocar ningún otro archivo
- *
- * Estado actual: sin backend (mock)
- * ─────────────────────────────────────────────────────
- */
+﻿const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+const API_PREFIX = import.meta.env.VITE_API_PREFIX ?? '/api/v1'
 
-// 🔧 CAMBIAR ESTA LÍNEA cuando el backend esté listo
-export const BASE_URL = 'http://localhost:3000'
+function withPrefix(path) {
+  return `${BASE_URL}${API_PREFIX}${path}`
+}
+
+export { BASE_URL, API_PREFIX }
 
 export const ENDPOINTS = {
-  //── Autenticación ──────────────────────────────────
-  login:    `${BASE_URL}/api/auth/login`,
-  registro: `${BASE_URL}/api/auth/registro`,
-  logout:   `${BASE_URL}/api/auth/logout`,
+  login: withPrefix('/auth/login'),
+  registro: withPrefix('/auth/registro'),
+  logout: withPrefix('/auth/logout'),
+  me: withPrefix('/auth/me'),
+  resetPasswordRequest: withPrefix('/auth/reset-password/request'),
+  resetPasswordConfirm: withPrefix('/auth/reset-password/confirm'),
 
-  //── Clases ─────────────────────────────────────────
-  clases:              `${BASE_URL}/api/clases`,
-  claseById:           (id) => `${BASE_URL}/api/clases/${id}`,
-  claseDisponibilidad: (id) => `${BASE_URL}/api/clases/${id}/disponibilidad`,
+  clases: withPrefix('/clases'),
+  clasesList: withPrefix('/clases'),
+  claseById: (id) => withPrefix(`/clases/${id}`),
+  claseDisponibilidad: (id) => withPrefix(`/clases/${id}/disponibilidad`),
+  claseOcurrencias: (id, { from, to } = {}) =>
+    withPrefix(`/clases/${id}/ocurrencias?from=${from ?? ''}&to=${to ?? ''}`),
 
-  //── Reservas ───────────────────────────────────────
-  reservas:        `${BASE_URL}/api/reservas`,
-  reservaById:     (id) => `${BASE_URL}/api/reservas/${id}`,
-  cancelarReserva: (id) => `${BASE_URL}/api/reservas/${id}/cancelar`,
-  marcarNoAsistio: (id) => `${BASE_URL}/api/reservas/${id}/no-asistio`,
+  reservas: withPrefix('/reservas'),
+  reservasMe: withPrefix('/reservas/me'),
+  reservaById: (id) => withPrefix(`/reservas/${id}`),
+  crearReserva: withPrefix('/reservas'),
+  completarReserva: (id) => withPrefix(`/reservas/${id}/completar`),
+  cancelarReserva: (id) => withPrefix(`/reservas/${id}/cancelar`),
+  marcarNoAsistio: (id) => withPrefix(`/reservas/${id}/no-asistio`),
 
-  //── Usuarios ───────────────────────────────────────
-  usuarios:    `${BASE_URL}/api/usuarios`,
-  usuarioById: (id) => `${BASE_URL}/api/usuarios/${id}`,
-  miPerfil:    `${BASE_URL}/api/usuarios/me`,
+  waitlist: withPrefix('/lista-espera'),
+  waitlistByClase: (claseId) => withPrefix(`/lista-espera?claseId=${claseId}`),
+  waitlistByOccurrence: (occurrenceId) => withPrefix(`/lista-espera?occurrenceId=${occurrenceId}`),
+  waitlistEntryById: (id) => withPrefix(`/lista-espera/${id}`),
 
-  //── Paquetes ───────────────────────────────────────
-  paquetes:       `${BASE_URL}/api/paquetes`,
-  comprarPaquete: `${BASE_URL}/api/paquetes/comprar`,
+  usuarios: withPrefix('/usuarios'),
+  usuarioById: (id) => withPrefix(`/usuarios/${id}`),
+  miPerfil: withPrefix('/usuarios/me'),
 
-  //── Productos ──────────────────────────────────────
-  productos:       `${BASE_URL}/api/productos`,
-  productoById:    (id) => `${BASE_URL}/api/productos/${id}`,
-  descontarStock:  (id) => `${BASE_URL}/api/productos/${id}/descontar-stock`,
+  paquetes: withPrefix('/paquetes'),
+  comprarPaquete: withPrefix('/paquetes/comprar'),
 
-  //── Transacciones ───────────────────────────────────
-  transacciones:      `${BASE_URL}/api/transacciones`,
-  transaccionesMes:   (año, mes) => `${BASE_URL}/api/transacciones?año=${año}&mes=${mes}`,
+  productos: withPrefix('/productos'),
+  productoById: (id) => withPrefix(`/productos/${id}`),
+  descontarStock: (id) => withPrefix(`/productos/${id}/descontar-stock`),
 
-  //── Cortes de caja ──────────────────────────────────
-  cortes:        `${BASE_URL}/api/cortes`,
-  ejecutarCorte: `${BASE_URL}/api/cortes/ejecutar`,
+  transacciones: withPrefix('/transacciones'),
+  transaccionesMes: (anio, mes) => withPrefix(`/transacciones?anio=${anio}&mes=${mes}`),
 
-  //── Notificaciones ──────────────────────────────────
-  notificaciones:       `${BASE_URL}/api/notificaciones`,
-  marcarLeida:          (id) => `${BASE_URL}/api/notificaciones/${id}/leida`,
+  cortes: withPrefix('/cortes'),
+  ejecutarCorte: withPrefix('/cortes/ejecutar'),
 
-  //── Coaches ────────────────────────────────────────
-  coaches:   `${BASE_URL}/api/coaches`,
-  coachById: (id) => `${BASE_URL}/api/coaches/${id}`,
+  notificaciones: withPrefix('/notificaciones'),
+  marcarLeida: (id) => withPrefix(`/notificaciones/${id}/leida`),
 
-  //── Admin ──────────────────────────────────────────
-  reportes: `${BASE_URL}/api/admin/reportes`,
-  finanzas: `${BASE_URL}/api/admin/finanzas`,
+  coaches: withPrefix('/coaches'),
+  coachById: (id) => withPrefix(`/coaches/${id}`),
+
+  reportes: withPrefix('/admin/reportes'),
+  finanzas: withPrefix('/admin/finanzas'),
 }

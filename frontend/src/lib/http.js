@@ -1,97 +1,65 @@
-/**
- * http.js
- * ─────────────────────────────────────────────────────
- * Cliente HTTP preconfigurado para llamadas al backend.
- *
- * ✅ CÓMO ACTIVAR CUANDO EL BACKEND ESTÉ LISTO:
- *    1. Asegúrate de que BASE_URL en constants/api.js
- *       apunte al servidor correcto
- *    2. Descomenta las líneas marcadas con [ACTIVAR]
- *    3. Los servicios en /services/ empezarán a hacer
- *       llamadas reales automáticamente
- *
- * Estado actual: preparado pero sin activar (mock)
- * ─────────────────────────────────────────────────────
- */
-
-// El token se leerá de localStorage cuando haya autenticación JWT real
-function getToken() {
+﻿function getToken() {
   return localStorage.getItem('token') ?? null
 }
 
-/**
- * Realiza una petición GET al backend.
- * @param {string} endpoint - URL completa del endpoint
- * @returns {Promise<any>} Datos de la respuesta
- */
-export async function httpGet(endpoint) {
-  // [ACTIVAR cuando haya backend]
-  // const res = await fetch(endpoint, {
-  //   headers: { Authorization: `Bearer ${getToken()}` },
-  // })
-  // if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`)
-  // return res.json()
-
-  return null
+function normalizeUrl(endpoint) {
+  if (/^https?:\/\//i.test(endpoint)) return endpoint
+  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+  const prefix = import.meta.env.VITE_API_PREFIX ?? '/api/v1'
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  return `${baseUrl}${prefix}${cleanEndpoint}`
 }
 
-/**
- * Realiza una petición POST al backend.
- * @param {string} endpoint - URL completa del endpoint
- * @param {object} body - Datos a enviar
- * @returns {Promise<any>} Datos de la respuesta
- */
-export async function httpPost(endpoint, body) {
-  // [ACTIVAR cuando haya backend]
-  // const res = await fetch(endpoint, {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     Authorization: `Bearer ${getToken()}`,
-  //   },
-  //   body: JSON.stringify(body),
-  // })
-  // if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`)
-  // return res.json()
+async function parseResponse(res) {
+  const contentType = res.headers.get('content-type') ?? ''
+  const isJson = contentType.includes('application/json')
+  const payload = isJson ? await res.json() : null
 
-  return null
+  if (!res.ok) {
+    const backendError = payload?.error ?? payload?.detail
+    const message = backendError?.message ?? payload?.message ?? `Error HTTP ${res.status}`
+    const error = new Error(message)
+    error.status = res.status
+    error.code = backendError?.code ?? backendError?.error ?? null
+    error.details = backendError?.details ?? payload?.detail ?? null
+    error.payload = payload
+    throw error
+  }
+
+  return payload
 }
 
-/**
- * Realiza una petición PUT al backend (actualizar recurso existente).
- * @param {string} endpoint - URL completa del endpoint
- * @param {object} body - Datos actualizados
- * @returns {Promise<any>} Datos de la respuesta
- */
-export async function httpPut(endpoint, body) {
-  // [ACTIVAR cuando haya backend]
-  // const res = await fetch(endpoint, {
-  //   method: 'PUT',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     Authorization: `Bearer ${getToken()}`,
-  //   },
-  //   body: JSON.stringify(body),
-  // })
-  // if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`)
-  // return res.json()
+async function request(method, endpoint, body, options = {}) {
+  const token = getToken()
+  const headers = {}
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  if (token) headers.Authorization = `Bearer ${token}`
 
-  return null
+  const res = await fetch(normalizeUrl(endpoint), {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: options.signal,
+  })
+  return parseResponse(res)
 }
 
-/**
- * Realiza una petición DELETE al backend.
- * @param {string} endpoint - URL completa del endpoint
- * @returns {Promise<any>} Confirmación de eliminación
- */
-export async function httpDelete(endpoint) {
-  // [ACTIVAR cuando haya backend]
-  // const res = await fetch(endpoint, {
-  //   method: 'DELETE',
-  //   headers: { Authorization: `Bearer ${getToken()}` },
-  // })
-  // if (!res.ok) throw new Error(`Error ${res.status}: ${res.statusText}`)
-  // return res.json()
+export function httpGet(endpoint, options) {
+  return request('GET', endpoint, undefined, options)
+}
 
-  return null
+export function httpPost(endpoint, body, options) {
+  return request('POST', endpoint, body, options)
+}
+
+export function httpPut(endpoint, body, options) {
+  return request('PUT', endpoint, body, options)
+}
+
+export function httpPatch(endpoint, body, options) {
+  return request('PATCH', endpoint, body, options)
+}
+
+export function httpDelete(endpoint, options) {
+  return request('DELETE', endpoint, undefined, options)
 }

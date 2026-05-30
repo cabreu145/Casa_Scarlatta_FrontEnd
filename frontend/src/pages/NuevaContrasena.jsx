@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
@@ -12,6 +12,7 @@ export default function NuevaContrasena() {
   const { resetPassword } = useAuth()
   const email = location.state?.email ?? ''
 
+  const [token, setToken] = useState('')
   const [password, setPassword] = useState('')
   const [confirmar, setConfirmar] = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,7 +31,7 @@ export default function NuevaContrasena() {
     if (Object.keys(errs).length) { setErrors(errs); return }
     setLoading(true)
     try {
-      await resetPassword(email, password)
+      await resetPassword(email, password, token.trim() || undefined)
       toast.success('¡Contraseña actualizada! Ya puedes iniciar sesión.')
       navigate('/login', { replace: true })
     } catch (err) {
@@ -42,7 +43,6 @@ export default function NuevaContrasena() {
 
   return (
     <main className={styles.page}>
-
       <div className={styles.inner}>
         <div className={styles.header}>
           <h1 className={styles.title}>Nueva contraseña</h1>
@@ -52,6 +52,17 @@ export default function NuevaContrasena() {
         </div>
 
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
+          <div className={styles.field}>
+            <label htmlFor="token">Token de recuperación</label>
+            <input
+              id="token"
+              type="text"
+              placeholder="Pega aquí el token del correo"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+            />
+          </div>
+
           <div className={styles.field}>
             <label htmlFor="password">Nueva contraseña</label>
             <PasswordInput
@@ -88,9 +99,10 @@ export default function NuevaContrasena() {
         <div className={styles.divider} />
 
         <p className={styles.backLink}>
-          <Link to="/login">← Volver a iniciar sesión</Link>
+          <Link to="/login">? Volver a iniciar sesión</Link>
         </p>
       </div>
     </main>
   )
 }
+

@@ -1,10 +1,12 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { useAuth } from '@/context/AuthContext'
 import styles from './RecuperarContrasena.module.css'
 
 export default function RecuperarContrasena() {
   const navigate = useNavigate()
+  const { requestPasswordReset } = useAuth()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [enviado, setEnviado] = useState(false)
@@ -16,19 +18,22 @@ export default function RecuperarContrasena() {
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 900))
-    setLoading(false)
-    toast.success(
-      'Te hemos enviado un correo para restablecer tu contraseña. ' +
-      'Revisa tu bandeja de entrada y spam 📧',
-      { duration: 6000 }
-    )
-    setEnviado(true)
+    try {
+      await requestPasswordReset(email)
+      toast.success(
+        'Te hemos enviado un correo para restablecer tu contraseña. Revisa bandeja y spam.',
+        { duration: 6000 }
+      )
+      setEnviado(true)
+    } catch (err) {
+      toast.error(err.message || 'No fue posible iniciar recuperación de contraseña')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <main className={styles.page}>
-
       <div className={styles.inner}>
         {!enviado ? (
           <>
@@ -60,36 +65,33 @@ export default function RecuperarContrasena() {
             <div className={styles.divider} />
 
             <p className={styles.backLink}>
-              ¿Ya la recordaste?{' '}
-              <Link to="/login">Inicia sesión</Link>
+              ¿Ya la recordaste? <Link to="/login">Inicia sesión</Link>
             </p>
           </>
         ) : (
           <>
             <div className={styles.header}>
-              <div className={styles.successIcon}>✉️</div>
+              <div className={styles.successIcon}>??</div>
               <h1 className={styles.title}>Revisa tu correo</h1>
               <p className={styles.subtitle}>
-                Si existe una cuenta con <strong>{email}</strong>, recibirás un enlace
-                para restablecer tu contraseña en los próximos minutos.
+                Si existe una cuenta con <strong>{email}</strong>, recibirás enlace/token
+                para restablecer contraseña en los próximos minutos.
               </p>
             </div>
 
-            <p className={styles.spamNote}>
-              Revisa también tu carpeta de spam o correo no deseado.
-            </p>
+            <p className={styles.spamNote}>Revisa también tu carpeta de spam.</p>
 
             <button
               className={styles.submitBtn}
               onClick={() => navigate('/nueva-contrasena', { state: { email } })}
             >
-              Establecer nueva contraseña →
+              Establecer nueva contraseña ?
             </button>
 
             <div className={styles.divider} />
 
             <p className={styles.backLink}>
-              <Link to="/login">← Volver a iniciar sesión</Link>
+              <Link to="/login">? Volver a iniciar sesión</Link>
             </p>
           </>
         )}
@@ -97,3 +99,4 @@ export default function RecuperarContrasena() {
     </main>
   )
 }
+
