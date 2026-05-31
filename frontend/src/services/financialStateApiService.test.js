@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 vi.mock('@/constants/api', () => ({
   ENDPOINTS: {
     miEstadoFinanciero: '/api/v1/clientes/me/estado-financiero',
+    miCreditMovements: ({ page, pageSize }) => `/api/v1/clientes/me/credit-movements?page=${page}&page_size=${pageSize}`,
   },
 }))
 
@@ -13,16 +14,15 @@ vi.mock('@/lib/http', () => ({
 
 describe('financialStateApiService', () => {
   beforeEach(() => {
-    vi.resetModules()
     httpGet.mockReset()
   })
 
-  test('consulta endpoint financiero de cliente', async () => {
-    httpGet.mockResolvedValue({ user_id: 3, credits_balance: 8 })
-    const { getMyFinancialStateApi } = await import('./financialStateApiService')
-    const result = await getMyFinancialStateApi()
-    expect(httpGet).toHaveBeenCalledWith('/api/v1/clientes/me/estado-financiero')
-    expect(result.userId).toBe(3)
-    expect(result.creditsBalance).toBe(8)
+  test('getMyCreditMovementsPaginatedApi llama endpoint correcto', async () => {
+    httpGet.mockResolvedValue({ page: 1, page_size: 10, total: 2, items: [{ id: 1, amount: -1 }] })
+    const { getMyCreditMovementsPaginatedApi } = await import('./financialStateApiService')
+    const result = await getMyCreditMovementsPaginatedApi({ page: 1, pageSize: 10 })
+    expect(httpGet).toHaveBeenCalledWith('/api/v1/clientes/me/credit-movements?page=1&page_size=10')
+    expect(result.isPaginated).toBe(true)
+    expect(result.total).toBe(2)
   })
 })

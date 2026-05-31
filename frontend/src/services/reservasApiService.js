@@ -5,6 +5,7 @@ import {
   mapBackendReservationsToFrontend,
   mapCreateReservationPayload,
 } from '@/adapters/reservationAdapter'
+import { normalizePaginatedResponse } from '@/adapters/paginationAdapter'
 import { useClasesStore } from '@/stores/clasesStore'
 
 function buildClassesById() {
@@ -15,6 +16,14 @@ function buildClassesById() {
 export async function getMisReservasApi() {
   const payload = await httpGet(ENDPOINTS.reservasMe)
   return mapBackendReservationsToFrontend(Array.isArray(payload) ? payload : [], buildClassesById())
+}
+
+export async function getMisReservasPaginatedApi({ page = 1, pageSize = 20, status, from, to } = {}) {
+  const payload = await httpGet(ENDPOINTS.reservasMePaginated({ page, pageSize, status, from, to }))
+  return normalizePaginatedResponse(
+    payload,
+    (item) => mapBackendReservationToFrontend(item ?? {}, buildClassesById())
+  )
 }
 
 export async function getReservaByIdApi(id) {

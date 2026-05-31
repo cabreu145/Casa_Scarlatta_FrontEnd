@@ -5,6 +5,16 @@ function withPrefix(path) {
   return `${BASE_URL}${API_PREFIX}${path}`
 }
 
+function withQuery(path, query = {}) {
+  const params = new URLSearchParams()
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '') return
+    params.set(key, String(value))
+  })
+  const qs = params.toString()
+  return withPrefix(qs ? `${path}?${qs}` : path)
+}
+
 export { BASE_URL, API_PREFIX }
 
 export const ENDPOINTS = {
@@ -17,6 +27,7 @@ export const ENDPOINTS = {
 
   clases: withPrefix('/clases'),
   clasesList: withPrefix('/clases'),
+  clasesPaginated: ({ page, pageSize }) => withQuery('/clases', { page, page_size: pageSize }),
   claseById: (id) => withPrefix(`/clases/${id}`),
   claseDisponibilidad: (id) => withPrefix(`/clases/${id}/disponibilidad`),
   claseOcurrencias: (id, { from, to } = {}) =>
@@ -24,6 +35,8 @@ export const ENDPOINTS = {
 
   reservas: withPrefix('/reservas'),
   reservasMe: withPrefix('/reservas/me'),
+  reservasMePaginated: ({ page, pageSize, status, from, to }) =>
+    withQuery('/reservas/me', { page, page_size: pageSize, status, from, to }),
   reservaById: (id) => withPrefix(`/reservas/${id}`),
   crearReserva: withPrefix('/reservas'),
   completarReserva: (id) => withPrefix(`/reservas/${id}/completar`),
@@ -39,6 +52,8 @@ export const ENDPOINTS = {
   usuarioById: (id) => withPrefix(`/usuarios/${id}`),
   miPerfil: withPrefix('/usuarios/me'),
   miEstadoFinanciero: withPrefix('/clientes/me/estado-financiero'),
+  miCreditMovements: ({ page, pageSize }) =>
+    withQuery('/clientes/me/credit-movements', { page, page_size: pageSize }),
 
   paquetes: withPrefix('/paquetes'),
   comprarPaquete: withPrefix('/paquetes/comprar'),

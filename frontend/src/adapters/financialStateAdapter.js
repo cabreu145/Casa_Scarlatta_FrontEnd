@@ -13,7 +13,7 @@ function mapMembership(membership) {
   }
 }
 
-function mapCreditMovement(movement = {}) {
+export function mapCreditMovement(movement = {}) {
   return {
     id: movement.id ?? null,
     type: movement.type ?? null,

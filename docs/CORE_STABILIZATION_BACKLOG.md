@@ -205,3 +205,72 @@ Ordenar ejecuciÃ³n de estabilizaciÃ³n core para BUG-001 a BUG-013 antes de nuevo
   - criterio explícito de “próximas” (hoy/futuras, estado `confirmada`, orden por ocurrencia),
   - límite UX configurable/no estático (3-5),
   - CTA “Ver todas” hacia “Mis clases” filtrado.
+
+## Actualización 2026-05-30 (BUG-005 cierre frontend)
+- Estado BUG-005: **Corregido (frontend)**.
+- “Mis próximas clases” usa helper con criterio explícito (confirmadas, hoy/futuras, orden por ocurrencia).
+- Source of truth en API mode: `GET /api/v1/reservas/me`.
+- Se elimina límite rígido de 2 y se aplica límite visual configurable (`4`) + CTA “Ver todas”.
+- BUG-006 queda como siguiente para estrategia global de paginación/listados.
+
+## Actualización 2026-05-30 (BUG-006 diagnóstico)
+- Estado BUG-006: **Diagnosticado**.
+- Clasificación: **estrategia mixta frontend + backend**.
+- Hallazgos:
+  - existen listados ya controlados (ej. `InfiniteList` en calendario admin, resumen de próximas clases cliente),
+  - persisten tablas/listas sin paginación en vistas principales (admin lista de clases, historial reservas modal admin, historiales cliente).
+  - endpoints API clave siguen sin contrato paginado (`page/page_size/total/items`).
+- Primer paso recomendado:
+  - ejecutar quick wins frontend en listados críticos (límite visual + "ver más"/paginación client-side),
+  - abrir tarea backend paralela para contrato paginado estándar.
+
+## Actualización 2026-05-30 (BUG-006A/B mitigación frontend)
+- Estado BUG-006A/B: **Aplicado (frontend-only)**.
+- Mitigaciones implementadas:
+  - Cliente historial financiero con paginación visual.
+  - Admin clases (vista lista) con paginación visual.
+  - Admin historial de reservas por usuario (modal) con paginación visual.
+- Estado BUG-006C: **Pendiente** (contrato backend paginado: `page`, `page_size`, `total`, `items`).
+- Primer siguiente paso recomendado: abrir implementación backend de paginación por endpoint crítico.
+
+## Actualización 2026-05-30 (BUG-006C frontend parcial)
+- Estado BUG-006C frontend: **Parcialmente integrado**.
+- Integrado:
+  - adapter de respuesta paginada/legacy.
+  - cliente movimientos de crédito desde endpoint paginado dedicado.
+  - admin clases (vista lista, filtro `Todas`) consumiendo paginación backend.
+- Pendiente:
+  - migrar "Mis clases" cliente a paginación backend por rango/filtro sin romper agrupación semanal.
+  - extender paginación backend a listados admin globales cuando endpoints estén disponibles.
+
+## Actualización 2026-05-30 (BUG-006C cierre frontend)
+- Estado BUG-006C frontend: **Cerrado para alcance cliente/admin actual**.
+- Integrado en cliente:
+  - Mis clases paginado backend por semana/filtro (`reservas/me?page&page_size&status&from&to`).
+- Integrado en admin:
+  - Clases vista lista paginada backend (filtro `Todas`).
+- Integrado en cliente pagos:
+  - credit-movements paginado backend.
+- Pendiente posterior (fuera de este cierre): endpoints admin globales paginados (`users/reservas/coaches`) según disponibilidad backend.
+
+## Cierre Core antes de BUG-009
+Estado de estabilización core consolidado (frontend):
+- [x] BUG-001
+- [x] BUG-002
+- [x] BUG-003 (end-to-end con `occurrence_id`)
+- [x] BUG-004 Core
+- [x] BUG-005
+- [x] BUG-006 Core actual
+  - BUG-006A/B aplicado
+  - BUG-006C cerrado para alcance cliente/admin actual
+  - pendiente posterior no bloqueante: paginación admin global (`users/reservas/coaches`) cuando backend exponga contratos paginados
+- [x] BUG-007
+- [x] BUG-008
+- [x] BUG-010
+- [x] BUG-011
+- [x] BUG-012
+- [x] BUG-013
+
+Salida de esta fase:
+- Core estabilizado y listo para QA final multi-rol pre-BUG-009.
+- BUG-009 (Mercado Pago) queda como siguiente módulo grande sin bloqueo por deuda core.

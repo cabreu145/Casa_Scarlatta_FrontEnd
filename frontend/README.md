@@ -135,7 +135,7 @@ Flags usados:
 - `VITE_USE_API_WAITLIST=true`
 
 Usuario demo:
-- `cliente@casascarlatta.local / cliente123`
+- `cliente@casascarlatta.local / cliente999`
 
 Flujos probados:
 - Login + sesión (`/auth/me`).
@@ -250,3 +250,37 @@ Pendiente separado:
 - “Mis clases” permite filtro por estado (`all`, `confirmada`, `cancelada`, `completada`, `no_asistio`).
 - En API mode usa reservas adaptadas desde `GET /api/v1/reservas/me`.
 - En modo fallback (`flags=false`) se mantiene soporte sobre reservas mock/local.
+
+## Estado BUG-005 (cerrado frontend)
+- “Mis próximas clases” en Dashboard Cliente ya no está limitado de forma rígida a 2.
+- En API mode, usa reservas reales de `GET /api/v1/reservas/me` con criterio: `confirmada` + hoy/futuras + orden por ocurrencia.
+- Límite visual configurable actual: `4` (`UPCOMING_RESERVATIONS_LIMIT`).
+- Se agregó CTA “Ver todas” hacia “Mis clases” con filtro `confirmada`.
+- BUG-006 permanece como siguiente paso para paginación/listados globales.
+
+## Estado BUG-006A/B (mitigación frontend aplicada)
+- Se añadieron controles de paginación visual en listados críticos ya cargados en memoria:
+  - Cliente: historial de movimientos/transacciones en Paquetes & Pagos.
+  - Admin: clases en vista lista.
+  - Admin: historial de reservas en modal de usuario.
+- No se modificaron endpoints ni reglas de negocio.
+- BUG-006C queda pendiente para paginación backend real (`page/page_size/total/items`).
+
+## Estado BUG-006C (frontend incremental)
+- Se agregó compatibilidad de frontend con contrato paginado backend (`page/page_size/total/items`) sin romper legacy.
+- Integraciones activas:
+  - Admin clases (vista lista, filtro `Todas`) con paginación backend.
+  - Cliente movimientos de crédito desde endpoint paginado dedicado.
+- Se mantiene transición segura: respuestas array legacy siguen soportadas.
+- Pendiente siguiente: migrar "Mis clases" cliente a paginación backend conservando UX semanal.
+
+## Estado BUG-006C (cierre frontend alcance actual)
+- Se cerró migración paginada de “Mis clases” cliente en API mode usando `reservas/me` paginado con `status/from/to`.
+- Se conserva UX semanal/filtro y refetch tras cancelación.
+- “Mis próximas clases” permanece estable y separado de este flujo.
+- Legacy/fallback mock se mantiene para flags false.
+- Próximo paso: paginación backend en listados admin globales cuando backend exponga contratos.
+
+## Cierre pre-BUG-009
+Core stabilization listo para QA final pre-Mercado Pago.
+Siguiente módulo recomendado: BUG-009 (integración Mercado Pago).

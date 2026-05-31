@@ -5,10 +5,16 @@ import {
   mapBackendClassToFrontendClass,
   mapBackendClassesToFrontend,
 } from '@/adapters/classAdapter'
+import { normalizePaginatedResponse } from '@/adapters/paginationAdapter'
 
 export async function getClasesApi() {
   const payload = await httpGet(ENDPOINTS.clasesList)
   return mapBackendClassesToFrontend(Array.isArray(payload) ? payload : [])
+}
+
+export async function getClasesPaginatedApi({ page = 1, pageSize = 20 } = {}) {
+  const payload = await httpGet(ENDPOINTS.clasesPaginated({ page, pageSize }))
+  return normalizePaginatedResponse(payload, (item) => mapBackendClassToFrontendClass(item ?? {}))
 }
 
 export async function getClaseByIdApi(id) {

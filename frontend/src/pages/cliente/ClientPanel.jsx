@@ -21,6 +21,8 @@ import { editarPerfilService }            from '@/services/usuariosService'
 import { getPublicClassesByDate, getReservationOccurrenceDate, isPublished } from '@/services/classService'
 import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { logListaEsperaUnirse, logListaEsperaSalir } from '@/services/actividadService'
+import { getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
+import { getMisReservasPaginatedApi } from '@/services/reservasApiService'
 import {
   hoyLocal,
   DAYS_ES, DAYS_ABBR, MONTHS_ES,
@@ -32,6 +34,10 @@ import ClassCard from './ClassCard'
 import { buildPerfilFormFromUser, resolvePerfilCompleto } from './profileFormUtils'
 import { resolveFinancialUiState } from './financialUiUtils'
 import { filterReservationsByStatus } from './reservationFilters'
+import { getUpcomingReservations, UPCOMING_RESERVATIONS_LIMIT } from './upcomingReservations'
+import { buildMisClasesApiFilters } from './misClasesPagination'
+import PaginationControls from '@/components/ui/PaginationControls'
+import { clampPage, paginateArray } from '@/utils/paginationUtils'
 
 const AVATAR_COLORS = [
   { bg: 'var(--brand-wine-13)',  text: '#7B1E2B' },
@@ -153,6 +159,26 @@ export default function ClientPanel() {
   const [seatSelectorClass, setSeatSelectorClass] = useState(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
+  const [financialHistoryPage, setFinancialHistoryPage] = useState(1)
+  const [misClasesPage, setMisClasesPage] = useState(1)
+  const [misClasesPageState, setMisClasesPageState] = useState({
+    items: [],
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 1,
+    isLoading: false,
+    error: null,
+  })
+  const [apiCreditMovementsPage, setApiCreditMovementsPage] = useState({
+    items: [],
+    page: 1,
+    pageSize: 8,
+    total: 0,
+    totalPages: 1,
+    isLoading: false,
+    error: null,
+  })
   const weekDays = useMemo(() => buildWeek(weekOff), [weekOff])
   const resWeekDays = useMemo(() => buildWeek(resWeekOff), [resWeekOff])
 
@@ -278,6 +304,10 @@ export default function ClientPanel() {
   const meta = SECTION_META[activeSection]
 
   function goTo(section) { setActiveSection(section) }
+  function goToMisClasesConfirmadas() {
+    setMisClasesStatusFilter('confirmada')
+    setActiveSection('clases')
+  }
   function goToAndClose(section) {
     setActiveSection(section)
     setIsSidebarOpen(false)
@@ -291,6 +321,99 @@ export default function ClientPanel() {
     () => filterReservationsByStatus(reservasUsuario, misClasesStatusFilter),
     [misClasesStatusFilter, reservasUsuario]
   )
+  const reservasMisClasesSource = useApiReservations ? (misClasesPageState.items ?? []) : reservasUsuarioFiltradas
+  const financialHistoryPageSize = 8
+  const sortedHistorialPagos = useMemo(
+    () => [...historialPagos].sort((a, b) => (b.fecha ?? '').localeCompare(a.fecha ?? '')),
+    [historialPagos]
+  )
+  const financialHistorySource = useApiFinancialState ? (apiCreditMovementsPage.items ?? []) : sortedHistorialPagos
+  const paginatedFinancialHistory = useMemo(
+    () => useApiFinancialState
+      ? {
+          items: apiCreditMovementsPage.items ?? [],
+          page: apiCreditMovementsPage.page ?? financialHistoryPage,
+          totalPages: apiCreditMovementsPage.totalPages ?? 1,
+          totalItems: apiCreditMovementsPage.total ?? (apiCreditMovementsPage.items?.length ?? 0),
+        }
+      : paginateArray(financialHistorySource, { page: financialHistoryPage, pageSize: financialHistoryPageSize }),
+    [apiCreditMovementsPage, financialHistoryPage, financialHistorySource, useApiFinancialState]
+  )
+  const normalizedFinancialHistoryPage = clampPage(financialHistoryPage, paginatedFinancialHistory.totalPages)
+
+  useEffect(() => {
+    if (financialHistoryPage !== normalizedFinancialHistoryPage) {
+      setFinancialHistoryPage(normalizedFinancialHistoryPage)
+    }
+  }, [financialHistoryPage, normalizedFinancialHistoryPage])
+
+  useEffect(() => {
+    setFinancialHistoryPage(1)
+  }, [useApiFinancialState, historialMovimientosCredito.length, historialPagos.length])
+
+  useEffect(() => {
+    setMisClasesPage(1)
+  }, [misClasesStatusFilter, weekOff])
+
+  useEffect(() => {
+    if (!useApiReservations || activeSection !== 'clases' || !usuario?.id) return
+    const { status, from, to } = buildMisClasesApiFilters(misClasesStatusFilter, weekDays)
+    if (!from || !to) return
+    let active = true
+    setMisClasesPageState((prev) => ({ ...prev, isLoading: true, error: null }))
+    getMisReservasPaginatedApi({ page: misClasesPage, pageSize: 10, status, from, to })
+      .then((result) => {
+        if (!active) return
+        const totalPages = Math.max(1, Math.ceil((result.total ?? 0) / (result.pageSize || 10)))
+        setMisClasesPageState({
+          items: result.items ?? [],
+          page: result.page ?? misClasesPage,
+          pageSize: result.pageSize ?? 10,
+          total: result.total ?? 0,
+          totalPages,
+          isLoading: false,
+          error: null,
+        })
+      })
+      .catch((err) => {
+        if (!active) return
+        setMisClasesPageState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: err?.message ?? 'No se pudo cargar Mis clases',
+        }))
+      })
+    return () => { active = false }
+  }, [activeSection, misClasesPage, misClasesStatusFilter, useApiReservations, usuario?.id, weekDays])
+
+  useEffect(() => {
+    if (!useApiFinancialState || usuario?.rol !== 'cliente') return
+    let active = true
+    setApiCreditMovementsPage((prev) => ({ ...prev, isLoading: true, error: null }))
+    getMyCreditMovementsPaginatedApi({ page: financialHistoryPage, pageSize: financialHistoryPageSize })
+      .then((result) => {
+        if (!active) return
+        const totalPages = Math.max(1, Math.ceil((result.total ?? 0) / (result.pageSize || financialHistoryPageSize)))
+        setApiCreditMovementsPage({
+          items: result.items ?? [],
+          page: result.page ?? financialHistoryPage,
+          pageSize: result.pageSize ?? financialHistoryPageSize,
+          total: result.total ?? 0,
+          totalPages,
+          isLoading: false,
+          error: null,
+        })
+      })
+      .catch((err) => {
+        if (!active) return
+        setApiCreditMovementsPage((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: err?.message ?? 'No se pudieron cargar movimientos',
+        }))
+      })
+    return () => { active = false }
+  }, [financialHistoryPage, financialHistoryPageSize, useApiFinancialState, usuario?.rol])
 
   const now   = new Date()
   const today = hoyLocal()
@@ -312,33 +435,16 @@ export default function ClientPanel() {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   }
 
-  const upcomingReservas = [...reservasUsuario]
-    .filter((r) => {
-      if (r.estado !== 'confirmada') return false
-      if (useApiReservations) {
-        const occurrenceDate = getReservationOccurrenceDate(r)
-        if (!occurrenceDate) return false
-        const hora = r.classStartTime ?? r.claseHora ?? clases.find(c => c.id === r.claseId)?.hora
-        if (!hora) return false
-        return new Date(occurrenceDate + 'T' + hora + ':00') > now
-      }
-      const hora = r.claseHora ?? clases.find(c => c.id === r.claseId)?.hora
-      if (!hora) return (r.fecha ?? '') >= today
-      const fechaReal = realClassDate(r)
-      return new Date(fechaReal + 'T' + hora + ':00') > now
-    })
-    .sort((a, b) => {
-      if (useApiReservations) {
-        const fa = getReservationOccurrenceDate(a) ?? ''
-        const fb = getReservationOccurrenceDate(b) ?? ''
-        if (fa !== fb) return fa.localeCompare(fb)
-        return (a.classStartTime ?? a.claseHora ?? '').localeCompare(b.classStartTime ?? b.claseHora ?? '')
-      }
-      const fa = realClassDate(a), fb = realClassDate(b)
-      if (fa !== fb) return fa.localeCompare(fb)
-      return (a.claseHora ?? '').localeCompare(b.claseHora ?? '')
-    })
-    .slice(0, 2)
+  const upcomingResult = getUpcomingReservations(reservasUsuario, {
+    useApiReservations,
+    now,
+    limit: UPCOMING_RESERVATIONS_LIMIT,
+    getOccurrenceDate: (r) => getReservationOccurrenceDate(r),
+    getLocalDate: (r) => realClassDate(r),
+    getLocalHour: (r) => r.claseHora ?? clases.find(c => c.id === r.claseId)?.hora ?? null,
+  })
+  const upcomingReservas = upcomingResult.items
+  const totalUpcomingReservas = upcomingResult.total
 
   const upcoming = upcomingReservas.map(r => {
     const cls = toClsShape(r)
@@ -445,6 +551,29 @@ export default function ClientPanel() {
     const resultado = await cancelarReserva(reservaId, usuario.id)
     if (resultado.ok) toast.success('Reserva cancelada. Te enviamos confirmaciÃ³n por correo ðŸ“§')
     else toast.error(resultado.error)
+    if (resultado.ok && useApiReservations && activeSection === 'clases') {
+      const { status, from, to } = buildMisClasesApiFilters(misClasesStatusFilter, weekDays)
+      try {
+        const result = await getMisReservasPaginatedApi({ page: misClasesPage, pageSize: 10, status, from, to })
+        const totalPages = Math.max(1, Math.ceil((result.total ?? 0) / (result.pageSize || 10)))
+        const safePage = Math.min(misClasesPage, totalPages)
+        if (safePage !== misClasesPage) {
+          setMisClasesPage(safePage)
+          return
+        }
+        setMisClasesPageState({
+          items: result.items ?? [],
+          page: result.page ?? misClasesPage,
+          pageSize: result.pageSize ?? 10,
+          total: result.total ?? 0,
+          totalPages,
+          isLoading: false,
+          error: null,
+        })
+      } catch {
+        // noop: mantener estado local y toast ya mostrado
+      }
+    }
   }
 
   async function handleReserveClass(av) {
@@ -727,14 +856,24 @@ export default function ClientPanel() {
                   <span className={`${s.pill} ${s.pillStride}`} style={{ alignSelf: 'center' }}>{upcoming.length} reservadas</span>
                 </div>
                 <div className={s.cardBody}>
+                  {totalUpcomingReservas > UPCOMING_RESERVATIONS_LIMIT && (
+                    <div className={s.cardSubtitle} style={{ marginBottom: 10 }}>
+                      Mostrando {UPCOMING_RESERVATIONS_LIMIT} de {totalUpcomingReservas} próximas clases.
+                    </div>
+                  )}
                   {upcoming.length > 0 ? upcoming.map(c => (
-                    <ClassCard key={c.id} cls={c} showCancel={false} coachFoto={coachFotoByName[c.coach] || null} />
+                    <ClassCard key={`${c.id}-${c.claseFecha ?? 'sin-fecha'}-${c.time ?? 'sin-hora'}`} cls={c} showCancel={false} coachFoto={coachFotoByName[c.coach] || null} />
                   )) : (
                     <div className={s.empty}>
                       <div className={s.emptyIcon}>ðŸ“…</div>
-                      <div className={s.emptyText}>No tienes clases prÃ³ximas</div>
+                      <div className={s.emptyText}>No tienes próximas clases reservadas.</div>
                     </div>
                   )}
+                  <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button type="button" className={`${s.btn} ${s.btnSm} ${s.btnOutline}`} onClick={goToMisClasesConfirmadas}>
+                      Ver todas
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -832,8 +971,8 @@ export default function ClientPanel() {
 	                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', fontWeight: 400, color: 'var(--ink)', marginBottom: 4 }}>Mis Clases</h1>
 	                <p style={{ fontSize: 13, color: 'var(--muted)' }}>
 	                  {misClasesStatusFilter === 'all'
-	                    ? `${reservasUsuario.filter(r => r.estado !== 'cancelada').length} clases reservadas en total`
-	                    : `${reservasUsuarioFiltradas.length} clases en este estado`}
+	                    ? `${useApiReservations ? (misClasesPageState.total ?? 0) : reservasUsuario.filter(r => r.estado !== 'cancelada').length} clases reservadas en total`
+	                    : `${useApiReservations ? (misClasesPageState.total ?? 0) : reservasUsuarioFiltradas.length} clases en este estado`}
 	                </p>
 	              </div>
 	              <button className={`${s.btn} ${s.btnPrimary}`} onClick={() => goTo('reservar')}>
@@ -863,7 +1002,7 @@ export default function ClientPanel() {
               ><ChevronLeft size={18} /></button>
               <div className={s.dayTabs}>
                 {weekDays.map((day, i) => {
-	                  const hasCls = reservasUsuarioFiltradas.some((r) => {
+	                  const hasCls = reservasMisClasesSource.some((r) => {
 	                    if (!useApiReservations) return (r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName)
 	                    const occurrenceDate = getReservationOccurrenceDate(r)
 	                    if (!occurrenceDate) return false
@@ -892,7 +1031,7 @@ export default function ClientPanel() {
             {/* Classes for selected day */}
             {(() => {
               const day = weekDays[dayIdx]
-	              const dayClasses = reservasUsuarioFiltradas
+	              const dayClasses = reservasMisClasesSource
 	                .filter((r) => {
 	                  if (!useApiReservations) return r.fecha ? r.fecha === day.isoDate : r.claseDia === day.fullName
 	                  const occurrenceDate = getReservationOccurrenceDate(r)
@@ -900,11 +1039,37 @@ export default function ClientPanel() {
                   return occurrenceDate === day.isoDate
                 })
                 .map(toClsShape)
+              if (useApiReservations && misClasesPageState.isLoading) {
+                return (
+                  <div className={s.emptyDay}>
+                    <div className={s.emptyDayIcon}>...</div>
+                    <div className={s.emptyDayTitle}>Cargando clases...</div>
+                  </div>
+                )
+              }
+              if (useApiReservations && misClasesPageState.error) {
+                return (
+                  <div className={s.emptyDay}>
+                    <div className={s.emptyDayIcon}>⚠</div>
+                    <div className={s.emptyDayTitle}>No se pudo cargar Mis clases</div>
+                    <p className={s.emptyDaySub}>Intenta cambiar de día o recargar sección.</p>
+                  </div>
+                )
+              }
               return dayClasses.length > 0 ? (
                 <div>
                   {dayClasses.map(c => (
                     <MisClasesCard key={c.id} cls={c} dayIsoDate={day.isoDate} onCancel={() => handleCancelReserva(c.id)} coachFoto={coachFotoByName[c.coach] || null} />
                   ))}
+                  {useApiReservations && (
+                    <PaginationControls
+                      page={misClasesPageState.page}
+                      totalPages={misClasesPageState.totalPages}
+                      label="Mis clases"
+                      onPrev={() => setMisClasesPage((p) => Math.max(1, p - 1))}
+                      onNext={() => setMisClasesPage((p) => Math.min(misClasesPageState.totalPages, p + 1))}
+                    />
+                  )}
                 </div>
               ) : (
                 <div className={s.emptyDay}>
@@ -1318,14 +1483,20 @@ export default function ClientPanel() {
                 <div className={s.cardSubtitle}>{useApiFinancialState ? 'Actividad reciente de membresÃ­a' : 'Ãšltimas transacciones'}</div>
               </div>
               <div className={s.cardBody}>
-                {useApiFinancialState && historialMovimientosCredito.length === 0 && historialPagos.length === 0 ? (
+                {useApiFinancialState && apiCreditMovementsPage.isLoading ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>
+                    Cargando movimientos...
+                  </div>
+                ) : useApiFinancialState && apiCreditMovementsPage.error ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#b42318', fontSize: 13 }}>
+                    No se pudieron cargar movimientos de crédito.
+                  </div>
+                ) : useApiFinancialState && (apiCreditMovementsPage.total ?? 0) === 0 && historialPagos.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>
                     Aún no hay movimientos registrados.
                   </div>
-                ) : useApiFinancialState && historialMovimientosCredito.length > 0 ? (
-                  [...historialMovimientosCredito]
-                    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
-                    .map((mv) => (
+                ) : useApiFinancialState && (apiCreditMovementsPage.total ?? 0) > 0 ? (
+                  paginatedFinancialHistory.items.map((mv) => (
                       <div key={`mv-${mv.id ?? mv.createdAt}`} className={s.historyRow}>
                         <div className={s.historyIcon}>ðŸŽŸï¸</div>
                         <div style={{ flex: 1 }}>
@@ -1342,9 +1513,7 @@ export default function ClientPanel() {
                     No hay transacciones registradas.
                   </div>
                 ) : (
-                  [...historialPagos]
-                    .sort((a, b) => b.fecha.localeCompare(a.fecha))
-                    .map(tx => (
+                  paginatedFinancialHistory.items.map(tx => (
                       <div key={tx.id} className={s.historyRow}>
                         <div className={s.historyIcon}>
                           {tx.tipo === 'reembolso' ? 'â†©ï¸' : tx.tipo === 'producto' ? 'ðŸ›ï¸' : 'ðŸ’³'}
@@ -1361,6 +1530,15 @@ export default function ClientPanel() {
                         </div>
                       </div>
                     ))
+                )}
+                {(useApiFinancialState ? (apiCreditMovementsPage.total ?? 0) > 0 : financialHistorySource.length > 0) && (
+                  <PaginationControls
+                    page={paginatedFinancialHistory.page}
+                    totalPages={paginatedFinancialHistory.totalPages}
+                    label="Historial"
+                    onPrev={() => setFinancialHistoryPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setFinancialHistoryPage((p) => Math.min(paginatedFinancialHistory.totalPages, p + 1))}
+                  />
                 )}
               </div>
             </div>

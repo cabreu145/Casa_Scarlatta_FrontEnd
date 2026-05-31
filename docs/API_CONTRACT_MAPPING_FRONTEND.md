@@ -72,3 +72,17 @@ Notas:
 Notas BUG-013:
 - En API mode admin no debe usar `coachNombre` como identidad.
 - Identidad canónica de asignación coach: `coach_id` (coaches.id backend).
+
+## Actualización BUG-006C (contrato paginado backend)
+- Frontend ya consume de forma incremental contrato paginado `{ page, page_size, total, items }`.
+- Endpoints integrados en esta fase:
+  - `/api/v1/clases?page=&page_size=` (admin vista lista, filtro `Todas`).
+  - `/api/v1/clientes/me/credit-movements?page=&page_size=` (cliente historial).
+  - `/api/v1/reservas/me?page=&page_size=&status=&from=&to=` (servicio preparado; integración UI semanal pendiente).
+- Se mantiene compatibilidad con respuesta legacy array para transición.
+
+## Actualización BUG-006C (Mis clases cliente)
+- `ClientPanel` en API mode consume `GET /api/v1/reservas/me?page=&page_size=&status=&from=&to=` para sección “Mis clases”.
+- `status` se deriva del filtro UI (`all` omite parámetro).
+- `from/to` se derivan del rango semanal visible.
+- Se conserva fallback legacy/mock cuando flags API están en false.

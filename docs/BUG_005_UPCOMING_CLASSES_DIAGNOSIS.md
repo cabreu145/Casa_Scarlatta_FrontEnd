@@ -79,3 +79,11 @@ Implementar fix frontend incremental:
 1. Reemplazar `.slice(0, 2)` por lÃ­mite visual configurable (ej. 4).
 2. AÃ±adir CTA "Ver todas" hacia Mis clases.
 3. Mantener source of truth API mode desde `reservas/me` sin mezclar mocks.
+
+## Actualización 2026-05-30 (implementación BUG-005)
+- Estado: **Corregido (frontend)**.
+- Se reemplazó límite rígido `.slice(0, 2)` por criterio y helper dedicado (`upcomingReservations`).
+- Criterio aplicado: reservas `confirmada`, de hoy/futuras, orden ascendente por fecha/hora de ocurrencia.
+- En API mode se usan reservas de `GET /api/v1/reservas/me`; no se usa `reserved_at` como fecha de sesión.
+- Límite visual configurable aplicado: `UPCOMING_RESERVATIONS_LIMIT=4`.
+- UX añadida: CTA **Ver todas** hacia “Mis clases” con filtro `confirmada`.

@@ -42,6 +42,8 @@ import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
 import { createClaseApi, updateClaseApi } from '@/services/clasesApiService'
 import { getCoachesApi } from '@/services/coachesApiService'
 import { buildClaseApiPayload } from './classApiPayload'
+import PaginationControls from '@/components/ui/PaginationControls'
+import { paginateArray } from '@/utils/paginationUtils'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
@@ -224,6 +226,7 @@ export default function AdminPanel() {
   const [usuarioForm, setUsuarioForm] = useState({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
   // Usuario — ver detalle
   const [modalVerUsuario, setModalVerUsuario] = useState(null)
+  const [reservasModalPage, setReservasModalPage] = useState(1)
   // Usuario — asignar paquete desde modal Ver
   const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
   const [compartirAdminData, setCompartirAdminData] = useState({ activo: false, participantes: [] })
@@ -234,6 +237,10 @@ export default function AdminPanel() {
   // Notas editables en modal Ver
   const [editNotas, setEditNotas] = useState('')
   const coachesForClassForms = useApiClasses ? apiCoaches : coaches
+
+  useEffect(() => {
+    setReservasModalPage(1)
+  }, [modalVerUsuario?.id])
 
   useEffect(() => {
     if (!useApiClasses) return
@@ -1969,6 +1976,8 @@ export default function AdminPanel() {
       {modalVerUsuario && (() => {
         const u = modalVerUsuario
         const reservasU = todasReservas.filter(r => String(r.userId) === String(u.id))
+        const reservasOrdenadas = reservasU.slice().reverse()
+        const paginatedReservasModal = paginateArray(reservasOrdenadas, { page: reservasModalPage, pageSize: 8 })
         const paqActivo = paquetes.find(p => p.nombre === u.paquete)
         const restantes = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
         const tag   = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
@@ -2210,8 +2219,8 @@ export default function AdminPanel() {
                           </tr>
                         </thead>
                         <tbody>
-                          {reservasU.slice().reverse().map((r, i) => (
-                            <tr key={r.id} style={{ borderBottom: i < reservasU.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                          {paginatedReservasModal.items.map((r, i) => (
+                            <tr key={r.id} style={{ borderBottom: i < paginatedReservasModal.items.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
                               <td style={{ padding: '9px 12px', fontSize: 13, fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.85)' }}>{r.claseNombre}</td>
                               <td style={{ padding: '9px 12px', fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--muted)' }}>{r.fecha || r.claseDia}</td>
                               <td style={{ padding: '9px 12px', fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--muted)' }}>{r.claseHora}</td>
@@ -2225,6 +2234,16 @@ export default function AdminPanel() {
                         </tbody>
                       </table>
                     </div>
+                  )}
+                  {reservasU.length > 0 && (
+                    <PaginationControls
+                      page={paginatedReservasModal.page}
+                      totalPages={paginatedReservasModal.totalPages}
+                      label="Historial"
+                      compact
+                      onPrev={() => setReservasModalPage((p) => Math.max(1, p - 1))}
+                      onNext={() => setReservasModalPage((p) => Math.min(paginatedReservasModal.totalPages, p + 1))}
+                    />
                   )}
                 </div>
 

@@ -4,6 +4,7 @@ vi.mock('@/constants/api', () => ({
   ENDPOINTS: {
     clases: '/api/v1/clases',
     clasesList: '/api/v1/clases',
+    clasesPaginated: ({ page, pageSize }) => `/api/v1/clases?page=${page}&page_size=${pageSize}`,
     claseById: (id) => `/api/v1/clases/${id}`,
     claseDisponibilidad: (id) => `/api/v1/clases/${id}/disponibilidad`,
   },
@@ -26,17 +27,26 @@ describe('clasesApiService write', () => {
     httpPut.mockReset()
   })
 
-  test('createClaseApi envía payload con coach_id', async () => {
+  test('createClaseApi envia payload con coach_id', async () => {
     httpPost.mockResolvedValue({ id: 10, name: 'Clase', coach_id: 3 })
     const { createClaseApi } = await import('./clasesApiService')
     await createClaseApi({ name: 'Clase', coach_id: 3 })
     expect(httpPost).toHaveBeenCalledWith('/api/v1/clases', { name: 'Clase', coach_id: 3 })
   })
 
-  test('updateClaseApi envía payload con coach_id', async () => {
+  test('updateClaseApi envia payload con coach_id', async () => {
     httpPut.mockResolvedValue({ id: 11, name: 'Clase', coach_id: 4 })
     const { updateClaseApi } = await import('./clasesApiService')
     await updateClaseApi(11, { name: 'Clase', coach_id: 4 })
     expect(httpPut).toHaveBeenCalledWith('/api/v1/clases/11', { name: 'Clase', coach_id: 4 })
+  })
+
+  test('getClasesPaginatedApi llama endpoint paginado', async () => {
+    httpGet.mockResolvedValue({ page: 1, page_size: 2, total: 10, items: [{ id: 1, name: 'A' }] })
+    const { getClasesPaginatedApi } = await import('./clasesApiService')
+    const result = await getClasesPaginatedApi({ page: 1, pageSize: 2 })
+    expect(httpGet).toHaveBeenCalledWith('/api/v1/clases?page=1&page_size=2')
+    expect(result.isPaginated).toBe(true)
+    expect(result.total).toBe(10)
   })
 })

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
@@ -7,9 +7,12 @@ import { logClaseEliminada, logClaseCreada } from '@/services/actividadService'
 import { useListaEsperaStore } from '@/stores/listaEsperaStore'
 import DateNavigator from '@/components/ui/DateNavigator'
 import InfiniteList  from '@/components/ui/InfiniteList'
+import PaginationControls from '@/components/ui/PaginationControls'
 import { useClasses } from '@/hooks/useClasses'
 import { useClasesStore } from '@/stores/clasesStore'
 import { diaDesdefecha } from '@/utils/formatters'
+import { clampPage, paginateArray } from '@/utils/paginationUtils'
+import { getClasesPaginatedApi } from '@/services/clasesApiService'
 import styles from '../AdminPanel.module.css'
 
 const ABBR_DIA = { Lunes: 'LUN', Martes: 'MAR', Miércoles: 'MIÉ', Jueves: 'JUE', Viernes: 'VIE', Sábado: 'SÁB', Domingo: 'DOM' }
@@ -442,8 +445,21 @@ export default function ClasesSection({
   })
   const [modalImport, setModalImport] = useState(false)
   const [vistaLista, setVistaLista]   = useState(false)
+  const [clasesListPage, setClasesListPage] = useState(1)
+  const [apiListState, setApiListState] = useState({
+    items: [],
+    page: 1,
+    pageSize: 12,
+    total: 0,
+    totalPages: 1,
+    isLoading: false,
+    error: null,
+    isPaginated: false,
+  })
   const { agregarClase } = useClasesStore()
   const { getPorClase }  = useListaEsperaStore()
+  const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
+  const useBackendPaginationInList = useApiClasses && clasesFilter === 'Todas'
 
   const handleImportar = (clases) => {
     clases.forEach(c => agregarClase(c))
@@ -460,6 +476,40 @@ export default function ClasesSection({
       return clasesDelDia.filter(c => c.tipo?.toLowerCase().includes('slow'))
     return clasesDelDia
   }, [clasesDelDia, clasesFilter])
+
+  useEffect(() => {
+    setClasesListPage(1)
+  }, [clasesFilter, vistaLista])
+
+  useEffect(() => {
+    if (!useBackendPaginationInList || !vistaLista) return
+    let active = true
+    setApiListState((prev) => ({ ...prev, isLoading: true, error: null }))
+    getClasesPaginatedApi({ page: clasesListPage, pageSize: 12 })
+      .then((result) => {
+        if (!active) return
+        const totalPages = Math.max(1, Math.ceil((result.total ?? 0) / (result.pageSize || 12)))
+        setApiListState({
+          items: result.items ?? [],
+          page: result.page ?? clasesListPage,
+          pageSize: result.pageSize ?? 12,
+          total: result.total ?? (result.items?.length ?? 0),
+          totalPages,
+          isLoading: false,
+          error: null,
+          isPaginated: result.isPaginated === true,
+        })
+      })
+      .catch((err) => {
+        if (!active) return
+        setApiListState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: err?.message ?? 'No se pudo cargar clases paginadas',
+        }))
+      })
+    return () => { active = false }
+  }, [clasesListPage, useBackendPaginationInList, vistaLista])
 
   return (
     <>
@@ -740,7 +790,10 @@ export default function ClasesSection({
       {/* ── Vista Lista ── */}
       {vistaLista && (() => {
         const isSlow = (tipo) => tipo?.toLowerCase().includes('slow')
-        const filtradas = clases.filter(c => {
+        const sourceList = (useBackendPaginationInList && apiListState.isPaginated)
+          ? (apiListState.items ?? [])
+          : clases
+        const filtradas = sourceList.filter(c => {
           if (clasesFilter === 'Stryde X') return !isSlow(c.tipo)
           if (clasesFilter === 'Slow')     return  isSlow(c.tipo)
           return true
@@ -751,6 +804,18 @@ export default function ClasesSection({
           if (b.fecha) return 1
           return (a.dia ?? '').localeCompare(b.dia ?? '')
         })
+        const totalPages = useBackendPaginationInList && apiListState.isPaginated
+          ? apiListState.totalPages
+          : Math.max(1, Math.ceil(ordenadas.length / 12))
+        const currentPage = clampPage(clasesListPage, totalPages)
+        const paginated = useBackendPaginationInList && apiListState.isPaginated
+          ? {
+              items: ordenadas,
+              page: apiListState.page,
+              totalPages: apiListState.totalPages,
+              totalItems: apiListState.total,
+            }
+          : paginateArray(ordenadas, { page: currentPage, pageSize: 12 })
         return (
           <div style={{
             background: 'var(--neutral-card)',
@@ -758,6 +823,16 @@ export default function ClasesSection({
             borderRadius: 12,
             overflow: 'hidden',
           }}>
+            {useBackendPaginationInList && apiListState.isLoading && (
+              <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
+                Cargando clases...
+              </div>
+            )}
+            {useBackendPaginationInList && apiListState.error && (
+              <div style={{ padding: '10px 16px', fontSize: 12, color: '#ef4444' }}>
+                No se pudo cargar página de clases.
+              </div>
+            )}
             <table style={{
               width: '100%', borderCollapse: 'collapse',
               fontFamily: 'var(--font-body)', fontSize: 13,
@@ -781,7 +856,7 @@ export default function ClasesSection({
                       No hay clases registradas
                     </td>
                   </tr>
-                ) : ordenadas.map((c, i) => {
+                ) : paginated.items.map((c, i) => {
                   const pct = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
                   const isFinalizada = (() => {
                     if (!c.fecha) return false
@@ -794,7 +869,7 @@ export default function ClasesSection({
                   const enEspera = getPorClase(c.id)
                   return (
                     <tr key={c.id} style={{
-                      borderBottom: i < ordenadas.length - 1 ? '1px solid var(--neutral-border)' : 'none',
+                      borderBottom: i < paginated.items.length - 1 ? '1px solid var(--neutral-border)' : 'none',
                       background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)',
                     }}>
                       <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
@@ -896,6 +971,16 @@ export default function ClasesSection({
                 })}
               </tbody>
             </table>
+            <div style={{ padding: '10px 16px', borderTop: '1px solid var(--neutral-border)' }}>
+              <PaginationControls
+                page={paginated.page}
+                totalPages={paginated.totalPages}
+                label="Clases"
+                compact
+                onPrev={() => setClasesListPage((p) => Math.max(1, p - 1))}
+                onNext={() => setClasesListPage((p) => Math.min(paginated.totalPages, p + 1))}
+              />
+            </div>
           </div>
         )
       })()}
