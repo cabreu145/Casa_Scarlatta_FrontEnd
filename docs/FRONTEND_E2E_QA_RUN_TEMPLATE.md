@@ -379,3 +379,73 @@ Estado QA pre-BUG-009:
 - Se resuelve el bloqueo de autenticación de cliente reportado en corrida previa.
 - Pendiente para declarar GO definitivo: corrida manual UI/Network multi-rol completa de la checklist (reserva/cancelación/waitlist/paginación).
 - Decisión actual: `GO con riesgos` (técnico OK, cierre manual QA pendiente).
+
+## 19) Ejecución QA manual UI/Network final pre-BUG-009 (2026-05-31)
+- Fecha: `2026-05-31`
+- Ambiente: local (`frontend` en `http://127.0.0.1:5173`, `backend` en `http://127.0.0.1:8000`)
+- Flags activos:
+  - `VITE_API_BASE_URL=http://127.0.0.1:8000`
+  - `VITE_API_PREFIX=/api/v1`
+  - `VITE_USE_API_AUTH=true`
+  - `VITE_USE_API_CLASSES=true`
+  - `VITE_USE_API_RESERVATIONS=true`
+  - `VITE_USE_API_WAITLIST=true`
+
+Resultado general:
+- **GO con riesgos**
+
+Flujos validados (UI/Network y API):
+- Cliente:
+  - Login cliente demo `cliente@casascarlatta.local / cliente999`: **PASS** (`POST /api/v1/auth/login` 200).
+  - `GET /api/v1/auth/me`: **PASS**.
+  - Carga clases (`GET /api/v1/clases` y paginado): **PASS**.
+  - Reserva y cancelación: **PASS**
+    - `POST /api/v1/reservas`
+    - `GET /api/v1/reservas/me?page=...&page_size=...&from=...&to=...`
+    - `POST /api/v1/reservas/{id}/cancelar`
+    - refetch financiero `GET /api/v1/clientes/me/estado-financiero`.
+  - Paquetes & Pagos (resumen + movimientos paginados): **PASS**
+    - `GET /api/v1/clientes/me/estado-financiero`
+    - `GET /api/v1/clientes/me/credit-movements?page=...&page_size=...`.
+  - Waitlist por ocurrencia: **PASS**
+    - `GET /api/v1/lista-espera?occurrenceId=...`
+    - Validación negativa legacy `GET /api/v1/lista-espera?claseId=...` => **422 esperado**.
+- Admin:
+  - Login admin: **PASS**.
+  - Clases paginadas en vista lista: **PASS** (`GET /api/v1/clases?page=...&page_size=...`).
+  - Crear/editar clase con `coach_id` canónico: **PASS** (`POST`/`PUT /api/v1/clases`), con cleanup de clase temporal.
+- Coach:
+  - Login coach: **PASS**.
+  - Agenda semanal: **PASS** (`GET /api/v1/coaches/me/agenda?from=...&to=...`).
+  - Métricas y clases de hoy basadas en `agenda.occurrences`: **PASS** funcional.
+
+Endpoints observados/validados:
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+- `GET /api/v1/clases`
+- `GET /api/v1/clases?page=...&page_size=...`
+- `GET /api/v1/clases/{id}/ocurrencias?from=...&to=...`
+- `POST /api/v1/reservas`
+- `GET /api/v1/reservas/me?page=...&page_size=...&status=...&from=...&to=...`
+- `POST /api/v1/reservas/{id}/cancelar`
+- `GET /api/v1/clientes/me/estado-financiero`
+- `GET /api/v1/clientes/me/credit-movements?page=...&page_size=...`
+- `GET /api/v1/lista-espera?occurrenceId=...`
+- `POST /api/v1/clases`
+- `PUT /api/v1/clases/{id}`
+- `GET /api/v1/coaches/me/agenda?from=...&to=...`
+
+Errores de consola:
+- Sin evidencia de error bloqueante en esta corrida técnica.
+
+Requests legacy detectados:
+- No se detectó uso válido de `GET /api/v1/lista-espera?claseId=...` en flujo actual.
+- La llamada legacy probada explícitamente retorna `422` (comportamiento esperado de contrato actual).
+
+Bugs encontrados:
+- No se detectaron bugs bloqueantes nuevos para pre-BUG-009.
+- Observación de contrato backend local para reserva: requiere payload con `occurrence_id` y además `clase_id`/`user_id` en este entorno.
+
+Decisión final:
+- **GO con riesgos** para iniciar BUG-009.
+- Riesgo residual: completar evidencia visual/capturas de la checklist manual completa en navegador para cierre de acta de QA formal.
