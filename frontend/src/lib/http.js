@@ -1,14 +1,26 @@
-﻿function getToken() {
+function getToken() {
   return localStorage.getItem('token') ?? null
+}
+
+function isNgrokFrontend() {
+  if (typeof window === 'undefined') return false
+  return /ngrok-free\.app$/i.test(window.location.hostname)
 }
 
 function normalizeUrl(endpoint) {
   if (typeof endpoint !== 'string' || !endpoint) {
     throw new Error('HTTP_REQUEST_PATH_REQUIRED')
   }
+  if (isNgrokFrontend()) {
+    if (/^https?:\/\//i.test(endpoint)) {
+      const parsed = new URL(endpoint)
+      return `${parsed.pathname}${parsed.search}`
+    }
+    return endpoint.startsWith('/') ? endpoint : `/${endpoint}`
+  }
   if (/^https?:\/\//i.test(endpoint)) return endpoint
-  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-  const prefix = import.meta.env.VITE_API_PREFIX ?? '/api/v1'
+  const baseUrl = String(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').trim()
+  const prefix = String(import.meta.env.VITE_API_PREFIX ?? '/api/v1').trim()
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
   return `${baseUrl}${prefix}${cleanEndpoint}`
 }
@@ -38,7 +50,17 @@ async function request(method, endpoint, body, options = {}) {
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(normalizeUrl(endpoint), {
+  const url = normalizeUrl(endpoint)
+
+  if (import.meta.env.DEV) {
+    console.debug('[http]', method, url, {
+      hasToken: !!token,
+      tokenLength: token?.length ?? 0,
+      proxyMode: isNgrokFrontend(),
+    })
+  }
+
+  const res = await fetch(url, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,

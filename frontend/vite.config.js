@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
@@ -38,22 +38,41 @@ function uploadFotoPlugin() {
   }
 }
 
-export default defineConfig({
-  plugins: [react(), uploadFotoPlugin()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const apiTarget = String(env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000').trim()
+  const isNgrokTarget = /ngrok-free\.app/i.test(apiTarget)
+  const ngrokHeaders = isNgrokTarget ? { 'ngrok-skip-browser-warning': 'true' } : undefined
+
+  return {
+    plugins: [react(), uploadFotoPlugin()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-  },
-   server: {
-    allowedHosts: [
-      '3104-189-176-134-126.ngrok-free.app'
-    ]
-  },
-  test: {
-    environment: 'jsdom',
-    setupFiles: './src/test/setupTests.js',
-    css: true,
-    globals: true,
-  },
+    server: {
+      allowedHosts: ['3104-189-176-134-126.ngrok-free.app'],
+      proxy: {
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+          secure: false,
+          ...(ngrokHeaders ? { headers: ngrokHeaders } : {}),
+        },
+        '/health': {
+          target: apiTarget,
+          changeOrigin: true,
+          secure: false,
+          ...(ngrokHeaders ? { headers: ngrokHeaders } : {}),
+        },
+      },
+    },
+    test: {
+      environment: 'jsdom',
+      setupFiles: './src/test/setupTests.js',
+      css: true,
+      globals: true,
+    },
+  }
 })

@@ -43,11 +43,18 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const bootstrap = async () => {
       if (!useApiAuth) {
+        if (import.meta.env.DEV) console.debug('[auth] bootstrap mode', 'mock')
         setLocalLoading(false)
         return
       }
 
       const token = localStorage.getItem('token')
+      if (import.meta.env.DEV) {
+        console.debug('[auth] bootstrap mode', 'api', {
+          tokenExists: !!token,
+          tokenLength: token?.length ?? 0,
+        })
+      }
       if (!token) {
         setLocalLoading(false)
         return
@@ -55,6 +62,11 @@ export function AuthProvider({ children }) {
 
       try {
         const mePayload = await httpGet(ENDPOINTS.me)
+        if (import.meta.env.DEV) {
+          console.debug('[auth] bootstrap /auth/me ok', {
+            hasUser: !!(mePayload?.user ?? mePayload),
+          })
+        }
         const meUser = mapBackendUserToFrontendUser(mePayload?.user ?? mePayload)
         if (meUser) {
           setSession({ usuario: meUser, token })
@@ -62,7 +74,14 @@ export function AuthProvider({ children }) {
             await loadFinancialState().catch(() => {})
           }
         }
-      } catch {
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.warn('[auth] bootstrap /auth/me failed', {
+            message: err?.message ?? 'unknown',
+            status: err?.status ?? null,
+            code: err?.code ?? null,
+          })
+        }
         clearToken()
         storeLogout()
       } finally {
@@ -78,6 +97,12 @@ export function AuthProvider({ children }) {
 
     if (useApiAuth) {
       try {
+        if (import.meta.env.DEV) {
+          console.debug('[auth] login mode', 'api', {
+            endpoint: ENDPOINTS.login,
+            useApiAuth,
+          })
+        }
         const payload = await httpPost(ENDPOINTS.login, { email, password })
         const { token, user } = mapAuthPayloadToSession(payload)
         if (!user) throw new Error('No fue posible obtener usuario autenticado')

@@ -1,5 +1,5 @@
-﻿const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
-const API_PREFIX = import.meta.env.VITE_API_PREFIX ?? '/api/v1'
+const BASE_URL = String(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').trim()
+const API_PREFIX = String(import.meta.env.VITE_API_PREFIX ?? '/api/v1').trim()
 
 function withPrefix(path) {
   return `${BASE_URL}${API_PREFIX}${path}`
