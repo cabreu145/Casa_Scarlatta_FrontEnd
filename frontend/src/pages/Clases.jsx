@@ -58,7 +58,7 @@ function canCancelClass(date, hora) {
   return (classTime - new Date()) > horasCancelacion * 60 * 60 * 1000
 }
 
-// â”€â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Main page
 export default function Clases() {
   const { clases: allClasses, loadClasesFromApi } = useClasesStore()
   const { coaches }            = useCoachesStore()
@@ -181,7 +181,7 @@ export default function Clases() {
   return (
     <main className={styles.main}>
 
-      {/* â”€â”€ Hero â€” keep exactly as-is â”€â”€ */}
+      {/* Hero - keep exactly as-is*/}
       <section
         className={styles.hero}
         style={{ backgroundImage: `url(${cfg.get('imagenBannerClases')})` }}
@@ -192,12 +192,12 @@ export default function Clases() {
         </div>
       </section>
 
-      {/* â”€â”€ Discipline toggle â”€â”€ */}
+      {/* Discipline toggle */}
       <div className={styles.filterWrap}>
         <ClassTypeFilter active={filter} onChange={setFilter} />
       </div>
 
-      {/* â”€â”€ Booking timeline â”€â”€ */}
+      {/*  Booking timeline*/}
       <div className={styles.bookingWrap}>
 
         {/* Day navigation */}
@@ -252,8 +252,8 @@ export default function Clases() {
         <div className={styles.classList}>
           {dayClasses.length === 0 ? (
             <div className={styles.emptyState}>
-              <span className={styles.emptyIcon}>ðŸ“…</span>
-              <p>Sin clases este dÃ­a</p>
+              <span className={styles.emptyIcon}>📅</span>
+              <p>Sin clases este día</p>
             </div>
           ) : (
             dayClasses.map((cls, i) => {
@@ -351,7 +351,7 @@ export default function Clases() {
                             Cancelar
                           </button>
                         ) : (
-                          <span className={styles.cancelarVencido}>Sin cancelaciÃ³n disponible</span>
+                          <span className={styles.cancelarVencido}>Sin cancelación disponible</span>
                         )}
                       </div>
                     ) : (

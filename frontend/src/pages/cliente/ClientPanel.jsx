@@ -54,10 +54,10 @@ function avatarStyle(name) {
 }
 
 const SECTION_META = {
-  inicio:   { title: 'Inicio',             sub: 'Jueves, 24 de abril Â· Casa Scarlatta' },
+  inicio:   { title: 'Inicio',             sub: 'Jueves, 24 de abril · Casa Scarlatta' },
   clases:   { title: 'Mis Clases',         sub: 'Clases reservadas'                    },
   reservar: { title: 'Reservar Clase',     sub: 'Clases disponibles esta semana'       },
-  perfil:   { title: 'Mi Perfil',          sub: 'InformaciÃ³n personal'                 },
+  perfil:   { title: 'Mi Perfil',          sub: 'Información personal'                 },
   pagos:    { title: 'Paquetes & Pagos',   sub: 'Plan actual y transacciones'          },
 }
 
@@ -80,7 +80,7 @@ function StatusPill({ status }) {
     confirmada: 'Confirmada',
     cancelada:  'Cancelada',
     pendiente:  'Pendiente',
-    no_asistio: 'No asistiÃ³',
+    no_asistio: 'NNo asistió',
     completada: 'Completada',
   }
   return <span className={`${s.statusPill} ${map[status] ?? ''}`}>{labels[status] ?? status}</span>
@@ -457,7 +457,7 @@ export default function ClientPanel() {
   const now   = new Date()
   const today = hoyLocal()
 
-  // Dynamic date string for header/hero (e.g. "MiÃ©rcoles, 13 de mayo")
+  // Dynamic date string for header/hero (e.g. "Miércoles, 13 de mayo")
   const fechaHoyStr = `${DAYS_ES[now.getDay()]}, ${now.getDate()} de ${MONTHS_ES[now.getMonth()].toLowerCase()}`
 
   // Returns the real ISO date of a recurring class based on its day-of-week,
@@ -495,7 +495,7 @@ export default function ClientPanel() {
     ? reservasUsuario.filter((r) => r.estado === 'confirmada' && !getReservationOccurrenceDate(r))
     : []
 
-  // MÃ©tricas reales para el dashboard
+  // Métricas reales para el dashboard
   const confirmadas   = reservasUsuario.filter((r) => r.estado === 'confirmada').length
   const canceladas    = reservasUsuario.filter((r) => r.estado === 'cancelada').length
   const noAsistio     = reservasUsuario.filter((r) => r.estado === 'no_asistio').length
@@ -503,8 +503,8 @@ export default function ClientPanel() {
     (r) => r.estado === 'completada' || r.estado === 'no_asistio'
   ).length
 
-  // â”€â”€ MÃ©tricas de progreso mensual â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // [BACKEND] â†’ GET /api/usuarios/:id/progreso?mes=YYYY-MM
+  // Métricas de progreso mensual
+  // [BACKEND] -> GET /api/usuarios/:id/progreso?mes=YYYY-MM
   // Cuando haya backend: reemplazar este bloque por una llamada HTTP
   // y mostrar los datos del servidor directamente.
 
@@ -512,7 +512,7 @@ export default function ClientPanel() {
 
   const esMesActual = (r) => {
     if (r.fecha) return r.fecha.startsWith(mesActual)
-    // Clases recurrentes (sin fecha) se consideran del mes actual si estÃ¡n confirmadas
+    // Clases recurrentes (sin fecha) se consideran del mes actual si están confirmadas
     return true
   }
 
@@ -588,7 +588,7 @@ export default function ClientPanel() {
   // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function handleCancelReserva(reservaId) {
     const resultado = await cancelarReserva(reservaId, usuario.id)
-    if (resultado.ok) toast.success('Reserva cancelada. Te enviamos confirmaciÃ³n por correo ðŸ“§')
+    if (resultado.ok) toast.success('Reserva cancelada. Te enviamos confirmación por correo 📧')
     else toast.error(resultado.error)
     if (resultado.ok && useApiReservations && activeSection === 'clases') {
       const { status, from, to } = buildMisClasesApiFilters(misClasesStatusFilter, weekDays)
@@ -622,7 +622,7 @@ export default function ClientPanel() {
       toast.error(resultado.error)
       return
     }
-    toast.success('Tu reserva quedÃ³ confirmada. Revisa tu correo con los detalles ðŸ“§')
+    toast.success('Tu reserva quedó confirmada. Revisa tu correo con los detalles 📧')
     goTo('clases')
   }
 
@@ -640,8 +640,8 @@ export default function ClientPanel() {
     }
     const posicion = listaEsperaStore.getPosicion(av.occurrenceId ?? av._raw?.occurrenceId ?? av.id, usuario.id)
     toast.success(
-      `Â¡EstÃ¡s en la lista de espera! PosiciÃ³n #${posicion}. ` +
-      `Te enviaremos un correo si se libera un lugar ðŸ“§`,
+      `¡Estás en la lista de espera! Posición #${posicion}. ` +
+      `Te enviaremos un correo si se libera un lugar.`,
       { duration: 5000 }
     )
     logListaEsperaUnirse({
@@ -738,7 +738,7 @@ export default function ClientPanel() {
         <div className={s.sidebarFooter}>
           <button className={s.logoutLink} onClick={() => { logout(); setIsSidebarOpen(false); navigate('/') }}>
             <LogOut size={14} strokeWidth={2} />
-            Cerrar sesiÃ³n
+            Cerrar sesión
           </button>
           <button className={s.backBtn} onClick={() => { setIsSidebarOpen(false); navigate('/') }}>
             <ArrowLeft size={13} /> Volver al sitio
@@ -753,20 +753,20 @@ export default function ClientPanel() {
           <button
             className={s.mobileMenuBtn}
             onClick={() => setIsSidebarOpen((v) => !v)}
-            aria-label={isSidebarOpen ? 'Cerrar menÃº' : 'Abrir menÃº'}
+            aria-label={isSidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={isSidebarOpen}
           >
             {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
           <div>
             <div className={s.topbarTitle}>{meta.title}</div>
-            <div className={s.topbarSub}>{activeSection === 'inicio' ? `${fechaHoyStr} Â· Casa Scarlatta` : meta.sub}</div>
+            <div className={s.topbarSub}>{activeSection === 'inicio' ? `${fechaHoyStr} · Casa Scarlatta` : meta.sub}</div>
           </div>
           <div className={s.topbarRight}>
             <div className={s.topbarProfile}>
               <div>
                 <div className={s.topbarName}>{userName}</div>
-                <div className={s.topbarPlan}>Paquete {planNombre} Â· {clasesRestantes} clases</div>
+                <div className={s.topbarPlan}>Paquete {planNombre} · {clasesRestantes} clases</div>
               </div>
               <div className={s.topbarAvatar}>{userInitial}</div>
             </div>
@@ -781,14 +781,14 @@ export default function ClientPanel() {
             {/* Hero */}
             <div className={s.heroCard}>
               <div className={s.heroLeft}>
-                <div className={s.heroGreeting}>Hola, {userName.split(' ')[0]} ðŸ‘‹</div>
-                <div className={s.heroSub}>Bienvenido de vuelta a tu espacio Â· {fechaHoyStr}</div>
+                <div className={s.heroGreeting}>Hola, {userName.split(' ')[0]} 👋</div>
+                <div className={s.heroSub}>Bienvenido de vuelta a tu espacio · {fechaHoyStr}</div>
                 {nextClass && (
                   <div className={s.heroNext}>
                     <div>
-                      <div className={s.heroNextLabel}>PrÃ³xima clase</div>
+                      <div className={s.heroNextLabel}>Próxima clase</div>
                       <div className={s.heroNextClass}>{nextClass.title}</div>
-                      <div className={s.heroNextMeta}>{nextClass.coach} Â· {nextClass.location || 'Sala Principal'}</div>
+                      <div className={s.heroNextMeta}>{nextClass.coach} · {nextClass.location || 'Sala Principal'}</div>
                     </div>
                     <div className={s.heroNextDivider} />
                     <div>
@@ -810,7 +810,7 @@ export default function ClientPanel() {
               </div>
             </div>
 
-            {/* Banner crÃ©ditos bajos */}
+            {/* Banner créditos bajos */}
             {typeof clasesRestantes === 'number' && clasesRestantes <= 2 && (
               <div style={{
                 background: 'var(--brand-wine-08)', border: '1px solid var(--brand-wine-22)',
@@ -818,7 +818,7 @@ export default function ClientPanel() {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
                 fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--wine)',
               }}>
-                <span>âš ï¸ Solo te quedan <strong>{clasesRestantes}</strong> crÃ©dito{clasesRestantes !== 1 ? 's' : ''}. Â¡Renueva tu paquete pronto!</span>
+                <span>⚠️ Solo te quedan <strong>{clasesRestantes}</strong> crédito{clasesRestantes !== 1 ? 's' : ''}. ¡Renueva tu paquete pronto!</span>
                 <button
                   onClick={() => goTo('pagos')}
                   style={{
@@ -862,7 +862,7 @@ export default function ClientPanel() {
                 <div className={`${s.statIcon} ${s.muted}`}>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                 </div>
-                <div className={s.statLabel}>No asistiÃ³</div>
+                <div className={s.statLabel}>No asistió</div>
                 <div className={s.statValue}>{noAsistio}</div>
                 <div className={s.statSub}>Historial</div>
               </div>
@@ -889,7 +889,7 @@ export default function ClientPanel() {
               <div className={s.card}>
                 <div className={s.cardHeader}>
                   <div>
-                    <div className={s.cardTitle}>Mis prÃ³ximas clases</div>
+                    <div className={s.cardTitle}>Mis próximas clases</div>
                     <div className={s.cardSubtitle}>Esta semana</div>
                   </div>
                   <span className={`${s.pill} ${s.pillStride}`} style={{ alignSelf: 'center' }}>{upcoming.length} reservadas</span>
@@ -904,7 +904,7 @@ export default function ClientPanel() {
                     <ClassCard key={`${c.id}-${c.claseFecha ?? 'sin-fecha'}-${c.time ?? 'sin-hora'}`} cls={c} showCancel={false} coachFoto={coachFotoByName[c.coach] || null} />
                   )) : (
                     <div className={s.empty}>
-                      <div className={s.emptyIcon}>ðŸ“…</div>
+                      <div className={s.emptyIcon}>📅</div>
                       <div className={s.emptyText}>No tienes próximas clases reservadas.</div>
                     </div>
                   )}
@@ -1112,11 +1112,11 @@ export default function ClientPanel() {
                 </div>
               ) : (
                 <div className={s.emptyDay}>
-	                  <div className={s.emptyDayIcon}>ðŸ“…</div>
+	                  <div className={s.emptyDayIcon}>📅</div>
 	                  <div className={s.emptyDayTitle}>Sin clases el {day.fullName.toLowerCase()}</div>
 	                  <p className={s.emptyDaySub}>
 	                    {misClasesStatusFilter === 'all'
-	                      ? 'No tienes ninguna clase reservada este dÃ­a'
+	                      ? 'No tienes ninguna clase reservada este dí­a'
 	                      : 'No tienes clases en este estado.'}
 	                  </p>
                   {useApiReservations && reservasSinFechaSesion.length > 0 && (
@@ -1294,9 +1294,9 @@ export default function ClientPanel() {
                 </div>
               ) : (
                 <div className={s.emptyDay}>
-                  <div className={s.emptyDayIcon}>ðŸ“…</div>
+                  <div className={s.emptyDayIcon}>📅</div>
                   <div className={s.emptyDayTitle}>Sin clases el {day.fullName.toLowerCase()}</div>
-                  <p className={s.emptyDaySub}>No hay clases disponibles este dÃ­a</p>
+                  <p className={s.emptyDaySub}>No hay clases disponibles este dí­a</p>
                 </div>
               )
             })()}
@@ -1306,7 +1306,7 @@ export default function ClientPanel() {
           <div className={`${s.section} ${activeSection === 'perfil' ? s.active : ''}`}>
             <div style={{ marginBottom: 28 }}>
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, fontStyle: 'italic', fontWeight: 400, color: 'var(--ink)' }}>Mi Perfil</h1>
-              <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>Gestiona tu informaciÃ³n personal</p>
+              <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>Gestiona tu Información personal</p>
             </div>
             <div className={s.grid2} style={{ alignItems: 'start' }}>
               <div className={s.card}>
@@ -1340,7 +1340,7 @@ export default function ClientPanel() {
 
               <div className={s.card}>
                 <div className={s.cardHeader}>
-                  <div className={s.cardTitle}>InformaciÃ³n personal</div>
+                  <div className={s.cardTitle}>Información personal</div>
                 </div>
                 <div className={s.cardBody}>
                   <form onSubmit={handleGuardarPerfil}>
@@ -1371,13 +1371,13 @@ export default function ClientPanel() {
                       </div>
                     </div>
                     <div className={s.formGroup}>
-                      <label className={s.formLabel}>Correo electrÃ³nico</label>
+                      <label className={s.formLabel}>Correo electrónico</label>
                       <input className={s.formInput} type="email" value={perfilForm?.email ?? ''} readOnly
                         style={{ opacity: 0.6, cursor: 'not-allowed' }} />
                     </div>
                     <div className={s.formRow}>
                       <div className={s.formGroup}>
-                        <label className={s.formLabel}>TelÃ©fono</label>
+                        <label className={s.formLabel}>Teléfono</label>
                         <input
                           className={s.formInput}
                           type="tel"
@@ -1389,7 +1389,7 @@ export default function ClientPanel() {
                         />
                       </div>
                       <div className={s.formGroup}>
-                        <label className={s.formLabel}>GÃ©nero</label>
+                        <label className={s.formLabel}>Género</label>
                         <select
                           className={s.formInput}
                           value={perfilForm?.genero ?? 'Prefiero no decir'}
@@ -1419,7 +1419,7 @@ export default function ClientPanel() {
                         style={{ fontSize: 12, padding: '9px 20px' }}
                         disabled={guardandoPerfil}
                       >
-                        {guardandoPerfil ? 'Guardandoâ€¦' : 'Guardar cambios'}
+                        {guardandoPerfil ? 'Guardando…' : 'Guardar cambios'}
                       </button>
                     </div>
                   </form>
@@ -1470,7 +1470,7 @@ export default function ClientPanel() {
                   <div className={s.planProgressLabel}>
                     {clasesUsadas} de {clasesTotal} clases usadas
                     {usuario?.paqueteInfo?.fechaVencimiento
-                      ? ` Â· Vence ${formatFechaISO(usuario.paqueteInfo.fechaVencimiento)}`
+                      ? ` · Vence ${formatFechaISO(usuario.paqueteInfo.fechaVencimiento)}`
                       : ''}
                   </div>
                 </>
@@ -1557,7 +1557,7 @@ export default function ClientPanel() {
                 ) : useApiFinancialState && (apiCreditMovementsPage.total ?? 0) > 0 ? (
                   paginatedFinancialHistory.items.map((mv) => (
                       <div key={`mv-${mv.id ?? mv.createdAt}`} className={s.historyRow}>
-                        <div className={s.historyIcon}>ðŸŽŸï¸</div>
+                        <div className={s.historyIcon}>💳</div>
                         <div style={{ flex: 1 }}>
                           <div className={s.historyDesc}>{mv.type || 'Movimiento de crédito'}</div>
                           <div className={s.historyDate}>{mv.createdAt ? formatFechaISO(mv.createdAt.slice(0, 10)) : 'Sin fecha'}</div>
@@ -1575,7 +1575,7 @@ export default function ClientPanel() {
                   paginatedFinancialHistory.items.map(tx => (
                       <div key={tx.id} className={s.historyRow}>
                         <div className={s.historyIcon}>
-                          {tx.tipo === 'reembolso' ? 'â†©ï¸' : tx.tipo === 'producto' ? 'ðŸ›ï¸' : 'ðŸ’³'}
+                          {tx.tipo === 'reembolso' ? '↩️' : tx.tipo === 'producto' ? '🛍️' : '💳'}
                         </div>
                         <div style={{ flex: 1 }}>
                           <div className={s.historyDesc}>{tx.concepto}</div>

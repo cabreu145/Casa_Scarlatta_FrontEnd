@@ -116,7 +116,7 @@ function TreadMini({ active }) {
 
 // ── Date formatter ────────────────────────────────────────────────────────────
 const MONTHS_LONG = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-const DAYS_LONG   = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado']
+const DAYS_LONG   = ['domingo','lunes','martes','miércoles','jueves','viernes','Sábado']
 
 function formatFecha(fecha, hora) {
   if (!fecha) return ''

@@ -15,8 +15,8 @@ import s from './CoachPanel.module.css'
 
 // â”€â”€ Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DAY_KEY_TO_NAME = {
-  lun: 'Lunes', mar: 'Martes', mie: 'MiÃ©rcoles',
-  jue: 'Jueves', vie: 'Viernes', sab: 'SÃ¡bado', dom: 'Domingo',
+  lun: 'Lunes', mar: 'Martes', mie: 'Miércoles',
+  jue: 'Jueves', vie: 'Viernes', sab: 'Sábado', dom: 'Domingo',
 }
 
 const PERF_BARS = [
@@ -28,12 +28,12 @@ const PERF_BARS = [
 
 const hoyFecha = new Date()
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
-const DIAS_SEMANA = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
+const DIAS_SEMANA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
 
 const SECTION_META = {
   dashboard:    {
     title: 'Dashboard',
-    sub: `${DIAS_SEMANA[hoyFecha.getDay()]}, ${hoyFecha.getDate()} de ${MESES[hoyFecha.getMonth()]} Â· Casa Scarlatta`
+    sub: `${DIAS_SEMANA[hoyFecha.getDay()]}, ${hoyFecha.getDate()} de ${MESES[hoyFecha.getMonth()]} · Casa Scarlatta`
   },
   'mis-clases': { title: 'Mis Clases', sub: '' },
 }
@@ -69,7 +69,7 @@ function isClasePasada(c) {
     return fin <= new Date()
   }
   const today = new Date()
-  const DIAS = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const targetDow = DIAS.indexOf(c.dia)
   if (targetDow === -1) return false
   const diff = targetDow - today.getDay()
@@ -117,7 +117,7 @@ export default function CoachPanel() {
     ? mapAgendaToCoachClassRows(agendaOccurrences, usuario?.nombre ?? 'Coach')
     : misClasesFallback
   const hoy = new Date()
-  const DIAS = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
   const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`
   const clasesHoy = useMemo(() => {
@@ -178,7 +178,7 @@ export default function CoachPanel() {
     : `Semana del ${inicioSem.getDate()} de ${MESES[inicioSem.getMonth()]} al ${finSem.getDate()} de ${MESES[finSem.getMonth()]}`
 
   const WEEK_DAY_KEYS  = ['lun','mar','mie','jue','vie','sab','dom']
-  const WEEK_DAY_NAMES = ['Lun','Mar','MiÃ©','Jue','Vie','SÃ¡b','Dom']
+  const WEEK_DAY_NAMES = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']
   const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => {
     const d    = new Date(inicioSem)
     d.setDate(inicioSem.getDate() + i)
@@ -249,7 +249,7 @@ export default function CoachPanel() {
         <div className={s.sidebarFooter}>
           <button className={s.logoutBtn} onClick={() => { logout(); navigate('/') }}>
             <LogOut size={14} strokeWidth={2} />
-            Cerrar sesiÃ³n
+            Cerrar sesión
           </button>
           <button className={s.backBtn} onClick={() => navigate('/')}>
             <ArrowLeft size={13} /> Volver al sitio
@@ -279,7 +279,7 @@ export default function CoachPanel() {
           <div className={s.topbarRight}>
             <div className={s.topbarProfile}>
               <div>
-                <div className={s.coachName}>Coach Â· {usuario?.nombre ?? 'Coach'}</div>
+                <div className={s.coachName}>Coach · {usuario?.nombre ?? 'Coach'}</div>
                 <div className={s.coachRole}>{usuario?.especialidad ?? ''}</div>
               </div>
               <div className={s.coachAvatar} style={{ width:36, height:36, fontSize:15, overflow:'hidden', padding:0 }}>
@@ -298,9 +298,9 @@ export default function CoachPanel() {
           <div className={`${s.section} ${activeSection === 'dashboard' ? s.active : ''}`}>
             {/* Greeting */}
             <div className={s.greeting}>
-              <h1 className={s.greetingTitle}>Hola, {usuario?.nombre?.split(' ')[0] ?? 'Coach'} ðŸ‘‹</h1>
+              <h1 className={s.greetingTitle}>Hola, {usuario?.nombre?.split(' ')[0] ?? 'Coach'} 👋</h1>
               <p className={s.greetingSub}>
-                Tienes <strong style={{ color:'var(--blush)' }}>{clasesHoy.length} {clasesHoy.length === 1 ? 'clase' : 'clases'}</strong> hoy Â· {diaHoy}, {hoy.getDate()} de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][hoy.getMonth()]}
+                Tienes <strong style={{ color:'var(--blush)' }}>{clasesHoy.length} {clasesHoy.length === 1 ? 'clase' : 'clases'}</strong> hoy · {diaHoy}, {hoy.getDate()} de {['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][hoy.getMonth()]}
               </p>
             </div>
 
@@ -490,8 +490,8 @@ export default function CoachPanel() {
               ) : (
                 <div className={s.card}>
                   <div style={{ textAlign:'center', padding:'48px 24px' }}>
-                    <div style={{ fontSize:32, marginBottom:12, opacity:0.4 }}>ðŸ“…</div>
-                    <p style={{ fontFamily:'var(--font-display)', fontSize:18, fontStyle:'italic', color:'rgba(255,255,255,0.5)', marginBottom:6 }}>Sin clases este dÃ­a</p>
+                    <div style={{ fontSize:32, marginBottom:12, opacity:0.4 }}>📅</div>
+                    <p style={{ fontFamily:'var(--font-display)', fontSize:18, fontStyle:'italic', color:'rgba(255,255,255,0.5)', marginBottom:6 }}>Sin clases este día</p>
                     <p style={{ fontSize:12, color:'var(--muted)' }}>No tienes clases programadas para el {dayName.toLowerCase()}</p>
                   </div>
                 </div>
@@ -522,19 +522,19 @@ export default function CoachPanel() {
 function WeekTable({ classes, onOpen }) {
   const s2 = s
   const hoy = new Date()
-  const DIAS = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
   return (
     <div className={s2.tableContainer}>
     <table className={s2.weekTable}>
       <thead>
         <tr>
-          <th>DÃ­a</th>
+          <th>Día</th>
           <th>Hora</th>
           <th>Clase</th>
           <th>Tipo</th>
           <th>Alumnos</th>
-          <th>OcupaciÃ³n</th>
+          <th>Ocupación</th>
           <th></th>
         </tr>
       </thead>
@@ -551,14 +551,14 @@ function WeekTable({ classes, onOpen }) {
             >
               <td>
                 {esHoy
-                   ? <strong style={{ color:'var(--blush)' }}>{cls.dia} Â· hoy</strong>
+                   ? <strong style={{ color:'var(--blush)' }}>{cls.dia} · hoy</strong>
                   : (() => {
                     const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
                     if (cls.fecha) {
                       const d = new Date(cls.fecha + 'T12:00:00')
                       return `${cls.dia} ${d.getDate()} de ${MESES[d.getMonth()]}`
                     }
-                    const idx = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado'].indexOf(cls.dia)
+                    const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(cls.dia)
                     const d = new Date()
                     const diff = idx - d.getDay()
                     const fecha = new Date(d)
@@ -602,14 +602,14 @@ function WeekTable({ classes, onOpen }) {
 function MisClasesTable({ classes, onOpen }) {
   const s2 = s
   const hoy = new Date()
-  const DIAS = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
   const diaHoy = DIAS[hoy.getDay()]
   return (
     <div className={s2.tableContainer}>
     <table className={s2.weekTable}>
       <thead>
         <tr>
-          <th>DÃ­a</th>
+          <th>Día</th>
           <th>Hora</th>
           <th>Clase</th>
           <th>Tipo</th>
@@ -633,14 +633,14 @@ function MisClasesTable({ classes, onOpen }) {
             >
               <td>
                 {esHoy
-                  ? <strong style={{ color: 'var(--blush)' }}>{cls.dia} Â· hoy</strong>
+                  ? <strong style={{ color: 'var(--blush)' }}>{cls.dia} · hoy</strong>
                   : (() => {
                   const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
                   if (cls.fecha) {
                     const d = new Date(cls.fecha + 'T12:00:00')
                     return `${cls.dia} ${d.getDate()} de ${MESES[d.getMonth()]}`
                   }
-                  const idx = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado'].indexOf(cls.dia)
+                  const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(cls.dia)
                   const d = new Date()
                   const diff = idx - d.getDay()
                   const fecha = new Date(d)
@@ -692,7 +692,7 @@ function ClassModal({ cls, onClose }) {
     ? { label: 'Finalizada', cls: 'gray' }
     : classStatusLabel(cls.cupoActual, cls.cupoMax)
   const statusClr = pasada ? '#888' : stCls === 'danger' ? 'var(--danger)' : stCls === 'warning' ? 'var(--warning)' : 'var(--success)'
-  const dayInfo = `${cls.dia} Â· ${cls.hora} Â· ${cls.cupoActual}/${cls.cupoMax} inscritos`
+  const dayInfo = `${cls.dia} · ${cls.hora} · ${cls.cupoActual}/${cls.cupoMax} inscritos`
 
   return (
     <div className={s2.modal}>
@@ -712,7 +712,7 @@ function ClassModal({ cls, onClose }) {
       <div className={s2.modalBody}>
         {alumnos.length === 0 ? (
           <p style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
-            No hay alumnos inscritos aÃºn
+            No hay alumnos inscritos aún
           </p>
         ) : alumnos.map(r => (
           <div key={r.id} className={s2.studentRow}>

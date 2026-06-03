@@ -1,7 +1,7 @@
 ﻿# BUG-013 - DiagnÃ³stico de asignaciÃ³n de clases a coach
 
 ## Resumen del bug
-En `Admin > Clases` se asigna coach en UI, pero en `Coach Dashboard` no siempre se reflejan clases asignadas. AdemÃ¡s, aparecen repeticiones por dÃ­as y mÃ©tricas inconsistentes.
+En `Admin > Clases` se asigna coach en UI, pero en `Coach Dashboard` no siempre se reflejan clases asignadas. AdemÃ¡s, aparecen repeticiones por Días y mÃ©tricas inconsistentes.
 
 ## RelaciÃ³n con BUG-010/011/012
 - BUG-013 es raÃ­z funcional de bloque coach/admin.
@@ -73,11 +73,11 @@ No en dashboard coach actual:
 - SegmentaciÃ³n semanal y "hoy" se deriva localmente por `dia/fecha`.
 - No usa `occurrence_id` como identidad de sesiÃ³n ni consume ocurrencias reales del rango.
 
-## RepeticiÃ³n por dÃ­as (causa probable)
+## RepeticiÃ³n por Días (causa probable)
 Causa mixta:
 1. Frontend:
    - DerivaciÃ³n local de ocurrencias semanales desde `dia` para clases recurrentes (sin instancia real).
-   - Uso de `class_id`/clase base para vistas semanales puede replicar visualmente clases en distintos dÃ­as/rangos.
+   - Uso de `class_id`/clase base para vistas semanales puede replicar visualmente clases en distintos Días/rangos.
 2. Contrato/flujo backend no integrado en coach/admin:
    - Falta consumir `class_occurrences` como source of truth en dashboard coach.
 
@@ -111,7 +111,7 @@ No es frontend-only porque:
    - "clases de hoy" filtra por fecha real de ocurrencia.
    - no matching por nombre como criterio principal.
 3. RepeticiÃ³n:
-   - una ocurrencia no se replica en dÃ­as incorrectos.
+   - una ocurrencia no se replica en Días incorrectos.
 4. Fallback:
    - con flags false, flujo local no se rompe.
 
