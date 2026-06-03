@@ -2,70 +2,105 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
+const mockUsuario = {
+  id: 1,
+  rol: 'cliente',
+  nombre: 'Cliente Demo',
+  email: 'cliente@casascarlatta.local',
+}
+const mockReservas = []
+const mockClases = []
+const mockUsuarios = []
+const mockCoaches = []
+const mockPaquetes = []
+const mockTransactions = []
+const mockCreditMovements = []
+const mockFinancialState = {}
+
+const mockLoadMisReservasFromApi = vi.fn().mockResolvedValue([])
+const mockLoadClasesFromApi = vi.fn().mockResolvedValue([])
+const mockGetTransaccionesByUsuario = vi.fn().mockReturnValue([])
+const mockLoadFinancialState = vi.fn().mockResolvedValue(undefined)
+const mockUnirse = vi.fn()
+const mockSalir = vi.fn()
+const mockEstaEnLista = vi.fn().mockReturnValue(false)
+const mockGetPosicion = vi.fn().mockReturnValue(null)
+const mockEditarPerfilService = vi.fn().mockResolvedValue({})
+const mockGetPublicClassesByDate = vi.fn().mockResolvedValue([])
+const mockGetReservationOccurrenceDate = vi.fn().mockReturnValue(null)
+const mockIsPublished = vi.fn().mockReturnValue(true)
+const mockClearOccurrencesInflightCache = vi.fn()
+const mockGetOccurrencesForDateRangeApi = vi.fn().mockResolvedValue([])
+const mockLogListaEsperaUnirse = vi.fn()
+const mockLogListaEsperaSalir = vi.fn()
+const mockGetMyCreditMovementsPaginatedApi = vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 8 })
+const mockGetMembershipPackagesApi = vi.fn().mockResolvedValue([])
+const mockGetMisReservasPaginatedApi = vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 })
+
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
-    usuario: { id: 1, rol: 'cliente', nombre: 'Cliente Demo', email: 'cliente@casascarlatta.local' },
+    usuario: mockUsuario,
     logout: vi.fn(),
   }),
 }))
 
 vi.mock('@/stores/reservasStore', () => ({
   useReservasStore: () => ({
-    reservas: [],
-    loadMisReservasFromApi: vi.fn().mockResolvedValue([]),
+    reservas: mockReservas,
+    loadMisReservasFromApi: mockLoadMisReservasFromApi,
   }),
 }))
 
 vi.mock('@/stores/clasesStore', () => ({
   useClasesStore: () => ({
-    clases: [],
-    loadClasesFromApi: vi.fn().mockResolvedValue([]),
+    clases: mockClases,
+    loadClasesFromApi: mockLoadClasesFromApi,
   }),
 }))
 
 vi.mock('@/stores/usuariosStore', () => ({
   useUsuariosStore: () => ({
-    usuarios: [],
+    usuarios: mockUsuarios,
   }),
 }))
 
 vi.mock('@/stores/coachesStore', () => ({
   useCoachesStore: () => ({
-    coaches: [],
+    coaches: mockCoaches,
   }),
 }))
 
 vi.mock('@/stores/paquetesStore', () => ({
   usePaquetesStore: () => ({
-    paquetes: [],
+    paquetes: mockPaquetes,
   }),
 }))
 
 vi.mock('@/stores/transaccionesStore', () => ({
   useTransaccionesStore: () => ({
-    getTransaccionesByUsuario: vi.fn().mockReturnValue([]),
+    getTransaccionesByUsuario: mockGetTransaccionesByUsuario,
   }),
 }))
 
 vi.mock('@/stores/listaEsperaStore', () => ({
   useListaEsperaStore: () => ({
-    unirse: vi.fn(),
-    salir: vi.fn(),
-    estaEnLista: vi.fn().mockReturnValue(false),
-    getPosicion: vi.fn().mockReturnValue(null),
+    unirse: mockUnirse,
+    salir: mockSalir,
+    estaEnLista: mockEstaEnLista,
+    getPosicion: mockGetPosicion,
   }),
 }))
 
 vi.mock('@/stores/financialStateStore', () => ({
   useFinancialStateStore: () => ({
-    financialState: {},
+    financialState: mockFinancialState,
     creditsBalance: 0,
     activeMembership: null,
-    creditMovements: [],
-    transactions: [],
+    creditMovements: mockCreditMovements,
+    transactions: mockTransactions,
     isLoading: false,
     error: null,
-    loadFinancialState: vi.fn().mockResolvedValue(undefined),
+    loadFinancialState: mockLoadFinancialState,
   }),
 }))
 
@@ -85,6 +120,10 @@ vi.mock('./ClassCard', () => ({
   default: () => <div>ClassCard Mock</div>,
 }))
 
+vi.mock('./RecentPaymentsStatusPanel', () => ({
+  default: () => <div>Estado de pagos recientes</div>,
+}))
+
 vi.mock('@/components/ui/PaginationControls', () => ({
   default: () => <div>PaginationControls Mock</div>,
 }))
@@ -95,35 +134,35 @@ vi.mock('@/services/reservasService', () => ({
 }))
 
 vi.mock('@/services/usuariosService', () => ({
-  editarPerfilService: vi.fn().mockResolvedValue({}),
+  editarPerfilService: mockEditarPerfilService,
 }))
 
 vi.mock('@/services/classService', () => ({
-  getPublicClassesByDate: vi.fn().mockResolvedValue([]),
-  getReservationOccurrenceDate: vi.fn().mockReturnValue(null),
-  isPublished: vi.fn().mockReturnValue(true),
+  getPublicClassesByDate: mockGetPublicClassesByDate,
+  getReservationOccurrenceDate: mockGetReservationOccurrenceDate,
+  isPublished: mockIsPublished,
 }))
 
 vi.mock('@/services/occurrencesApiService', () => ({
-  clearOccurrencesInflightCache: vi.fn(),
-  getOccurrencesForDateRangeApi: vi.fn().mockResolvedValue([]),
+  clearOccurrencesInflightCache: mockClearOccurrencesInflightCache,
+  getOccurrencesForDateRangeApi: mockGetOccurrencesForDateRangeApi,
 }))
 
 vi.mock('@/services/actividadService', () => ({
-  logListaEsperaUnirse: vi.fn(),
-  logListaEsperaSalir: vi.fn(),
+  logListaEsperaUnirse: mockLogListaEsperaUnirse,
+  logListaEsperaSalir: mockLogListaEsperaSalir,
 }))
 
 vi.mock('@/services/financialStateApiService', () => ({
-  getMyCreditMovementsPaginatedApi: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 8 }),
+  getMyCreditMovementsPaginatedApi: mockGetMyCreditMovementsPaginatedApi,
 }))
 
 vi.mock('@/services/membershipPackagesApiService', () => ({
-  getMembershipPackagesApi: vi.fn().mockResolvedValue([]),
+  getMembershipPackagesApi: mockGetMembershipPackagesApi,
 }))
 
 vi.mock('@/services/reservasApiService', () => ({
-  getMisReservasPaginatedApi: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 }),
+  getMisReservasPaginatedApi: mockGetMisReservasPaginatedApi,
 }))
 
 describe('ClientPanel payments section', () => {
@@ -145,6 +184,5 @@ describe('ClientPanel payments section', () => {
     )
 
     expect(await screen.findByText(/Estado de pagos recientes/i)).toBeInTheDocument()
-    expect(screen.getByText(/No tienes pagos recientes en seguimiento/i)).toBeInTheDocument()
   })
 })

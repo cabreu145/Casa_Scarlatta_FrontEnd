@@ -28,31 +28,15 @@ describe('paymentAdapter', () => {
       amount: 1500,
       credits: 8,
       applied: true,
-<<<<<<< HEAD
-<<<<<<< HEAD
       payment_id: 999,
       preference_id: 'pref-123',
       merchant_order_id: 'mo-123',
-=======
->>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
-=======
-      payment_id: 999,
-      preference_id: 'pref-123',
-      merchant_order_id: 'mo-123',
->>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
       payment_method_id: 'visa',
       payment_type_id: 'credit_card',
       payment_method: 'Visa',
       payment_type: 'Tarjeta',
       status_detail: 'accredited',
-<<<<<<< HEAD
-<<<<<<< HEAD
       failure_reason: null,
-=======
->>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
-=======
-      failure_reason: null,
->>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
       approved_at: '2026-05-31T12:00:00Z',
       applied_at: '2026-05-31T12:01:00Z',
     }
@@ -64,31 +48,15 @@ describe('paymentAdapter', () => {
       amount: 1500,
       credits: 8,
       applied: true,
-<<<<<<< HEAD
-<<<<<<< HEAD
       paymentId: 999,
       preferenceId: 'pref-123',
       merchantOrderId: 'mo-123',
-=======
->>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
-=======
-      paymentId: 999,
-      preferenceId: 'pref-123',
-      merchantOrderId: 'mo-123',
->>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
       paymentMethodId: 'visa',
       paymentTypeId: 'credit_card',
       paymentMethod: 'Visa',
       paymentType: 'Tarjeta',
       statusDetail: 'accredited',
-<<<<<<< HEAD
-<<<<<<< HEAD
       failureReason: null,
-=======
->>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
-=======
-      failureReason: null,
->>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
       approvedAt: '2026-05-31T12:00:00Z',
       appliedAt: '2026-05-31T12:01:00Z',
     })

@@ -56,43 +56,19 @@ describe('PagoModal', () => {
     const { default: PagoModal } = await import('./PagoModal')
     render(<PagoModal paquete={paquete} onClose={vi.fn()} onSuccess={vi.fn()} />)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
     expect(screen.queryByPlaceholderText('1234 5678 9012 3456')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Continuar a Mercado Pago/i })).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /Continuar a Mercado Pago/i }))
-<<<<<<< HEAD
-=======
-    await userEvent.click(screen.getByText('Continuar al pago'))
-    await userEvent.type(screen.getByPlaceholderText('1234 5678 9012 3456'), '4242424242424242')
-    await userEvent.type(screen.getByPlaceholderText('Como aparece en la tarjeta'), 'Cliente Demo')
-    await userEvent.type(screen.getByPlaceholderText('MM/AA'), '1228')
-    await userEvent.type(screen.getByPlaceholderText('123'), '123')
-    await userEvent.click(screen.getByRole('button', { name: /Pagar \$1,500 MXN/i }))
->>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
-=======
->>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
 
     await waitFor(() => {
       expect(createCheckoutPreferenceMock).toHaveBeenCalledWith({ packageId: 2 })
       expect(assignarPaqueteServiceMock).not.toHaveBeenCalled()
       expect(sessionStorage.getItem('last_payment_external_reference')).toBe('ref123')
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
       const recent = JSON.parse(localStorage.getItem('recent_payment_references') || '[]')
       expect(recent).toHaveLength(1)
       expect(recent[0].externalReference).toBe('ref123')
       expect(recent[0].packageId).toBe(2)
-<<<<<<< HEAD
-=======
->>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
-=======
->>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
       expect(window.location.href).toBe('https://checkout.test')
     })
 
