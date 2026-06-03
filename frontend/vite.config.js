@@ -45,6 +45,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+   server: {
+    allowedHosts: [
+      '2cc3-189-176-134-126.ngrok-free.app'
+    ]
+  },
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setupTests.js',
