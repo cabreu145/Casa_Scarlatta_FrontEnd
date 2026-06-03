@@ -25,6 +25,7 @@ const ClientPanel = lazy(() => import('@/pages/cliente/ClientPanel'))
 const CoachPanel  = lazy(() => import('@/pages/coach/CoachPanel'))
 const AdminPanel  = lazy(() => import('@/pages/admin/AdminPanel'))
 const PaymentReturnPage = lazy(() => import('@/features/pagos/PaymentReturnPage'))
+const EquipmentReservationDebugPage = lazy(() => import('@/features/reservas/EquipmentReservationDebugPage'))
 
 const DASHBOARD_PREFIXES = ['/cliente/', '/coach/', '/admin/']
 
@@ -69,6 +70,7 @@ function AnimatedRoutes() {
             <Route path="/pago/success" element={<PaymentReturnPage />} />
             <Route path="/pago/pending" element={<PaymentReturnPage />} />
             <Route path="/pago/failure" element={<PaymentReturnPage />} />
+            {import.meta.env.DEV && <Route path="/__debug/equipment-panel" element={<EquipmentReservationDebugPage />} />}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
@@ -95,6 +97,7 @@ function AnimatedRoutes() {
           <Route path="/pago/success" element={<PaymentReturnPage />} />
           <Route path="/pago/pending" element={<PaymentReturnPage />} />
           <Route path="/pago/failure" element={<PaymentReturnPage />} />
+          {import.meta.env.DEV && <Route path="/__debug/equipment-panel" element={<EquipmentReservationDebugPage />} />}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>

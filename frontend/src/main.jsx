@@ -8,8 +8,22 @@ import './styles/globals.css'
 
 const queryClient = new QueryClient()
 
+function applyDevDebugTokenFromUrl() {
+  if (!import.meta.env.DEV) return
+  const params = new URLSearchParams(window.location.search)
+  const debugToken = params.get('__debug_token')
+  if (!debugToken) return
+
+  localStorage.setItem('token', debugToken)
+  params.delete('__debug_token')
+  const nextQuery = params.toString()
+  const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`
+  window.history.replaceState({}, '', nextUrl)
+}
+
 // Flush all Zustand-persisted store keys when the bundle version changes.
 const STORAGE_VERSION = '5'
+applyDevDebugTokenFromUrl()
 if (localStorage.getItem('cs-version') !== STORAGE_VERSION) {
   ;[
     'casa-scarlatta-clases',

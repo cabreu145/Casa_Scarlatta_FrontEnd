@@ -11,6 +11,32 @@ describe('reservationAdapter', () => {
     expect(payload).toEqual({ clase_id: 12, user_id: 7, occurrence_id: 22 })
   })
 
+  test('mapCreateReservationPayload crea contrato backend con spot_id y hold_id', () => {
+    const payload = mapCreateReservationPayload({
+      claseId: 12,
+      userId: 7,
+      occurrenceId: 22,
+      spotId: 8,
+      holdId: 123,
+    })
+    expect(payload).toEqual({
+      clase_id: 12,
+      user_id: 7,
+      occurrence_id: 22,
+      spot_id: 8,
+      hold_id: 123,
+    })
+  })
+
+  test('mapCreateReservationPayload exige hold cuando se usa spot_id', () => {
+    expect(() => mapCreateReservationPayload({
+      claseId: 12,
+      userId: 7,
+      occurrenceId: 22,
+      spotId: 8,
+    })).toThrow('HOLD_REQUIRED')
+  })
+
   test('mapCreateReservationPayload exige occurrence', () => {
     expect(() => mapCreateReservationPayload({ claseId: 12, userId: 7, asiento: null })).toThrow('OCCURRENCE_REQUIRED')
   })

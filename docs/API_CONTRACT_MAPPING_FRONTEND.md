@@ -86,3 +86,9 @@ Notas BUG-013:
 - `status` se deriva del filtro UI (`all` omite parámetro).
 - `from/to` se derivan del rango semanal visible.
 - Se conserva fallback legacy/mock cuando flags API están en false.
+
+## Nota 2026-06-03
+- Reserva por equipo/lugar usa `EquipmentReservationPanel`.
+- Source of truth: backend spots + holds.
+- STRYDE: bench + treadmill. SLOW: mat.
+- Do not use label as unique id; use spot_id for actions.

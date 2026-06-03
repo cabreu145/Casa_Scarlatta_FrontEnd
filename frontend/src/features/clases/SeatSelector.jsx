@@ -9,6 +9,7 @@ import { useReservasStore } from '@/stores/reservasStore'
 import { useClasesStore }   from '@/stores/clasesStore'
 import { useCoachesStore }  from '@/stores/coachesStore'
 import { getReservationOccurrenceDate } from '@/services/classService'
+import { normalizeDiscipline } from '@/utils/discipline'
 import styles from './SeatSelector.module.css'
 
 // ── Slow room layout (fixed) ──────────────────────────────────────────────────
@@ -246,7 +247,7 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
   const { getById: getCoachById } = useCoachesStore()
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
 
-  const isSlow = cls.tipo?.toLowerCase().includes('slow')
+  const isSlow = normalizeDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo) === 'slow'
   const coachFoto = cls.coachId ? getCoachById(cls.coachId)?.foto ?? null : null
   const instructorInitials = cls.coachNombre?.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
 

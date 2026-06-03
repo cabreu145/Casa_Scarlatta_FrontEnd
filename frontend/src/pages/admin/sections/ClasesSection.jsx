@@ -11,11 +11,14 @@ import PaginationControls from '@/components/ui/PaginationControls'
 import { useClasses } from '@/hooks/useClasses'
 import { useClasesStore } from '@/stores/clasesStore'
 import { diaDesdefecha } from '@/utils/formatters'
+import { normalizeDiscipline } from '@/utils/discipline'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
 import { getClasesPaginatedApi } from '@/services/clasesApiService'
 import styles from '../AdminPanel.module.css'
 
 const ABBR_DIA = { Lunes: 'LUN', Martes: 'MAR', Miércoles: 'MIÉ', Jueves: 'JUE', Viernes: 'VIE', Sábado: 'SÁB', Domingo: 'DOM' }
+
+const isSlowDiscipline = (value) => normalizeDiscipline(value) === 'slow'
 
 function Tag({ color, children }) {
   const cls = {
@@ -165,7 +168,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
         const get  = (...cands) => { const k = keys.find(k => cands.includes(normalizar(k))); return k !== undefined ? row[k] : '' }
 
         const nombre  = String(get('nombre','name','clase','class')).trim()
-        const tipo    = normalizar(String(get('tipo','type','disciplina'))).includes('slow') ? 'Slow' : 'Stryde X'
+        const tipo    = isSlowDiscipline(get('tipo','type','disciplina')) ? 'Slow' : 'Stryde X'
         const coachRaw = String(get('coach','instructor','entrenador')).trim()
         const coachMatch = coaches.find(c => coachRaw && (c.nombre.toLowerCase().includes(coachRaw.toLowerCase()) || coachRaw.toLowerCase().includes(c.nombre.toLowerCase())))
         const fecha   = parsearFecha(get('fecha','date','dia','fechaespecifica'))
@@ -471,9 +474,9 @@ export default function ClasesSection({
 
   const clasesFiltradas = useMemo(() => {
     if (clasesFilter === 'Stryde X')
-      return clasesDelDia.filter(c => !c.tipo?.toLowerCase().includes('slow'))
+      return clasesDelDia.filter(c => !isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo))
     if (clasesFilter === 'Slow')
-      return clasesDelDia.filter(c => c.tipo?.toLowerCase().includes('slow'))
+      return clasesDelDia.filter(c => isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo))
     return clasesDelDia
   }, [clasesDelDia, clasesFilter])
 
@@ -699,7 +702,7 @@ export default function ClasesSection({
                       </div>
                       <div className={styles.claseMeta}>{c.hora} · {c.duracion} min · {c.coachNombre}</div>
                     </div>
-                    <Tag color={!c.tipo?.toLowerCase().includes('slow') ? 'pink' : 'blue'}>{c.tipo}</Tag>
+                    <Tag color={isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'blue' : 'pink'}>{isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'Slow' : 'Stryde X'}</Tag>
                     <div className={styles.claseSpots}>
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.cupoActual}/{c.cupoMax} lugares</div>
                       <div className={styles.spotsBar}>
@@ -789,7 +792,7 @@ export default function ClasesSection({
 
       {/* ── Vista Lista ── */}
       {vistaLista && (() => {
-        const isSlow = (tipo) => tipo?.toLowerCase().includes('slow')
+        const isSlow = (tipo) => isSlowDiscipline(tipo)
         const sourceList = (useBackendPaginationInList && apiListState.isPaginated)
           ? (apiListState.items ?? [])
           : clases

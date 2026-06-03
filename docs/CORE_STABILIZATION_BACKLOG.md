@@ -276,3 +276,9 @@ Salida de esta fase:
 - BUG-009 (Mercado Pago) queda como siguiente módulo grande sin bloqueo por deuda core.
 
 - BUG-009 frontend re-integrado: paquetes backend + checkout backend + retorno por external_reference.
+
+## Nota 2026-06-03
+- Reserva por equipo/lugar usa `EquipmentReservationPanel`.
+- Source of truth: backend spots + holds.
+- STRYDE: bench + treadmill. SLOW: mat.
+- Do not use label as unique id; use spot_id for actions.

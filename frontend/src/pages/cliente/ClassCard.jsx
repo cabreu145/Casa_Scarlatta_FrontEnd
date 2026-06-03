@@ -1,4 +1,5 @@
 ﻿import { formatHour } from '@/utils/formatters'
+import { normalizeDiscipline } from '@/utils/discipline'
 import s from './ClientPanel.module.css'
 
 const AVATAR_COLORS = [
@@ -15,9 +16,10 @@ function avatarStyle(name) {
 }
 
 function DisciplinePill({ d }) {
-  if (d === 'STRYDE') return <span className={`${s.pill} ${s.pillStride}`}>STRYDE</span>
-  if (d === 'SLOW') return <span className={`${s.pill} ${s.pillSlow}`}>SLOW</span>
-  return <span className={`${s.pill} ${s.pillSlow}`}>Sin tipo</span>
+  const normalized = normalizeDiscipline(d)
+  if (normalized === 'stryde') return <span className={`${s.pill} ${s.pillStride}`}>STRYDE</span>
+  if (normalized === 'slow') return <span className={`${s.pill} ${s.pillSlow}`}>SLOW</span>
+  return <span className={s.pill}>Sin tipo</span>
 }
 
 function StatusPill({ status }) {
@@ -43,7 +45,7 @@ export default function ClassCard({ cls, showCancel, onCancel, coachFoto }) {
   const title = cls?.title ?? 'Clase'
   const dateLabel = cls?.date ? String(cls.date).slice(0, 3) : 'Sin fecha'
   const timeLabel = cls?.time ? formatHour(cls.time) : 'Sin horario'
-  const discipline = cls?.discipline ?? 'Sin tipo'
+  const discipline = cls?.discipline ?? cls?.tipo ?? 'Sin tipo'
   const status = cls?.status ?? 'pendiente'
   const location = cls?.location ?? ''
   const initials = coachName.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?'

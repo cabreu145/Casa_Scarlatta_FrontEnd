@@ -1,3 +1,5 @@
+import { normalizeDiscipline } from '@/utils/discipline'
+
 function safeNumber(value, fallback = 0) {
   const n = Number(value)
   return Number.isFinite(n) ? n : fallback
@@ -19,6 +21,7 @@ export function mapBackendClassToFrontendClass(item = {}) {
     nombre: item.name ?? item.nombre ?? 'Clase',
     name: item.name ?? item.nombre ?? 'Clase',
     tipo: item.tipo ?? 'Stryde X',
+    discipline: normalizeDiscipline(item.discipline ?? item.class_discipline ?? item.classType ?? item.tipo),
     coachId: item.coach_id ?? item.coachId ?? null,
     coachNombre: item.coach_name ?? item.coachNombre ?? `Coach #${item.coach_id ?? 'N/A'}`,
     cupoMax,

@@ -1,5 +1,6 @@
-﻿import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import PagoModal from '@/features/pagos/PagoModal'
+import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationPanel'
 import SeatSelector from '@/features/clases/SeatSelector'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -38,6 +39,7 @@ import { resolveFinancialUiState } from './financialUiUtils'
 import { filterReservationsByStatus } from './reservationFilters'
 import { getUpcomingReservations, UPCOMING_RESERVATIONS_LIMIT } from './upcomingReservations'
 import { buildMisClasesApiFilters } from './misClasesPagination'
+import { normalizeDiscipline } from '@/utils/discipline'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
 
@@ -96,7 +98,7 @@ function toClsShape(r) {
     date:       r.claseDia,
     claseFecha: r.fecha,
     time:       r.claseHora,
-    discipline: !r.tipo?.toLowerCase().includes('slow') ? 'STRYDE' : 'SLOW',
+    discipline: normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'slow' ? 'SLOW' : normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'stryde' ? 'STRYDE' : null,
     status:     r.estado,
     location:   '',
   }
@@ -509,6 +511,9 @@ export default function ClientPanel() {
   // y mostrar los datos del servidor directamente.
 
   const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
+  const getReservationDiscipline = (item) => normalizeDiscipline(
+    item?.discipline ?? item?.classDiscipline ?? item?.tipo ?? item?._raw?.discipline
+  )
 
   const esMesActual = (r) => {
     if (r.fecha) return r.fecha.startsWith(mesActual)
@@ -523,13 +528,13 @@ export default function ClientPanel() {
 
   const strideEsteMes = reservasUsuario.filter(r => {
     if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
-    return esMesActual(r) && !r.tipo?.toLowerCase().includes('slow')
+    return esMesActual(r) && getReservationDiscipline(r) !== 'slow'
   }).length
 
   const slowEsteMes = reservasUsuario.filter(r => {
     if (r.estado !== 'completada' && r.estado !== 'confirmada') return false
     const fechaR = r.fecha ?? ''
-    return fechaR.startsWith(mesActual) && r.tipo?.toLowerCase().includes('slow')
+    return fechaR.startsWith(mesActual) && getReservationDiscipline(r) === 'slow'
   }).length
 
   // [BACKEND] â†’ Este valor deberÃ­a venir del perfil del usuario
@@ -562,7 +567,7 @@ export default function ClientPanel() {
             date: c.dia,
             fecha: occ.fecha,
             time: occ.inicio ? new Date(occ.inicio).toISOString().slice(11, 16) : c.hora,
-            discipline: !c.tipo?.toLowerCase().includes('slow') ? 'STRYDE' : 'SLOW',
+            discipline: getReservationDiscipline(c) === 'slow' ? 'SLOW' : getReservationDiscipline(c) === 'stryde' ? 'STRYDE' : null,
             spots: Math.max(0, (occ.cupoMax ?? c.cupoMax) - (occ.cupoActual ?? c.cupoActual)),
             capacity: occ.cupoMax ?? c.cupoMax,
           })
@@ -579,7 +584,7 @@ export default function ClientPanel() {
       date:       c.dia,
       fecha:      c.fecha ?? null,
       time:       c.hora,
-      discipline: !c.tipo?.toLowerCase().includes('slow') ? 'STRYDE' : 'SLOW',
+      discipline: getReservationDiscipline(c) === 'slow' ? 'SLOW' : getReservationDiscipline(c) === 'stryde' ? 'STRYDE' : null,
       spots:      Math.max(0, c.cupoMax - c.cupoActual),
       capacity:   c.cupoMax,
     }))
@@ -1199,8 +1204,8 @@ export default function ClientPanel() {
                         <div className={s.pubBody}>
                           <div className={s.pubTitleRow}>
                             <span className={s.pubClassName}>{av.title}</span>
-                            <span className={`${s.pubTypeBadge} ${av.discipline === 'STRYDE' ? s.pubBadgeStride : s.pubBadgeSlow}`}>
-                              {av.discipline}
+                            <span className={`${s.pubTypeBadge} ${normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'stryde' ? s.pubBadgeStride : normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'slow' ? s.pubBadgeSlow : ''}`}>
+                              {normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'slow' ? 'SLOW' : normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'stryde' ? 'STRYDE' : 'Sin tipo'}
                             </span>
                           </div>
                           <div className={s.pubMeta}>
@@ -1613,10 +1618,20 @@ export default function ClientPanel() {
       </main>
 
       {seatSelectorClass && (
-        <SeatSelector
-          cls={seatSelectorClass}
-          onClose={() => setSeatSelectorClass(null)}
-        />
+        useApiReservations && seatSelectorClass?.occurrenceId ? (
+          <EquipmentReservationPanel
+            occurrenceId={seatSelectorClass.occurrenceId}
+            classId={seatSelectorClass.id}
+            userId={usuario?.id}
+            financialState={financialState}
+            onClose={() => setSeatSelectorClass(null)}
+          />
+        ) : (
+          <SeatSelector
+            cls={seatSelectorClass}
+            onClose={() => setSeatSelectorClass(null)}
+          />
+        )
       )}
     </div>
   )

@@ -42,6 +42,9 @@ export const ENDPOINTS = {
   completarReserva: (id) => withPrefix(`/reservas/${id}/completar`),
   cancelarReserva: (id) => withPrefix(`/reservas/${id}/cancelar`),
   marcarNoAsistio: (id) => withPrefix(`/reservas/${id}/no-asistio`),
+  occurrenceSpots: (occurrenceId) => withPrefix(`/reservas/ocurrencias/${occurrenceId}/spots`),
+  spotHolds: withPrefix('/reservas/holds'),
+  spotHoldById: (holdId) => withPrefix(`/reservas/holds/${holdId}`),
 
   waitlist: withPrefix('/lista-espera'),
   waitlistByClase: (claseId) => withPrefix(`/lista-espera?claseId=${claseId}`),

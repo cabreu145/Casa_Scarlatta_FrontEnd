@@ -1,4 +1,5 @@
 import { ESTADOS_RESERVA } from '@/data/mockData'
+import { normalizeDiscipline } from '@/utils/discipline'
 
 function toIsoDateFromDateTime(value) {
   if (!value) return null
@@ -13,7 +14,7 @@ function toIsoDateSafe(value) {
   return toIsoDateFromDateTime(value)
 }
 
-export function mapCreateReservationPayload({ claseId, userId, asiento, occurrenceId }) {
+export function mapCreateReservationPayload({ claseId, userId, asiento, occurrenceId, spotId, holdId }) {
   if (!occurrenceId) {
     throw new Error('OCCURRENCE_REQUIRED')
   }
@@ -21,6 +22,14 @@ export function mapCreateReservationPayload({ claseId, userId, asiento, occurren
     clase_id: Number(claseId),
     user_id: Number(userId),
     occurrence_id: Number(occurrenceId),
+  }
+  if (spotId !== undefined && spotId !== null && spotId !== '') {
+    if (!holdId) {
+      throw new Error('HOLD_REQUIRED')
+    }
+    payload.spot_id = Number(spotId)
+    payload.hold_id = Number(holdId)
+    return payload
   }
   if (asiento !== undefined && asiento !== null && asiento !== '') {
     const seatNumber = Number(asiento)
@@ -49,11 +58,20 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
     userId: reservation.user_id ?? reservation.userId ?? null,
     claseId,
     occurrenceId,
+    spotId: reservation.spot_id ?? reservation.spotId ?? null,
+    holdId: reservation.hold_id ?? reservation.holdId ?? null,
     claseNombre: classNameSnapshot ?? classData?.nombre ?? classData?.name ?? `Clase #${claseId ?? 'N/A'}`,
     claseHora: classStartTime ?? classData?.hora ?? '00:00',
     claseDia: classData?.dia ?? null,
     coachNombre: classData?.coachNombre ?? 'Sin coach',
     tipo: classData?.tipo ?? 'Stryde X',
+    discipline: normalizeDiscipline(
+      reservation.discipline ??
+      reservation.class_discipline ??
+      classData?.discipline ??
+      classData?.classDiscipline ??
+      classData?.tipo
+    ),
     asiento: reservation.seat_number ?? reservation.seatNumber ?? null,
     estado: reservation.status ?? ESTADOS_RESERVA.CONFIRMADA,
     fecha: fechaSesion,

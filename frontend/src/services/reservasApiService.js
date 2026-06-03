@@ -31,8 +31,8 @@ export async function getReservaByIdApi(id) {
   return mapBackendReservationToFrontend(payload ?? {}, buildClassesById())
 }
 
-export async function crearReservaApi({ claseId, userId, asiento, occurrenceId }) {
-  const requestPayload = mapCreateReservationPayload({ claseId, userId, asiento, occurrenceId })
+export async function crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId }) {
+  const requestPayload = mapCreateReservationPayload({ claseId, userId, asiento, occurrenceId, spotId, holdId })
   const payload = await httpPost(ENDPOINTS.crearReserva, requestPayload)
   return mapBackendReservationToFrontend(payload ?? {}, buildClassesById())
 }

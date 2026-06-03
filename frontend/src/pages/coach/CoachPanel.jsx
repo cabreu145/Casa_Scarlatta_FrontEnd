@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useReservasStore } from '@/stores/reservasStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
+import { normalizeDiscipline } from '@/utils/discipline'
 import s from './CoachPanel.module.css'
 
 // â”€â”€ Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -37,6 +38,15 @@ const SECTION_META = {
   },
   'mis-clases': { title: 'Mis Clases', sub: '' },
 }
+
+const getDisciplineLabel = (value) => {
+  const normalized = normalizeDiscipline(value)
+  if (normalized === 'slow') return 'SLOW'
+  if (normalized === 'stryde') return 'STRYDE X'
+  return 'Sin tipo'
+}
+
+const isSlowDiscipline = (value) => normalizeDiscipline(value) === 'slow'
 
 // Helper: inicio de semana (lunes) dado un offset en semanas
 function calcInicioSemana(offsetSemanas) {
@@ -341,8 +351,8 @@ export default function CoachPanel() {
                         <div className={s.classInfo}>
                           <div className={s.className}>{cls.nombre}</div>
                           <div className={s.classMeta}>
-                            <span className={`${s.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s.pillStride : s.pillSlow}`}>
-                              {!cls.tipo?.toLowerCase().includes('slow') ? 'STRYDE X' : cls.tipo}
+                            <span className={`${s.pill} ${isSlowDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo) ? s.pillSlow : s.pillStride}`}>
+                              {getDisciplineLabel(cls.discipline ?? cls.classDiscipline ?? cls.tipo)}
                             </span>
                             <span className={s.classLocation}>Sala Principal</span>
                           </div>
@@ -569,7 +579,7 @@ function WeekTable({ classes, onOpen }) {
               </td>
               <td><span className={s2.mono} style={{ color:'var(--blush)' }}>{cls.hora}</span></td>
               <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
-              <td><span className={`${s2.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s2.pillStride : s2.pillSlow}`}>{!cls.tipo?.toLowerCase().includes('slow') ? 'STRYDE X' : cls.tipo}</span></td>
+              <td><span className={`${s2.pill} ${isSlowDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo) ? s2.pillSlow : s2.pillStride}`}>{getDisciplineLabel(cls.discipline ?? cls.classDiscipline ?? cls.tipo)}</span></td>
               <td><span className={`${s2.mono} ${s2[color]}`} style={{ fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
               <td>
                 {isClasePasada(cls) ? (
@@ -651,7 +661,7 @@ function MisClasesTable({ classes, onOpen }) {
               </td>
               <td><span className={s2.mono} style={{ color: 'var(--blush)' }}>{cls.hora}</span></td>
               <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
-              <td><span className={`${s2.pill} ${!cls.tipo?.toLowerCase().includes('slow') ? s2.pillStride : s2.pillSlow}`}>{!cls.tipo?.toLowerCase().includes('slow') ? 'STRYDE X' : cls.tipo}</span></td>
+              <td><span className={`${s2.pill} ${isSlowDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo) ? s2.pillSlow : s2.pillStride}`}>{getDisciplineLabel(cls.discipline ?? cls.classDiscipline ?? cls.tipo)}</span></td>
               <td><span className={s2.mono} style={{ color: color === 'red' ? '#E85A5A' : color === 'orange' ? '#E8924A' : '#5CB97A', fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
               <td>
                 {isClasePasada(cls)

@@ -13,6 +13,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import ClassTypeFilter from '@/features/clases/ClassTypeFilter'
+import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationPanel'
 import SeatSelector from '@/features/clases/SeatSelector'
 import { useClasesStore }          from '@/stores/clasesStore'
 import { useCoachesStore }         from '@/stores/coachesStore'
@@ -24,6 +25,7 @@ import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/
 import { cancelarReserva as cancelarReservaService } from '@/services/reservasService'
 import { ROUTES } from '@/constants/routes'
 import { getWeekDays, isSameDay, formatHour, getInitials, DAYS_ABBR, MONTHS_ES } from '@/utils/formatters'
+import { normalizeDiscipline } from '@/utils/discipline'
 import styles from './Clases.module.css'
 
 // â”€â”€â”€ Avatar helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -118,7 +120,8 @@ export default function Clases() {
   // Classes for the selected day, filtered by discipline.
   // Uses slow-based detection: anything that doesn't contain 'slow' is Stryde.
   // This handles 'Stryde X', 'Slow', and any custom variant.
-  const isSlow = (tipo) => tipo?.toLowerCase().includes('slow')
+  const isSlow = (tipo) => normalizeDiscipline(tipo) === 'slow'
+  const resolveDiscipline = (value) => normalizeDiscipline(value)
 
   const occurrenceSessions = useMemo(() => {
     if (!useApiClasses) return []
@@ -149,7 +152,7 @@ export default function Clases() {
         ? occurrenceSessions.filter((c) => c.fecha === `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
         : getPublicClassesByDate(allClasses, d)
       return filter
-        ? forDay.some((c) => isSlow(filter) ? isSlow(c.tipo) : !isSlow(c.tipo))
+        ? forDay.some((c) => isSlow(filter) ? resolveDiscipline(c.discipline ?? c.tipo) === 'slow' : resolveDiscipline(c.discipline ?? c.tipo) === 'stryde')
         : forDay.length > 0
     }),
     [days, allClasses, filter, occurrenceSessions, useApiClasses]
@@ -161,7 +164,7 @@ export default function Clases() {
       ? occurrenceSessions.filter((c) => c.fecha === selectedIso)
       : getPublicClassesByDate(allClasses, selectedDate)
     return filter
-      ? forDay.filter((c) => isSlow(filter) ? isSlow(c.tipo) : !isSlow(c.tipo))
+      ? forDay.filter((c) => isSlow(filter) ? resolveDiscipline(c.discipline ?? c.tipo) === 'slow' : resolveDiscipline(c.discipline ?? c.tipo) === 'stryde')
       : forDay
   }, [selectedDate, filter, allClasses, occurrenceSessions, useApiClasses])
 
@@ -314,9 +317,14 @@ export default function Clases() {
                   <div className={styles.classBody}>
                     <div className={styles.classTitleRow}>
                       <span className={styles.className}>{cls.nombre}</span>
-                      <span className={`${styles.typeBadge} ${!isSlow(cls.tipo) ? styles.typeBadgeStride : styles.typeBadgeSlow}`}>
-                        {!isSlow(cls.tipo) ? 'STRYDE' : 'SLOW'}
-                      </span>
+                      {(() => {
+                        const classDiscipline = resolveDiscipline(cls.discipline ?? cls.tipo)
+                        return (
+                          <span className={`${styles.typeBadge} ${classDiscipline === 'stryde' ? styles.typeBadgeStride : classDiscipline === 'slow' ? styles.typeBadgeSlow : ''}`}>
+                            {classDiscipline === 'slow' ? 'SLOW' : classDiscipline === 'stryde' ? 'STRYDE' : 'Sin tipo'}
+                          </span>
+                        )
+                      })()}
                     </div>
                     <div className={styles.classMeta}>
                       <span className={styles.metaItem}>
@@ -381,7 +389,16 @@ export default function Clases() {
 
       {/* â”€â”€ Seat selector modal â”€â”€ */}
       {selectedClass && (
-        <SeatSelector cls={selectedClass} onClose={() => setSelectedClass(null)} fecha={selectedDate} />
+        useApiReservations && selectedClass.occurrenceId ? (
+          <EquipmentReservationPanel
+            occurrenceId={selectedClass.occurrenceId}
+            classId={selectedClass.id}
+            userId={usuario?.id}
+            onClose={() => setSelectedClass(null)}
+          />
+        ) : (
+          <SeatSelector cls={selectedClass} onClose={() => setSelectedClass(null)} fecha={selectedDate} />
+        )
       )}
 
     </main>

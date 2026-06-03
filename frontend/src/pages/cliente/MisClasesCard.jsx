@@ -1,4 +1,5 @@
 import { formatHour } from '@/utils/formatters'
+import { normalizeDiscipline } from '@/utils/discipline'
 import { useConfiguracionStore } from '@/stores/configuracionStore'
 import s from './ClientPanel.module.css'
 
@@ -15,9 +16,10 @@ function avatarStyle(name) {
 }
 
 function DisciplinePill({ d }) {
-  return d === 'STRYDE'
-    ? <span className={`${s.pill} ${s.pillStride}`}>STRYDE</span>
-    : <span className={`${s.pill} ${s.pillSlow}`}>SLOW</span>
+  const normalized = normalizeDiscipline(d)
+  if (normalized === 'stryde') return <span className={`${s.pill} ${s.pillStride}`}>STRYDE</span>
+  if (normalized === 'slow') return <span className={`${s.pill} ${s.pillSlow}`}>SLOW</span>
+  return <span className={s.pill}>Sin tipo</span>
 }
 
 function StatusPill({ status }) {

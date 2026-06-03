@@ -456,3 +456,9 @@ Decisión final:
 
 - Validar pantalla post-pago con vista amigable, detalles t?cnicos colapsables y panel "Estado de pagos recientes" en Paquetes & Pagos.
 - Tracking local solo recuerda pagos iniciados desde este navegador; backend sigue confirmando estado real por external_reference.
+
+## Nota 2026-06-03
+- Reserva por equipo/lugar usa `EquipmentReservationPanel`.
+- Source of truth: backend spots + holds.
+- STRYDE: bench + treadmill. SLOW: mat.
+- Do not use label as unique id; use spot_id for actions.

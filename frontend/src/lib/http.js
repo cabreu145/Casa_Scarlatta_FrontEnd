@@ -2,16 +2,18 @@ function getToken() {
   return localStorage.getItem('token') ?? null
 }
 
-function isNgrokFrontend() {
+function shouldUseSameOriginProxy() {
   if (typeof window === 'undefined') return false
-  return /ngrok-free\.app$/i.test(window.location.hostname)
+  if (!import.meta.env.DEV) return false
+  const hostname = window.location.hostname
+  return hostname === '127.0.0.1' || hostname === 'localhost' || /ngrok-free\.app$/i.test(hostname)
 }
 
 function normalizeUrl(endpoint) {
   if (typeof endpoint !== 'string' || !endpoint) {
     throw new Error('HTTP_REQUEST_PATH_REQUIRED')
   }
-  if (isNgrokFrontend()) {
+  if (shouldUseSameOriginProxy()) {
     if (/^https?:\/\//i.test(endpoint)) {
       const parsed = new URL(endpoint)
       return `${parsed.pathname}${parsed.search}`
@@ -56,7 +58,7 @@ async function request(method, endpoint, body, options = {}) {
     console.debug('[http]', method, url, {
       hasToken: !!token,
       tokenLength: token?.length ?? 0,
-      proxyMode: isNgrokFrontend(),
+      proxyMode: shouldUseSameOriginProxy(),
     })
   }
 

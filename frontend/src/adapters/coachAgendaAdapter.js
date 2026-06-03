@@ -1,3 +1,5 @@
+import { normalizeDiscipline } from '@/utils/discipline'
+
 function safeNumber(value, fallback = 0) {
   const n = Number(value)
   return Number.isFinite(n) ? n : fallback
@@ -11,6 +13,7 @@ function mapOccurrence(item = {}) {
     nombre: item.class_name ?? item.className ?? 'Clase',
     classType: item.class_type ?? item.classType ?? 'Stryde X',
     tipo: item.class_type ?? item.classType ?? 'Stryde X',
+    discipline: normalizeDiscipline(item.discipline ?? item.class_discipline ?? item.classType ?? item.class_type),
     occurrenceDate: item.occurrence_date ?? item.occurrenceDate ?? null,
     fecha: item.occurrence_date ?? item.occurrenceDate ?? null,
     startAt: item.start_at ?? item.startAt ?? null,

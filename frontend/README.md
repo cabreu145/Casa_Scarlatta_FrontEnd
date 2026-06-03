@@ -290,3 +290,9 @@ Siguiente módulo recomendado: BUG-009 (integración Mercado Pago).
 - Paquetes & Pagos ya usa historial real backend con `GET /api/v1/clientes/me/pagos`.
 - `checkout_url` viene del backend; frontend no decide `init_point` ni `sandbox_init_point`.
 - Tracking local queda solo como fallback puntual de retorno post-pago.
+
+## Nota 2026-06-03
+- Reserva por equipo/lugar usa `EquipmentReservationPanel`.
+- Source of truth: backend spots + holds.
+- STRYDE: bench + treadmill. SLOW: mat.
+- Do not use label as unique id; use spot_id for actions.

@@ -53,6 +53,28 @@ describe('reservasApiService', () => {
     })
   })
 
+  test('crearReservaApi envia payload con spot_id y hold_id', async () => {
+    httpPost.mockResolvedValue({
+      id: 11,
+      user_id: 5,
+      class_id: 7,
+      occurrence_id: 70,
+      spot_id: 8,
+      hold_id: 123,
+      status: 'confirmada',
+    })
+    const { crearReservaApi } = await import('./reservasApiService')
+    await crearReservaApi({ claseId: 7, userId: 5, occurrenceId: 70, spotId: 8, holdId: 123 })
+
+    expect(httpPost).toHaveBeenCalledWith('/api/v1/reservas', {
+      clase_id: 7,
+      user_id: 5,
+      occurrence_id: 70,
+      spot_id: 8,
+      hold_id: 123,
+    })
+  })
+
   test('cancelarReservaApi usa endpoint cancelar alias', async () => {
     httpPost.mockResolvedValue({ id: 10, user_id: 5, class_id: 7, status: 'cancelada' })
     const { cancelarReservaApi } = await import('./reservasApiService')
