@@ -1,7 +1,7 @@
-﻿import { useState, useMemo, useEffect } from 'react'
+﻿import { useState, useMemo, useEffect, useCallback } from 'react'
 import PagoModal from '@/features/pagos/PagoModal'
 import SeatSelector from '@/features/clases/SeatSelector'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Home, CalendarDays, PlusCircle, User, CreditCard, LogOut, ArrowLeft,
   MapPin, ChevronLeft, ChevronRight, Menu, X
@@ -22,6 +22,7 @@ import { getPublicClassesByDate, getReservationOccurrenceDate, isPublished } fro
 import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { logListaEsperaUnirse, logListaEsperaSalir } from '@/services/actividadService'
 import { getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
+import { getMembershipPackagesApi } from '@/services/membershipPackagesApiService'
 import { getMisReservasPaginatedApi } from '@/services/reservasApiService'
 import {
   hoyLocal,
@@ -31,6 +32,7 @@ import {
 import s from './ClientPanel.module.css'
 import MisClasesCard from './MisClasesCard'
 import ClassCard from './ClassCard'
+import RecentPaymentsStatusPanel from './RecentPaymentsStatusPanel'
 import { buildPerfilFormFromUser, resolvePerfilCompleto } from './profileFormUtils'
 import { resolveFinancialUiState } from './financialUiUtils'
 import { filterReservationsByStatus } from './reservationFilters'
@@ -110,6 +112,7 @@ const MIS_CLASES_FILTERS = [
 
 export default function ClientPanel() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { usuario, logout } = useAuth()
 
   // â”€â”€ Stores â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -136,11 +139,16 @@ export default function ClientPanel() {
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
   const useApiWaitlist = import.meta.env.VITE_USE_API_WAITLIST === 'true'
   const useApiFinancialState = useApiAuth && useApiReservations
+  const [apiMembershipPackages, setApiMembershipPackages] = useState([])
+  const [isMembershipPackagesLoading, setIsMembershipPackagesLoading] = useState(false)
+  const [membershipPackagesError, setMembershipPackagesError] = useState('')
+  const sectionQuery = new URLSearchParams(location.search).get('section')
 
   const historialPagos = useApiFinancialState
     ? (transactions ?? [])
     : (usuario?.id ? getTransaccionesByUsuario(usuario.id) : [])
   const historialMovimientosCredito = useApiFinancialState ? (creditMovements ?? []) : []
+  const paquetesDisponibles = useApiFinancialState ? apiMembershipPackages : paquetes
 
   // Mapa nombre â†’ foto para todos los componentes de esta pÃ¡gina
   const coachFotoByName = useMemo(
@@ -160,6 +168,7 @@ export default function ClientPanel() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
   const [financialHistoryPage, setFinancialHistoryPage] = useState(1)
+  const [financialRefreshTick, setFinancialRefreshTick] = useState(0)
   const [misClasesPage, setMisClasesPage] = useState(1)
   const [misClasesPageState, setMisClasesPageState] = useState({
     items: [],
@@ -181,6 +190,9 @@ export default function ClientPanel() {
   })
   const weekDays = useMemo(() => buildWeek(weekOff), [weekOff])
   const resWeekDays = useMemo(() => buildWeek(resWeekOff), [resWeekOff])
+  const requestFinancialRefresh = useCallback(() => {
+    setFinancialRefreshTick((tick) => tick + 1)
+  }, [])
 
   useEffect(() => {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
@@ -212,7 +224,34 @@ export default function ClientPanel() {
         console.error('[ClientPanel] No se pudo cargar estado financiero API', err)
       }
     })
-  }, [loadFinancialState, useApiFinancialState, usuario?.rol])
+  }, [financialRefreshTick, loadFinancialState, useApiFinancialState, usuario?.rol])
+
+  useEffect(() => {
+    if (!useApiFinancialState || activeSection !== 'pagos') return
+    let active = true
+    setIsMembershipPackagesLoading(true)
+    setMembershipPackagesError('')
+    getMembershipPackagesApi()
+      .then((items) => {
+        if (!active) return
+        setApiMembershipPackages(items)
+        setIsMembershipPackagesLoading(false)
+      })
+      .catch((err) => {
+        if (!active) return
+        setApiMembershipPackages([])
+        setMembershipPackagesError(err.message || 'No se pudo cargar catálogo de paquetes')
+        setIsMembershipPackagesLoading(false)
+      })
+    return () => { active = false }
+  }, [activeSection, useApiFinancialState])
+
+  useEffect(() => {
+    if (!sectionQuery) return
+    if (sectionQuery === 'pagos' && activeSection !== 'pagos') {
+      setActiveSection('pagos')
+    }
+  }, [activeSection, sectionQuery])
 
   useEffect(() => {
     if (!useApiClasses || !clases.length) return
@@ -234,7 +273,7 @@ export default function ClientPanel() {
       controller.abort()
       clearOccurrencesInflightCache()
     }
-  }, [clases, resWeekDays, useApiClasses])
+  }, [clases, resWeekDays[0]?.isoDate, resWeekDays[resWeekDays.length - 1]?.isoDate, useApiClasses])
 
   // â”€â”€ Datos del usuario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const userName = usuario?.nombre ?? 'Cliente'
@@ -280,18 +319,18 @@ export default function ClientPanel() {
     if (!perfilCompleto) return
     if (isPerfilDirty && perfilForm) return
     setPerfilForm(buildPerfilFormFromUser(perfilCompleto))
-  }, [isPerfilDirty, perfilCompleto, perfilForm])
+  }, [isPerfilDirty, perfilCompleto])
 
   async function handleGuardarPerfil(e) {
     e.preventDefault()
     if (!perfilForm || !usuario?.id) return
     setGuardandoPerfil(true)
-    const nombre = [perfilForm.nombre, perfilForm.apellido].filter(Boolean).join(' ')
+    const nombre = [perfilFormSafe.nombre, perfilFormSafe.apellido].filter(Boolean).join(' ')
     const resultado = await editarPerfilService(usuario.id, {
       nombre,
-      telefono:        perfilForm.telefono,
-      genero:          perfilForm.genero,
-      fechaNacimiento: perfilForm.fechaNacimiento,
+      telefono:        perfilFormSafe.telefono,
+      genero:          perfilFormSafe.genero,
+      fechaNacimiento: perfilFormSafe.fechaNacimiento,
     })
     if (resultado.ok) toast.success(resultado.mensaje)
     else toast.error(resultado.mensaje)
@@ -413,7 +452,7 @@ export default function ClientPanel() {
         }))
       })
     return () => { active = false }
-  }, [financialHistoryPage, financialHistoryPageSize, useApiFinancialState, usuario?.rol])
+  }, [financialHistoryPage, financialHistoryPageSize, financialRefreshTick, useApiFinancialState, usuario?.rol])
 
   const now   = new Date()
   const today = hoyLocal()
@@ -1449,17 +1488,35 @@ export default function ClientPanel() {
             </div>
 
             <div className={`${s.grid3}`} style={{ marginBottom: 28 }}>
-              {paquetes.map(p => {
-                const esPlanActual = usuario?.paquete === p.nombre
+              {useApiFinancialState && isMembershipPackagesLoading ? (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                  Cargando catálogo de paquetes...
+                </div>
+              ) : useApiFinancialState && membershipPackagesError ? (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#b42318', fontSize: 13 }}>
+                  {membershipPackagesError}
+                </div>
+              ) : paquetesDisponibles.length === 0 ? (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                  No hay paquetes activos disponibles.
+                </div>
+              ) : paquetesDisponibles.map((p) => {
+                const esPlanActual = useApiFinancialState
+                  ? activeMembership?.packageName === p.nombre
+                  : usuario?.paquete === p.nombre
                 return (
                   <div key={p.id} className={`${s.pricingCard} ${p.destacado ? s.featured : ''}`}>
                     {p.destacado && <span className={s.pricingTag}>Popular</span>}
                     <div className={s.pricingName}>{p.nombre}</div>
                     <div className={s.pricingClasses}>
-                      {p.clases === 0 ? 'Clases ilimitadas' : `${p.clases} clases al mes`}
+                      {useApiFinancialState
+                        ? `${p.creditos ?? p.clases ?? 0} créditos`
+                        : p.clases === 0
+                          ? 'Clases ilimitadas'
+                          : `${p.clases} clases al mes`}
                     </div>
                     <div className={s.pricingPrice}>${p.precio.toLocaleString()}</div>
-                    <div className={s.pricingPeriod}>pago mensual</div>
+                    <div className={s.pricingPeriod}>{useApiFinancialState ? '' : 'pago mensual'}</div>
                     <div className={s.pricingFeatures}>
                       {(p.beneficios || []).map((b, i) => (
                         <div key={i} className={s.pricingFeature}>{b}</div>
@@ -1477,10 +1534,12 @@ export default function ClientPanel() {
               })}
             </div>
 
+            <RecentPaymentsStatusPanel enabled={useApiFinancialState && activeSection === 'pagos'} onFinancialRefreshRequested={requestFinancialRefresh} />
+
             <div className={s.card}>
               <div className={s.cardHeader}>
-                <div className={s.cardTitle}>{useApiFinancialState ? 'Movimientos de crÃ©dito' : 'Historial de pagos'}</div>
-                <div className={s.cardSubtitle}>{useApiFinancialState ? 'Actividad reciente de membresÃ­a' : 'Ãšltimas transacciones'}</div>
+                <div className={s.cardTitle}>{useApiFinancialState ? 'Movimientos de crédito' : 'Historial de pagos'}</div>
+                <div className={s.cardSubtitle}>{useApiFinancialState ? 'Actividad reciente de membresía' : 'Últimas transacciones'}</div>
               </div>
               <div className={s.cardBody}>
                 {useApiFinancialState && apiCreditMovementsPage.isLoading ? (
@@ -1500,7 +1559,7 @@ export default function ClientPanel() {
                       <div key={`mv-${mv.id ?? mv.createdAt}`} className={s.historyRow}>
                         <div className={s.historyIcon}>ðŸŽŸï¸</div>
                         <div style={{ flex: 1 }}>
-                          <div className={s.historyDesc}>{mv.type ?? 'Movimiento de crÃ©dito'}</div>
+                          <div className={s.historyDesc}>{mv.type || 'Movimiento de crédito'}</div>
                           <div className={s.historyDate}>{mv.createdAt ? formatFechaISO(mv.createdAt.slice(0, 10)) : 'Sin fecha'}</div>
                         </div>
                         <div className={s.historyAmount} style={mv.amount < 0 ? { color: '#e53e3e' } : { color: '#16a34a' }}>

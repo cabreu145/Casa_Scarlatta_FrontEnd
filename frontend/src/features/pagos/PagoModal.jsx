@@ -1,36 +1,30 @@
-/**
- * PagoModal.jsx
- * ─────────────────────────────────────────────────────
- * Modal de flujo de pago simulado (MercadoPago).
- * Listo para conectar al backend: busca el comentario
- * "TODO: BACKEND" para saber qué reemplazar.
- *
- * Usado en: ClientPanel (sección Paquetes & Pagos)
- * Depende de: usuariosService, authStore, usuariosStore
- * ─────────────────────────────────────────────────────
- */
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { asignarPaqueteService } from '@/services/usuariosService'
 import { useAuth } from '@/context/AuthContext'
 import { useUsuariosStore } from '@/stores/usuariosStore'
-import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
+import { asignarPaqueteService } from '@/services/usuariosService'
+import { createCheckoutPreferenceApi } from '@/services/paymentsApiService'
 import { logPaqueteVendido } from '@/services/actividadService'
+import { saveLastPaymentExternalReference, upsertRecentPaymentReference } from './paymentTracking'
 import s from './PagoModal.module.css'
 
-const STEPS = ['resumen', 'pago', 'procesando', 'exito']
+function readEnvFlag(name) {
+  const value = import.meta.env?.[name] ?? (typeof process !== 'undefined' ? process.env?.[name] : undefined)
+  return String(value).toLowerCase() === 'true'
+}
 
 export default function PagoModal({ paquete, onClose, onSuccess }) {
-  const useApiAuth = import.meta.env.VITE_USE_API_AUTH === 'true'
-  const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
+  const useApiAuth = readEnvFlag('VITE_USE_API_AUTH')
+  const useApiReservations = readEnvFlag('VITE_USE_API_RESERVATIONS')
   const useApiFinancialMode = useApiAuth && useApiReservations
   const { usuario, actualizarClasesPaquete, actualizarPerfil } = useAuth()
   const { asignarPaquete, asignarPaqueteCompartido } = useUsuariosStore()
-  const [step, setStep]       = useState('resumen')
-  const [metodo, setMetodo]   = useState('tarjeta')
-  const [error, setError]     = useState('')
+  const [step, setStep] = useState('resumen')
+  const [metodo, setMetodo] = useState('tarjeta')
+  const [error, setError] = useState('')
+  const [loadingCheckout, setLoadingCheckout] = useState(false)
   const [compartirData, setCompartirData] = useState({ activo: false, participantes: [] })
-  const [form, setForm]       = useState({
+  const [form, setForm] = useState({
     numero: '',
     nombre: '',
     vencimiento: '',
@@ -57,60 +51,64 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
 
   async function handlePagar() {
     if (useApiFinancialMode) {
-      toast('Compra en línea aún no disponible en modo API')
+      setError('')
+      setLoadingCheckout(true)
+      try {
+        const checkout = await createCheckoutPreferenceApi({ packageId: paquete.id })
+        const checkoutUrl = checkout.checkoutUrl ?? checkout.checkout_url ?? null
+        const externalReference = checkout.externalReference ?? checkout.external_reference ?? null
+
+        if (!checkoutUrl) {
+          throw new Error('Backend no devolvió checkout_url')
+        }
+
+        if (externalReference) {
+          saveLastPaymentExternalReference(externalReference)
+          upsertRecentPaymentReference({
+            externalReference,
+            packageId: paquete?.id ?? null,
+            packageName: paquete?.nombre ?? null,
+            amount: paquete?.precio ?? null,
+            credits: paquete?.creditos ?? paquete?.clases ?? null,
+            status: checkout.status ?? 'created',
+            createdAt: new Date().toISOString(),
+          })
+        }
+
+        window.location.href = checkoutUrl
+      } catch (err) {
+        setError(err?.message ?? 'No se pudo crear checkout')
+        toast.error(err?.message ?? 'No se pudo crear checkout')
+      } finally {
+        setLoadingCheckout(false)
+      }
       return
     }
+
     setError('')
 
-    // Validaciones básicas de tarjeta
     if (metodo === 'tarjeta') {
       const numLimpio = form.numero.replace(/\s/g, '')
-      if (numLimpio.length < 16)      return setError('Número de tarjeta inválido')
-      if (!form.nombre.trim())         return setError('Ingresa el nombre del titular')
+      if (numLimpio.length < 16) return setError('Número de tarjeta inválido')
+      if (!form.nombre.trim()) return setError('Ingresa el nombre del titular')
       if (form.vencimiento.length < 5) return setError('Fecha de vencimiento inválida')
-      if (form.cvv.length < 3)         return setError('CVV inválido')
+      if (form.cvv.length < 3) return setError('CVV inválido')
     }
 
     setStep('procesando')
-
-    // ── TODO: BACKEND ────────────────────────────────────────────────────────
-    // Reemplaza este bloque con la llamada real a tu backend:
-    //
-    // const preferencia = await fetch('/api/pagos/crear-preferencia', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     paqueteId: paquete.id,
-    //     userId:    usuario.id,
-    //     monto:     paquete.precio,
-    //     nombre:    paquete.nombre,
-    //   }),
-    // }).then(r => r.json())
-    //
-    // Luego redirige al usuario al checkout de MercadoPago:
-    // window.location.href = preferencia.init_point
-    //
-    // O usa el SDK de MercadoPago Bricks para mostrar el formulario
-    // embebido directamente aquí sin redirigir.
-    // ────────────────────────────────────────────────────────────────────────
-
-    // Simulación de procesamiento (2 segundos)
     await new Promise((r) => setTimeout(r, 2200))
 
-    // Asignar paquete al usuario en los stores
     const resultado = await asignarPaqueteService(usuario.id, paquete, 'online')
 
     if (compartirData.activo && compartirData.participantes.length > 0 && paquete.clases > 0) {
-      // Paquete compartido: dividir entre todos los participantes + el comprador
       const todosIds = [usuario.id, ...compartirData.participantes.map((p) => p.id)]
       asignarPaqueteCompartido(todosIds, paquete.nombre, paquete.clases)
       const clasesPorPersona = Math.floor(paquete.clases / todosIds.length)
       actualizarClasesPaquete(clasesPorPersona)
     } else {
-      // Paquete individual: actualiza authStore Y usuariosStore
       const clasesNum = paquete.clases === 0 ? 999 : paquete.clases
       actualizarClasesPaquete(clasesNum)
-      asignarPaquete(usuario.id, paquete.nombre, clasesNum) // ✅ sincroniza el admin
+      asignarPaquete(usuario.id, paquete.nombre, clasesNum)
     }
 
     actualizarPerfil({ paquete: paquete.nombre })
@@ -118,19 +116,69 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
     const metodoPagoLabel = metodo === 'transfer' ? 'transferencia' : metodo
     logPaqueteVendido({
       usuarioNombre: usuario?.nombre ?? usuario?.name ?? 'Cliente',
-      usuarioId:     usuario?.id,
+      usuarioId: usuario?.id,
       paqueteNombre: paquete.nombre,
-      precio:        paquete.precio,
-      metodoPago:    metodoPagoLabel,
+      precio: paquete.precio,
+      metodoPago: metodoPagoLabel,
     })
 
     setStep('exito')
     toast.success(
-      `¡Pago exitoso! Tu paquete está activo. ` +
-      `Revisa tu correo con los detalles 📧`,
+      `¡Pago exitoso! Tu paquete está activo. Revisa tu correo con los detalles 📧`,
       { duration: 5000 }
     )
     onSuccess?.()
+  }
+
+  if (useApiFinancialMode) {
+    return (
+      <div className={s.overlay}>
+        <div className={s.modal}>
+          <div className={s.header}>
+            <div className={s.headerLeft}>
+              <div className={s.mpLogo}>
+                <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
+                  <circle cx="20" cy="20" r="20" fill="#009EE3" />
+                  <path d="M8 20C8 13.373 13.373 8 20 8s12 5.373 12 12-5.373 12-12 12S8 26.627 8 20z" fill="#009EE3" />
+                  <path d="M20 12c-4.418 0-8 3.582-8 8s3.582 8 8 8 8-3.582 8-8-3.582-8-8-8zm3.5 11.5l-5-3V13h2v6.5l4 2.5-1 1.5z" fill="white" />
+                </svg>
+                MercadoPago
+              </div>
+              <span className={s.headerSub}>Checkout Pro</span>
+            </div>
+            <button className={s.closeBtn} onClick={onClose}>✕</button>
+          </div>
+
+          <div className={s.body}>
+            <div className={s.stepLabel}>Resumen de compra</div>
+            <div className={s.paqueteCard}>
+              <div className={s.paqueteInfo}>
+                <div className={s.paqueteNombre}>{paquete?.nombre ?? 'Paquete'}</div>
+                <div className={s.paqueteDetalle}>
+                  {paquete?.creditos ?? paquete?.clases ?? 0} créditos · {paquete?.vigencia ?? 'Sin vigencia'}
+                </div>
+                {paquete?.descripcion ? <div className={s.paqueteBeneficios}>{paquete.descripcion}</div> : null}
+              </div>
+              <div className={s.paquetePrecio}>
+                <div className={s.precioNum}>${Number(paquete?.precio ?? 0).toLocaleString()}</div>
+                <div className={s.precioSub}>MXN</div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5, marginBottom: 16 }}>
+              Serás redirigido a Mercado Pago para completar tu pago de forma segura.
+            </div>
+
+            {error && <div className={s.errorMsg}>⚠️ {error}</div>}
+
+            <button className={s.btnPrimary} onClick={handlePagar} disabled={loadingCheckout}>
+              {loadingCheckout ? 'Creando checkout...' : 'Continuar a Mercado Pago'}
+            </button>
+            <button className={s.btnGhost} onClick={onClose}>Cancelar</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   function handleOverlayClick(e) {
@@ -140,15 +188,13 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
   return (
     <div className={s.overlay} onClick={handleOverlayClick}>
       <div className={s.modal}>
-
-        {/* Header */}
         <div className={s.header}>
           <div className={s.headerLeft}>
             <div className={s.mpLogo}>
               <svg width="20" height="20" viewBox="0 0 40 40" fill="none">
-                <circle cx="20" cy="20" r="20" fill="#009EE3"/>
-                <path d="M8 20C8 13.373 13.373 8 20 8s12 5.373 12 12-5.373 12-12 12S8 26.627 8 20z" fill="#009EE3"/>
-                <path d="M20 12c-4.418 0-8 3.582-8 8s3.582 8 8 8 8-3.582 8-8-3.582-8-8-8zm3.5 11.5l-5-3V13h2v6.5l4 2.5-1 1.5z" fill="white"/>
+                <circle cx="20" cy="20" r="20" fill="#009EE3" />
+                <path d="M8 20C8 13.373 13.373 8 20 8s12 5.373 12 12-5.373 12-12 12S8 26.627 8 20z" fill="#009EE3" />
+                <path d="M20 12c-4.418 0-8 3.582-8 8s3.582 8 8 8 8-3.582 8-8-3.582-8-8-8zm3.5 11.5l-5-3V13h2v6.5l4 2.5-1 1.5z" fill="white" />
               </svg>
               MercadoPago
             </div>
@@ -159,7 +205,6 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
           )}
         </div>
 
-        {/* ── PASO: RESUMEN ── */}
         {step === 'resumen' && (
           <div className={s.body}>
             <div className={s.stepLabel}>Resumen de compra</div>
@@ -180,52 +225,34 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
                 <div className={s.precioSub}>MXN</div>
               </div>
             </div>
-
-            {/* Compartir paquete — comentado, pendiente de implementación futura */}
-            {/* <CompartirPaquete
-              paquete={paquete}
-              usuarioActualId={usuario?.id}
-              variant="light"
-              onChange={setCompartirData}
-            /> */}
-
             <div className={s.divider} />
-
             <div className={s.totalRow}>
               <span>Total a pagar</span>
               <span className={s.totalNum}>${paquete.precio.toLocaleString()} MXN</span>
             </div>
-
             {compartirData.activo && compartirData.participantes.length > 0 && (
               <div style={{ fontSize: 12, color: '#7A5C58', fontFamily: 'var(--font-body)', textAlign: 'center', marginBottom: 4 }}>
                 Se pagarán las {paquete.clases} clases completas. La división se aplica después del pago.
               </div>
             )}
-
             <button className={s.btnPrimary} onClick={() => setStep('pago')}>
               Continuar al pago
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
             </button>
             <button className={s.btnGhost} onClick={onClose}>Cancelar</button>
           </div>
         )}
 
-        {/* ── PASO: PAGO ── */}
         {step === 'pago' && (
           <div className={s.body}>
             <button className={s.backBtn} onClick={() => setStep('resumen')}>
               ← Volver
             </button>
             <div className={s.stepLabel}>Método de pago</div>
-
-            {/* Selector de método */}
             <div className={s.metodoGrid}>
               {[
                 { key: 'tarjeta', label: 'Tarjeta', icon: '💳' },
-                { key: 'oxxo',    label: 'OXXO',    icon: '🏪' },
-                { key: 'transfer',label: 'Transferencia', icon: '🏦' },
+                { key: 'oxxo', label: 'OXXO', icon: '🏪' },
+                { key: 'transfer', label: 'Transferencia', icon: '🏦' },
               ].map(({ key, label, icon }) => (
                 <button
                   key={key}
@@ -238,7 +265,6 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
               ))}
             </div>
 
-            {/* Formulario tarjeta */}
             {metodo === 'tarjeta' && (
               <div className={s.formWrap}>
                 <div className={s.formGroup}>
@@ -290,7 +316,6 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
               </div>
             )}
 
-            {/* OXXO */}
             {metodo === 'oxxo' && (
               <div className={s.altMetodo}>
                 <div className={s.altMetodoIcon}>🏪</div>
@@ -299,11 +324,9 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
                   Al confirmar, recibirás un código de barras para pagar en cualquier tienda OXXO.
                   El pago se acredita en hasta 24 horas.
                 </p>
-                {/* TODO: BACKEND — generar referencia OXXO con MercadoPago */}
               </div>
             )}
 
-            {/* Transferencia */}
             {metodo === 'transfer' && (
               <div className={s.altMetodo}>
                 <div className={s.altMetodoIcon}>🏦</div>
@@ -312,26 +335,24 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
                   Al confirmar, recibirás los datos bancarios para realizar tu transferencia SPEI.
                   El pago se acredita en minutos.
                 </p>
-                {/* TODO: BACKEND — generar CLABE con MercadoPago */}
               </div>
             )}
 
             {error && <div className={s.errorMsg}>⚠️ {error}</div>}
-
             <div className={s.secureNote}>
               <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
               Pago 100% seguro con encriptación SSL
             </div>
 
-            <button className={s.btnPrimary} onClick={handlePagar}>
-              Pagar ${paquete.precio.toLocaleString()} MXN
+            <button className={s.btnPrimary} onClick={handlePagar} disabled={loadingCheckout}>
+              {loadingCheckout ? 'Creando checkout…' : `Pagar $${paquete.precio.toLocaleString()} MXN`}
             </button>
           </div>
         )}
 
-        {/* ── PASO: PROCESANDO ── */}
         {step === 'procesando' && (
           <div className={s.body}>
             <div className={s.procesandoWrap}>
@@ -342,7 +363,6 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
           </div>
         )}
 
-        {/* ── PASO: ÉXITO ── */}
         {step === 'exito' && (
           <div className={s.body}>
             <div className={s.exitoWrap}>
@@ -361,13 +381,12 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
                     : ` Tienes ${paquete.clases} clases disponibles.`
                 }
               </div>
-              <button className={s.btnPrimary} onClick={() => onSuccess ? onSuccess() : onClose()}>
+              <button className={s.btnPrimary} onClick={() => (onSuccess ? onSuccess() : onClose())}>
                 Ir a reservar clases →
               </button>
             </div>
           </div>
         )}
-
       </div>
     </div>
   )

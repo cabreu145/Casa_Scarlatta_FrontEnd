@@ -24,6 +24,7 @@ import NotFound from '@/pages/NotFound'
 const ClientPanel = lazy(() => import('@/pages/cliente/ClientPanel'))
 const CoachPanel  = lazy(() => import('@/pages/coach/CoachPanel'))
 const AdminPanel  = lazy(() => import('@/pages/admin/AdminPanel'))
+const PaymentReturnPage = lazy(() => import('@/features/pagos/PaymentReturnPage'))
 
 const DASHBOARD_PREFIXES = ['/cliente/', '/coach/', '/admin/']
 
@@ -65,6 +66,9 @@ function AnimatedRoutes() {
             <Route path="/admin/paquetes" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/finanzas" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/reportes" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/pago/success" element={<PaymentReturnPage />} />
+            <Route path="/pago/pending" element={<PaymentReturnPage />} />
+            <Route path="/pago/failure" element={<PaymentReturnPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
@@ -88,6 +92,9 @@ function AnimatedRoutes() {
           <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />
           <Route path="/recuperar-contrasena" element={<PageWrapper><RecuperarContrasena /></PageWrapper>} />
           <Route path="/nueva-contrasena" element={<PageWrapper><NuevaContrasena /></PageWrapper>} />
+          <Route path="/pago/success" element={<PaymentReturnPage />} />
+          <Route path="/pago/pending" element={<PaymentReturnPage />} />
+          <Route path="/pago/failure" element={<PaymentReturnPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </AnimatePresence>

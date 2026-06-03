@@ -55,6 +55,7 @@ export const ENDPOINTS = {
   miCreditMovements: ({ page, pageSize }) =>
     withQuery('/clientes/me/credit-movements', { page, page_size: pageSize }),
 
+  membershipsPackages: withPrefix('/memberships/packages'),
   paquetes: withPrefix('/paquetes'),
   comprarPaquete: withPrefix('/paquetes/comprar'),
 
@@ -74,6 +75,10 @@ export const ENDPOINTS = {
   coaches: withPrefix('/coaches'),
   coachById: (id) => withPrefix(`/coaches/${id}`),
   coachAgendaMe: ({ from, to }) => withPrefix(`/coaches/me/agenda?from=${from ?? ''}&to=${to ?? ''}`),
+
+  createPaymentCheckoutPreference: withPrefix('/pagos/checkout-preference'),
+  getPaymentStatus: ({ externalReference }) =>
+    withPrefix(`/pagos/estado?external_reference=${externalReference ?? ''}`),
 
   reportes: withPrefix('/admin/reportes'),
   finanzas: withPrefix('/admin/finanzas'),

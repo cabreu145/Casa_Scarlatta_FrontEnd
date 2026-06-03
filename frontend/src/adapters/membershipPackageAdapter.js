@@ -7,8 +7,10 @@ export function mapMembershipPackageToFrontend(payload = {}) {
     creditos: credits,
     clases: credits,
     vigencia: payload.vigencia ?? null,
+    descripcion: payload.description ?? payload.descripcion ?? '',
     beneficios: Array.isArray(payload.beneficios) ? payload.beneficios : [],
     destacado: Boolean(payload.destacado),
     isActive: payload.is_active ?? payload.isActive ?? true,
+    raw: payload ?? {},
   }
 }

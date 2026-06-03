@@ -274,3 +274,5 @@ Estado de estabilización core consolidado (frontend):
 Salida de esta fase:
 - Core estabilizado y listo para QA final multi-rol pre-BUG-009.
 - BUG-009 (Mercado Pago) queda como siguiente módulo grande sin bloqueo por deuda core.
+
+- BUG-009 frontend re-integrado: paquetes backend + checkout backend + retorno por external_reference.

@@ -3,6 +3,9 @@
 }
 
 function normalizeUrl(endpoint) {
+  if (typeof endpoint !== 'string' || !endpoint) {
+    throw new Error('HTTP_REQUEST_PATH_REQUIRED')
+  }
   if (/^https?:\/\//i.test(endpoint)) return endpoint
   const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
   const prefix = import.meta.env.VITE_API_PREFIX ?? '/api/v1'

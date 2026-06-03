@@ -28,4 +28,27 @@ describe('membershipPackagesApiService', () => {
     expect(result).toHaveLength(1)
     expect(result[0]).toMatchObject({ id: 1, nombre: 'Mensual 8', creditos: 8, precio: 1500 })
   })
+
+  test('tolera shape paginado con items', async () => {
+    httpGet.mockResolvedValue({
+      page: 1,
+      page_size: 20,
+      total: 1,
+      items: [{ id: 2, name: 'Mensual 12', credits: 12, price_mxn: 2100, is_active: true }],
+    })
+    const { getMembershipPackagesApi } = await import('./membershipPackagesApiService')
+    const result = await getMembershipPackagesApi()
+
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ id: 2, nombre: 'Mensual 12', creditos: 12, precio: 2100 })
+  })
+
+  test('lanza error claro si endpoint falta', async () => {
+    vi.resetModules()
+    vi.doMock('@/constants/api', () => ({
+      ENDPOINTS: {},
+    }))
+    const { getMembershipPackagesApi } = await import('./membershipPackagesApiService')
+    await expect(getMembershipPackagesApi()).rejects.toThrow('MEMBERSHIP_PACKAGES_ENDPOINT_MISSING')
+  })
 })

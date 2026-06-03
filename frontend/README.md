@@ -284,3 +284,6 @@ Pendiente separado:
 ## Cierre pre-BUG-009
 Core stabilization listo para QA final pre-Mercado Pago.
 Siguiente módulo recomendado: BUG-009 (integración Mercado Pago).
+- Paquetes en API mode ya vuelven a consumirse desde backend, con checkout y retorno post-pago activos.
+
+- Paquetes & Pagos ahora incluye seguimiento local de pagos recientes y retorno post-pago amigable.
