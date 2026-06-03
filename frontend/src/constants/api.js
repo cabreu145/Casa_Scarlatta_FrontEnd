@@ -54,6 +54,8 @@ export const ENDPOINTS = {
   miEstadoFinanciero: withPrefix('/clientes/me/estado-financiero'),
   miCreditMovements: ({ page, pageSize }) =>
     withQuery('/clientes/me/credit-movements', { page, page_size: pageSize }),
+  clientPayments: ({ page, pageSize, status } = {}) =>
+    withQuery('/clientes/me/pagos', { page, page_size: pageSize, status }),
 
   membershipsPackages: withPrefix('/memberships/packages'),
   paquetes: withPrefix('/paquetes'),

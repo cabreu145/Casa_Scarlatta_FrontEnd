@@ -37,7 +37,7 @@ export function getFriendlyPaymentState(statusData = {}) {
 
   if (status === 'approved' && applied) return 'Acreditado'
   if (status === 'approved' && !applied) return 'Aprobado, actualizando créditos'
-  if (status === 'pending' || status === 'in_process') return 'Pendiente de acreditación'
+  if (status === 'pending' || status === 'in_process' || status === 'authorized') return 'Pendiente de acreditación'
   if (status === 'created') return 'Esperando confirmación'
   if (status === 'rejected' || status === 'failed' || status === 'cancelled') return 'No procesado'
   return 'En validación'
@@ -83,7 +83,7 @@ export function resolvePaymentUiState({ statusData = {}, routeKind = 'unknown', 
     }
   }
 
-  if (status === 'pending' || status === 'in_process') {
+  if (status === 'pending' || status === 'in_process' || status === 'authorized') {
     return {
       tone: 'info',
       title: 'Pago pendiente de acreditación',

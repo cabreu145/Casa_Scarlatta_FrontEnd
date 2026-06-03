@@ -226,3 +226,8 @@ BUG-009 es **mixto frontend + backend + integración externa** y **debe iniciar 
   - redirect `success|pending|failure` no confirma pago por si solo.
 - Gap backend opcional:
   - para mensajes mas especificos por OXXO/SPEI/efectivo conviene exponer `payment_method_id`, `payment_type_id`, `status_detail` en `GET /pagos/estado`.
+
+## Historial real backend (2026-06-03)
+- Cliente > Paquetes & Pagos ya puede usar `GET /api/v1/clientes/me/pagos?page=&page_size=&status=` como fuente real de historial.
+- El checkout frontend no decide `init_point` vs `sandbox_init_point`: abre `checkout_url` devuelto por backend.
+- El tracking local queda solo como fallback puntual de retorno post-pago, no como source of truth del dashboard.

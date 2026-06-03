@@ -452,5 +452,7 @@ Decisión final:
 
 - Nota 2026-06-02: BUG-009 frontend re-integrado con paquetes backend, checkout backend y retorno por external_reference.
 
+- Nota 2026-06-03: Cliente > Paquetes & Pagos ya consume historial real desde `GET /api/v1/clientes/me/pagos`; el tracking local deja de ser fuente principal.
+
 - Validar pantalla post-pago con vista amigable, detalles t?cnicos colapsables y panel "Estado de pagos recientes" en Paquetes & Pagos.
 - Tracking local solo recuerda pagos iniciados desde este navegador; backend sigue confirmando estado real por external_reference.

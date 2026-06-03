@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import PaginationControls from '@/components/ui/PaginationControls'
+import { getMyPaymentsApi } from '@/services/clientPaymentsApiService'
 import { getPaymentStatusApi } from '@/services/paymentsApiService'
-import {
-  readRecentPaymentReferences,
-  removeRecentPaymentReference,
-  upsertRecentPaymentReference,
-} from '@/features/pagos/paymentTracking'
-import { getFriendlyPaymentState, resolvePaymentUiState } from '@/features/pagos/paymentUi'
+import { getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
+
+const PAGE_SIZE = 10
+
+const PAYMENT_FILTERS = [
+  { value: 'all', label: 'Todos' },
+  { value: 'pending', label: 'Pendientes' },
+  { value: 'approved', label: 'Acreditados' },
+  { value: 'blocked', label: 'No procesados' },
+]
 
 function formatCurrency(value) {
   if (value === null || value === undefined || value === '') return 'N/A'
@@ -18,105 +24,192 @@ function formatLastUpdate(item) {
   return item.appliedAt || item.approvedAt || item.updatedAt || item.createdAt || 'Sin fecha'
 }
 
+function getPaymentCategory(item = {}) {
+  const status = String(item.status ?? '').toLowerCase()
+  const applied = Boolean(item.applied)
+
+  if (status === 'approved' && applied) return 'approved'
+  if (status === 'failed' || status === 'rejected' || status === 'cancelled') return 'blocked'
+  return 'pending'
+}
+
+function getFriendlyPaymentState(item = {}) {
+  const status = String(item.status ?? '').toLowerCase()
+  const applied = Boolean(item.applied)
+
+  if (status === 'approved' && applied) return 'Acreditado'
+  if (status === 'approved' && !applied) return 'Aprobado, actualizando créditos'
+  if (status === 'pending' || status === 'in_process' || status === 'authorized') return 'Pendiente de acreditación'
+  if (status === 'created') return 'Esperando confirmación'
+  if (status === 'failed' || status === 'rejected' || status === 'cancelled') return 'No procesado'
+  return 'En validación'
+}
+
+function getPaymentSupportMessage(item = {}) {
+  const paymentMethodId = String(item.paymentMethodId ?? '').toLowerCase()
+  const paymentTypeId = String(item.paymentTypeId ?? '').toLowerCase()
+  const fingerprint = `${paymentMethodId} ${paymentTypeId}`.trim()
+
+  if (fingerprint.includes('oxxo') || fingerprint.includes('ticket')) {
+    return 'Si pagaste en OXXO o tienda autorizada, la acreditación puede tardar de 1 a 2 días hábiles.'
+  }
+  if (fingerprint.includes('spei') || fingerprint.includes('bank_transfer') || fingerprint.includes('transfer')) {
+    return 'Si pagaste por transferencia, la acreditación puede tardar hasta que Mercado Pago confirme la operación.'
+  }
+  if (
+    fingerprint.includes('7eleven') ||
+    fingerprint.includes('seven eleven') ||
+    fingerprint.includes('circle_k') ||
+    fingerprint.includes('soriana') ||
+    fingerprint.includes('extra') ||
+    fingerprint.includes('calimax') ||
+    fingerprint.includes('bbva') ||
+    fingerprint.includes('santander')
+  ) {
+    return 'Si pagaste en tienda autorizada, la acreditación puede tardar entre minutos y horas, según confirmación de Mercado Pago.'
+  }
+  return 'Tus créditos se acreditarán automáticamente cuando Mercado Pago confirme el pago.'
+}
+
+function buildCardCopy(item = {}) {
+  const status = String(item.status ?? '').toLowerCase()
+  const applied = Boolean(item.applied)
+
+  if (status === 'approved' && applied) {
+    return {
+      title: 'Pago aprobado',
+      message: 'Tus créditos fueron actualizados correctamente.',
+      statusLabel: getFriendlyPaymentState(item),
+      supportMessage: null,
+    }
+  }
+
+  if (status === 'approved' && !applied) {
+    return {
+      title: 'Pago aprobado, actualizando créditos',
+      message: 'Mercado Pago ya aprobó tu pago. Estamos terminando de actualizar tus créditos.',
+      statusLabel: getFriendlyPaymentState(item),
+      supportMessage: getPaymentSupportMessage(item),
+    }
+  }
+
+  if (status === 'pending' || status === 'in_process' || status === 'authorized') {
+    return {
+      title: 'Pago pendiente de acreditación',
+      message: 'Recibimos tu solicitud de pago. Tus créditos se acreditarán automáticamente cuando Mercado Pago confirme el pago.',
+      statusLabel: getFriendlyPaymentState(item),
+      supportMessage: getPaymentSupportMessage(item),
+    }
+  }
+
+  if (status === 'created') {
+    return {
+      title: 'Pago creado, esperando confirmación',
+      message: 'Tu checkout fue creado correctamente. Si ya realizaste el pago, puedes verificar el estado más tarde.',
+      statusLabel: getFriendlyPaymentState(item),
+      supportMessage: null,
+    }
+  }
+
+  if (status === 'failed' || status === 'rejected' || status === 'cancelled') {
+    return {
+      title: 'No pudimos confirmar tu pago',
+      message: 'Mercado Pago no pudo procesar esta operación. Tus créditos no fueron modificados.',
+      statusLabel: getFriendlyPaymentState(item),
+      supportMessage: null,
+    }
+  }
+
+  return {
+    title: 'Estamos consultando el estado real de tu pago.',
+    message: '',
+    statusLabel: getFriendlyPaymentState(item),
+    supportMessage: null,
+  }
+}
+
 export default function RecentPaymentsStatusPanel({ enabled, onFinancialRefreshRequested }) {
   const [items, setItems] = useState([])
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(PAGE_SIZE)
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [refreshingRefs, setRefreshingRefs] = useState({})
-  const [openDetails, setOpenDetails] = useState({})
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [refreshTick, setRefreshTick] = useState(0)
 
-  const orderedItems = useMemo(
-    () => [...items].sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? ''))),
-    [items]
+  const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize))
+
+  const visibleItems = useMemo(
+    () => items.filter((item) => statusFilter === 'all' || getPaymentCategory(item) === statusFilter),
+    [items, statusFilter]
   )
-
-  const syncItem = (reference, statusData) => {
-    const mergedList = upsertRecentPaymentReference({
-      externalReference: reference.externalReference,
-      packageId: statusData.packageId ?? reference.packageId ?? null,
-      packageName: reference.packageName ?? null,
-      amount: statusData.amount ?? reference.amount ?? null,
-      credits: statusData.credits ?? reference.credits ?? null,
-      status: statusData.status ?? reference.status ?? null,
-      applied: statusData.applied ?? reference.applied ?? null,
-      paymentMethodId: statusData.paymentMethodId ?? reference.paymentMethodId ?? null,
-      paymentTypeId: statusData.paymentTypeId ?? reference.paymentTypeId ?? null,
-      statusDetail: statusData.statusDetail ?? reference.statusDetail ?? null,
-      failureReason: statusData.failureReason ?? reference.failureReason ?? null,
-      paymentId: statusData.paymentId ?? reference.paymentId ?? null,
-      preferenceId: statusData.preferenceId ?? reference.preferenceId ?? null,
-      merchantOrderId: statusData.merchantOrderId ?? reference.merchantOrderId ?? null,
-      approvedAt: statusData.approvedAt ?? reference.approvedAt ?? null,
-      appliedAt: statusData.appliedAt ?? reference.appliedAt ?? null,
-      createdAt: reference.createdAt ?? null,
-    })
-    setItems(mergedList)
-    return mergedList.find((item) => item.externalReference === reference.externalReference) ?? reference
-  }
-
-  const refreshOne = async (reference) => {
-    if (!reference?.externalReference) return
-    setRefreshingRefs((prev) => ({ ...prev, [reference.externalReference]: true }))
-    try {
-      const statusData = await getPaymentStatusApi({ externalReference: reference.externalReference })
-      const merged = syncItem(reference, statusData)
-      if (statusData.status === 'approved' && statusData.applied) {
-        onFinancialRefreshRequested?.()
-      }
-      return merged
-    } catch (err) {
-      setError(err?.message || 'No se pudo consultar estado de pago')
-      return null
-    } finally {
-      setRefreshingRefs((prev) => ({ ...prev, [reference.externalReference]: false }))
-    }
-  }
 
   useEffect(() => {
     if (!enabled) return
     let active = true
-
-    const load = async () => {
+    const run = async () => {
       setLoading(true)
       setError('')
       try {
-        const stored = readRecentPaymentReferences()
+        const result = await getMyPaymentsApi({ page, pageSize })
         if (!active) return
-        if (!stored.length) {
-          setItems([])
-          return
+        const nextTotalPages = Math.max(1, Math.ceil((result.total ?? 0) / pageSize))
+        setItems(result.items ?? [])
+        setTotal(result.total ?? 0)
+        if ((result.page ?? page) > nextTotalPages) {
+          setPage(nextTotalPages)
         }
-        const results = await Promise.all(stored.map(async (reference) => {
-          try {
-            const statusData = await getPaymentStatusApi({ externalReference: reference.externalReference })
-            return syncItem(reference, statusData)
-          } catch (err) {
-            return {
-              ...reference,
-              status: reference.status ?? null,
-              statusError: err?.message || 'No se pudo consultar estado de pago',
-            }
-          }
-        }))
-        if (!active) return
-        setItems(results)
-        const approvedApplied = results.some((item) => item.status === 'approved' && item.applied)
+        const approvedApplied = (result.items ?? []).some((item) => item.status === 'approved' && item.applied)
         if (approvedApplied) {
           onFinancialRefreshRequested?.()
         }
       } catch (err) {
         if (!active) return
-        setError(err?.message || 'No se pudo cargar historial local de pagos')
+        setItems([])
+        setTotal(0)
+        setError(err?.message || 'No se pudo cargar historial de pagos')
       } finally {
         if (active) setLoading(false)
       }
     }
 
-    load()
+    run()
     return () => {
       active = false
     }
-  }, [enabled, onFinancialRefreshRequested])
+  }, [enabled, page, pageSize, refreshTick, onFinancialRefreshRequested])
+
+  useEffect(() => {
+    if (!enabled) return
+    setPage(1)
+  }, [enabled, statusFilter])
+
+  const refreshOne = useCallback(async (item) => {
+    if (!item?.externalReference) return
+    setRefreshingRefs((prev) => ({ ...prev, [item.externalReference]: true }))
+    try {
+      const statusData = await getPaymentStatusApi({ externalReference: item.externalReference })
+      setItems((prev) => prev.map((current) => (
+        current.externalReference === item.externalReference
+          ? { ...current, ...statusData, externalReference: statusData.externalReference ?? current.externalReference }
+          : current
+      )))
+
+      if (statusData.status === 'approved' && statusData.applied) {
+        onFinancialRefreshRequested?.()
+      }
+
+      setRefreshTick((tick) => tick + 1)
+      return statusData
+    } catch (err) {
+      setError(err?.message || 'No se pudo consultar estado de pago')
+      return null
+    } finally {
+      setRefreshingRefs((prev) => ({ ...prev, [item.externalReference]: false }))
+    }
+  }, [onFinancialRefreshRequested])
 
   if (!enabled) return null
 
@@ -128,25 +221,50 @@ export default function RecentPaymentsStatusPanel({ enabled, onFinancialRefreshR
       border: '1px solid rgba(42, 26, 31, 0.12)',
       background: '#fff',
     }}>
-      <div style={{ marginBottom: 16 }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontStyle: 'italic', fontWeight: 400, margin: 0 }}>
-          Estado de pagos recientes
-        </h2>
-        
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 16 }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontStyle: 'italic', fontWeight: 400, margin: 0 }}>
+            Estado de pagos recientes
+          </h2>
+          <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)' }}>
+            Historial real del cliente desde backend. Verifica pendientes, acreditados y no procesados.
+          </p>
+        </div>
+
+        <label style={{ display: 'grid', gap: 4, minWidth: 180, fontSize: 12, color: 'var(--muted)' }}>
+          Filtro
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{
+              borderRadius: 12,
+              border: '1px solid rgba(42, 26, 31, 0.16)',
+              padding: '8px 10px',
+              background: '#fff',
+            }}
+          >
+            {PAYMENT_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {loading && <div style={{ color: 'var(--muted)', fontSize: 13 }}>Cargando pagos recientes...</div>}
       {!loading && error && <div style={{ color: '#b42318', fontSize: 13 }}>{error}</div>}
-      {!loading && !error && orderedItems.length === 0 && (
+      {!loading && !error && total === 0 && (
         <div style={{ color: 'var(--muted)', fontSize: 13 }}>No tienes pagos recientes en seguimiento.</div>
+      )}
+      {!loading && !error && total > 0 && visibleItems.length === 0 && (
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+          No hay pagos en esta categoría en esta página. Cambia de filtro o página.
+        </div>
       )}
 
       <div style={{ display: 'grid', gap: 12 }}>
-        {orderedItems.map((item) => {
-          const liveState = getFriendlyPaymentState(item)
-          const panelState = resolvePaymentUiState({ statusData: item })
+        {visibleItems.map((item) => {
+          const cardCopy = buildCardCopy(item)
           const isRefreshing = Boolean(refreshingRefs[item.externalReference])
-          const hasTechOpen = Boolean(openDetails[item.externalReference])
           return (
             <article
               key={item.externalReference}
@@ -183,12 +301,12 @@ export default function RecentPaymentsStatusPanel({ enabled, onFinancialRefreshR
                   fontWeight: 700,
                   whiteSpace: 'nowrap',
                 }}>
-                  {liveState}
+                  {cardCopy.statusLabel}
                 </div>
               </div>
 
-              {panelState.message && <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>{panelState.message}</div>}
-              {panelState.supportMessage && <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>{panelState.supportMessage}</div>}
+              {cardCopy.message && <div style={{ fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>{cardCopy.message}</div>}
+              {cardCopy.supportMessage && <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>{cardCopy.supportMessage}</div>}
               <div style={{ fontSize: 13, color: 'var(--muted)' }}>
                 Última actualización: {formatLastUpdate(item)}
               </div>
@@ -209,66 +327,47 @@ export default function RecentPaymentsStatusPanel({ enabled, onFinancialRefreshR
                 >
                   {isRefreshing ? 'Verificando...' : 'Verificar estado'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setOpenDetails((prev) => ({ ...prev, [item.externalReference]: !prev[item.externalReference] }))}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: 999,
-                    border: '1px solid rgba(42, 26, 31, 0.16)',
-                    background: '#fff',
-                  }}
-                >
-                  {hasTechOpen ? 'Ocultar detalles' : 'Ver detalles'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setItems(removeRecentPaymentReference(item.externalReference))}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: 999,
-                    border: '1px solid rgba(42, 26, 31, 0.16)',
-                    background: '#fff',
-                  }}
-                >
-                  Quitar de la lista
-                </button>
               </div>
 
-              {hasTechOpen && (
-                <details open style={{
-                  marginTop: 2,
-                  borderTop: '1px solid rgba(42, 26, 31, 0.08)',
-                  paddingTop: 12,
-                }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Detalles técnicos para soporte</summary>
-                  <div style={{ marginTop: 10, display: 'grid', gap: 8, fontSize: 13 }}>
-                    {[
-                      ['externalReference', item.externalReference],
-                      ['status', item.status],
-                      ['applied', item.applied],
-                      ['paymentId', item.paymentId],
-                      ['preferenceId', item.preferenceId],
-                      ['merchantOrderId', item.merchantOrderId],
-                      ['paymentMethodId', item.paymentMethodId],
-                      ['paymentTypeId', item.paymentTypeId],
-                      ['statusDetail', item.statusDetail],
-                      ['failureReason', item.failureReason],
-                      ['approvedAt', item.approvedAt],
-                      ['appliedAt', item.appliedAt],
-                    ].map(([label, value]) => (
-                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-                        <strong>{label}</strong>
-                        <span>{value === null || value === undefined || value === '' ? 'N/A' : String(value)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
+              <details style={{
+                marginTop: 2,
+                borderTop: '1px solid rgba(42, 26, 31, 0.08)',
+                paddingTop: 12,
+              }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Detalles técnicos para soporte</summary>
+                <div style={{ marginTop: 10, display: 'grid', gap: 8, fontSize: 13 }}>
+                  {[
+                    ['externalReference', item.externalReference],
+                    ['paymentId', item.paymentId],
+                    ['preferenceId', item.preferenceId],
+                    ['merchantOrderId', item.merchantOrderId],
+                    ['paymentMethodId', item.paymentMethodId],
+                    ['paymentTypeId', item.paymentTypeId],
+                    ['statusDetail', item.statusDetail],
+                    ['failureReason', item.failureReason],
+                    ['approvedAt', item.approvedAt],
+                    ['appliedAt', item.appliedAt],
+                    ['createdAt', item.createdAt],
+                  ].map(([label, value]) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                      <strong>{label}</strong>
+                      <span>{value === null || value === undefined || value === '' ? 'N/A' : String(value)}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
             </article>
           )
         })}
       </div>
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        label="Pagos"
+        onPrev={() => setPage((current) => Math.max(1, current - 1))}
+        onNext={() => setPage((current) => Math.min(totalPages, current + 1))}
+      />
     </section>
   )
 }

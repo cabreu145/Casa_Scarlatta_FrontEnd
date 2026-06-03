@@ -287,3 +287,6 @@ Siguiente módulo recomendado: BUG-009 (integración Mercado Pago).
 - Paquetes en API mode ya vuelven a consumirse desde backend, con checkout y retorno post-pago activos.
 
 - Paquetes & Pagos ahora incluye seguimiento local de pagos recientes y retorno post-pago amigable.
+- Paquetes & Pagos ya usa historial real backend con `GET /api/v1/clientes/me/pagos`.
+- `checkout_url` viene del backend; frontend no decide `init_point` ni `sandbox_init_point`.
+- Tracking local queda solo como fallback puntual de retorno post-pago.
