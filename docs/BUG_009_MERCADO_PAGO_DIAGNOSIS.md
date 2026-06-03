@@ -227,6 +227,9 @@ BUG-009 es **mixto frontend + backend + integración externa** y **debe iniciar 
 - Gap backend opcional:
   - para mensajes mas especificos por OXXO/SPEI/efectivo conviene exponer `payment_method_id`, `payment_type_id`, `status_detail` en `GET /pagos/estado`.
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
 
 ## Nota de re-integracion frontend (2026-06-02)
 - Paquetes en API mode vuelven a consumirse desde `GET /api/v1/memberships/packages`.
@@ -235,5 +238,8 @@ BUG-009 es **mixto frontend + backend + integración externa** y **debe iniciar 
 - PaymentReturnPage tiene vista amigable para usuario final y detalles t?cnicos colapsables para soporte.
 - Paquetes & Pagos muestra "Estado de pagos recientes" con tracking local temporal desde este navegador.
 - Tracking local no es source of truth; backend sigue decidiendo aprobado/aplicado.
+<<<<<<< HEAD
 =======
 >>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
+=======
+>>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)

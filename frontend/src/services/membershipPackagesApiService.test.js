@@ -29,6 +29,9 @@ describe('membershipPackagesApiService', () => {
     expect(result[0]).toMatchObject({ id: 1, nombre: 'Mensual 8', creditos: 8, precio: 1500 })
   })
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
 
   test('tolera shape paginado con items', async () => {
     httpGet.mockResolvedValue({
@@ -52,6 +55,9 @@ describe('membershipPackagesApiService', () => {
     const { getMembershipPackagesApi } = await import('./membershipPackagesApiService')
     await expect(getMembershipPackagesApi()).rejects.toThrow('MEMBERSHIP_PACKAGES_ENDPOINT_MISSING')
   })
+<<<<<<< HEAD
 =======
 >>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
+=======
+>>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
 })

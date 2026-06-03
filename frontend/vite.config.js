@@ -48,10 +48,14 @@ export default defineConfig({
    server: {
     allowedHosts: [
 <<<<<<< HEAD
+<<<<<<< HEAD
       'e857-189-176-134-126.ngrok-free.app'
 =======
       '2cc3-189-176-134-126.ngrok-free.app'
 >>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
+=======
+      'e857-189-176-134-126.ngrok-free.app'
+>>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
     ]
   },
   test: {

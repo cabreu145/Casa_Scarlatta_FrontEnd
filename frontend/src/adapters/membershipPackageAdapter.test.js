@@ -10,9 +10,13 @@ describe('membershipPackageAdapter', () => {
       price_mxn: 2100,
       is_active: true,
 <<<<<<< HEAD
+<<<<<<< HEAD
       description: 'Plan mensual',
 =======
 >>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
+=======
+      description: 'Plan mensual',
+>>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
     })).toEqual({
       id: 2,
       nombre: 'Mensual 12',
@@ -21,6 +25,9 @@ describe('membershipPackageAdapter', () => {
       clases: 12,
       vigencia: null,
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
       descripcion: 'Plan mensual',
       beneficios: [],
       destacado: false,
@@ -33,11 +40,14 @@ describe('membershipPackageAdapter', () => {
         is_active: true,
         description: 'Plan mensual',
       },
+<<<<<<< HEAD
 =======
       beneficios: [],
       destacado: false,
       isActive: true,
 >>>>>>> 55c0f14 (feat: add membership and payment adapters with corresponding tests)
+=======
+>>>>>>> 6793846 (feat: add payment tracking tests and implement payment UI logic)
     })
   })
 })
