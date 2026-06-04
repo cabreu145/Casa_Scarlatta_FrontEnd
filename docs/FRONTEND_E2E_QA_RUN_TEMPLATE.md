@@ -462,3 +462,12 @@ Decisión final:
 - Source of truth: backend spots + holds.
 - STRYDE: bench + treadmill. SLOW: mat.
 - Do not use label as unique id; use spot_id for actions.
+## Nota 2026-06-03 - Landing paquetes -> dashboard pagos
+- Landing usa catálogo backend real `GET /api/v1/memberships/packages` en API mode.
+- Click Comprar sin sesión:
+  - guarda intención local `pending_package_purchase_id`
+  - redirige a `/login?redirect=/cliente/dashboard?section=pagos&packageId=...`
+- Click Comprar con cliente autenticado:
+  - redirige directo a `/cliente/dashboard?section=pagos&packageId=...`
+- En dashboard, paquete queda resaltado; compra real ocurre solo con `PagoModal` + checkout backend.
+- Redirect post-login acepta solo rutas internas que empiezan con `/`.

@@ -49,4 +49,13 @@ describe('clasesApiService write', () => {
     expect(result.isPaginated).toBe(true)
     expect(result.total).toBe(10)
   })
+
+  test('getClasesApi tolera payload con items', async () => {
+    httpGet.mockResolvedValue({ items: [{ id: 2, name: 'B' }] })
+    const { getClasesApi } = await import('./clasesApiService')
+    const result = await getClasesApi()
+    expect(httpGet).toHaveBeenCalledWith('/api/v1/clases')
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ id: 2, nombre: 'B' })
+  })
 })

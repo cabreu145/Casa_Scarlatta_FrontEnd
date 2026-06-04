@@ -3,6 +3,11 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import PasswordInput from '@/components/ui/PasswordInput'
+import {
+  clearPendingPackagePurchaseIntent,
+  normalizeInternalRedirect,
+  readPendingPackagePurchaseIntent,
+} from '@/utils/packagePurchaseIntent'
 import styles from './Login.module.css'
 
 const rolDashboard = {
@@ -63,6 +68,7 @@ function LegalModal({ titulo, children, onClose }) {
 export default function Login() {
   const location = useLocation()
   const reservation = location.state ?? {}
+  const redirectFromQuery = normalizeInternalRedirect(new URLSearchParams(location.search).get('redirect'))
   const [mode, setMode] = useState('login')
 
   return (
@@ -100,14 +106,14 @@ export default function Login() {
         </div>
 
         {mode === 'login'
-          ? <LoginForm from={location.state?.from} />
+          ? <LoginForm redirect={redirectFromQuery} />
           : <RegisterForm onSuccess={() => setMode('login')} LegalModal={LegalModal} />}
       </div>
     </main>
   )
 }
 
-function LoginForm({ from }) {
+function LoginForm({ redirect }) {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -121,7 +127,15 @@ function LoginForm({ from }) {
     try {
       const user = await login(email, password)
       toast.success(`Bienvenido, ${user.nombre.split(' ')[0]}`)
-      navigate(rolDashboard[user.rol] ?? '/', { replace: true })
+      const pendingIntent = readPendingPackagePurchaseIntent()
+      const safePendingRedirect = normalizeInternalRedirect(pendingIntent.redirect)
+      const safeRedirect = normalizeInternalRedirect(redirect)
+      const destination =
+        user.rol === 'cliente'
+          ? safePendingRedirect ?? safeRedirect ?? rolDashboard[user.rol] ?? '/cliente/dashboard'
+          : rolDashboard[user.rol] ?? '/'
+      clearPendingPackagePurchaseIntent()
+      navigate(destination, { replace: true })
     } catch (err) {
       toast.error(err.message || 'Error al iniciar sesión')
     } finally {

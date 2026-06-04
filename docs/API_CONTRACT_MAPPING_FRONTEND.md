@@ -92,3 +92,9 @@ Notas BUG-013:
 - Source of truth: backend spots + holds.
 - STRYDE: bench + treadmill. SLOW: mat.
 - Do not use label as unique id; use spot_id for actions.
+
+## Nota 2026-06-03 - Landing paquetes -> dashboard pagos
+- Landing compra usa catálogo backend `GET /api/v1/memberships/packages`.
+- Botón Comprar no procesa pago en landing; solo guarda intención y redirige a login o dashboard pagos.
+- Post-login seguro: `redirect` interno solo si empieza con `/`.
+- Dashboard pagos recibe `section=pagos&packageId=...` para resaltar paquete y abrir `PagoModal` real dentro de cliente autenticado.

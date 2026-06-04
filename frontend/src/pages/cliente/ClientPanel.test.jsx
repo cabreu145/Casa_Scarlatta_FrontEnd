@@ -172,6 +172,8 @@ describe('ClientPanel payments section', () => {
     vi.stubEnv('VITE_USE_API_RESERVATIONS', 'true')
     vi.stubEnv('VITE_USE_API_WAITLIST', 'true')
     window.history.pushState({}, '', '/cliente/dashboard?section=pagos')
+    mockGetMembershipPackagesApi.mockReset()
+    mockGetMembershipPackagesApi.mockResolvedValue([])
   })
 
   test('renderiza pagos recientes sin crash', async () => {
@@ -184,5 +186,31 @@ describe('ClientPanel payments section', () => {
     )
 
     expect(await screen.findByText(/Estado de pagos recientes/i)).toBeInTheDocument()
+  })
+
+  test('resalta packageId desde query en Paquetes & Pagos', async () => {
+    mockGetMembershipPackagesApi.mockResolvedValueOnce([
+      {
+        id: 2,
+        nombre: 'Mensual 12',
+        precio: 2100,
+        creditos: 12,
+        vigencia: 'Mensual',
+        beneficios: ['Demo'],
+        destacado: true,
+      },
+    ])
+
+    window.history.pushState({}, '', '/cliente/dashboard?section=pagos&packageId=2')
+    const { default: ClientPanel } = await import('./ClientPanel')
+
+    render(
+      <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos&packageId=2']}>
+        <ClientPanel />
+      </MemoryRouter>
+    )
+
+    expect(await screen.findByRole('button', { name: /comprar ahora/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /comprar ahora/i })).toBeInTheDocument()
   })
 })

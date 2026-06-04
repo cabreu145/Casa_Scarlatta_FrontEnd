@@ -296,3 +296,8 @@ Siguiente módulo recomendado: BUG-009 (integración Mercado Pago).
 - Source of truth: backend spots + holds.
 - STRYDE: bench + treadmill. SLOW: mat.
 - Do not use label as unique id; use spot_id for actions.
+## Nota 2026-06-03 - Landing paquetes
+- Landing usa catálogo backend real `GET /api/v1/memberships/packages` en API mode.
+- Compra desde landing no procesa pago ahí: guarda intención y lleva a login o dashboard pagos.
+- Usuario cliente autenticado va directo a `/cliente/dashboard?section=pagos&packageId=...`.
+- Pago real sigue solo dentro de `ClientPanel` con `PagoModal` + backend checkout.

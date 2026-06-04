@@ -9,7 +9,12 @@ import { normalizePaginatedResponse } from '@/adapters/paginationAdapter'
 
 export async function getClasesApi() {
   const payload = await httpGet(ENDPOINTS.clasesList)
-  return mapBackendClassesToFrontend(Array.isArray(payload) ? payload : [])
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.items)
+      ? payload.items
+      : []
+  return mapBackendClassesToFrontend(items)
 }
 
 export async function getClasesPaginatedApi({ page = 1, pageSize = 20 } = {}) {

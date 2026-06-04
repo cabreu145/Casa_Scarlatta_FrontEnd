@@ -145,6 +145,7 @@ export default function ClientPanel() {
   const [isMembershipPackagesLoading, setIsMembershipPackagesLoading] = useState(false)
   const [membershipPackagesError, setMembershipPackagesError] = useState('')
   const sectionQuery = new URLSearchParams(location.search).get('section')
+  const packageIdQuery = new URLSearchParams(location.search).get('packageId')
 
   const historialPagos = useApiFinancialState
     ? (transactions ?? [])
@@ -159,7 +160,7 @@ export default function ClientPanel() {
   )
 
   // â”€â”€ Secciones UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const [activeSection, setActiveSection] = useState('inicio')
+  const [activeSection, setActiveSection] = useState(sectionQuery === 'pagos' ? 'pagos' : 'inicio')
   const [weekOff,    setWeekOff]    = useState(0)
   const [dayIdx,     setDayIdx]     = useState(0)
   const [resWeekOff, setResWeekOff] = useState(0)
@@ -192,6 +193,7 @@ export default function ClientPanel() {
   })
   const weekDays = useMemo(() => buildWeek(weekOff), [weekOff])
   const resWeekDays = useMemo(() => buildWeek(resWeekOff), [resWeekOff])
+  const [selectedPackageId, setSelectedPackageId] = useState(packageIdQuery ?? null)
   const requestFinancialRefresh = useCallback(() => {
     setFinancialRefreshTick((tick) => tick + 1)
   }, [])
@@ -256,6 +258,10 @@ export default function ClientPanel() {
   }, [activeSection, sectionQuery])
 
   useEffect(() => {
+    setSelectedPackageId(packageIdQuery ?? null)
+  }, [packageIdQuery])
+
+  useEffect(() => {
     if (!useApiClasses || !clases.length) return
     const from = resWeekDays[0]?.isoDate
     const to = resWeekDays[resWeekDays.length - 1]?.isoDate
@@ -299,6 +305,10 @@ export default function ClientPanel() {
   ])
   const planNombre = financialUiState.planNombre
   const clasesTotal = financialUiState.clasesTotal
+  const selectedPackage = useMemo(
+    () => paquetesDisponibles.find((p) => String(p.id) === String(selectedPackageId)) ?? null,
+    [paquetesDisponibles, selectedPackageId]
+  )
 
   // Perfil completo desde el store (incluye campos que authStore no persiste)
   const perfilCompleto  = useMemo(
@@ -1490,6 +1500,20 @@ export default function ClientPanel() {
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontStyle: 'italic', color: 'var(--ink)', marginBottom: 4 }}>Nuestros planes</div>
               <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20 }}>Elige el que mejor se adapte a tu ritmo</div>
+              {selectedPackage && (
+                <div style={{
+                  marginBottom: 16,
+                  padding: '12px 14px',
+                  borderRadius: 14,
+                  border: '1px solid rgba(123,31,46,0.14)',
+                  background: 'rgba(123,31,46,0.05)',
+                  color: 'var(--ink)',
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                }}>
+                  Continúa tu compra de <strong>{selectedPackage.nombre}</strong>. El paquete quedó resaltado para que sigas el flujo desde aquí.
+                </div>
+              )}
             </div>
 
             <div className={`${s.grid3}`} style={{ marginBottom: 28 }}>
@@ -1509,8 +1533,18 @@ export default function ClientPanel() {
                 const esPlanActual = useApiFinancialState
                   ? activeMembership?.packageName === p.nombre
                   : usuario?.paquete === p.nombre
+                const isSelectedPackage = selectedPackageId != null && String(p.id) === String(selectedPackageId)
                 return (
-                  <div key={p.id} className={`${s.pricingCard} ${p.destacado ? s.featured : ''}`}>
+                  <div
+                    key={p.id}
+                    className={`${s.pricingCard} ${p.destacado ? s.featured : ''}`}
+                    style={isSelectedPackage ? { border: '1px solid rgba(123,31,46,0.35)', boxShadow: '0 18px 42px rgba(123,31,46,0.16)' } : undefined}
+                  >
+                    {isSelectedPackage && (
+                      <span className={s.pricingTag} style={{ background: 'rgba(123,31,46,0.12)' }}>
+                        Seleccionado
+                      </span>
+                    )}
                     {p.destacado && <span className={s.pricingTag}>Popular</span>}
                     <div className={s.pricingName}>{p.nombre}</div>
                     <div className={s.pricingClasses}>
@@ -1529,10 +1563,14 @@ export default function ClientPanel() {
                     </div>
                     <button
                       className={`${s.btnPricing} ${esPlanActual ? s.btnPricingPrimary : s.btnPricingOutline}`}
-                      onClick={() => !esPlanActual && setPagoModal(p)}
+                      onClick={() => {
+                        if (esPlanActual) return
+                        setSelectedPackageId(String(p.id))
+                        setPagoModal(p)
+                      }}
                       disabled={esPlanActual}
                      >
-                      {esPlanActual ? 'Plan actual' : 'Seleccionar'}
+                      {esPlanActual ? 'Plan actual' : isSelectedPackage ? 'Comprar ahora' : 'Seleccionar'}
                     </button>
                   </div>
                 )
