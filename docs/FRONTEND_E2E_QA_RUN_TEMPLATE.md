@@ -471,3 +471,7 @@ Decisión final:
   - redirige directo a `/cliente/dashboard?section=pagos&packageId=...`
 - En dashboard, paquete queda resaltado; compra real ocurre solo con `PagoModal` + checkout backend.
 - Redirect post-login acepta solo rutas internas que empiezan con `/`.
+## Nota 2026-06-07 - Reservar visual premium
+- `/reservar` recupera flujo visual premium: cards grandes STRYDE X / SLOW, paso sala -> clase -> spot.
+- Reserva real sigue usando flujo actual por spots/holds; no se toca backend ni contratos.
+- Público ve catálogo/clases; acciones de reservar siguen bajo auth de cliente.

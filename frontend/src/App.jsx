@@ -18,6 +18,7 @@ import Login from '@/pages/Login'
 import Registro from '@/pages/Registro'
 import RecuperarContrasena from '@/pages/RecuperarContrasena'
 import NuevaContrasena from '@/pages/NuevaContrasena'
+import Reservar from '@/pages/Reservar'
 
 import NotFound from '@/pages/NotFound'
 
@@ -89,7 +90,7 @@ function AnimatedRoutes() {
           <Route path="/flow" element={<PageWrapper><Flow /></PageWrapper>} />
           <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
           <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
-          <Route path="/reservar" element={<Navigate to="/clases" replace />} />
+          <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
           <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
           <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />
           <Route path="/recuperar-contrasena" element={<PageWrapper><RecuperarContrasena /></PageWrapper>} />

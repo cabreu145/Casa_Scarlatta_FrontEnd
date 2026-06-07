@@ -301,3 +301,7 @@ Siguiente módulo recomendado: BUG-009 (integración Mercado Pago).
 - Compra desde landing no procesa pago ahí: guarda intención y lleva a login o dashboard pagos.
 - Usuario cliente autenticado va directo a `/cliente/dashboard?section=pagos&packageId=...`.
 - Pago real sigue solo dentro de `ClientPanel` con `PagoModal` + backend checkout.
+## Nota 2026-06-07 - Reservar visual premium
+- `/reservar` recupera flujo visual premium: cards grandes STRYDE X / SLOW, paso sala -> clase -> spot.
+- Reserva real sigue usando flujo actual por spots/holds; no se toca backend ni contratos.
+- Público ve catálogo/clases; acciones de reservar siguen bajo auth de cliente.
