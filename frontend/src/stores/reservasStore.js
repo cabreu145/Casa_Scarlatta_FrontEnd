@@ -18,11 +18,13 @@ import { RESERVAS_MOCK, ESTADOS_RESERVA } from '@/data/mockData'
 import { getMisReservasApi } from '@/services/reservasApiService'
 
 const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
+const inflightReservasLoads = new Map()
 
 export const useReservasStore = create(
   persist(
     (set, get) => ({
       reservas: RESERVAS_MOCK,
+      hasLoadedFromApi: false,
 
       getReservasByUsuario: (userId) =>
         get().reservas.filter((r) => r.userId === userId),
@@ -32,17 +34,35 @@ export const useReservasStore = create(
           (r) => r.claseId === claseId && r.estado === ESTADOS_RESERVA.CONFIRMADA
         ),
 
-      setReservas: (reservas) => set({ reservas: Array.isArray(reservas) ? reservas : [] }),
+      setReservas: (reservas) => set({ reservas: Array.isArray(reservas) ? reservas : [], hasLoadedFromApi: true }),
 
-      loadMisReservasFromApi: async () => {
+      loadMisReservasFromApi: async ({ force = false } = {}) => {
         if (!useApiReservations) return get().reservas
-        const reservasApi = await getMisReservasApi()
-        set({ reservas: reservasApi })
-        return reservasApi
+        const current = get()
+        if (!force && current.hasLoadedFromApi) {
+          return current.reservas
+        }
+        const currentSignature = 'reservas'
+        if (inflightReservasLoads.has(currentSignature)) {
+          return inflightReservasLoads.get(currentSignature)
+        }
+
+        const request = getMisReservasApi()
+          .then((reservasApi) => {
+            set({ reservas: reservasApi, hasLoadedFromApi: true })
+            return reservasApi
+          })
+          .finally(() => {
+            inflightReservasLoads.delete(currentSignature)
+          })
+
+        inflightReservasLoads.set(currentSignature, request)
+        return request
       },
 
       agregarReserva: (reserva) =>
         set((state) => ({
+          hasLoadedFromApi: state.hasLoadedFromApi,
           reservas: [...state.reservas, { ...reserva, id: Date.now() }],
         })),
 
@@ -52,6 +72,7 @@ export const useReservasStore = create(
         )
         if (!reserva || reserva.estado !== ESTADOS_RESERVA.CONFIRMADA) return false
         set((state) => ({
+          hasLoadedFromApi: state.hasLoadedFromApi,
           reservas: state.reservas.map((r) =>
             r.id === reservaId ? { ...r, estado: ESTADOS_RESERVA.CANCELADA } : r
           ),
@@ -61,6 +82,7 @@ export const useReservasStore = create(
 
       marcarNoAsistio: (reservaId) =>
         set((state) => ({
+          hasLoadedFromApi: state.hasLoadedFromApi,
           reservas: state.reservas.map((r) =>
             r.id === reservaId ? { ...r, estado: ESTADOS_RESERVA.NO_ASISTIO } : r
           ),
@@ -68,6 +90,7 @@ export const useReservasStore = create(
 
       marcarCompletada: (reservaId) =>
         set((state) => ({
+          hasLoadedFromApi: state.hasLoadedFromApi,
           reservas: state.reservas.map((r) =>
             r.id === reservaId ? { ...r, estado: ESTADOS_RESERVA.COMPLETADA } : r
           ),
@@ -75,6 +98,7 @@ export const useReservasStore = create(
 
       cancelarReservasByClase: (claseId) =>
         set((state) => ({
+          hasLoadedFromApi: state.hasLoadedFromApi,
           reservas: state.reservas.map((r) =>
             r.claseId === claseId && r.estado === ESTADOS_RESERVA.CONFIRMADA
               ? { ...r, estado: ESTADOS_RESERVA.CANCELADA }
@@ -82,6 +106,14 @@ export const useReservasStore = create(
           ),
         })),
     }),
-    { name: 'casa-scarlatta-reservas' }
+    {
+      name: 'casa-scarlatta-reservas',
+      version: 1,
+      migrate: (persistedState) => ({
+        ...persistedState,
+        hasLoadedFromApi: false,
+      }),
+      partialize: (state) => ({ reservas: state.reservas }),
+    }
   )
 )

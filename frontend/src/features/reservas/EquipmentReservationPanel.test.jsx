@@ -281,6 +281,67 @@ describe('EquipmentReservationPanel', () => {
     })
   })
 
+  test('libera hold una sola vez al cambiar spot y al desmontar', async () => {
+    const user = userEvent.setup()
+    const releaseHoldOnceMock = releaseSpotHoldMock
+    getOccurrenceSpotsMock.mockResolvedValue(buildSlowResponse())
+    createSpotHoldMock
+      .mockResolvedValueOnce({
+        holdId: 901,
+        occurrenceId: 5,
+        spotId: 1,
+        status: 'held',
+        expiresAt: '2026-06-03T02:35:00',
+        serverNow: '2026-06-03T02:30:00',
+      })
+      .mockResolvedValueOnce({
+        holdId: 902,
+        occurrenceId: 5,
+        spotId: 2,
+        status: 'held',
+        expiresAt: '2026-06-03T02:35:00',
+        serverNow: '2026-06-03T02:30:00',
+      })
+
+    const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
+    const { unmount } = render(
+      <EquipmentReservationPanel
+        occurrenceId={5}
+        classId={9}
+        userId={3}
+        financialState={{
+          financialState: {},
+          creditsBalance: 12,
+          activeMembership: { creditsAvailable: 12 },
+          isLoading: false,
+          error: null,
+        }}
+      />
+    )
+
+    await user.click(await screen.findByRole('button', { name: /Tapete 01/i }))
+    await waitFor(() => {
+      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotId: 1 })
+    })
+
+    await user.click(screen.getByRole('button', { name: /Tapete 02/i }))
+    await waitFor(() => {
+      expect(releaseHoldOnceMock).toHaveBeenCalledTimes(1)
+      expect(releaseHoldOnceMock).toHaveBeenCalledWith({ holdId: 901 })
+      expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 5, spotId: 2 })
+    })
+
+    const closeButton = screen.getByRole('button', { name: /cerrar/i })
+    await user.click(closeButton)
+    await waitFor(() => {
+      expect(releaseHoldOnceMock).toHaveBeenCalledTimes(2)
+      expect(releaseHoldOnceMock).toHaveBeenLastCalledWith({ holdId: 902 })
+    })
+
+    unmount()
+    expect(releaseHoldOnceMock).toHaveBeenCalledTimes(2)
+  })
+
   test('timer expira y credits loading no muestra 0 falso', async () => {
     financialStoreState = {
       financialState: null,

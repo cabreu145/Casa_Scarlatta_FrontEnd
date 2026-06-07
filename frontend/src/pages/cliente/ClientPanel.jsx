@@ -197,6 +197,16 @@ export default function ClientPanel() {
   const requestFinancialRefresh = useCallback(() => {
     setFinancialRefreshTick((tick) => tick + 1)
   }, [])
+  const apiClassIdsSignature = useMemo(
+    () => clases
+      .map((c) => c?.id)
+      .filter((id) => id !== null && id !== undefined)
+      .map((id) => String(id))
+      .filter((id, index, array) => array.indexOf(id) === index)
+      .sort()
+      .join('|'),
+    [clases]
+  )
 
   useEffect(() => {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
@@ -223,7 +233,7 @@ export default function ClientPanel() {
 
   useEffect(() => {
     if (!useApiFinancialState || usuario?.rol !== 'cliente') return
-    loadFinancialState().catch((err) => {
+    loadFinancialState({ enabled: true, force: financialRefreshTick > 0 }).catch((err) => {
       if (import.meta.env.DEV) {
         console.error('[ClientPanel] No se pudo cargar estado financiero API', err)
       }
@@ -268,7 +278,8 @@ export default function ClientPanel() {
     if (!from || !to) return
     const controller = new AbortController()
     let active = true
-    getOccurrencesForDateRangeApi(clases.map((c) => c.id), { from, to, signal: controller.signal })
+    const classIds = Array.from(new Set(clases.map((c) => c.id)))
+    getOccurrencesForDateRangeApi(classIds, { from, to, signal: controller.signal })
       .then((data) => {
         if (active) setOccurrencesByClass(data)
       })
@@ -281,7 +292,7 @@ export default function ClientPanel() {
       controller.abort()
       clearOccurrencesInflightCache()
     }
-  }, [clases, resWeekDays[0]?.isoDate, resWeekDays[resWeekDays.length - 1]?.isoDate, useApiClasses])
+  }, [apiClassIdsSignature, resWeekDays[0]?.isoDate, resWeekDays[resWeekDays.length - 1]?.isoDate, useApiClasses])
 
   // â”€â”€ Datos del usuario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const userName = usuario?.nombre ?? 'Cliente'
@@ -583,7 +594,13 @@ export default function ClientPanel() {
           })
         }
       }
-      return sessions
+      const seenKeys = new Set()
+      return sessions.filter((session, index) => {
+        const key = `${session.occurrenceId ?? session.id}:${session.fecha ?? ''}:${session.time ?? ''}:${index}`
+        if (seenKeys.has(key)) return false
+        seenKeys.add(key)
+        return true
+      })
     }
     return getPublicClassesByDate(clases.filter(isPublished), new Date(`${day.isoDate}T00:00:00`)).map((c) => ({
       _raw:       c,
@@ -1112,8 +1129,8 @@ export default function ClientPanel() {
               }
               return dayClasses.length > 0 ? (
                 <div>
-                  {dayClasses.map(c => (
-                    <MisClasesCard key={c.id} cls={c} dayIsoDate={day.isoDate} onCancel={() => handleCancelReserva(c.id)} coachFoto={coachFotoByName[c.coach] || null} />
+                  {dayClasses.map((c, index) => (
+                    <MisClasesCard key={`${c.occurrenceId ?? c.id}-${c.claseFecha ?? day.isoDate}-${c.time ?? 'sin-hora'}-${index}`} cls={c} dayIsoDate={day.isoDate} onCancel={() => handleCancelReserva(c.id)} coachFoto={coachFotoByName[c.coach] || null} />
                   ))}
                   {useApiReservations && (
                     <PaginationControls
@@ -1184,7 +1201,7 @@ export default function ClientPanel() {
               const dayAvail = getDayAvail(day)
               return dayAvail.length > 0 ? (
                 <div className={s.pubList}>
-                  {dayAvail.map(av => {
+                  {dayAvail.map((av, index) => {
                     const alreadyBooked = reservasUsuario.find((r) => {
                       if (r.estado !== 'confirmada') return false
                       if (useApiReservations && av.occurrenceId) return Number(r.occurrenceId) === Number(av.occurrenceId)
@@ -1196,7 +1213,7 @@ export default function ClientPanel() {
                     const { bg, text } = avatarStyle(av.coach)
                     const coachFoto = coachFotoByName[av.coach] || null
                     return (
-                      <div key={av.id} className={`${s.pubCard} ${isFull ? s.pubCardFull : ''}`}>
+                      <div key={`${av.occurrenceId ?? av.id}-${av.time ?? 'sin-hora'}-${index}`} className={`${s.pubCard} ${isFull ? s.pubCardFull : ''}`}>
                         <div className={s.pubAvatarWrap}>
                           <div className={s.pubAvatar} style={{ background: coachFoto ? 'transparent' : bg, overflow: 'hidden', padding: 0 }}>
                             {coachFoto ? (

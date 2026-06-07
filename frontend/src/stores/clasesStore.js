@@ -15,11 +15,13 @@ import { CLASES_MOCK } from '@/data/mockData'
 import { getClasesApi } from '@/services/clasesApiService'
 
 const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
+const inflightClasesLoads = new Map()
 
 export const useClasesStore = create(
   persist(
     (set, get) => ({
       clases: useApiClasses ? [] : CLASES_MOCK,
+      hasLoadedFromApi: false,
 
       getClasesByCoach: (coachId) =>
         get().clases.filter((c) => c.coachId === coachId),
@@ -38,30 +40,58 @@ export const useClasesStore = create(
         }))
       },
 
-      setClases: (clases) => set({ clases: Array.isArray(clases) ? clases : [] }),
+      setClases: (clases) => set({ clases: Array.isArray(clases) ? clases : [], hasLoadedFromApi: true }),
 
-      loadClasesFromApi: async () => {
+      loadClasesFromApi: async ({ force = false } = {}) => {
         if (!useApiClasses) return get().clases
-        const clasesApi = await getClasesApi()
-        set({ clases: clasesApi })
-        return clasesApi
+        const current = get()
+        if (!force && current.hasLoadedFromApi) {
+          return current.clases
+        }
+        const currentSignature = 'clases'
+        if (inflightClasesLoads.has(currentSignature)) {
+          return inflightClasesLoads.get(currentSignature)
+        }
+
+        const request = getClasesApi()
+          .then((clasesApi) => {
+            set({ clases: clasesApi, hasLoadedFromApi: true })
+            return clasesApi
+          })
+          .finally(() => {
+            inflightClasesLoads.delete(currentSignature)
+          })
+
+        inflightClasesLoads.set(currentSignature, request)
+        return request
       },
 
       agregarClase: (nuevaClase) =>
         set((state) => ({
+          hasLoadedFromApi: state.hasLoadedFromApi,
           clases: [...state.clases, { ...nuevaClase, id: Date.now() + Math.floor(Math.random() * 100000) }],
         })),
 
       editarClase: (id, cambios) =>
         set((state) => ({
+          hasLoadedFromApi: state.hasLoadedFromApi,
           clases: state.clases.map((c) => (c.id === id ? { ...c, ...cambios } : c)),
         })),
 
       eliminarClase: (id) =>
         set((state) => ({
+          hasLoadedFromApi: state.hasLoadedFromApi,
           clases: state.clases.filter((c) => c.id !== id),
         })),
     }),
-    { name: 'casa-scarlatta-clases', version: 1 }
+    {
+      name: 'casa-scarlatta-clases',
+      version: 2,
+      migrate: (persistedState) => ({
+        ...persistedState,
+        hasLoadedFromApi: false,
+      }),
+      partialize: (state) => ({ clases: state.clases }),
+    }
   )
 )

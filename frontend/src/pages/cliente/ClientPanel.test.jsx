@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -174,6 +174,8 @@ describe('ClientPanel payments section', () => {
     window.history.pushState({}, '', '/cliente/dashboard?section=pagos')
     mockGetMembershipPackagesApi.mockReset()
     mockGetMembershipPackagesApi.mockResolvedValue([])
+    mockGetOccurrencesForDateRangeApi.mockReset()
+    mockGetOccurrencesForDateRangeApi.mockResolvedValue([])
   })
 
   test('renderiza pagos recientes sin crash', async () => {
@@ -212,5 +214,56 @@ describe('ClientPanel payments section', () => {
 
     expect(await screen.findByRole('button', { name: /comprar ahora/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /comprar ahora/i })).toBeInTheDocument()
+  })
+
+  test('no emite warning de keys duplicadas al renderizar ocurrencias duplicadas', async () => {
+    mockClases.splice(0, mockClases.length, {
+      id: 3,
+      nombre: 'Clase Demo API',
+      coachNombre: 'Coach Demo',
+      dia: 'Domingo',
+      hora: '16:00',
+      tipo: 'STRYDE',
+      cupoMax: 12,
+      cupoActual: 0,
+      publicado: true,
+    })
+
+    mockGetOccurrencesForDateRangeApi.mockResolvedValue({
+      3: [
+        {
+          occurrenceId: 301,
+          fecha: new Date().toISOString().slice(0, 10),
+          inicio: `${new Date().toISOString().slice(0, 10)}T16:00:00`,
+          cupoMax: 12,
+          cupoActual: 0,
+          claseNombre: 'Clase Demo API',
+        },
+        {
+          occurrenceId: 302,
+          fecha: new Date().toISOString().slice(0, 10),
+          inicio: `${new Date().toISOString().slice(0, 10)}T16:30:00`,
+          cupoMax: 12,
+          cupoActual: 0,
+          claseNombre: 'Clase Demo API',
+        },
+      ],
+    })
+
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { default: ClientPanel } = await import('./ClientPanel')
+
+    render(
+      <MemoryRouter initialEntries={['/cliente/dashboard?section=reservar']}>
+        <ClientPanel />
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(mockGetOccurrencesForDateRangeApi).toHaveBeenCalled()
+    })
+
+    expect(consoleErrorSpy.mock.calls.some((args) => String(args[0] ?? '').includes('Encountered two children with the same key'))).toBe(false)
+    consoleErrorSpy.mockRestore()
   })
 })

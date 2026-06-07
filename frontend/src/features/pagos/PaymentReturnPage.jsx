@@ -122,7 +122,7 @@ export default function PaymentReturnPage() {
     let active = true
 
     const refreshFinancial = async () => {
-      await loadFinancialState().catch(() => {})
+      await loadFinancialState({ force: true, enabled: true }).catch(() => {})
       await getMyCreditMovementsPaginatedApi({ page: 1, pageSize: 8 }).catch(() => {})
     }
 
@@ -297,7 +297,7 @@ export default function PaymentReturnPage() {
                       })
 
                       if (data.status === 'approved' && data.applied) {
-                        await loadFinancialState().catch(() => {})
+                        await loadFinancialState({ force: true, enabled: true }).catch(() => {})
                         await getMyCreditMovementsPaginatedApi({ page: 1, pageSize: 8 }).catch(() => {})
                         scheduleRedirectToPagos()
                       }

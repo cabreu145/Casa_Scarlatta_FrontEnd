@@ -47,12 +47,12 @@ export async function reservarClase(userId, claseId, asiento = null, occurrenceI
       const reserva = await crearReservaApi({ claseId, userId, asiento, occurrenceId })
       await syncReservasFromApi()
       try {
-        await useClasesStore.getState().loadClasesFromApi?.()
+        await useClasesStore.getState().loadClasesFromApi?.({ force: true })
       } catch {
         // noop
       }
       try {
-        await useFinancialStateStore.getState().loadFinancialState?.()
+        await useFinancialStateStore.getState().loadFinancialState?.({ force: true, enabled: true })
       } catch {
         // noop
       }
@@ -162,12 +162,12 @@ export async function cancelarReserva(reservaId, userId) {
       await cancelarReservaApi(reservaId)
       await syncReservasFromApi()
       try {
-        await useClasesStore.getState().loadClasesFromApi?.()
+        await useClasesStore.getState().loadClasesFromApi?.({ force: true })
       } catch {
         // noop
       }
       try {
-        await useFinancialStateStore.getState().loadFinancialState?.()
+        await useFinancialStateStore.getState().loadFinancialState?.({ force: true, enabled: true })
       } catch {
         // noop
       }

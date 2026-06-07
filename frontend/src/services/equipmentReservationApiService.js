@@ -6,14 +6,27 @@ import {
   mapSpotHoldResponseToFrontend,
 } from '@/adapters/equipmentReservationAdapter'
 
+const inflightOccurrenceSpots = new Map()
+
 export async function getOccurrenceSpotsApi({ occurrenceId }) {
   const endpoint = ENDPOINTS.occurrenceSpots
   if (!endpoint) {
     throw new Error('OCCURRENCE_SPOTS_ENDPOINT_MISSING')
   }
 
-  const payload = await httpGet(endpoint(occurrenceId))
-  return mapOccurrenceSpotsResponseToFrontend(payload ?? {})
+  const key = String(occurrenceId ?? '')
+  if (inflightOccurrenceSpots.has(key)) {
+    return inflightOccurrenceSpots.get(key)
+  }
+
+  const request = httpGet(endpoint(occurrenceId))
+    .then((payload) => mapOccurrenceSpotsResponseToFrontend(payload ?? {}))
+    .finally(() => {
+      inflightOccurrenceSpots.delete(key)
+    })
+
+  inflightOccurrenceSpots.set(key, request)
+  return request
 }
 
 export async function createSpotHoldApi({ occurrenceId, spotId }) {

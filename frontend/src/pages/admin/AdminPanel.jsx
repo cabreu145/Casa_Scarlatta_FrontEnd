@@ -935,7 +935,7 @@ export default function AdminPanel() {
                       return
                     }
                     await createClaseApi(payload)
-                    await loadClasesFromApi()
+                    await loadClasesFromApi({ force: true })
                   } else {
                     const coachObj = coaches.find(c => c.nombre === claseForm.coach)
                     agregarClase({
@@ -1501,7 +1501,7 @@ export default function AdminPanel() {
                       return
                     }
                     await updateClaseApi(modalEditClase.id, payload)
-                    await loadClasesFromApi()
+                    await loadClasesFromApi({ force: true })
                   } else {
                     const coachObj = coaches.find(c => c.nombre === editClaseForm.coach)
                     editarClase(modalEditClase.id, {
