@@ -17,10 +17,16 @@ import {
 
 function getVisualState(spot, selectedSpotId) {
   if (!spot) return 'occupied'
-  if (Number(spot.spotId) === Number(selectedSpotId)) {
+  const spotId = Number(spot.spotId)
+  const activeSelectedSpotId = selectedSpotId == null ? null : Number(selectedSpotId)
+
+  if (activeSelectedSpotId != null && spotId === activeSelectedSpotId) {
     return 'selected'
   }
-  if (spot.heldByMe || spot.status === 'held_by_me') return 'occupied'
+  if (activeSelectedSpotId != null && (spot.heldByMe || spot.status === 'held_by_me')) {
+    return 'available'
+  }
+  if (spot.heldByMe || spot.status === 'held_by_me') return 'selected'
   if (spot.status === 'held' || spot.status === 'reserved' || spot.status === 'inactive') {
     return 'occupied'
   }

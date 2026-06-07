@@ -237,7 +237,10 @@ describe('EquipmentReservationPanel', () => {
       expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 201 })
       expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 6, spotId: 10 })
       expect(screen.getByRole('button', { name: /Banco 01/i })).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: /Banco 01/i }).className).toMatch(/strydeAvail/)
+      expect(screen.getByRole('button', { name: /Banco 01/i }).className).not.toMatch(/strydeOccupied/)
       expect(screen.getByRole('button', { name: /Caminadora 01/i })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('button', { name: /Caminadora 01/i }).className).toMatch(/strydeSelected/)
     })
   })
 

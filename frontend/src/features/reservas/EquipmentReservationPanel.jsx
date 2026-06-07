@@ -312,6 +312,7 @@ export default function EquipmentReservationPanel({
   const handleSpotSelect = useCallback(async (spot) => {
     if (!spot) return
     const spotKey = getEquipmentSpotKey(spot)
+    const previousSpotId = activeHold?.spotId ?? selectedSpotId
     const selectable = spot.status === 'available' || spot.status === 'held_by_me'
     if (!selectable) {
       setSelectionError(getEquipmentSpotStatusLabel(spot) === 'Ocupado'
@@ -358,12 +359,28 @@ export default function EquipmentReservationPanel({
         return {
           ...prev,
           spots: (prev.spots ?? []).map((rowSpot) => {
-            if (Number(rowSpot.spotId) !== Number(spot.spotId)) return rowSpot
+            const rowSpotId = Number(rowSpot.spotId)
+            if (Number(rowSpotId) === Number(spot.spotId)) {
+              return {
+                ...rowSpot,
+                status: 'held_by_me',
+                heldByMe: true,
+                heldUntil: hold.expiresAt,
+              }
+            }
+
+            if (previousSpotId != null && rowSpotId === Number(previousSpotId)) {
+              return {
+                ...rowSpot,
+                status: 'available',
+                heldByMe: false,
+                heldUntil: null,
+              }
+            }
+
             return {
               ...rowSpot,
-              status: 'held_by_me',
-              heldByMe: true,
-              heldUntil: hold.expiresAt,
+              heldByMe: Boolean(rowSpot.heldByMe && rowSpot.status === 'held_by_me'),
             }
           }),
         }
