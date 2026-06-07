@@ -153,6 +153,9 @@ describe('EquipmentReservationPanel', () => {
     )
     expect(await screen.findByRole('button', { name: /Tapete 01 · Disponible/i })).toBeInTheDocument()
     expect(screen.getByText('Clase Demo Reservable API')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Seleccionar lugar' }).className).toMatch(/slowModal/)
+    expect(screen.getByRole('group', { name: 'Fila frontal' }).className).toMatch(/machineGrid/)
+    expect(screen.getByRole('complementary').className).toMatch(/reservationSidebar/)
     expect(screen.getByRole('button', { name: /Tapete 01/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Tapete 10/i })).toBeInTheDocument()
 
@@ -215,18 +218,26 @@ describe('EquipmentReservationPanel', () => {
     )
     expect(await screen.findByRole('button', { name: /Banco 06 · Disponible/i })).toBeInTheDocument()
     expect(screen.getByText('Clase STRYDE Demo')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Banco 01/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Caminadora 01/i })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Seleccionar equipo' }).className).toMatch(/strydeModal/)
+    expect(screen.getByRole('group', { name: 'Bancos fila trasera' }).className).toMatch(/strydeBenchRow/)
+    expect(screen.getByRole('group', { name: 'Bancos fila delantera' }).className).toMatch(/strydeBenchRowFront/)
+    expect(screen.getByRole('group', { name: 'Caminadoras' }).className).toMatch(/strydeTreadRow/)
+    const bench01 = screen.getByRole('button', { name: /Banco 01/i })
+    const treadmill01 = screen.getByRole('button', { name: /Caminadora 01/i })
 
-    await user.click(screen.getByRole('button', { name: /Banco 01/i }))
+    await user.click(bench01)
     await waitFor(() => {
       expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 6, spotId: 1 })
+      expect(bench01).toHaveAttribute('aria-pressed', 'true')
     })
+    expect(screen.getByText('ROTATION FLOW')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /Caminadora 01/i }))
+    await user.click(treadmill01)
     await waitFor(() => {
       expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 201 })
       expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 6, spotId: 10 })
+      expect(screen.getByRole('button', { name: /Banco 01/i })).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByRole('button', { name: /Caminadora 01/i })).toHaveAttribute('aria-pressed', 'true')
     })
   })
 
@@ -290,5 +301,38 @@ describe('EquipmentReservationPanel', () => {
 
     expect(await screen.findByText('Clase Demo Reservable API')).toBeInTheDocument()
     expect(loadFinancialStateMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('held, reserved e inactive quedan bloqueados y no crean hold', async () => {
+    const response = buildSlowResponse()
+    response.spots[0].status = 'held'
+    response.spots[1].status = 'reserved'
+    response.spots[2].status = 'inactive'
+    getOccurrenceSpotsMock.mockResolvedValue(response)
+
+    const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
+    render(
+      <EquipmentReservationPanel
+        occurrenceId={5}
+        classId={9}
+        userId={3}
+        financialState={{
+          financialState: {},
+          creditsBalance: 12,
+          activeMembership: { creditsAvailable: 12 },
+          isLoading: false,
+          error: null,
+        }}
+      />
+    )
+
+    expect(await screen.findByRole('button', { name: /Tapete 01/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Tapete 02/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Tapete 03/i })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: /Tapete 01/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Tapete 02/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Tapete 03/i }))
+    expect(createSpotHoldMock).not.toHaveBeenCalled()
   })
 })

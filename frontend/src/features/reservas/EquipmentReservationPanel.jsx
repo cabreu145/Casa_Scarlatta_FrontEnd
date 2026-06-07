@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CheckCircle, X } from 'lucide-react'
 import { crearReservaApi } from '@/services/reservasApiService'
 import { getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
 import { useFinancialStateStore } from '@/stores/financialStateStore'
@@ -10,14 +9,12 @@ import {
   buildSpotLookup,
   formatOccurrenceDateTime,
   formatHoldCountdown,
-  getEquipmentLabelForType,
-  getEquipmentLayoutConfig,
   getEquipmentSpotKey,
   getEquipmentSpotLabel,
   getEquipmentSpotStatusLabel,
   normalizeDiscipline,
 } from './equipmentLayoutConfig'
-import styles from '../clases/SeatSelector.module.css'
+import EquipmentSeatSelectorView from './EquipmentSeatSelectorView'
 
 const useApiFinancialState = import.meta.env.VITE_USE_API_AUTH === 'true'
 const HOLD_STORAGE_KEY = 'active_equipment_reservation_holds'
@@ -117,75 +114,6 @@ function formatReservationError(error) {
   return resolveReservationErrorMessage(error)
 }
 
-function getSpotCardClassName({ layoutKind, status, selected }) {
-  const statusClass = status === 'available'
-    ? layoutKind === 'slow' ? styles.cardAvailable : styles.strydeAvail
-    : status === 'held_by_me'
-      ? layoutKind === 'slow' ? styles.cardSelected : styles.strydeSelected
-      : layoutKind === 'slow'
-        ? styles.cardOccupied
-        : styles.strydeOccupied
-  const selectedClass = selected
-    ? layoutKind === 'slow' ? styles.cardSelected : styles.strydeSelected
-    : ''
-  return [layoutKind === 'slow' ? styles.machineCard : styles.strydeCard, statusClass, selectedClass].filter(Boolean).join(' ')
-}
-
-function SpotButton({ spot, layoutKind, selected, onSelect, disabled }) {
-  const equipmentLabel = getEquipmentLabelForType(spot.equipmentType)
-  const statusLabel = getEquipmentSpotStatusLabel(spot)
-  const title = `${equipmentLabel} ${spot.label} · ${statusLabel}`
-
-  return (
-    <button
-      type="button"
-      className={getSpotCardClassName({ layoutKind, status: spot.status, selected })}
-      onClick={() => onSelect(spot)}
-      disabled={disabled}
-      aria-label={title}
-      aria-pressed={selected}
-      title={title}
-    >
-      <span className={[
-        layoutKind === 'slow' ? styles.statusIndicator : styles.strydeStatusDot,
-        spot.status === 'available'
-          ? layoutKind === 'slow' ? styles.indGreen : styles.strydeGreen
-          : spot.status === 'held_by_me'
-            ? layoutKind === 'slow' ? styles.indWine : styles.strydeWine
-            : layoutKind === 'slow' ? styles.indGray : styles.strydeGray,
-      ].filter(Boolean).join(' ')} />
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, textAlign: 'center' }}>
-        <div style={{ fontSize: layoutKind === 'slow' ? 15 : 14, fontWeight: 700, letterSpacing: '0.04em' }}>
-          {equipmentLabel} {spot.label}
-        </div>
-        <div style={{ fontSize: 11, opacity: 0.82 }}>{statusLabel}</div>
-      </div>
-    </button>
-  )
-}
-
-function CoachBadge({ coachName, coachPhoto, layoutKind }) {
-  const initials = (coachName ?? 'Coach')
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-
-  return (
-    <div className={layoutKind === 'slow' ? styles.slowInstructorBadge : styles.instructorBadge}>
-      <div className={layoutKind === 'slow' ? styles.slowInstructorAvatar : styles.instructorAvatar}>
-        {coachPhoto ? (
-          <img src={coachPhoto} alt={coachName ?? 'Coach'} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', borderRadius: '50%' }} />
-        ) : initials}
-      </div>
-      <span className={layoutKind === 'slow' ? styles.slowInstructorName : styles.instructorName}>{coachName ?? 'Coach'}</span>
-      <span className={layoutKind === 'slow' ? styles.slowInstructorTitle : styles.instructorTitle}>COACH</span>
-    </div>
-  )
-}
-
 export default function EquipmentReservationPanel({
   occurrenceId,
   classId,
@@ -206,7 +134,7 @@ export default function EquipmentReservationPanel({
   const [isLoadingSpots, setIsLoadingSpots] = useState(true)
   const [spotsError, setSpotsError] = useState('')
   const [selectionError, setSelectionError] = useState('')
-  const [selectedSpotKey, setSelectedSpotKey] = useState(null)
+  const [selectedSpotId, setSelectedSpotId] = useState(null)
   const [activeHold, setActiveHold] = useState(null)
   const [isSelecting, setIsSelecting] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
@@ -239,13 +167,11 @@ export default function EquipmentReservationPanel({
   }, [financialState, storeFinancialLoading, storeFinancialState, loadFinancialState])
 
   const layoutKind = normalizeDiscipline(layoutData?.discipline ?? layoutData?.raw?.discipline)
-  const layoutConfig = getEquipmentLayoutConfig(layoutData?.discipline)
 
-  const spotLookup = useMemo(() => buildSpotLookup(layoutData?.spots ?? []), [layoutData?.spots])
   const selectedSpot = useMemo(() => {
-    if (!selectedSpotKey) return null
-    return spotLookup.get(selectedSpotKey) ?? null
-  }, [selectedSpotKey, spotLookup])
+    if (!selectedSpotId) return null
+    return (layoutData?.spots ?? []).find((spot) => Number(spot.spotId) === Number(selectedSpotId)) ?? null
+  }, [layoutData?.spots, selectedSpotId])
 
   const currentServerNowMs = useMemo(() => {
     const source = activeHold?.serverNow ?? layoutData?.serverNow ?? null
@@ -305,7 +231,7 @@ export default function EquipmentReservationPanel({
       expiresAt: stored.expiresAt,
       serverNow: stored.serverNow ?? spotsPayload?.serverNow ?? null,
     })
-    setSelectedSpotKey(getEquipmentSpotKey(fallbackSpot))
+    setSelectedSpotId(fallbackSpot.spotId)
   }, [occurrenceId])
 
   const loadSpots = useCallback(async () => {
@@ -350,19 +276,19 @@ export default function EquipmentReservationPanel({
   useEffect(() => {
     if (!activeHold?.expiresAt) return
     if (remainingHoldMs > 0) return
-    if (!selectedSpotKey) return
+    if (!selectedSpotId) return
     setSelectionError('Tu tiempo para reservar este lugar expiró. Selecciona otro lugar.')
     setActiveHold(null)
-    setSelectedSpotKey(null)
+    setSelectedSpotId(null)
     removeStoredHold(occurrenceId)
     setClockTick((tick) => tick + 1)
     loadSpots()
-  }, [activeHold?.expiresAt, remainingHoldMs, occurrenceId, loadSpots, selectedSpotKey])
+  }, [activeHold?.expiresAt, remainingHoldMs, occurrenceId, loadSpots, selectedSpotId])
 
   const clearCurrentHold = useCallback(async () => {
     if (!activeHold?.holdId) {
       removeStoredHold(occurrenceId)
-      setSelectedSpotKey(null)
+      setSelectedSpotId(null)
       setActiveHold(null)
       return
     }
@@ -373,7 +299,7 @@ export default function EquipmentReservationPanel({
       // hold TTL covers release failures
     } finally {
       removeStoredHold(occurrenceId)
-      setSelectedSpotKey(null)
+      setSelectedSpotId(null)
       setActiveHold(null)
     }
   }, [activeHold?.holdId, occurrenceId])
@@ -396,7 +322,7 @@ export default function EquipmentReservationPanel({
       return
     }
     if (isSelecting || isConfirming) return
-    if (selectedSpotKey === spotKey && activeHold?.holdId) return
+    if (Number(selectedSpotId) === Number(spot.spotId) && activeHold?.holdId) return
 
     setSelectionError('')
     setIsSelecting(true)
@@ -410,7 +336,7 @@ export default function EquipmentReservationPanel({
       }
 
       const hold = await createSpotHoldApi({ occurrenceId, spotId: spot.spotId })
-      setSelectedSpotKey(spotKey)
+      setSelectedSpotId(spot.spotId)
       setActiveHold({
         holdId: hold.holdId,
         occurrenceId,
@@ -444,7 +370,7 @@ export default function EquipmentReservationPanel({
       })
       setClockTick((tick) => tick + 1)
     } catch (error) {
-      setSelectedSpotKey(null)
+      setSelectedSpotId(null)
       setActiveHold(null)
       removeStoredHold(occurrenceId)
       setSelectionError(formatReservationError(error))
@@ -452,7 +378,7 @@ export default function EquipmentReservationPanel({
     } finally {
       setIsSelecting(false)
     }
-  }, [activeHold?.holdId, isSelecting, isConfirming, occurrenceId, selectedSpotKey, layoutData?.serverNow, loadSpots])
+  }, [activeHold?.holdId, isSelecting, isConfirming, occurrenceId, selectedSpotId, layoutData?.serverNow, loadSpots])
 
   const refreshFinancialState = useCallback(async () => {
     await loadFinancialState().catch(() => {})
@@ -489,7 +415,7 @@ export default function EquipmentReservationPanel({
       removeStoredHold(occurrenceId)
       setReservationSuccess(reservation)
       setActiveHold(null)
-      setSelectedSpotKey(null)
+      setSelectedSpotId(null)
       await refreshFinancialState()
       await loadSpots()
       onReservationCreated?.(reservation)
@@ -503,255 +429,48 @@ export default function EquipmentReservationPanel({
     }
   }, [activeHold?.holdId, classId, occurrenceId, onReservationCreated, refreshFinancialState, remainingHoldMs, selectedSpot, userId, loadSpots])
 
-  const renderLegend = useMemo(() => {
-    const entries = layoutKind === 'slow'
-      ? [
-          { dot: styles.indGreen, label: 'Disponible' },
-          { dot: styles.indGray, label: 'Ocupado' },
-          { dot: styles.indWine, label: 'Tu lugar' },
-        ]
-      : [
-          { dot: styles.strydeGreen, label: 'Disponible' },
-          { dot: styles.strydeGray, label: 'Ocupado' },
-          { dot: styles.strydeWine, label: 'Tu lugar' },
-        ]
-
-    return entries.map(({ dot, label }) => (
-      <span key={label} className={styles.legendItem}>
-        <span className={`${layoutKind === 'slow' ? styles.statusIndicator : styles.strydeStatusDot} ${dot}`} style={{ position: 'static', width: 8, height: 8 }} />
-        {label}
-      </span>
-    ))
-  }, [layoutKind])
-
-  const renderRow = useCallback((section) => {
-    const rowSpots = (section.labels ?? []).map((label) => {
-      const key = `${section.equipmentType}:${label}`
-      const spot = spotLookup.get(key) ?? {
-        spotId: null,
-        label,
-        equipmentType: section.equipmentType,
-        status: 'inactive',
-      }
-      return { spot, key }
-    })
-
-    return (
-      <div
-        key={section.key ?? `${section.equipmentType}-${(section.labels ?? []).join('-')}`}
-        className={layoutKind === 'slow' ? styles.machineGrid : (
-          section.equipmentType === 'bench' ? styles.strydeBenchRow : styles.strydeTreadRow
-        )}
-        style={layoutKind === 'slow' ? { '--cols': section.labels?.length ?? 5 } : undefined}
-        role="group"
-        aria-label={section.ariaLabel}
-      >
-        {rowSpots.map(({ spot, key }) => {
-          const selected = selectedSpotKey === key
-          const disabled = isLoadingSpots || isSelecting || isConfirming || spot.status === 'held' || spot.status === 'reserved' || spot.status === 'inactive'
-          return (
-            <SpotButton
-              key={key}
-              spot={spot}
-              layoutKind={layoutKind}
-              selected={selected}
-              onSelect={handleSpotSelect}
-              disabled={disabled && !selected}
-            />
-          )
-        })}
-      </div>
-    )
-  }, [handleSpotSelect, isConfirming, isLoadingSpots, isSelecting, layoutKind, selectedSpotKey, spotLookup])
-
   const currentSpots = layoutData?.spots ?? []
-  const selectedSpotDisplay = selectedSpot ? getEquipmentSpotLabel(selectedSpot) : null
   const holdCountdown = activeHold?.expiresAt ? remainingHoldLabel : null
   const className = layoutData?.className ?? layoutData?.class_name ?? 'Clase'
   const coachName = layoutData?.coachName ?? layoutData?.coach_name ?? 'Coach'
   const classDateTime = occurrenceLabel.fullLabel
 
-  if (reservationSuccess) {
-    const successSpot = currentSpots.find((spot) => Number(spot.spotId) === Number(reservationSuccess.spotId))
-    const successLabel = successSpot ? getEquipmentSpotLabel(successSpot) : selectedSpotDisplay ?? 'Lugar'
-    return (
-      <div className={styles.backdrop} onClick={(e) => e.target === e.currentTarget && handleClose()}>
-        <div className={layoutKind === 'slow' ? styles.slowModal : styles.strydeModal} role="dialog" aria-modal="true" aria-label="Reserva confirmada">
-          <div className={styles.successView}>
-            <button className={styles.closeBtn} onClick={handleClose} aria-label="Cerrar" style={{ position: 'absolute', top: 14, right: 14 }}>
-              <X size={20} />
-            </button>
-            <CheckCircle size={52} strokeWidth={1.5} className={styles.successIcon} />
-            <h2 className={styles.successTitle}>Reserva confirmada</h2>
-            <p className={styles.successSub}>
-              <strong>{className}</strong><br />
-              {classDateTime} · Coach: {coachName}
-            </p>
-            <p className={styles.successSeat}>{successLabel}</p>
-            <p className={styles.successCredits}>
-              Tus créditos y reservas se actualizaron correctamente.
-            </p>
-            <button className={layoutKind === 'slow' ? styles.slowConfirmBtn : styles.strydeConfirmBtn} onClick={handleClose}>
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </div>
-    )
+  if (isLoadingSpots) {
+    return <div role="status" style={{ padding: 24, color: 'var(--muted)' }}>Cargando mapa...</div>
   }
 
+  if (spotsError) {
+    return <div role="alert" style={{ padding: 24, color: '#b42318' }}>{spotsError}</div>
+  }
+
+  if (!layoutData || !layoutKind) return null
+
+  const successSpot = reservationSuccess
+    ? currentSpots.find((spot) => Number(spot.spotId) === Number(reservationSuccess.spotId))
+    : null
+
   return (
-    <div className={styles.backdrop} onClick={(e) => e.target === e.currentTarget && handleClose()}>
-      <div className={layoutKind === 'slow' ? styles.slowModal : styles.strydeModal} role="dialog" aria-modal="true" aria-label="Seleccionar lugar">
-        {isLoadingSpots ? (
-          <div style={{ padding: 24, color: 'var(--muted)' }}>Cargando mapa...</div>
-        ) : spotsError ? (
-          <div style={{ padding: 24, color: '#b42318' }}>{spotsError}</div>
-        ) : layoutData ? (
-          layoutKind === 'slow' ? (
-            <div className={styles.fitnessLayout}>
-              <div className={styles.machineSection}>
-                <div className={styles.slowMirrors}>
-                  <div className={styles.slowMirrorArch} />
-                  <div className={styles.slowMirrorArch} />
-                  <div className={styles.slowMirrorArch} />
-                  <div className={styles.slowMirrorArch} />
-                  <div className={styles.slowMirrorArch} />
-                </div>
-
-                <div className={styles.frenteBanner}>
-                  <div className={styles.frenteLine} />
-                  <span className={styles.frenteLabel}>FRENTE</span>
-                  <div className={styles.frenteLine} />
-                </div>
-
-                {renderRow(layoutConfig.sections[2])}
-                <CoachBadge coachName={coachName} layoutKind="slow" />
-                {renderRow(layoutConfig.sections[4])}
-
-                <div className={styles.fitnessLegend}>{renderLegend}</div>
-              </div>
-
-              <aside className={styles.reservationSidebar}>
-                <div className={styles.sbBlock}>
-                  <div className={styles.sbTopRow}>
-                    <span className={styles.sbSlowBadge}>SLOW</span>
-                    <button className={styles.closeBtn} onClick={handleClose} aria-label="Cerrar"><X size={18} /></button>
-                  </div>
-                  <div className={styles.sbTitle}>{className}</div>
-                  <div className={styles.sbCoach}>{coachName}</div>
-                  <div className={styles.sbTime}>{classDateTime}</div>
-                </div>
-                <div className={styles.sbDivider} />
-                <div className={styles.sbSelectionBlock}>
-                  {selectedSpot ? (
-                    <>
-                      <div className={styles.sbSelLabel}>Tu lugar elegido</div>
-                      <div className={styles.sbSelMat}>{selectedSpotDisplay}</div>
-                      <div className={styles.sbSelDetail}>
-                        {activeHold?.expiresAt && holdCountdown
-                          ? `Tienes ${holdCountdown} para confirmar tu lugar`
-                          : 'Selecciona un lugar para continuar'}
-                      </div>
-                    </>
-                  ) : (
-                    <div className={styles.sbSelHint}>Elige tu lugar<br />en el mapa</div>
-                  )}
-                </div>
-                <div className={styles.sbDivider} />
-                <div className={styles.sbCreditsBlock}>
-                  <span className={styles.sbCreditsNum}>
-                    {creditsSummary.status === 'loading' ? '...' : creditsSummary.status === 'error' ? '!' : creditsSummary.status === 'no_membership' ? '—' : resolvedCreditsBalance ?? 0}
-                  </span>
-                  <span className={styles.sbCreditsLabel}>{creditsSummary.label}</span>
-                </div>
-                {selectionError && <div style={{ color: '#b42318', fontSize: 13, marginBottom: 8 }}>{selectionError}</div>}
-                <div className={styles.sbPolicy}>
-                  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: 2 }}>
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 8v4m0 4h.01" />
-                  </svg>
-                  <span><strong>Política de cancelación:</strong> puedes cancelar hasta <strong>6 horas antes</strong> del inicio de la clase. Después de ese plazo tu crédito no será reembolsado aunque no asistas.</span>
-                </div>
-                <button className={styles.slowConfirmBtn} onClick={handleConfirmReservation} disabled={!selectedSpot || !activeHold?.holdId || isConfirming || remainingHoldMs <= 0}>
-                  {isConfirming ? 'Confirmando…' : selectedSpot ? 'Confirmar reserva →' : 'Selecciona un lugar'}
-                </button>
-              </aside>
-            </div>
-          ) : (
-            <div className={styles.strydeLayout}>
-              <div className={styles.strydeSection}>
-                <div className={styles.strydeRoom}>
-                  <div className={styles.strydeWall}>
-                    <div className={styles.strydeWallLine} />
-                    <span className={styles.strydeWallLabel}>FRENTE</span>
-                    <div className={styles.strydeWallLine} />
-                  </div>
-
-                  {renderRow(layoutConfig.sections[1])}
-
-                  <div className={styles.strydeInstructorZone}>
-                    <div className={styles.strydeZoneLine} />
-                    <CoachBadge coachName={coachName} layoutKind="stryde" />
-                    <div className={styles.strydeZoneLine} />
-                  </div>
-
-                  {renderRow(layoutConfig.sections[3])}
-                  {renderRow(layoutConfig.sections[4])}
-                </div>
-
-                <div className={styles.strydeLegend}>{renderLegend}</div>
-              </div>
-
-              <aside className={styles.strydeSidebar}>
-                <div className={styles.sbBlock}>
-                  <div className={styles.sbTopRow}>
-                    <span className={styles.strydeXBadge}>STRYDE X</span>
-                    <button className={styles.closeBtn} onClick={handleClose} aria-label="Cerrar"><X size={18} /></button>
-                  </div>
-                  <div className={styles.sbTitle}>{className}</div>
-                  <div className={styles.sbCoach}>{coachName}</div>
-                  <div className={styles.sbTime}>{classDateTime}</div>
-                </div>
-                <div className={styles.sbDivider} />
-                <div className={styles.sbSelectionBlock}>
-                  {selectedSpot ? (
-                    <>
-                      <div className={styles.sbSelLabel}>Tu equipo</div>
-                      <div className={styles.sbSelMat} style={{ fontSize: 18 }}>{selectedSpotDisplay}</div>
-                      <div className={styles.sbSelDetail}>
-                        {activeHold?.expiresAt && holdCountdown
-                          ? `Tienes ${holdCountdown} para confirmar tu lugar`
-                          : 'Selecciona un equipo para continuar'}
-                      </div>
-                    </>
-                  ) : (
-                    <div className={styles.sbSelHint}>Elige tu equipo<br />en el mapa</div>
-                  )}
-                </div>
-                <div className={styles.sbDivider} />
-                <div className={styles.sbCreditsBlock}>
-                  <span className={styles.sbCreditsNum}>
-                    {creditsSummary.status === 'loading' ? '...' : creditsSummary.status === 'error' ? '!' : creditsSummary.status === 'no_membership' ? '—' : resolvedCreditsBalance ?? 0}
-                  </span>
-                  <span className={styles.sbCreditsLabel}>{creditsSummary.label}</span>
-                </div>
-                {selectionError && <div style={{ color: '#b42318', fontSize: 13, marginBottom: 8 }}>{selectionError}</div>}
-                <div className={styles.sbPolicy}>
-                  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: 2 }}>
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 8v4m0 4h.01" />
-                  </svg>
-                  <span><strong>Política de cancelación:</strong> puedes cancelar hasta <strong>6 horas antes</strong> del inicio de la clase. Después de ese plazo tu crédito no será reembolsado aunque no asistas.</span>
-                </div>
-                <button className={styles.strydeConfirmBtn} onClick={handleConfirmReservation} disabled={!selectedSpot || !activeHold?.holdId || isConfirming || remainingHoldMs <= 0}>
-                  {isConfirming ? 'Confirmando…' : selectedSpot ? 'Confirmar reserva →' : 'Selecciona un lugar'}
-                </button>
-              </aside>
-            </div>
-          )
-        ) : null}
-      </div>
-    </div>
+    <EquipmentSeatSelectorView
+      discipline={layoutKind}
+      spots={currentSpots}
+      className={className}
+      coachName={coachName}
+      classDateTime={classDateTime}
+      selectedSpotId={selectedSpotId}
+      activeHold={activeHold}
+      holdCountdown={holdCountdown}
+      creditsSummary={creditsSummary}
+      creditsBalance={resolvedCreditsBalance}
+      selectionError={selectionError}
+      isBusy={isSelecting || isConfirming}
+      isConfirming={isConfirming}
+      reservationSuccess={reservationSuccess}
+      successSpotLabel={successSpot ? getEquipmentSpotLabel(successSpot) : 'Lugar'}
+      onSelectSpot={handleSpotSelect}
+      onConfirm={handleConfirmReservation}
+      onClose={handleClose}
+    />
   )
+
+
 }

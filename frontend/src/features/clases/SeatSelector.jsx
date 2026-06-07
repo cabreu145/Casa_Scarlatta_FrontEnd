@@ -14,7 +14,7 @@ import styles from './SeatSelector.module.css'
 
 // ── Slow room layout (fixed) ──────────────────────────────────────────────────
 // 10 mats in 2 rows of 5, numbered column-first (odd → row 1, even → row 2)
-const SLOW_MATS = [
+export const SLOW_MATS = [
   { id: 'R1-S1', num: '01', row: 1 },
   { id: 'R1-S2', num: '03', row: 1 },
   // position 3 of row 1 is the coach — no mat 05
@@ -39,7 +39,7 @@ function slowIdFromAsiento(asiento) {
 // Treadmills are always 6 (fixed). Benches = cupoMax - 6, arranged in rows of 4.
 const TREAD_COUNT = 6
 
-function buildStrydeLayout() {
+export function buildStrydeLayout() {
   return [
     {
       rowType: 'bench',
@@ -86,14 +86,14 @@ function getEquipmentInfo(layout, id) {
 }
 
 // Returns the 4-block rotation sequence given the starting equipment type
-function getRotationBlocks(startType) {
+export function getRotationBlocks(startType) {
   return startType === 'bench'
     ? ['bench', 'treadmill', 'bench', 'treadmill']
     : ['treadmill', 'bench', 'treadmill', 'bench']
 }
 
 // ── Mini icons for rotation timeline ──────────────────────────────────────────
-function BenchMini({ active }) {
+export function BenchMini({ active }) {
   const c = active ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.28)'
   return (
     <svg viewBox="0 0 22 16" fill="none" style={{ width: 20, height: 14, display: 'block', flexShrink: 0 }}>
@@ -104,7 +104,7 @@ function BenchMini({ active }) {
   )
 }
 
-function TreadMini({ active }) {
+export function TreadMini({ active }) {
   const c = active ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.28)'
   return (
     <svg viewBox="0 0 16 22" fill="none" style={{ width: 12, height: 18, display: 'block', flexShrink: 0 }}>
@@ -148,7 +148,7 @@ function seatIdFromLabel(label) {
 }
 
 // ── Yoga mat SVG (Slow) ───────────────────────────────────────────────────────
-function YogaMatIcon({ state }) {
+export function YogaMatIcon({ state }) {
   const isOcc = state === 'occupied'
   const isSel = state === 'selected'
 
@@ -183,7 +183,7 @@ function YogaMatIcon({ state }) {
 }
 
 // ── Treadmill SVG (Stryde X) — based on caminadora1.svg ──────────────────────
-function TreadmillIcon({ state }) {
+export function TreadmillIcon({ state }) {
   const isOcc = state === 'occupied'
   const isSel = state === 'selected'
   const svgStyle = {
@@ -215,7 +215,7 @@ function TreadmillIcon({ state }) {
 }
 
 // ── Bench SVG (Stryde X) ──────────────────────────────────────────────────────
-function BenchIcon({ state }) {
+export function BenchIcon({ state }) {
   const isOcc = state === 'occupied'
   const isSel = state === 'selected'
   const col = isOcc ? 'rgba(255,255,255,0.22)' : isSel ? '#FF1744' : 'rgba(255,255,255,0.82)'
