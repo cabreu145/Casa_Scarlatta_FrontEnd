@@ -932,6 +932,13 @@
   padding: 2px 0;
 }
 
+.slowCoachSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 82px;
+}
+
 .slowZoneLine {
   flex: 1;
   height: 1px;

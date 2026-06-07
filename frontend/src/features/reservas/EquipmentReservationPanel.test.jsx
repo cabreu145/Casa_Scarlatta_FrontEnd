@@ -156,6 +156,19 @@ describe('EquipmentReservationPanel', () => {
     expect(screen.getByRole('dialog', { name: 'Seleccionar lugar' }).className).toMatch(/slowModal/)
     expect(screen.getByRole('group', { name: 'Fila frontal' }).className).toMatch(/machineGrid/)
     expect(screen.getByRole('complementary').className).toMatch(/reservationSidebar/)
+    const slowGrid = screen.getByTestId('slow-grid')
+    const slowGridChildren = Array.from(slowGrid.children)
+    expect(slowGridChildren).toHaveLength(5)
+    expect(slowGridChildren[0]).toHaveAttribute('data-testid', 'slow-spot-01')
+    expect(slowGridChildren[1]).toHaveAttribute('data-testid', 'slow-spot-03')
+    expect(slowGridChildren[2]).toHaveAttribute('data-testid', 'slow-coach-slot')
+    expect(slowGridChildren[3]).toHaveAttribute('data-testid', 'slow-spot-07')
+    expect(slowGridChildren[4]).toHaveAttribute('data-testid', 'slow-spot-09')
+    expect(screen.getByTestId('slow-spot-02')).toBeInTheDocument()
+    expect(screen.getByTestId('slow-spot-04')).toBeInTheDocument()
+    expect(screen.getByTestId('slow-spot-06')).toBeInTheDocument()
+    expect(screen.getByTestId('slow-spot-08')).toBeInTheDocument()
+    expect(screen.getByTestId('slow-spot-10')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Tapete 01/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Tapete 10/i })).toBeInTheDocument()
 
@@ -178,6 +191,30 @@ describe('EquipmentReservationPanel', () => {
     expect(loadFinancialStateMock).toHaveBeenCalled()
     expect(getCreditMovementsMock).toHaveBeenCalled()
     expect(loadMisReservasFromApiMock).toHaveBeenCalled()
+  })
+
+  test('slow coach no es clicable y no crea hold', async () => {
+    getOccurrenceSpotsMock.mockResolvedValue(buildSlowResponse())
+
+    const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
+    render(
+      <EquipmentReservationPanel
+        occurrenceId={5}
+        classId={9}
+        userId={3}
+        financialState={{
+          financialState: {},
+          creditsBalance: 12,
+          activeMembership: { creditsAvailable: 12 },
+          isLoading: false,
+          error: null,
+        }}
+      />
+    )
+
+    const coachSlot = await screen.findByTestId('slow-coach-slot')
+    fireEvent.click(coachSlot)
+    expect(createSpotHoldMock).not.toHaveBeenCalled()
   })
 
   test('stryde distingue bench 01 y treadmill 01 y libera hold previo', async () => {

@@ -15,6 +15,32 @@ import {
   getEquipmentSpotStatusLabel,
 } from './equipmentLayoutConfig'
 
+function normalizeSpotLabel(label) {
+  const value = String(label ?? '').trim()
+  const numeric = value.match(/\d+/)?.[0]
+  return numeric ? numeric.padStart(2, '0') : value
+}
+
+function getSpotNumber(spot) {
+  const label = normalizeSpotLabel(spot?.label)
+  const parsed = Number(label)
+  return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER
+}
+
+function buildSlowRows(spots) {
+  const sorted = [...(spots ?? [])].sort((a, b) => getSpotNumber(a) - getSpotNumber(b))
+  const byLabel = new Map(sorted.map((spot) => [normalizeSpotLabel(spot.label), spot]))
+  const topLabels = ['01', '03', '07', '09']
+  const bottomLabels = ['02', '04', '06', '08', '10']
+  const knownLabels = new Set([...topLabels, ...bottomLabels])
+
+  return {
+    topSpots: topLabels.map((label) => byLabel.get(label) ?? null),
+    bottomSpots: bottomLabels.map((label) => byLabel.get(label) ?? null),
+    extraSpots: sorted.filter((spot) => !knownLabels.has(normalizeSpotLabel(spot.label))),
+  }
+}
+
 function getVisualState(spot, selectedSpotId) {
   if (!spot) return 'occupied'
   const spotId = Number(spot.spotId)
@@ -23,13 +49,13 @@ function getVisualState(spot, selectedSpotId) {
   if (activeSelectedSpotId != null && spotId === activeSelectedSpotId) {
     return 'selected'
   }
+
   if (activeSelectedSpotId != null && (spot.heldByMe || spot.status === 'held_by_me')) {
     return 'available'
   }
+
   if (spot.heldByMe || spot.status === 'held_by_me') return 'selected'
-  if (spot.status === 'held' || spot.status === 'reserved' || spot.status === 'inactive') {
-    return 'occupied'
-  }
+  if (spot.status === 'held' || spot.status === 'reserved' || spot.status === 'inactive') return 'occupied'
   return 'available'
 }
 
@@ -53,17 +79,14 @@ function SpotStatusDot({ slow, state }) {
       ? slow ? styles.indGreen : styles.strydeGreen
       : slow ? styles.indGray : styles.strydeGray
 
-  return (
-    <span
-      className={`${slow ? styles.statusIndicator : styles.strydeStatusDot} ${colorClass}`}
-    />
-  )
+  return <span className={`${slow ? styles.statusIndicator : styles.strydeStatusDot} ${colorClass}`} />
 }
 
 function SlowMatButton({ spot, selectedSpotId, busy, onSelect }) {
   const state = getVisualState(spot, selectedSpotId)
   const label = spot?.label ?? '--'
   const statusLabel = spot ? getEquipmentSpotStatusLabel(spot) : 'No disponible'
+  const testId = spot ? `slow-spot-${normalizeSpotLabel(spot.label)}` : `slow-spot-${label}`
 
   return (
     <button
@@ -78,11 +101,23 @@ function SlowMatButton({ spot, selectedSpotId, busy, onSelect }) {
       aria-label={`Tapete ${label} · ${statusLabel}`}
       aria-pressed={state === 'selected'}
       data-spot-key={spot ? getEquipmentSpotKey(spot) : `mat:${label}`}
+      data-testid={testId}
     >
       <SpotStatusDot slow state={state} />
       <div className={styles.matIconWrap}><YogaMatIcon state={state} /></div>
       <span className={styles.machineNumber}>{label}</span>
     </button>
+  )
+}
+
+function SlowEmptySlot({ testId }) {
+  return (
+    <div
+      className={`${styles.machineCard} ${styles.cardAvailable}`}
+      aria-hidden="true"
+      data-testid={testId}
+      style={{ visibility: 'hidden', pointerEvents: 'none' }}
+    />
   )
 }
 
@@ -106,6 +141,7 @@ function StrydeSpotButton({ visualEquipment, spot, selectedSpotId, busy, onSelec
       aria-label={`${visualEquipment.label} ${visualEquipment.num} · ${statusLabel}`}
       aria-pressed={state === 'selected'}
       data-spot-key={spot ? getEquipmentSpotKey(spot) : `${visualEquipment.type}:${visualEquipment.num}`}
+      data-testid={`stryde-spot-${visualEquipment.type}-${visualEquipment.num}`}
     >
       <SpotStatusDot state={state} />
       <div className={isBench ? styles.benchIconWrap : styles.treadIconWrap}>
@@ -142,6 +178,14 @@ function CoachBadge({ coachName, dark = false }) {
       <div className={dark ? styles.instructorAvatar : styles.slowInstructorAvatar}>{initials}</div>
       <span className={dark ? styles.instructorName : styles.slowInstructorName}>{coachName ?? 'Coach'}</span>
       <span className={dark ? styles.instructorTitle : styles.slowInstructorTitle}>COACH</span>
+    </div>
+  )
+}
+
+function SlowCoachSlot({ coachName }) {
+  return (
+    <div className={styles.slowCoachSlot} data-testid="slow-coach-slot" aria-label="Coach">
+      <CoachBadge coachName={coachName} />
     </div>
   )
 }
@@ -253,8 +297,9 @@ export default function EquipmentSeatSelectorView({
   }
 
   if (slow) {
-    const topRow = ['01', '02', '03', '04', '05']
-    const bottomRow = ['06', '07', '08', '09', '10']
+    const { topSpots, bottomSpots } = buildSlowRows(spots)
+    const topLayout = [topSpots[0], topSpots[1], 'coach', topSpots[2], topSpots[3]]
+
     return (
       <div className={styles.backdrop} onClick={(event) => event.target === event.currentTarget && onClose()}>
         <div className={styles.slowModal} role="dialog" aria-modal="true" aria-label="Seleccionar lugar">
@@ -268,27 +313,40 @@ export default function EquipmentSeatSelectorView({
                 <span className={styles.frenteLabel}>FRENTE</span>
                 <div className={styles.frenteLine} />
               </div>
-              <div className={styles.machineGrid} style={{ '--cols': 5 }} role="group" aria-label="Fila frontal">
-                {topRow.map((label) => (
-                  <SlowMatButton
-                    key={`mat:${label}`}
-                    spot={getSpot(lookup, 'mat', label)}
-                    selectedSpotId={effectiveSelectedSpotId}
-                    busy={isBusy}
-                    onSelect={onSelectSpot}
-                  />
-                ))}
+              <div className={styles.machineGrid} style={{ '--cols': 5 }} role="group" aria-label="Fila frontal" data-testid="slow-grid">
+                {topLayout.map((entry, index) => {
+                  if (entry === 'coach') {
+                    return <SlowCoachSlot key="slow-coach-slot" coachName={coachName} />
+                  }
+
+                  if (!entry) {
+                    return <SlowEmptySlot key={`slow-empty-top-${index}`} testId={`slow-empty-top-${index}`} />
+                  }
+
+                  return (
+                    <SlowMatButton
+                      key={`mat:${entry.label}`}
+                      spot={entry}
+                      selectedSpotId={effectiveSelectedSpotId}
+                      busy={isBusy}
+                      onSelect={onSelectSpot}
+                    />
+                  )
+                })}
               </div>
-              <CoachBadge coachName={coachName} />
               <div className={styles.machineGrid} style={{ '--cols': 5 }} role="group" aria-label="Fila trasera">
-                {bottomRow.map((label) => (
-                  <SlowMatButton
-                    key={`mat:${label}`}
-                    spot={getSpot(lookup, 'mat', label)}
-                    selectedSpotId={effectiveSelectedSpotId}
-                    busy={isBusy}
-                    onSelect={onSelectSpot}
-                  />
+                {bottomSpots.map((spot, index) => (
+                  spot ? (
+                    <SlowMatButton
+                      key={`mat:${spot.label}`}
+                      spot={spot}
+                      selectedSpotId={effectiveSelectedSpotId}
+                      busy={isBusy}
+                      onSelect={onSelectSpot}
+                    />
+                  ) : (
+                    <SlowEmptySlot key={`slow-empty-bottom-${index}`} testId={`slow-empty-bottom-${index}`} />
+                  )
                 ))}
               </div>
               <div className={styles.fitnessLegend}><Legend slow /></div>
