@@ -252,6 +252,7 @@ Marcar al ejecutar QA en navegador:
 - [ ] Cliente > Paquetes & Pagos: validar paginaciï¿½n de movimientos/transacciones (Anterior/Siguiente).
 - [ ] Admin > Clases (vista lista): validar paginación visual, filtros API (`search`, `discipline`, `status`, `coach_id`) y navegabilidad por páginas.
 - [ ] Admin > Clases (nuevo): validar que activa en UI se envía como programada, coach_id es numérico backend y fecha específica / programar publicación quedan bloqueados en API mode.
+- [ ] Admin > Coaches: validar GET /api/v1/coaches?page=&page_size=&search=&status= y create/edit/status/delete con refetch real.
 - [ ] Admin > Ver usuario > Historial reservas: validar paginaciï¿½n en modal.
 - [ ] Cambiar filtro/vista y confirmar reset de pï¿½gina cuando aplica.
 - [ ] Confirmar que no cambian endpoints ni source of truth en API mode.

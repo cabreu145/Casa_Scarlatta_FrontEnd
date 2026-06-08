@@ -79,7 +79,11 @@ export const ENDPOINTS = {
   marcarLeida: (id) => withPrefix(`/notificaciones/${id}/leida`),
 
   coaches: withPrefix('/coaches'),
+  coachesPaginated: ({ page, pageSize, search, status }) =>
+    withQuery('/coaches', { page, page_size: pageSize, search, status }),
+  publicCoaches: withPrefix('/coaches/public'),
   coachById: (id) => withPrefix(`/coaches/${id}`),
+  coachStatusById: (id) => withPrefix(`/coaches/${id}/status`),
   coachAgendaMe: ({ from, to }) => withPrefix(`/coaches/me/agenda?from=${from ?? ''}&to=${to ?? ''}`),
 
   createPaymentCheckoutPreference: withPrefix('/pagos/checkout-preference'),

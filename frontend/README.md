@@ -67,6 +67,8 @@ Variables:
 Comportamiento:
 - `VITE_USE_API_CLASSES=true`: frontend carga clases desde backend (`GET /api/v1/clases`, `GET /api/v1/clases/{id}`, `GET /api/v1/clases/{id}/disponibilidad`).
 - Admin > Clases en API mode también usa `GET /api/v1/clases?page=&page_size=&search=&discipline=&status=&coach_id=`, `POST /api/v1/clases`, `PUT /api/v1/clases/{id}` y `DELETE /api/v1/clases/{id}`.
+- Admin > Coaches en API mode usa `GET/POST/PUT/PATCH/DELETE /api/v1/coaches`, `GET /api/v1/coaches/public` para sección pública, y `coachesStore` queda solo como fallback legacy cuando flags API están apagados.
+- Create coach en API mode requiere `password`, `bio`, `instagram`, `avatar_url` y `public_profile_enabled`; update no modifica password.
 - En API mode, `Fecha específica` y `Programar publicación` quedan bloqueados hasta que exista contrato de ocurrencias/publicación.
 - `VITE_USE_API_CLASSES=false`: frontend conserva flujo actual con mocks/store local.
 

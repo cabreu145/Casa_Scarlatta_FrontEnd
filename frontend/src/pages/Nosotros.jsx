@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useCoachesStore } from '../stores/coachesStore'
 import { useConfiguracionStore } from '@/stores/configuracionStore'
+import { getPublicCoachesApi } from '@/services/coachesApiService'
 import styles from './Nosotros.module.css'
 
 const FILTROS = ['Todas', 'Stryde X', 'Slow']
@@ -16,19 +16,56 @@ function InstagramIcon() {
 
 export default function Nosotros() {
   const { coaches: todosCoaches } = useCoachesStore()
+  const useApiMode = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const coachesActivos = todosCoaches.filter((c) => c.activo !== false)
   const cfg = useConfiguracionStore()
   const carouselImages = cfg.get('carouselNosotros')
   const [current, setCurrent] = useState(0)
   const [filtro, setFiltro] = useState('Todas')
+  const [publicCoaches, setPublicCoaches] = useState([])
+  const [loadingPublicCoaches, setLoadingPublicCoaches] = useState(false)
+  const [publicCoachesError, setPublicCoachesError] = useState('')
 
-  const coaches = coachesActivos.filter((c) => {
+  useEffect(() => {
+    if (!useApiMode) return
+    let active = true
+    setLoadingPublicCoaches(true)
+    setPublicCoachesError('')
+    getPublicCoachesApi()
+      .then((items) => {
+        if (!active) return
+        setPublicCoaches(items ?? [])
+      })
+      .catch((error) => {
+        if (!active) return
+        setPublicCoaches([])
+        setPublicCoachesError(error?.message ?? 'No se pudieron cargar coaches públicos')
+      })
+      .finally(() => {
+        if (!active) return
+        setLoadingPublicCoaches(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [useApiMode])
+
+  const coachesBase = useApiMode ? publicCoaches : coachesActivos
+
+  const coaches = useMemo(() => coachesBase.filter((c) => {
     if (filtro === 'Todas') return true
-    const esp = c.especialidad || ''
-    return esp === filtro || esp === 'Ambas'
-  })
+    const specialities = Array.isArray(c.specialties) ? c.specialties : []
+    const primary = String(c.primaryDiscipline ?? c.primary_discipline ?? c.especialidad ?? c.specialty ?? '').trim()
+    const esp = primary || specialities[0] || ''
+    if (filtro === 'Stryde X') return esp.toLowerCase().includes('stryde') || specialities.includes('stryde')
+    if (filtro === 'Slow') return esp.toLowerCase().includes('slow') || specialities.includes('slow')
+    return true
+  }), [coachesBase, filtro])
 
-  const next = useCallback(() => setCurrent(c => (c + 1) % carouselImages.length), [])
+  const next = useCallback(
+    () => setCurrent((c) => (carouselImages.length ? (c + 1) % carouselImages.length : 0)),
+    [carouselImages.length]
+  )
 
   useEffect(() => {
     const t = setInterval(next, 4500)
@@ -103,15 +140,33 @@ export default function Nosotros() {
         </div>
 
         <div className={styles.coachesGrid}>
+          {useApiMode && loadingPublicCoaches && (
+            <div style={{ padding: '16px 0', color: 'var(--muted)' }}>Cargando coaches…</div>
+          )}
+          {useApiMode && publicCoachesError && !loadingPublicCoaches && (
+            <div style={{ padding: '16px 0', color: '#fca5a5' }}>{publicCoachesError}</div>
+          )}
+          {useApiMode && !loadingPublicCoaches && !publicCoachesError && coaches.length === 0 && (
+            <div style={{ padding: '16px 0', color: 'var(--muted)' }}>No hay coaches públicos disponibles.</div>
+          )}
           {coaches.map((coach) => {
-            const inicial         = coach.nombre.trim().charAt(0).toUpperCase()
+            const name = coach.name ?? coach.nombre ?? 'Coach'
+            const inicial         = String(name).trim().charAt(0).toUpperCase()
             const bio             = coach.bio || 'Instructor de Casa Scarlatta'
-            const disciplina      = coach.especialidad || ''
-            const disciplinaLabel = disciplina === 'Ambas' ? 'Stryde X / Slow' : disciplina
+            const specialties     = Array.isArray(coach.specialties) ? coach.specialties : []
+            const primary         = coach.primaryDiscipline ?? coach.primary_discipline ?? coach.especialidad ?? coach.specialty ?? ''
+            const disciplinaLabel = specialties.length > 1
+              ? 'Stryde X / Slow'
+              : String(primary).toLowerCase().includes('slow')
+                ? 'Slow'
+                : String(primary).toLowerCase().includes('stryde') || specialties.includes('stryde')
+                  ? 'Stryde X'
+                  : 'Coach'
+            const avatar = coach.avatarUrl ?? coach.avatar_url ?? coach.foto ?? null
             return (
-              <div key={coach.id} className={styles.coachCard}>
-                {coach.foto ? (
-                  <img src={coach.foto} alt={coach.nombre} className={styles.coachImg} loading="lazy" />
+              <div key={coach.coachId ?? coach.id ?? name} className={styles.coachCard}>
+                {avatar ? (
+                  <img src={avatar} alt={name} className={styles.coachImg} loading="lazy" />
                 ) : (
                   <div className={styles.coachImg} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -126,7 +181,7 @@ export default function Nosotros() {
                   </div>
                 )}
                 <div className={styles.coachBottom}>
-                  <h3 className={styles.coachName}>{coach.nombre}</h3>
+                  <h3 className={styles.coachName}>{name}</h3>
                   {disciplinaLabel && (
                     <span className={styles.coachDiscipline}>{disciplinaLabel}</span>
                   )}
@@ -140,7 +195,7 @@ export default function Nosotros() {
                       rel="noopener noreferrer"
                       className={styles.igLink}
                       onClick={(e) => e.stopPropagation()}
-                      aria-label={`Instagram de ${coach.nombre}`}
+                      aria-label={`Instagram de ${name}`}
                     >
                       <InstagramIcon />
                     </a>

@@ -66,6 +66,19 @@ Los siguientes contratos se mantienen solo por compatibilidad de fallback/mock c
 Notas:
 - Coach dashboard en API mode consume agenda por ocurrencia real.
 - No usar matching por `coachNombre` ni `class_id` plano como criterio principal en API mode.
+
+## Mapeo Coaches Admin (vigente)
+| Archivo frontend | Función actual | Endpoint backend | Request esperado | Response esperado | Transformación necesaria | Prioridad |
+|---|---|---|---|---|---|---|
+| `frontend/src/services/coachesApiService.js` | `getCoachesPaginatedApi({page,pageSize,search,status})` | `GET /api/v1/coaches?page=&page_size=&search=&status=` | query `page`,`page_size`,`search`,`status` | `{ page, page_size, total, items[] }` o array legacy | `coachAdapter` + `paginationAdapter` | Alta |
+| `frontend/src/services/coachesApiService.js` | `getPublicCoachesApi()` | `GET /api/v1/coaches/public` | n/a | `{ coach_id, name, specialties[], primary_discipline, bio, instagram, avatar_url }[]` | `coachAdapter` | Alta |
+| `frontend/src/services/coachesApiService.js` | `createCoachApi(payload)` / `updateCoachApi(id,payload)` / `updateCoachStatusApi(id,status)` / `deleteCoachApi(id)` | `POST/PUT/PATCH/DELETE /api/v1/coaches` | create: `{ name, email, phone, password, status, specialties[], bio, instagram, avatar_url, public_profile_enabled }`; update: same sin `password` | `CoachRead` | `coachApiPayload` + `coachAdapter` | Alta |
+
+Notas:
+- Admin > Coaches en API mode ya usa backend real como source of truth.
+- `coachesStore` queda como fallback legacy para flags API en `false`.
+- `coach_id` es identidad canónica en frontend API mode.
+- `public_profile_enabled` controla visibilidad pública; `avatar_url` es string persistido por backend.
 | `frontend/src/services/clasesApiService.js` | `createClaseApi(payload)` | `POST /api/v1/clases` | `{ name, discipline, coach_id, capacity_max, duration_minutes, description, status, day_name, start_time }` | `ClassRead` | `classAdapter` + refresh store | Alta |
 | `frontend/src/services/clasesApiService.js` | `updateClaseApi(id,payload)` | `PUT /api/v1/clases/{id}` | `{ name, discipline, coach_id, capacity_max, duration_minutes, description, status, day_name, start_time }` | `ClassRead` | `classAdapter` + refresh store | Alta |
 

@@ -8,7 +8,8 @@ Scope: frontend-only diagnóstico. Sin cambios de backend, sin refactor funciona
 El panel admin sigue en estado mixto:
 
 - **API real parcial**: `Clases`.
-- **Mock/local dominante**: `Coaches`, `Usuarios/clientes`, `Paquetes/membresías`, `POS`, `Transacciones/pagos`, `Gastos`, `Cortes`, `Reportes`, `Configuración`.
+- **API-first ya cerrado**: `Clases`, `Coaches`.
+- **Mock/local dominante**: Usuarios/clientes, Paquetes/membresías, POS, Transacciones/pagos, Gastos, Cortes, Reportes, Configuración.
 - **Legacy/dead code o auxiliar**: `AdminDashboard.jsx` sigue leyendo mocks y stores locales.
 
 La integración más madura está en clases. El resto depende de stores persistidos, arrays hardcoded, `localStorage` vía Zustand persist, o helpers de negocio que todavía simulan backend.
@@ -24,7 +25,7 @@ La integración más madura está en clases. El resto depende de stores persisti
 |---|---|---|---|---|---|---|---|---|
 | Dashboard | `src/pages/admin/AdminDashboard.jsx`, `src/pages/admin/sections/DashboardSection.jsx` | `clasesStore`, `transaccionesStore`, `usuariosStore`, `reservasStore`, `paquetesStore` | `dashboardService`, `getDashboardMetrics` | mock/local | métricas, conteos, ingresos, actividad reciente | `GET /api/v1/admin/dashboard` o endpoints de métricas agregadas | Alto: métricas no confiables | Admin-4 |
 | Clases | `src/pages/admin/sections/ClasesSection.jsx`, flujo en `AdminPanel.jsx` | `clasesStore` como cache/fallback | `clasesApiService`, `reservasService`, `buildClaseApiPayload` | **API-first** | listar, crear, editar, eliminar/desactivar, ver ocurrencias/disponibilidad | `GET/POST/PUT/DELETE /api/v1/clases`, `GET /api/v1/clases/{id}/ocurrencias`, `GET /api/v1/clases/{id}/disponibilidad` | Medio | **Admin-1** |
-| Coaches | `src/pages/admin/sections/CoachesSection.jsx`, flujo en `AdminPanel.jsx` | `coachesStore` | `coachesService` (local), `coachesApiService.getCoachesApi()` | mock/local con lectura API parcial | listar, crear, editar, eliminar, activar/desactivar | `GET/POST/PUT/DELETE /api/v1/coaches`, opcional `GET /api/v1/coaches/{id}/agenda` | Alto: IDs mock y CRUD local | **Admin-1** |
+| Coaches | `src/pages/admin/sections/CoachesSection.jsx`, flujo en `AdminPanel.jsx` | `coachesStore` como fallback | `coachesApiService`, `coachApiPayload` | **API-first** | listar, crear, editar, eliminar, activar/desactivar, sección pública | `GET/POST/PUT/PATCH/DELETE /api/v1/coaches`, `GET /api/v1/coaches/public`, opcional `GET /api/v1/coaches/{id}/agenda` | Medio: fallback legacy aún presente | **Admin-1** |
 | Usuarios/clientes | `src/pages/admin/sections/UsuariosSection.jsx`, flujo en `AdminPanel.jsx` | `usuariosStore`, `paquetesStore` | `usuariosService` | mock/local | listar, buscar, editar, eliminar, asignar paquete, ajustar datos | `GET/POST/PUT/PATCH/DELETE /api/v1/clientes`, `POST /api/v1/clientes/{id}/paquetes` | Alto: clientes falsos/locales | **Admin-2** |
 | Paquetes/membresías | `src/pages/admin/sections/PaquetesSection.jsx`, flujo en `AdminPanel.jsx` | `paquetesStore`, `transaccionesStore` | no hay servicio admin backend real; client-side usa `membershipPackagesApiService` solo para catálogo público | mock/local | CRUD local, destacar paquete, beneficios, uso en POS | `GET/POST/PUT/PATCH/DELETE /api/v1/memberships/packages` (o equivalente admin) | Alto: catálogo admin no real | **Admin-2** |
 | POS / productos / ventas | `src/pages/admin/sections/PuntoDeVentaSection.jsx` | `productosStore`, `paquetesStore`, `transaccionesStore`, `usuariosStore` | `ventaService` | mock/local | carrito, cobrar, aplicar paquete local, registrar venta local | `GET /api/v1/productos`, `POST /api/v1/ventas`, `POST /api/v1/ventas/{id}/pago` o equivalente | Muy alto: venta localStorage | **Admin-3** |
@@ -62,19 +63,19 @@ Qué falta para cerrar:
 
 Estado:
 
-- Listado y CRUD siguen en `coachesStore` con IDs/mock.
-- `coachesApiService` solo expone `getCoachesApi()`.
-- `AdminPanel.jsx` usa API solo para poblar datos de formulario de clases.
+- `AdminPanel.jsx` ya usa API real para listado, create, edit, status toggle y delete en modo API.
+- `coachesStore` queda como fallback legacy.
+- `coachesApiService` ya expone `getCoachesPaginatedApi`, `getPublicCoachesApi`, `createCoachApi`, `updateCoachApi`, `updateCoachStatusApi` y `deleteCoachApi`.
+- `Admin > Clases` ya consume coaches reales para `coach_id`.
 
 Riesgo:
 
-- IDs tipo `coach-*` / persistencia local.
-- No hay backend real para create/update/delete.
+- Fallback local todavía existe para flags API en `false`.
+- Formulario legacy conserva campos no soportados por backend, pero no se envían en modo API.
 
 Qué falta:
 
-- Endpoint CRUD completo de coaches.
-- Agenda por coach si se quiere unificar reporte/admin.
+- Si se quiere cerrar 100%, eliminar legacy/local de `AdminPanel.jsx` y `coachesStore` en rutas admin.
 
 ### 3) Usuarios/clientes
 

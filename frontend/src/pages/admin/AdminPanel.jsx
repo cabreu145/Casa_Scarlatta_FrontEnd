@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react'
+import { useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PasswordInput from '@/components/ui/PasswordInput'
 import DashboardSection from './sections/DashboardSection'
@@ -40,11 +40,19 @@ import { FinanzasSection } from './AdminFinanzas'
 import { ReportesSection } from './AdminReportes'
 import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
 import { createClaseApi, updateClaseApi } from '@/services/clasesApiService'
-import { getCoachesApi } from '@/services/coachesApiService'
+import {
+  createCoachApi,
+  deleteCoachApi,
+  getCoachesPaginatedApi,
+  updateCoachApi,
+  updateCoachStatusApi,
+} from '@/services/coachesApiService'
 import { buildClaseApiPayload } from './classApiPayload'
+import { buildCoachApiPayload, validateCoachApiPayload } from './coachApiPayload'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { paginateArray } from '@/utils/paginationUtils'
 import { getClassDisplayTime } from '@/utils/classSchedule'
+import { COACHES_SELECTOR_PAGE_SIZE } from './adminCoachesApiUtils'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
@@ -116,7 +124,16 @@ export default function AdminPanel() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
+  const useApiCoaches = useApiClasses
   const [apiCoaches, setApiCoaches] = useState([])
+  const [apiCoachList, setApiCoachList] = useState([])
+  const [apiCoachesLoading, setApiCoachesLoading] = useState(false)
+  const [apiCoachesError, setApiCoachesError] = useState('')
+  const [apiCoachListLoading, setApiCoachListLoading] = useState(false)
+  const [apiCoachListError, setApiCoachListError] = useState('')
+  const [coachesSearch, setCoachesSearch] = useState('')
+  const [coachesStatus, setCoachesStatus] = useState('Todos')
+  const [coachesRefreshToken, setCoachesRefreshToken] = useState(0)
   const [clasesRefreshToken, setClasesRefreshToken] = useState(0)
   const [rangoDash, setRangoDash]         = useState('mes')
   const [modalPago, setModalPago]         = useState(false)
@@ -189,7 +206,7 @@ export default function AdminPanel() {
 
   // Coach — editar modal
   const [modalEditCoach,  setModalEditCoach]  = useState(null)
-  const [editCoachForm,   setEditCoachForm]   = useState({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '' })
+  const [editCoachForm,   setEditCoachForm]   = useState({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '', avatar_url: '', public_profile_enabled: true, estado: 'activo' })
   const [editFotoPreview, setEditFotoPreview] = useState(null)
   const [editFotoPath,    setEditFotoPath]    = useState(null)
   const fotoEditRef = useRef(null)
@@ -202,7 +219,7 @@ export default function AdminPanel() {
   const [modalHorarioCoach, setModalHorarioCoach] = useState(null)
 
   // Coach form
-  const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', instagram: '' })
+  const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', instagram: '', avatar_url: '', public_profile_enabled: true, password: '' })
   // Clase form — publicarEn: ISO datetime string o '' (publicar inmediatamente)
   //              fecha:      YYYY-MM-DD o '' (si vacío → clase recurrente cada semana)
   const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
@@ -238,7 +255,45 @@ export default function AdminPanel() {
   // null | { userId, userName, paqSel, fechaVencimiento, metodoPago }
   // Notas editables en modal Ver
   const [editNotas, setEditNotas] = useState('')
-  const coachesForClassForms = useApiClasses ? apiCoaches : coaches
+  const coachesForClassForms = useApiCoaches ? apiCoaches : coaches
+
+  const loadApiCoaches = useCallback(async () => {
+    if (!useApiCoaches) return
+    setApiCoachesLoading(true)
+    setApiCoachesError('')
+    try {
+      const { items } = await getCoachesPaginatedApi({
+        page: 1,
+        pageSize: COACHES_SELECTOR_PAGE_SIZE,
+      })
+      setApiCoaches(items ?? [])
+    } catch (error) {
+      setApiCoaches([])
+      setApiCoachesError(error?.message ?? 'No se pudieron cargar coaches')
+    } finally {
+      setApiCoachesLoading(false)
+    }
+  }, [logCoachEliminado, useApiCoaches])
+
+  const loadApiCoachList = useCallback(async () => {
+    if (!useApiCoaches) return
+    setApiCoachListLoading(true)
+    setApiCoachListError('')
+    try {
+      const { items } = await getCoachesPaginatedApi({
+        page: 1,
+        pageSize: COACHES_SELECTOR_PAGE_SIZE,
+        search: coachesSearch,
+        status: coachesStatus,
+      })
+      setApiCoachList(items ?? [])
+    } catch (error) {
+      setApiCoachList([])
+      setApiCoachListError(error?.message ?? 'No se pudieron cargar coaches')
+    } finally {
+      setApiCoachListLoading(false)
+    }
+  }, [coachesSearch, coachesStatus, useApiCoaches])
 
   useEffect(() => {
     setReservasModalPage(1)
@@ -247,17 +302,158 @@ export default function AdminPanel() {
   useEffect(() => {
     if (!useApiClasses) return
     let active = true
-    Promise.all([getCoachesApi(), loadClasesFromApi()])
-      .then(([coachesData]) => {
-        if (!active) return
-        setApiCoaches(coachesData)
-      })
-      .catch(() => {
-        if (!active) return
-        setApiCoaches([])
-      })
+    loadClasesFromApi().catch(() => {
+      if (!active) return
+    })
     return () => { active = false }
   }, [loadClasesFromApi, useApiClasses])
+
+  useEffect(() => {
+    if (!useApiCoaches) return
+    loadApiCoaches()
+  }, [loadApiCoaches, useApiCoaches, coachesRefreshToken])
+
+  useEffect(() => {
+    if (!useApiCoaches) return
+    loadApiCoachList()
+  }, [loadApiCoachList, useApiCoaches, coachesRefreshToken])
+
+  const handleSaveCoach = useCallback(async () => {
+    const form = modalEditCoach ? editCoachForm : coachForm
+    if (!form.nombre.trim()) return
+    if (useApiCoaches) {
+      try {
+        const payload = buildCoachApiPayload(form, { isCreate: !modalEditCoach })
+        const validationError = validateCoachApiPayload(payload, { isCreate: !modalEditCoach })
+        if (validationError) {
+          toast.error(validationError)
+          return
+        }
+        const resultado = modalEditCoach
+          ? await updateCoachApi(modalEditCoach.coachId ?? modalEditCoach.id, payload)
+          : await createCoachApi(payload)
+        if (!resultado) {
+          toast.error('No se pudo guardar coach')
+          return
+        }
+        toast.success(`${form.nombre} ${modalEditCoach ? 'actualizado' : 'agregado'}`)
+        if (!modalEditCoach) {
+          logCoachAgregado({ nombre: form.nombre })
+        }
+        setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '', avatar_url: '', public_profile_enabled: true })
+        setEditCoachForm({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '', avatar_url: '', public_profile_enabled: true, estado: 'activo' })
+        setCoachFotoPreview(null)
+        setCoachFotoPath(null)
+        setEditFotoPreview(null)
+        setEditFotoPath(null)
+        setModalEditCoach(null)
+        closeModal()
+        setCoachesRefreshToken((v) => v + 1)
+      } catch (error) {
+        toast.error(error?.message ?? 'No se pudo guardar coach')
+      }
+      return
+    }
+    if (!modalEditCoach) {
+      const resultado = await crearCoachService({
+        nombre:       form.nombre,
+        email:        form.email,
+        password:     form.password || '123456',
+        especialidad: form.disciplina || 'Stryde X',
+        bio:          form.bio,
+        foto:         coachFotoPath || null,
+        instagram:    form.instagram || null,
+      })
+      if (resultado.ok) {
+        toast.success(`${form.nombre} agregado`)
+        logCoachAgregado({ nombre: form.nombre })
+        setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '', avatar_url: '', public_profile_enabled: true })
+        setCoachFotoPreview(null)
+        setCoachFotoPath(null)
+        closeModal()
+      } else {
+        toast.error(resultado.mensaje)
+      }
+      return
+    }
+
+    editarCoach(modalEditCoach.id, {
+      nombre:       form.nombre,
+      especialidad: form.disciplina || 'Stryde X',
+      bio:          form.bio,
+      email:        form.email,
+      telefono:     form.telefono,
+      foto:         editFotoPath || modalEditCoach.foto || null,
+      instagram:    form.instagram || null,
+    })
+    const userLogin = usuarios.find(
+      (u) => u.email === modalEditCoach.email && u.rol === 'coach'
+    )
+    if (userLogin && form.email !== modalEditCoach.email) {
+      editarUsuario(userLogin.id, { email: form.email, nombre: form.nombre })
+    } else if (userLogin) {
+      editarUsuario(userLogin.id, { nombre: form.nombre })
+    }
+    toast.success(`${form.nombre} actualizado`)
+    setModalEditCoach(null)
+  }, [
+    coachForm,
+    coachFotoPath,
+    closeModal,
+    editCoachForm,
+    editFotoPath,
+    editarCoach,
+    editarUsuario,
+    logCoachAgregado,
+    modalEditCoach,
+    usuarios,
+    useApiCoaches,
+  ])
+
+  const handleToggleCoachStatus = useCallback(async (coach) => {
+    if (!coach) return
+    if (useApiCoaches) {
+      try {
+        const nextStatus = coach.status === 'active' ? 'inactive' : 'active'
+        await updateCoachStatusApi(coach.coachId ?? coach.id, nextStatus)
+        toast.success(`${coach.nombre ?? coach.name} ${nextStatus === 'active' ? 'reactivado' : 'dado de baja'}`)
+        setCoachesRefreshToken((v) => v + 1)
+      } catch (error) {
+        toast.error(error?.message ?? 'No se pudo actualizar coach')
+      }
+      return
+    }
+    if (coach.activo === false) {
+      editarCoach(coach.id, { activo: true })
+      toast.success(`${coach.nombre} reactivado`)
+    } else {
+      eliminarCoach(coach.id)
+      toast.success(`${coach.nombre} dado de baja`)
+    }
+  }, [editarCoach, eliminarCoach, useApiCoaches])
+
+  const handleDeleteCoach = useCallback(async (coach) => {
+    if (!coach) return
+    if (useApiCoaches) {
+      try {
+        const result = await deleteCoachApi(coach.coachId ?? coach.id)
+        if (result) {
+          toast.success(`${coach.nombre ?? coach.name} eliminado`)
+          setCoachesRefreshToken((v) => v + 1)
+        }
+      } catch (error) {
+        toast.error(error?.message ?? 'No se pudo eliminar coach')
+      }
+      return
+    }
+    const resultado = await borrarCoachService(coach.id)
+    if (resultado.ok) {
+      toast.success(resultado.mensaje)
+      logCoachEliminado({ nombre: coach.nombre })
+    } else {
+      toast.error(resultado.mensaje)
+    }
+  }, [useApiCoaches])
 
   function closeModal() { setModalType(null) }
   function openModal(type) { setModalType(type) }
@@ -558,15 +754,22 @@ export default function AdminPanel() {
           {/* ── COACHES ── */}
           <section className={`${styles.section}${activeSection === 'coaches' ? ' ' + styles.active : ''}`}>
             <CoachesSection
-              coaches={coaches}
+              coaches={useApiCoaches ? apiCoachList : coaches}
+              useApiMode={useApiCoaches}
+              isLoading={apiCoachListLoading}
+              error={apiCoachListError}
+              search={coachesSearch}
+              setSearch={setCoachesSearch}
+              status={coachesStatus}
+              setStatus={setCoachesStatus}
               openModal={openModal}
               setModalEditCoach={setModalEditCoach}
               setEditCoachForm={setEditCoachForm}
               setEditFotoPreview={setEditFotoPreview}
               setEditFotoPath={setEditFotoPath}
               setModalHorarioCoach={setModalHorarioCoach}
-              editarCoach={editarCoach}
-              eliminarCoach={eliminarCoach}
+              onToggleStatus={handleToggleCoachStatus}
+              onDeleteCoach={handleDeleteCoach}
             />
           </section>
 
@@ -696,31 +899,53 @@ export default function AdminPanel() {
               <button className={styles.modalClose} onClick={closeModal}>×</button>
             </div>
 
-            {/* Foto upload */}
-            <input
-              ref={fotoCreateRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(e) => uploadFoto(e.target.files?.[0], setCoachFotoPreview, setCoachFotoPath)}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
-              <div
-                onClick={() => fotoCreateRef.current?.click()}
-                style={{ cursor: 'pointer', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-              >
-                {coachFotoPreview
-                  ? <img src={coachFotoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: 28 }}>📷</span>}
+            {useApiCoaches ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                <label className={styles.formLabel}>Avatar URL</label>
+                <input
+                  className={styles.formInput}
+                  type="url"
+                  placeholder="https://..."
+                  value={coachForm.avatar_url}
+                  onChange={(e) => setCoachForm((f) => ({ ...f, avatar_url: e.target.value }))}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(coachForm.public_profile_enabled)}
+                    onChange={(e) => setCoachForm((f) => ({ ...f, public_profile_enabled: e.target.checked }))}
+                  />
+                  Perfil público visible
+                </label>
               </div>
-              <button
-                type="button"
-                style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                onClick={() => fotoCreateRef.current?.click()}
-              >
-                {coachFotoPreview ? 'Cambiar foto' : 'Subir foto (opcional)'}
-              </button>
-            </div>
+            ) : (
+              <>
+                <input
+                  ref={fotoCreateRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => uploadFoto(e.target.files?.[0], setCoachFotoPreview, setCoachFotoPath)}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
+                  <div
+                    onClick={() => fotoCreateRef.current?.click()}
+                    style={{ cursor: 'pointer', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  >
+                    {coachFotoPreview
+                      ? <img src={coachFotoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span style={{ fontSize: 28 }}>📷</span>}
+                  </div>
+                  <button
+                    type="button"
+                    style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => fotoCreateRef.current?.click()}
+                  >
+                    {coachFotoPreview ? 'Cambiar foto' : 'Subir foto (opcional)'}
+                  </button>
+                </div>
+              </>
+            )}
 
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
@@ -760,9 +985,15 @@ export default function AdminPanel() {
                 <label className={styles.formLabel}>Contraseña inicial</label>
                 <PasswordInput
                   className={styles.formInput}
-                  placeholder="Por defecto: 123456"
+                  placeholder="Mínimo 8 caracteres"
                   value={coachForm.password || ''}
-                  onChange={e => setCoachForm(f => ({ ...f, password: e.target.value }))} />
+                  onChange={e => setCoachForm(f => ({ ...f, password: e.target.value }))}
+                  autoComplete="new-password"
+                  required
+                />
+                <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+                  Contraseña inicial para acceso del coach.
+                </p>
                 </div>
 
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
@@ -781,28 +1012,7 @@ export default function AdminPanel() {
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={async () => {
-                  if (!coachForm.nombre.trim()) return
-                  const resultado = await crearCoachService({
-                    nombre:       coachForm.nombre,
-                    email:        coachForm.email,
-                    password:     coachForm.password || '123456',
-                    especialidad: coachForm.disciplina || 'Stryde X',
-                    bio:          coachForm.bio,
-                    foto:         coachFotoPath || null,
-                    instagram:    coachForm.instagram || null,
-                  })
-                  if (resultado.ok) {
-                  toast.success(`${coachForm.nombre} agregado`)
-                  logCoachAgregado({ nombre: coachForm.nombre })
-                  setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '' })
-                  setCoachFotoPreview(null)
-                  setCoachFotoPath(null)
-                  closeModal()
-                  } else {
-                    toast.error(resultado.mensaje)
-                  }
-                }}
+                onClick={handleSaveCoach}
               >
                 Guardar Coach
               </button>
@@ -1252,31 +1462,56 @@ export default function AdminPanel() {
               <button className={styles.modalClose} onClick={() => setModalEditCoach(null)}>×</button>
             </div>
 
-            {/* Foto upload */}
-            <input
-              ref={fotoEditRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={(e) => uploadFoto(e.target.files?.[0], setEditFotoPreview, setEditFotoPath)}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
-              <div
-                onClick={() => fotoEditRef.current?.click()}
-                style={{ cursor: 'pointer', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-              >
-                {editFotoPreview
-                  ? <img src={editFotoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: 28, fontWeight: 700 }}>{modalEditCoach.nombre.charAt(0).toUpperCase()}</span>}
+            {useApiCoaches ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                <label className={styles.formLabel}>Avatar URL</label>
+                <input
+                  className={styles.formInput}
+                  type="url"
+                  placeholder="https://..."
+                  value={editCoachForm.avatar_url}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, avatar_url: e.target.value }))}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editCoachForm.public_profile_enabled)}
+                    onChange={(e) => setEditCoachForm((f) => ({ ...f, public_profile_enabled: e.target.checked }))}
+                  />
+                  Perfil público visible
+                </label>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                  Contraseña no se modifica aquí. Usa flujo de recuperación para cambio.
+                </div>
               </div>
-              <button
-                type="button"
-                style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                onClick={() => fotoEditRef.current?.click()}
-              >
-                {editFotoPreview ? 'Cambiar foto' : 'Subir foto'}
-              </button>
-            </div>
+            ) : (
+              <>
+                <input
+                  ref={fotoEditRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => uploadFoto(e.target.files?.[0], setEditFotoPreview, setEditFotoPath)}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
+                  <div
+                    onClick={() => fotoEditRef.current?.click()}
+                    style={{ cursor: 'pointer', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  >
+                    {editFotoPreview
+                      ? <img src={editFotoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <span style={{ fontSize: 28, fontWeight: 700 }}>{modalEditCoach.nombre.charAt(0).toUpperCase()}</span>}
+                  </div>
+                  <button
+                    type="button"
+                    style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={() => fotoEditRef.current?.click()}
+                  >
+                    {editFotoPreview ? 'Cambiar foto' : 'Subir foto'}
+                  </button>
+                </div>
+              </>
+            )}
 
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
@@ -1301,6 +1536,17 @@ export default function AdminPanel() {
                 </select>
               </div>
               <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Estado</label>
+                <select
+                  className={styles.formSelect}
+                  value={editCoachForm.estado}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, estado: e.target.value }))}
+                >
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </div>
+<div className={styles.formGroup}>
                 <label className={styles.formLabel}>Teléfono</label>
                 <input
                   className={styles.formInput}
@@ -1348,29 +1594,7 @@ export default function AdminPanel() {
               </button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => {
-                  if (!editCoachForm.nombre.trim()) return
-                  editarCoach(modalEditCoach.id, {
-                    nombre:       editCoachForm.nombre,
-                    especialidad: editCoachForm.disciplina || 'Stryde X',
-                    bio:          editCoachForm.bio,
-                    email:        editCoachForm.email,
-                    telefono:     editCoachForm.telefono,
-                    foto:         editFotoPath || modalEditCoach.foto || null,
-                    instagram:    editCoachForm.instagram || null,
-                  })
-                  // Sincronizar usuario de login asociado
-                  const userLogin = usuarios.find(
-                    (u) => u.email === modalEditCoach.email && u.rol === 'coach'
-                  )
-                  if (userLogin && editCoachForm.email !== modalEditCoach.email) {
-                    editarUsuario(userLogin.id, { email: editCoachForm.email, nombre: editCoachForm.nombre })
-                  } else if (userLogin) {
-                    editarUsuario(userLogin.id, { nombre: editCoachForm.nombre })
-                  }
-                  toast.success(`${editCoachForm.nombre} actualizado`)
-                  setModalEditCoach(null)
-                }}
+                onClick={handleSaveCoach}
               >
                 Guardar cambios
               </button>
