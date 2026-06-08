@@ -1,3 +1,14 @@
+import { BASE_URL } from '@/constants/api'
+
+export function resolveCoachAvatarUrl(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return null
+  if (/^https?:\/\//i.test(raw)) return raw
+  if (raw.startsWith('/media')) return `${BASE_URL}${raw}`
+  if (raw.startsWith('/')) return `${BASE_URL}${raw}`
+  return `${BASE_URL}/${raw}`
+}
+
 export function mapBackendCoachToFrontend(item = {}) {
   const coachId = item.coach_id ?? item.id ?? null
   const status = String(item.status ?? (item.is_active === false ? 'inactive' : 'active')).trim().toLowerCase() || 'active'
@@ -25,8 +36,8 @@ export function mapBackendCoachToFrontend(item = {}) {
     specialty: item.specialty ?? item.especialidad ?? specialties[0] ?? '',
     especialidad,
     primaryDiscipline,
-    avatarUrl: item.avatar_url ?? item.avatarUrl ?? null,
-    foto: item.avatar_url ?? item.avatarUrl ?? null,
+    avatarUrl: resolveCoachAvatarUrl(item.avatar_url ?? item.avatarUrl ?? null),
+    foto: resolveCoachAvatarUrl(item.avatar_url ?? item.avatarUrl ?? null),
     bio: item.bio ?? item.descripcion ?? '',
     instagram: item.instagram ?? null,
     publicProfileEnabled: item.public_profile_enabled ?? item.publicProfileEnabled ?? null,

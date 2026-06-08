@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { mapBackendCoachToFrontend } from './coachAdapter'
+import { mapBackendCoachToFrontend, resolveCoachAvatarUrl } from './coachAdapter'
 
 describe('coachAdapter', () => {
   test('mapea id backend a coachId canónico', () => {
@@ -29,5 +29,11 @@ describe('coachAdapter', () => {
     expect(mapped.publicProfileEnabled).toBe(true)
     expect(mapped.status).toBe('active')
     expect(mapped.activo).toBe(true)
+  })
+
+  test('resuelve media relativa contra base api', () => {
+    expect(resolveCoachAvatarUrl('/media/coaches/demo.png')).toContain('/media/coaches/demo.png')
+    expect(resolveCoachAvatarUrl('https://cdn.example.com/demo.png')).toBe('https://cdn.example.com/demo.png')
+    expect(resolveCoachAvatarUrl(null)).toBeNull()
   })
 })

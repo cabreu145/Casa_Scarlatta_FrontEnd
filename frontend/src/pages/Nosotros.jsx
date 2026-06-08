@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useCoachesStore } from '../stores/coachesStore'
 import { useConfiguracionStore } from '@/stores/configuracionStore'
+import { resolveCoachAvatarUrl } from '@/adapters/coachAdapter'
 import { getPublicCoachesApi } from '@/services/coachesApiService'
 import styles from './Nosotros.module.css'
 
@@ -162,7 +163,7 @@ export default function Nosotros() {
                 : String(primary).toLowerCase().includes('stryde') || specialties.includes('stryde')
                   ? 'Stryde X'
                   : 'Coach'
-            const avatar = coach.avatarUrl ?? coach.avatar_url ?? coach.foto ?? null
+            const avatar = resolveCoachAvatarUrl(coach.avatarUrl ?? coach.avatar_url ?? coach.foto ?? null)
             return (
               <div key={coach.coachId ?? coach.id ?? name} className={styles.coachCard}>
                 {avatar ? (

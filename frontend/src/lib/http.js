@@ -49,7 +49,8 @@ async function parseResponse(res) {
 async function request(method, endpoint, body, options = {}) {
   const token = getToken()
   const headers = {}
-  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+  if (body !== undefined && !isFormData) headers['Content-Type'] = 'application/json'
   if (token) headers.Authorization = `Bearer ${token}`
 
   const url = normalizeUrl(endpoint)
@@ -65,7 +66,7 @@ async function request(method, endpoint, body, options = {}) {
   const res = await fetch(url, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : (isFormData ? body : JSON.stringify(body)),
     signal: options.signal,
   })
   return parseResponse(res)

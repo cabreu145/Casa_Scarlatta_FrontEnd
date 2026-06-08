@@ -75,3 +75,10 @@ export async function deleteCoachApi(id) {
   const response = await httpDelete(ENDPOINTS.coachById(id))
   return response ?? { success: true, id }
 }
+
+export async function uploadCoachAvatarApi(coachId, file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await httpPost(ENDPOINTS.uploadCoachAvatar(coachId), formData)
+  return mapBackendCoachesToFrontend([response ?? {}])[0]
+}

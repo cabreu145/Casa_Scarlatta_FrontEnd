@@ -23,38 +23,39 @@ describe('CoachesSection', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     render(
-      <CoachesSection
-        coaches={[
-          {
-            coachId: 1,
-            nombre: 'Coach Demo',
-            email: 'coach@demo.local',
-            phone: '5551234567',
-            status: 'active',
-            specialties: ['slow', 'stryde'],
-            avatarUrl: null,
-          },
-        ]}
-        useApiMode
-        isLoading={false}
-        error=""
+        <CoachesSection
+          coaches={[
+            {
+              coachId: 1,
+              nombre: 'Coach Demo',
+              email: 'coach@demo.local',
+              phone: '5551234567',
+              status: 'active',
+              specialties: ['slow', 'stryde'],
+              avatarUrl: '/media/coaches/demo.png',
+            },
+          ]}
+          useApiMode
+          isLoading={false}
+          error=""
         search=""
         setSearch={setSearch}
         status="Todos"
         setStatus={setStatus}
         openModal={vi.fn()}
-        setModalEditCoach={setModalEditCoach}
-        setEditCoachForm={setEditCoachForm}
-        setEditFotoPreview={setEditFotoPreview}
-        setEditFotoPath={setEditFotoPath}
-        setModalHorarioCoach={setModalHorarioCoach}
-        onToggleStatus={onToggleStatus}
-        onDeleteCoach={onDeleteCoach}
-      />
+          setModalEditCoach={setModalEditCoach}
+          setEditCoachForm={setEditCoachForm}
+          setEditAvatarPreview={setEditFotoPreview}
+          setEditAvatarFile={setEditFotoPath}
+          setModalHorarioCoach={setModalHorarioCoach}
+          onToggleStatus={onToggleStatus}
+          onDeleteCoach={onDeleteCoach}
+        />
     )
 
     expect(screen.getByText('Coach Demo')).toBeInTheDocument()
     expect(screen.getByText('Ambas')).toBeInTheDocument()
+    expect(screen.getByAltText('Coach Demo')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Dar de baja' }))
     expect(onToggleStatus).toHaveBeenCalled()

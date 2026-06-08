@@ -50,6 +50,7 @@ describe('Nosotros coaches públicos', () => {
     expect(getPublicCoachesApi).toHaveBeenCalled()
     expect(await screen.findByText('Coach Demo')).toBeInTheDocument()
     expect(screen.getByText('Bio pública')).toBeInTheDocument()
+    expect(screen.getByAltText('Coach Demo')).toBeInTheDocument()
     expect(screen.queryByText('coach@demo.local')).not.toBeInTheDocument()
     expect(screen.queryByText('5551234567')).not.toBeInTheDocument()
   })

@@ -82,6 +82,7 @@ export const ENDPOINTS = {
   coachesPaginated: ({ page, pageSize, search, status }) =>
     withQuery('/coaches', { page, page_size: pageSize, search, status }),
   publicCoaches: withPrefix('/coaches/public'),
+  uploadCoachAvatar: (id) => withPrefix(`/coaches/${id}/avatar`),
   coachById: (id) => withPrefix(`/coaches/${id}`),
   coachStatusById: (id) => withPrefix(`/coaches/${id}/status`),
   coachAgendaMe: ({ from, to }) => withPrefix(`/coaches/me/agenda?from=${from ?? ''}&to=${to ?? ''}`),

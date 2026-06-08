@@ -24,7 +24,6 @@ describe('coachApiPayload', () => {
       specialties: ['slow', 'stryde'],
       bio: 'Bio',
       instagram: 'https://instagram.com/demo',
-      avatar_url: 'https://cdn.example.com/coach.png',
       public_profile_enabled: true,
       password: 'secret123',
     })
@@ -60,7 +59,6 @@ describe('coachApiPayload', () => {
       specialties: ['slow'],
       bio: '',
       instagram: null,
-      avatar_url: null,
       public_profile_enabled: false,
     })
     expect(Object.prototype.hasOwnProperty.call(payload, 'password')).toBe(false)

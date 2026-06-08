@@ -44,6 +44,7 @@ import {
   createCoachApi,
   deleteCoachApi,
   getCoachesPaginatedApi,
+  uploadCoachAvatarApi,
   updateCoachApi,
   updateCoachStatusApi,
 } from '@/services/coachesApiService'
@@ -53,6 +54,7 @@ import PaginationControls from '@/components/ui/PaginationControls'
 import { paginateArray } from '@/utils/paginationUtils'
 import { getClassDisplayTime } from '@/utils/classSchedule'
 import { COACHES_SELECTOR_PAGE_SIZE } from './adminCoachesApiUtils'
+import { resolveCoachAvatarUrl } from '@/adapters/coachAdapter'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
@@ -199,16 +201,16 @@ export default function AdminPanel() {
   const [prodForm, setProdForm]                 = useState({ nombre: '', categoria: 'Accesorios', precio: '', stock: '', emoji: '' })
   const [confirmarEliminarProd, setConfirmarEliminarProd] = useState(null)
 
-  // Coach foto — crear
-  const [coachFotoPreview, setCoachFotoPreview] = useState(null)
-  const [coachFotoPath,    setCoachFotoPath]    = useState(null)
+  // Coach avatar — crear
+  const [coachAvatarPreview, setCoachAvatarPreview] = useState(null)
+  const [coachAvatarFile, setCoachAvatarFile] = useState(null)
   const fotoCreateRef = useRef(null)
 
   // Coach — editar modal
   const [modalEditCoach,  setModalEditCoach]  = useState(null)
   const [editCoachForm,   setEditCoachForm]   = useState({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '', avatar_url: '', public_profile_enabled: true, estado: 'activo' })
-  const [editFotoPreview, setEditFotoPreview] = useState(null)
-  const [editFotoPath,    setEditFotoPath]    = useState(null)
+  const [editAvatarPreview, setEditAvatarPreview] = useState(null)
+  const [editAvatarFile, setEditAvatarFile] = useState(null)
   const fotoEditRef = useRef(null)
 
   // Disciplinas modal
@@ -256,6 +258,7 @@ export default function AdminPanel() {
   // Notas editables en modal Ver
   const [editNotas, setEditNotas] = useState('')
   const coachesForClassForms = useApiCoaches ? apiCoaches : coaches
+  const currentEditCoachAvatar = editAvatarPreview || resolveCoachAvatarUrl(modalEditCoach?.avatarUrl ?? modalEditCoach?.foto)
 
   const loadApiCoaches = useCallback(async () => {
     if (!useApiCoaches) return
@@ -320,6 +323,7 @@ export default function AdminPanel() {
 
   const handleSaveCoach = useCallback(async () => {
     const form = modalEditCoach ? editCoachForm : coachForm
+    const avatarFile = modalEditCoach ? editAvatarFile : coachAvatarFile
     if (!form.nombre.trim()) return
     if (useApiCoaches) {
       try {
@@ -329,23 +333,31 @@ export default function AdminPanel() {
           toast.error(validationError)
           return
         }
+        const coachId = modalEditCoach?.coachId ?? modalEditCoach?.id ?? null
         const resultado = modalEditCoach
-          ? await updateCoachApi(modalEditCoach.coachId ?? modalEditCoach.id, payload)
+          ? await updateCoachApi(coachId, payload)
           : await createCoachApi(payload)
         if (!resultado) {
           toast.error('No se pudo guardar coach')
           return
         }
+        const savedCoachId = resultado.coachId ?? resultado.id ?? coachId
+        if (avatarFile && savedCoachId) {
+          try {
+            await uploadCoachAvatarApi(savedCoachId, avatarFile)
+          } catch (avatarError) {
+            toast.error('Coach guardado, pero no se pudo subir la foto. Puedes editarlo e intentar de nuevo.')
+            console.error('[admin] avatar upload failed', avatarError)
+          }
+        }
         toast.success(`${form.nombre} ${modalEditCoach ? 'actualizado' : 'agregado'}`)
         if (!modalEditCoach) {
           logCoachAgregado({ nombre: form.nombre })
         }
-        setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '', avatar_url: '', public_profile_enabled: true })
-        setEditCoachForm({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '', avatar_url: '', public_profile_enabled: true, estado: 'activo' })
-        setCoachFotoPreview(null)
-        setCoachFotoPath(null)
-        setEditFotoPreview(null)
-        setEditFotoPath(null)
+        clearAvatarSelection(setCoachAvatarPreview, setCoachAvatarFile)
+        clearAvatarSelection(setEditAvatarPreview, setEditAvatarFile)
+        setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '', public_profile_enabled: true })
+        setEditCoachForm({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '', public_profile_enabled: true, estado: 'activo' })
         setModalEditCoach(null)
         closeModal()
         setCoachesRefreshToken((v) => v + 1)
@@ -361,15 +373,22 @@ export default function AdminPanel() {
         password:     form.password || '123456',
         especialidad: form.disciplina || 'Stryde X',
         bio:          form.bio,
-        foto:         coachFotoPath || null,
+        foto:         coachAvatarPreview || null,
         instagram:    form.instagram || null,
       })
       if (resultado.ok) {
+        if (avatarFile && resultado.coach?.coachId) {
+          try {
+            await uploadCoachAvatarApi(resultado.coach.coachId, avatarFile)
+          } catch (avatarError) {
+            toast.error('Coach creado, pero no se pudo subir la foto. Puedes editarlo e intentar de nuevo.')
+            console.error('[admin] avatar upload failed', avatarError)
+          }
+        }
         toast.success(`${form.nombre} agregado`)
         logCoachAgregado({ nombre: form.nombre })
-        setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '', avatar_url: '', public_profile_enabled: true })
-        setCoachFotoPreview(null)
-        setCoachFotoPath(null)
+        clearAvatarSelection(setCoachAvatarPreview, setCoachAvatarFile)
+        setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '', public_profile_enabled: true })
         closeModal()
       } else {
         toast.error(resultado.mensaje)
@@ -383,9 +402,17 @@ export default function AdminPanel() {
       bio:          form.bio,
       email:        form.email,
       telefono:     form.telefono,
-      foto:         editFotoPath || modalEditCoach.foto || null,
+      foto:         editAvatarPreview || modalEditCoach.foto || null,
       instagram:    form.instagram || null,
     })
+    if (avatarFile) {
+      try {
+        await uploadCoachAvatarApi(modalEditCoach.coachId ?? modalEditCoach.id, avatarFile)
+      } catch (avatarError) {
+        toast.error('Coach guardado, pero no se pudo subir la foto. Puedes editarlo e intentar de nuevo.')
+        console.error('[admin] avatar upload failed', avatarError)
+      }
+    }
     const userLogin = usuarios.find(
       (u) => u.email === modalEditCoach.email && u.rol === 'coach'
     )
@@ -397,11 +424,14 @@ export default function AdminPanel() {
     toast.success(`${form.nombre} actualizado`)
     setModalEditCoach(null)
   }, [
+    clearAvatarSelection,
     coachForm,
-    coachFotoPath,
+    coachAvatarFile,
+    coachAvatarPreview,
     closeModal,
     editCoachForm,
-    editFotoPath,
+    editAvatarFile,
+    editAvatarPreview,
     editarCoach,
     editarUsuario,
     logCoachAgregado,
@@ -455,7 +485,11 @@ export default function AdminPanel() {
     }
   }, [useApiCoaches])
 
-  function closeModal() { setModalType(null) }
+  function closeModal() {
+    clearAvatarSelection(setCoachAvatarPreview, setCoachAvatarFile)
+    clearAvatarSelection(setEditAvatarPreview, setEditAvatarFile)
+    setModalType(null)
+  }
   function openModal(type) { setModalType(type) }
 
   // Cart helpers
@@ -597,27 +631,40 @@ export default function AdminPanel() {
     setFormGasto({ concepto: '', monto: '', tipo: TIPOS_GASTO.OPERATIVO })
   }
 
-  async function uploadFoto(file, setPreview, setPath) {
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      const base64 = ev.target.result
-      setPreview(base64) // preview inmediato
-      try {
-        const ext      = file.name.split('.').pop().toLowerCase()
-        const filename = `coach-${Date.now()}.${ext}`
-        const res  = await fetch('/api/upload-foto', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ base64, filename }),
-        })
-        const data = await res.json()
-        setPath(data.path || base64) // path del servidor o base64 como fallback
-      } catch {
-        setPath(base64) // fallback: guardar base64 en el store
-      }
+  function validateCoachAvatarFile(file) {
+    if (!file) return 'Selecciona una imagen válida.'
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) return 'La foto debe ser JPG, PNG o WEBP.'
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) return 'La foto no debe superar 5 MB.'
+    return null
+  }
+
+  function setAvatarSelection(file, setPreview, setFile) {
+    if (!file) return false
+    const error = validateCoachAvatarFile(file)
+    if (error) {
+      toast.error(error)
+      return false
     }
-    reader.readAsDataURL(file)
+    setPreview((prev) => {
+      if (typeof prev === 'string' && prev.startsWith('blob:')) {
+        URL.revokeObjectURL(prev)
+      }
+      return URL.createObjectURL(file)
+    })
+    setFile(file)
+    return true
+  }
+
+  function clearAvatarSelection(setPreview, setFile) {
+    setPreview((prev) => {
+      if (typeof prev === 'string' && prev.startsWith('blob:')) {
+        URL.revokeObjectURL(prev)
+      }
+      return null
+    })
+    setFile(null)
   }
 
   const sec = SECTIONS[activeSection]
@@ -765,8 +812,8 @@ export default function AdminPanel() {
               openModal={openModal}
               setModalEditCoach={setModalEditCoach}
               setEditCoachForm={setEditCoachForm}
-              setEditFotoPreview={setEditFotoPreview}
-              setEditFotoPath={setEditFotoPath}
+              setEditAvatarPreview={setEditAvatarPreview}
+              setEditAvatarFile={setEditAvatarFile}
               setModalHorarioCoach={setModalHorarioCoach}
               onToggleStatus={handleToggleCoachStatus}
               onDeleteCoach={handleDeleteCoach}
@@ -899,53 +946,41 @@ export default function AdminPanel() {
               <button className={styles.modalClose} onClick={closeModal}>×</button>
             </div>
 
-            {useApiCoaches ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                <label className={styles.formLabel}>Avatar URL</label>
-                <input
-                  className={styles.formInput}
-                  type="url"
-                  placeholder="https://..."
-                  value={coachForm.avatar_url}
-                  onChange={(e) => setCoachForm((f) => ({ ...f, avatar_url: e.target.value }))}
-                />
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(coachForm.public_profile_enabled)}
-                    onChange={(e) => setCoachForm((f) => ({ ...f, public_profile_enabled: e.target.checked }))}
-                  />
-                  Perfil público visible
-                </label>
+            <input
+              ref={fotoCreateRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={(e) => setAvatarSelection(e.target.files?.[0], setCoachAvatarPreview, setCoachAvatarFile)}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
+              <div
+                onClick={() => fotoCreateRef.current?.click()}
+                style={{ cursor: 'pointer', width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}
+              >
+                {coachAvatarPreview ? (
+                  <img src={coachAvatarPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: 28 }}>📷</span>
+                )}
               </div>
-            ) : (
-              <>
+              <button
+                type="button"
+                style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                onClick={() => fotoCreateRef.current?.click()}
+              >
+                {coachAvatarPreview ? 'Cambiar foto' : 'Subir foto'}
+              </button>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>JPG, PNG o WEBP. Máximo 5 MB.</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
                 <input
-                  ref={fotoCreateRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={(e) => uploadFoto(e.target.files?.[0], setCoachFotoPreview, setCoachFotoPath)}
+                  type="checkbox"
+                  checked={Boolean(coachForm.public_profile_enabled)}
+                  onChange={(e) => setCoachForm((f) => ({ ...f, public_profile_enabled: e.target.checked }))}
                 />
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
-                  <div
-                    onClick={() => fotoCreateRef.current?.click()}
-                    style={{ cursor: 'pointer', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                  >
-                    {coachFotoPreview
-                      ? <img src={coachFotoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <span style={{ fontSize: 28 }}>📷</span>}
-                  </div>
-                  <button
-                    type="button"
-                    style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                    onClick={() => fotoCreateRef.current?.click()}
-                  >
-                    {coachFotoPreview ? 'Cambiar foto' : 'Subir foto (opcional)'}
-                  </button>
-                </div>
-              </>
-            )}
+                Perfil público visible
+              </label>
+            </div>
 
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
@@ -1462,56 +1497,42 @@ export default function AdminPanel() {
               <button className={styles.modalClose} onClick={() => setModalEditCoach(null)}>×</button>
             </div>
 
-            {useApiCoaches ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                <label className={styles.formLabel}>Avatar URL</label>
-                <input
-                  className={styles.formInput}
-                  type="url"
-                  placeholder="https://..."
-                  value={editCoachForm.avatar_url}
-                  onChange={(e) => setEditCoachForm((f) => ({ ...f, avatar_url: e.target.value }))}
-                />
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(editCoachForm.public_profile_enabled)}
-                    onChange={(e) => setEditCoachForm((f) => ({ ...f, public_profile_enabled: e.target.checked }))}
-                  />
-                  Perfil público visible
-                </label>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                  Contraseña no se modifica aquí. Usa flujo de recuperación para cambio.
-                </div>
+            <input
+              ref={fotoEditRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={(e) => setAvatarSelection(e.target.files?.[0], setEditAvatarPreview, setEditAvatarFile)}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
+              <div
+                onClick={() => fotoEditRef.current?.click()}
+                style={{ cursor: 'pointer', width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              >
+                {currentEditCoachAvatar
+                  ? <img src={currentEditCoachAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 28, fontWeight: 700 }}>{String(modalEditCoach?.nombre ?? 'C').charAt(0).toUpperCase()}</span>}
               </div>
-            ) : (
-              <>
+              <button
+                type="button"
+                style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                onClick={() => fotoEditRef.current?.click()}
+              >
+                {currentEditCoachAvatar ? 'Cambiar foto' : 'Subir foto'}
+              </button>
+              <span style={{ fontSize: 11, color: 'var(--muted)' }}>JPG, PNG o WEBP. Máximo 5 MB.</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--muted)' }}>
                 <input
-                  ref={fotoEditRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={(e) => uploadFoto(e.target.files?.[0], setEditFotoPreview, setEditFotoPath)}
+                  type="checkbox"
+                  checked={Boolean(editCoachForm.public_profile_enabled)}
+                  onChange={(e) => setEditCoachForm((f) => ({ ...f, public_profile_enabled: e.target.checked }))}
                 />
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16, gap: 8 }}>
-                  <div
-                    onClick={() => fotoEditRef.current?.click()}
-                    style={{ cursor: 'pointer', width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                  >
-                    {editFotoPreview
-                      ? <img src={editFotoPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <span style={{ fontSize: 28, fontWeight: 700 }}>{modalEditCoach.nombre.charAt(0).toUpperCase()}</span>}
-                  </div>
-                  <button
-                    type="button"
-                    style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-                    onClick={() => fotoEditRef.current?.click()}
-                  >
-                    {editFotoPreview ? 'Cambiar foto' : 'Subir foto'}
-                  </button>
-                </div>
-              </>
-            )}
+                Perfil público visible
+              </label>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                Contraseña no se modifica aquí. Usa flujo de recuperación para cambio.
+              </div>
+            </div>
 
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>

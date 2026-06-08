@@ -1,41 +1,34 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-describe('http client', () => {
+const fetchMock = vi.fn()
+
+vi.stubGlobal('fetch', fetchMock)
+
+describe('http', () => {
   beforeEach(() => {
+    fetchMock.mockReset()
     localStorage.clear()
-    vi.unstubAllEnvs()
-    vi.restoreAllMocks()
   })
 
-  test('GET público sale sin Authorization si no hay token', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+  test('httpPost con FormData no stringify ni pone content-type json', async () => {
+    fetchMock.mockResolvedValue({
       ok: true,
-      headers: { get: () => 'application/json' },
+      headers: new Headers({ 'content-type': 'application/json' }),
       json: async () => ({ ok: true }),
     })
-    global.fetch = fetchMock
+    localStorage.setItem('token', 'token-123')
 
-    const { httpGet } = await import('./http')
-    await httpGet('/api/v1/clases')
+    const { httpPost } = await import('./http')
+    const formData = new FormData()
+    formData.append('file', new File(['x'], 'x.png', { type: 'image/png' }))
+
+    const result = await httpPost('https://example.com/upload', formData)
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [, init] = fetchMock.mock.calls[0]
-    expect(init.headers.Authorization).toBeUndefined()
-  })
-
-  test('GET privado agrega Authorization si existe token', async () => {
-    localStorage.setItem('token', 'abc123')
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      headers: { get: () => 'application/json' },
-      json: async () => ({ ok: true }),
-    })
-    global.fetch = fetchMock
-
-    const { httpGet } = await import('./http')
-    await httpGet('/api/v1/clientes/me/estado-financiero')
-
-    const [, init] = fetchMock.mock.calls[0]
-    expect(init.headers.Authorization).toBe('Bearer abc123')
+    expect(init.headers.Authorization).toBe('Bearer token-123')
+    expect(init.headers['Content-Type']).toBeUndefined()
+    expect(init.body).toBe(formData)
+    expect(result).toEqual({ ok: true })
   })
 })

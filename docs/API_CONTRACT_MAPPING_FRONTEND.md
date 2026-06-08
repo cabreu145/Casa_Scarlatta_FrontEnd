@@ -72,13 +72,15 @@ Notas:
 |---|---|---|---|---|---|---|
 | `frontend/src/services/coachesApiService.js` | `getCoachesPaginatedApi({page,pageSize,search,status})` | `GET /api/v1/coaches?page=&page_size=&search=&status=` | query `page`,`page_size`,`search`,`status` | `{ page, page_size, total, items[] }` o array legacy | `coachAdapter` + `paginationAdapter` | Alta |
 | `frontend/src/services/coachesApiService.js` | `getPublicCoachesApi()` | `GET /api/v1/coaches/public` | n/a | `{ coach_id, name, specialties[], primary_discipline, bio, instagram, avatar_url }[]` | `coachAdapter` | Alta |
-| `frontend/src/services/coachesApiService.js` | `createCoachApi(payload)` / `updateCoachApi(id,payload)` / `updateCoachStatusApi(id,status)` / `deleteCoachApi(id)` | `POST/PUT/PATCH/DELETE /api/v1/coaches` | create: `{ name, email, phone, password, status, specialties[], bio, instagram, avatar_url, public_profile_enabled }`; update: same sin `password` | `CoachRead` | `coachApiPayload` + `coachAdapter` | Alta |
+| `frontend/src/services/coachesApiService.js` | `createCoachApi(payload)` / `updateCoachApi(id,payload)` / `updateCoachStatusApi(id,status)` / `deleteCoachApi(id)` | `POST/PUT/PATCH/DELETE /api/v1/coaches` | create: `{ name, email, phone, password, status, specialties[], bio, instagram, public_profile_enabled }`; update: same sin `password` | `CoachRead` | `coachApiPayload` + `coachAdapter` | Alta |
+| `frontend/src/services/coachesApiService.js` | `uploadCoachAvatarApi(coachId, file)` | `POST /api/v1/coaches/{id}/avatar` | `multipart/form-data` con `file` | `CoachRead` | `coachAdapter` | Alta |
 
 Notas:
 - Admin > Coaches en API mode ya usa backend real como source of truth.
 - `coachesStore` queda como fallback legacy para flags API en `false`.
 - `coach_id` es identidad canónica en frontend API mode.
 - `public_profile_enabled` controla visibilidad pública; `avatar_url` es string persistido por backend.
+- `avatar_url` llega desde backend y frontend lo resuelve como URL pública; no se captura manualmente en form.
 | `frontend/src/services/clasesApiService.js` | `createClaseApi(payload)` | `POST /api/v1/clases` | `{ name, discipline, coach_id, capacity_max, duration_minutes, description, status, day_name, start_time }` | `ClassRead` | `classAdapter` + refresh store | Alta |
 | `frontend/src/services/clasesApiService.js` | `updateClaseApi(id,payload)` | `PUT /api/v1/clases/{id}` | `{ name, discipline, coach_id, capacity_max, duration_minutes, description, status, day_name, start_time }` | `ClassRead` | `classAdapter` + refresh store | Alta |
 

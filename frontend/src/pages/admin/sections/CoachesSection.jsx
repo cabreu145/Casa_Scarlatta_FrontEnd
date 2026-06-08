@@ -1,4 +1,5 @@
 import toast from 'react-hot-toast'
+import { resolveCoachAvatarUrl } from '@/adapters/coachAdapter'
 import styles from '../AdminPanel.module.css'
 
 function resolveCoachDisciplina(coach) {
@@ -22,8 +23,8 @@ export default function CoachesSection({
   openModal,
   setModalEditCoach,
   setEditCoachForm,
-  setEditFotoPreview,
-  setEditFotoPath,
+  setEditAvatarPreview,
+  setEditAvatarFile,
   setModalHorarioCoach,
   onToggleStatus,
   onDeleteCoach,
@@ -80,8 +81,8 @@ export default function CoachesSection({
             return (
               <div key={coachKey} className={styles.coachCard}>
                 <div className={styles.coachPhoto} style={{ overflow: 'hidden', padding: 0 }}>
-                  {c.foto || c.avatarUrl
-                    ? <img src={c.foto || c.avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', borderRadius: '50%' }} />
+                {resolveCoachAvatarUrl(c.foto || c.avatarUrl)
+                    ? <img src={resolveCoachAvatarUrl(c.foto || c.avatarUrl)} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', borderRadius: '50%' }} />
                     : initials}
                 </div>
                 <div className={styles.coachInfo}>
@@ -136,13 +137,13 @@ export default function CoachesSection({
                           telefono: c.telefono || c.phone || '',
                           bio: c.bio || '',
                           instagram: c.instagram || '',
-                          avatar_url: c.avatarUrl || c.foto || '',
+                          avatar_url: '',
                           public_profile_enabled: c.publicProfileEnabled !== false,
                           password: '',
                           estado: isInactive ? 'inactivo' : 'activo',
                         })
-                        setEditFotoPreview(c.foto || c.avatarUrl || null)
-                        setEditFotoPath(c.foto || c.avatarUrl || null)
+                        setEditAvatarPreview(resolveCoachAvatarUrl(c.foto || c.avatarUrl))
+                        setEditAvatarFile(null)
                       }}
                     >
                       Editar

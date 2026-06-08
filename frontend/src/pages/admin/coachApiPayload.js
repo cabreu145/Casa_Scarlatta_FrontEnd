@@ -21,11 +21,6 @@ function normalizeBool(value) {
   return false
 }
 
-function normalizeUrl(value) {
-  const raw = String(value ?? '').trim()
-  return raw || null
-}
-
 export function buildCoachApiPayload(form = {}, { isCreate = false } = {}) {
   const name = String(form?.nombre ?? form?.name ?? '').trim()
   const email = String(form?.email ?? '').trim()
@@ -33,8 +28,7 @@ export function buildCoachApiPayload(form = {}, { isCreate = false } = {}) {
   const status = normalizeStatus(form?.estado ?? form?.status)
   const specialties = normalizeSpecialties(form?.disciplina ?? form?.specialties ?? form?.especialidad)
   const bio = String(form?.bio ?? '').trim()
-  const instagram = normalizeUrl(form?.instagram)
-  const avatar_url = normalizeUrl(form?.avatar_url ?? form?.avatarUrl ?? form?.foto)
+  const instagram = String(form?.instagram ?? '').trim() || null
   const public_profile_enabled = normalizeBool(form?.public_profile_enabled ?? form?.publicProfileEnabled)
   const password = String(form?.password ?? '').trim()
 
@@ -46,7 +40,6 @@ export function buildCoachApiPayload(form = {}, { isCreate = false } = {}) {
     specialties,
     bio,
     instagram,
-    avatar_url,
     public_profile_enabled,
   }
 

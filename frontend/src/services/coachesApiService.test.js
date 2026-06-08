@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@/constants/api', () => ({
+  BASE_URL: 'http://localhost:8000',
   ENDPOINTS: {
     coaches: '/api/v1/coaches',
     publicCoaches: '/api/v1/coaches/public',
+    uploadCoachAvatar: (id) => `/api/v1/coaches/${id}/avatar`,
     coachesPaginated: ({ page, pageSize, search, status }) =>
       `/api/v1/coaches?page=${page}&page_size=${pageSize}&search=${search ?? ''}&status=${status ?? ''}`,
     coachById: (id) => `/api/v1/coaches/${id}`,
@@ -104,5 +106,21 @@ describe('coachesApiService', () => {
     expect(httpPut).toHaveBeenCalledWith('/api/v1/coaches/9', { name: 'Coach Editado' })
     expect(httpPatch).toHaveBeenCalledWith('/api/v1/coaches/9/status', { status: 'inactive' })
     expect(httpDelete).toHaveBeenCalledWith('/api/v1/coaches/9')
+  })
+
+  test('sube avatar de coach con FormData', async () => {
+    httpPost.mockResolvedValue({ coach_id: 9, avatar_url: '/media/coaches/demo.png' })
+    const { uploadCoachAvatarApi } = await import('./coachesApiService')
+    const file = new File(['demo'], 'coach.png', { type: 'image/png' })
+
+    const result = await uploadCoachAvatarApi(9, file)
+
+    expect(httpPost).toHaveBeenCalledTimes(1)
+    const [endpoint, body] = httpPost.mock.calls[0]
+    expect(endpoint).toBe('/api/v1/coaches/9/avatar')
+    expect(body).toBeInstanceOf(FormData)
+    expect(body.get('file')).toBe(file)
+    expect(result.coachId).toBe(9)
+    expect(result.avatarUrl).toContain('/media/coaches/demo.png')
   })
 })
