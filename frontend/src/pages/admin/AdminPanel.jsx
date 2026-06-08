@@ -117,6 +117,7 @@ export default function AdminPanel() {
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const [apiCoaches, setApiCoaches] = useState([])
+  const [clasesRefreshToken, setClasesRefreshToken] = useState(0)
   const [rangoDash, setRangoDash]         = useState('mes')
   const [modalPago, setModalPago]         = useState(false)
   const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
@@ -588,6 +589,7 @@ export default function AdminPanel() {
               setEditClaseForm={setEditClaseForm}
               claseForm={claseForm}
               setClaseForm={setClaseForm}
+              refreshToken={clasesRefreshToken}
             />
           </section>
 
@@ -931,12 +933,25 @@ export default function AdminPanel() {
                   if (!claseForm.nombre.trim()) return
                   const payload = buildClaseApiPayload({ form: claseForm, coaches: coachesForClassForms })
                   if (useApiClasses) {
-                    if (payload.coach_id == null) {
+                    if (!Array.isArray(coachesForClassForms) || coachesForClassForms.length === 0) {
+                      toast.error('No hay coaches registrados en backend. Sincroniza coaches antes de crear clases.')
+                      return
+                    }
+                    if (!Number.isInteger(payload.coach_id)) {
                       toast.error('Selecciona un coach válido para guardar en API mode')
+                      return
+                    }
+                    if (claseForm.fecha) {
+                      toast.error('La fecha específica requiere crear ocurrencia; no se envía en clase base')
+                      return
+                    }
+                    if (claseForm.publicarEn) {
+                      toast.error('Programar publicación no está soportado todavía por backend')
                       return
                     }
                     await createClaseApi(payload)
                     await loadClasesFromApi({ force: true })
+                    setClasesRefreshToken((v) => v + 1)
                   } else {
                     const coachObj = coaches.find(c => c.nombre === claseForm.coach)
                     agregarClase({
@@ -1497,12 +1512,25 @@ export default function AdminPanel() {
                     fallbackCoachId: modalEditClase?.coachId,
                   })
                   if (useApiClasses) {
-                    if (payload.coach_id == null) {
+                    if (!Array.isArray(coachesForClassForms) || coachesForClassForms.length === 0) {
+                      toast.error('No hay coaches registrados en backend. Sincroniza coaches antes de editar clases.')
+                      return
+                    }
+                    if (!Number.isInteger(payload.coach_id)) {
                       toast.error('Selecciona un coach válido para guardar en API mode')
+                      return
+                    }
+                    if (editClaseForm.fecha) {
+                      toast.error('La fecha específica requiere crear ocurrencia; no se envía en clase base')
+                      return
+                    }
+                    if (editClaseForm.publicarEn) {
+                      toast.error('Programar publicación no está soportado todavía por backend')
                       return
                     }
                     await updateClaseApi(modalEditClase.id, payload)
                     await loadClasesFromApi({ force: true })
+                    setClasesRefreshToken((v) => v + 1)
                   } else {
                     const coachObj = coaches.find(c => c.nombre === editClaseForm.coach)
                     editarClase(modalEditClase.id, {

@@ -22,7 +22,7 @@ Estado actual del admin:
 | Módulo | Fuente actual | Estado | Prioridad | Frontend puede avanzar ya | Backend requerido primero |
 |---|---|---:|---:|---:|---:|
 | Dashboard admin | mock/local | faltante | P1 | no | sí |
-| Clases | mixta | parcial | **P0** | sí | no |
+| Clases | API-first | listo | **P0** | sí | no |
 | Coaches | mock/local | faltante | **P0** | no | sí |
 | Usuarios/clientes | mock/local | faltante | **P0** | no | sí |
 | Paquetes/membresías | mock/local | faltante | **P0** | no | sí |
@@ -100,7 +100,8 @@ Campos mínimos:
 - `capacity_max`
 
 Estado actual:
-- parcial
+- listo para Admin > Clases en API mode
+- crear/editar bloquean `fecha específica` y `programar publicación` hasta que exista contrato de ocurrencias/publicación
 
 Prioridad:
 - **P0**

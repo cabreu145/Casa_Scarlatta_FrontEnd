@@ -14,21 +14,39 @@ function resolveStatus(value) {
   return 'programada'
 }
 
+function resolveUiStatus(value) {
+  const raw = String(value ?? '').toLowerCase()
+  if (raw === 'programada' || raw === 'activa' || raw === 'active') return 'activa'
+  if (raw.includes('cancel')) return 'cancelada'
+  if (raw.includes('final')) return 'finalizada'
+  return raw || 'activa'
+}
+
+function resolveTipoFromDiscipline(discipline, fallbackTipo) {
+  const normalized = normalizeDiscipline(discipline ?? fallbackTipo)
+  if (normalized === 'slow') return 'Slow'
+  if (normalized === 'stryde') return 'Stryde X'
+  const fallback = String(fallbackTipo ?? '').trim()
+  if (fallback) return fallback
+  return 'Stryde X'
+}
+
 export function mapBackendClassToFrontendClass(item = {}) {
   const cupoMax = safeNumber(item.capacity_max, 0)
   const cupoActual = safeNumber(item.capacity_current, 0)
+  const discipline = normalizeDiscipline(item.discipline ?? item.class_discipline ?? item.classType ?? item.tipo)
   return {
     id: item.id,
     nombre: item.name ?? item.nombre ?? 'Clase',
     name: item.name ?? item.nombre ?? 'Clase',
-    tipo: item.tipo ?? 'Stryde X',
-    discipline: normalizeDiscipline(item.discipline ?? item.class_discipline ?? item.classType ?? item.tipo),
+    tipo: resolveTipoFromDiscipline(discipline, item.tipo),
+    discipline,
     coachId: item.coach_id ?? item.coachId ?? null,
     coachNombre: item.coach_name ?? item.coachNombre ?? `Coach #${item.coach_id ?? 'N/A'}`,
     cupoMax,
     cupoActual,
     cupoDisponible: safeNumber(item.cupo_disponible, Math.max(0, cupoMax - cupoActual)),
-    duracion: safeNumber(item.duration_min, 50),
+    duracion: safeNumber(item.duration_minutes ?? item.duration_min ?? item.durationMin, 50),
     hora: getClassTimeToken(item),
     startTime: getClassTimeToken({ startTime: item.start_time ?? item.startTime ?? null, startAt: item.start_at ?? item.startAt ?? null }) ?? null,
     startAt: item.start_at ?? item.startAt ?? null,
@@ -45,9 +63,12 @@ export function mapBackendClassToFrontendClass(item = {}) {
     displayTime: getClassDisplayTime(item),
     estado: resolveStatus(item.status),
     status: resolveStatus(item.status),
+    statusDisplay: resolveUiStatus(item.status),
+    estadoDisplay: resolveUiStatus(item.status),
     dia: item.dia ?? null,
     fecha: item.fecha ?? null,
-    descripcion: item.descripcion ?? '',
+    descripcion: item.description ?? item.descripcion ?? '',
+    description: item.description ?? item.descripcion ?? '',
     publicarEn: item.publicarEn ?? null,
   }
 }

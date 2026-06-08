@@ -66,8 +66,13 @@ Los siguientes contratos se mantienen solo por compatibilidad de fallback/mock c
 Notas:
 - Coach dashboard en API mode consume agenda por ocurrencia real.
 - No usar matching por `coachNombre` ni `class_id` plano como criterio principal en API mode.
-| `frontend/src/services/clasesApiService.js` | `createClaseApi(payload)` | `POST /api/v1/clases` | `{ name, tipo, coach_id, day_name, start_time, duration_min, capacity_max, description, status }` | `ClassRead` | `classAdapter` + refresh store | Alta |
-| `frontend/src/services/clasesApiService.js` | `updateClaseApi(id,payload)` | `PUT /api/v1/clases/{id}` | `{ name, tipo, coach_id, day_name, start_time, duration_min, capacity_max, description, status }` | `ClassRead` | `classAdapter` + refresh store | Alta |
+| `frontend/src/services/clasesApiService.js` | `createClaseApi(payload)` | `POST /api/v1/clases` | `{ name, discipline, coach_id, capacity_max, duration_minutes, description, status, day_name, start_time }` | `ClassRead` | `classAdapter` + refresh store | Alta |
+| `frontend/src/services/clasesApiService.js` | `updateClaseApi(id,payload)` | `PUT /api/v1/clases/{id}` | `{ name, discipline, coach_id, capacity_max, duration_minutes, description, status, day_name, start_time }` | `ClassRead` | `classAdapter` + refresh store | Alta |
+
+Notas:
+- `status` UI `activa` se normaliza a API `programada`.
+- `description` se acepta en contrato, pero backend todavía no la persiste.
+- `day_name` y `start_time` se mantienen para compatibilidad de calendario legacy.
 
 Notas BUG-013:
 - En API mode admin no debe usar `coachNombre` como identidad.

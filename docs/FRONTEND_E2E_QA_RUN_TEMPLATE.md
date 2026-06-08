@@ -250,13 +250,15 @@ Marcar al ejecutar QA en navegador:
 
 ## QA especï¿½fico BUG-006A/B (paginaciï¿½n visual frontend)
 - [ ] Cliente > Paquetes & Pagos: validar paginaciï¿½n de movimientos/transacciones (Anterior/Siguiente).
-- [ ] Admin > Clases (vista lista): validar paginaciï¿½n visual y navegaciï¿½n por pï¿½ginas.
+- [ ] Admin > Clases (vista lista): validar paginación visual, filtros API (`search`, `discipline`, `status`, `coach_id`) y navegabilidad por páginas.
+- [ ] Admin > Clases (nuevo): validar que activa en UI se envía como programada, coach_id es numérico backend y fecha específica / programar publicación quedan bloqueados en API mode.
 - [ ] Admin > Ver usuario > Historial reservas: validar paginaciï¿½n en modal.
 - [ ] Cambiar filtro/vista y confirmar reset de pï¿½gina cuando aplica.
 - [ ] Confirmar que no cambian endpoints ni source of truth en API mode.
 
 ## QA especï¿½fico BUG-006C (paginaciï¿½n backend)
-- [ ] Admin > Clases (vista lista, filtro `Todas`): validar request `GET /api/v1/clases?page=...&page_size=...`.
+- [ ] Admin > Clases (vista lista): validar request `GET /api/v1/clases?page=...&page_size=...&search=...&discipline=...&status=...&coach_id=...`.
+- [ ] Admin > Clases (nuevo): validar POST /api/v1/clases con duration_minutes, status=programada y sin coach-* mock.
 - [ ] Cliente > Paquetes & Pagos: validar request `GET /api/v1/clientes/me/credit-movements?page=...&page_size=...` al navegar pï¿½ginas.
 - [ ] Validar fallback de compatibilidad cuando backend responda array legacy (sin romper UI).
 - [ ] Validar que `GET /api/v1/clientes/me/estado-financiero` sigue como resumen y no como historial paginado.

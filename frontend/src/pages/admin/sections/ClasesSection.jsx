@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
@@ -14,7 +14,9 @@ import { diaDesdefecha } from '@/utils/formatters'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
-import { getClasesPaginatedApi } from '@/services/clasesApiService'
+import { createClaseApi, deleteClaseApi, getClasesPaginatedApi } from '@/services/clasesApiService'
+import { buildClaseApiPayload } from '../classApiPayload'
+import { buildAdminClasesApiQuery } from '../adminClassesApiUtils'
 import styles from '../AdminPanel.module.css'
 
 const ABBR_DIA = { Lunes: 'LUN', Martes: 'MAR', Miércoles: 'MIÉ', Jueves: 'JUE', Viernes: 'VIE', Sábado: 'SÁB', Domingo: 'DOM' }
@@ -197,12 +199,12 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
     finally { setCargando(false) }
   }
 
-  const confirmar = () => {
+  const confirmar = async () => {
     if (modoPublicacion === 'personalizado' && !publicarEnCustom) {
       toast.error('Selecciona la fecha y hora de publicación')
       return
     }
-    onImportar(clasesParseadas.map(c => ({ ...c, ...(publicarEnFinal ? { publicarEn: publicarEnFinal } : {}) })))
+    await onImportar(clasesParseadas.map(c => ({ ...c, ...(publicarEnFinal ? { publicarEn: publicarEnFinal } : {}) })))
     const msg = publicarEnFinal
       ? `${clasesParseadas.length} clase${clasesParseadas.length !== 1 ? 's' : ''} programadas para ${new Date(publicarEnFinal).toLocaleString('es-MX', { weekday:'short', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}`
       : `${clasesParseadas.length} clase${clasesParseadas.length !== 1 ? 's' : ''} publicadas inmediatamente`
@@ -441,6 +443,7 @@ export default function ClasesSection({
   setEditClaseForm,
   claseForm,
   setClaseForm,
+  refreshToken = 0,
 }) {
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() => {
     const hoy = new Date()
@@ -450,6 +453,9 @@ export default function ClasesSection({
   const [modalImport, setModalImport] = useState(false)
   const [vistaLista, setVistaLista]   = useState(false)
   const [clasesListPage, setClasesListPage] = useState(1)
+  const [clasesSearch, setClasesSearch] = useState('')
+  const [clasesStatusFilter, setClasesStatusFilter] = useState('Todas')
+  const [clasesCoachFilter, setClasesCoachFilter] = useState('Todos')
   const [apiListState, setApiListState] = useState({
     items: [],
     page: 1,
@@ -460,12 +466,85 @@ export default function ClasesSection({
     error: null,
     isPaginated: false,
   })
+  const skipNextPageFetchRef = useRef(false)
   const { agregarClase } = useClasesStore()
   const { getPorClase }  = useListaEsperaStore()
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
-  const useBackendPaginationInList = useApiClasses && clasesFilter === 'Todas'
+  const useBackendPaginationInList = useApiClasses
+  const selectedDiscipline = useMemo(() => {
+    if (clasesFilter === 'Slow') return 'slow'
+    if (clasesFilter === 'Stryde X') return 'stryde'
+    return undefined
+  }, [clasesFilter])
 
-  const handleImportar = (clases) => {
+  const fetchApiClasesPage = useCallback(async (page = clasesListPage) => {
+    setApiListState((prev) => ({ ...prev, isLoading: true, error: null }))
+    const query = buildAdminClasesApiQuery({
+      page,
+      pageSize: 12,
+      search: clasesSearch,
+      discipline: selectedDiscipline,
+      status: clasesStatusFilter,
+      coachId: clasesCoachFilter !== 'Todos' ? clasesCoachFilter : undefined,
+    })
+    const result = await getClasesPaginatedApi({
+      page: query.page,
+      pageSize: query.pageSize,
+      search: query.search,
+      discipline: query.discipline,
+      status: query.status,
+      coachId: query.coachId,
+    })
+    const totalPages = Math.max(1, Math.ceil((result.total ?? 0) / (result.pageSize || 12)))
+    setApiListState({
+      items: result.items ?? [],
+      page: result.page ?? page,
+      pageSize: result.pageSize ?? 12,
+      total: result.total ?? (result.items?.length ?? 0),
+      totalPages,
+      isLoading: false,
+      error: null,
+      isPaginated: result.isPaginated === true,
+    })
+    return result
+  }, [clasesCoachFilter, clasesListPage, clasesSearch, clasesStatusFilter, selectedDiscipline])
+
+  const handleDeleteClase = useCallback(async (claseId, { refetch = true } = {}) => {
+    if (useApiClasses) {
+      await deleteClaseApi(claseId)
+      useListaEsperaStore.getState().limpiarClase(claseId)
+      if (refetch) {
+        await useClasesStore.getState().loadClasesFromApi({ force: true })
+        await fetchApiClasesPage(clasesListPage)
+      }
+      return
+    }
+    eliminarClaseConReservas(claseId)
+  }, [clasesListPage, fetchApiClasesPage, useApiClasses])
+
+  const handleImportar = async (clases) => {
+    if (useApiClasses) {
+      try {
+        for (const clase of clases) {
+          const payload = buildClaseApiPayload({
+            form: {
+              ...clase,
+              coach: clase.coachNombre ?? clase.coach ?? '',
+            },
+            coaches,
+            fallbackCoachId: clase.coachId ?? null,
+          })
+          await createClaseApi(payload)
+        }
+        await useClasesStore.getState().loadClasesFromApi({ force: true })
+        await fetchApiClasesPage(clasesListPage)
+        toast.success(`${clases.length} clase${clases.length !== 1 ? 's' : ''} importadas correctamente`)
+      } catch (err) {
+        toast.error(err?.message ?? 'No se pudieron importar clases en API mode')
+      }
+      return
+    }
+
     clases.forEach(c => agregarClase(c))
     logClaseCreada({ nombre: `Importación masiva: ${clases.length} clases` })
     toast.success(`${clases.length} clase${clases.length !== 1 ? 's' : ''} importadas correctamente`)
@@ -483,26 +562,18 @@ export default function ClasesSection({
 
   useEffect(() => {
     setClasesListPage(1)
-  }, [clasesFilter, vistaLista])
+  }, [clasesFilter, vistaLista, clasesSearch, clasesStatusFilter, clasesCoachFilter])
 
   useEffect(() => {
     if (!useBackendPaginationInList || !vistaLista) return
+    if (skipNextPageFetchRef.current) {
+      skipNextPageFetchRef.current = false
+      return
+    }
     let active = true
-    setApiListState((prev) => ({ ...prev, isLoading: true, error: null }))
-    getClasesPaginatedApi({ page: clasesListPage, pageSize: 12 })
-      .then((result) => {
+    fetchApiClasesPage(clasesListPage)
+      .then(() => {
         if (!active) return
-        const totalPages = Math.max(1, Math.ceil((result.total ?? 0) / (result.pageSize || 12)))
-        setApiListState({
-          items: result.items ?? [],
-          page: result.page ?? clasesListPage,
-          pageSize: result.pageSize ?? 12,
-          total: result.total ?? (result.items?.length ?? 0),
-          totalPages,
-          isLoading: false,
-          error: null,
-          isPaginated: result.isPaginated === true,
-        })
       })
       .catch((err) => {
         if (!active) return
@@ -513,7 +584,16 @@ export default function ClasesSection({
         }))
       })
     return () => { active = false }
-  }, [clasesListPage, useBackendPaginationInList, vistaLista])
+  }, [clasesListPage, fetchApiClasesPage, useBackendPaginationInList, vistaLista])
+
+  useEffect(() => {
+    if (!useApiClasses || !refreshToken) return
+    setClasesListPage(1)
+    if (vistaLista) {
+      skipNextPageFetchRef.current = true
+      fetchApiClasesPage(1).catch(() => {})
+    }
+  }, [fetchApiClasesPage, refreshToken, useApiClasses, vistaLista])
 
   return (
     <>
@@ -523,14 +603,50 @@ export default function ClasesSection({
           active={clasesFilter}
           onChange={setClasesFilter}
         />
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            className={styles.searchInput}
+            style={{ minWidth: 180, margin: 0 }}
+            type="search"
+            placeholder="Buscar clase"
+            value={clasesSearch}
+            onChange={(e) => setClasesSearch(e.target.value)}
+          />
+          <select
+            className={styles.searchInput}
+            style={{ minWidth: 160, margin: 0 }}
+            value={clasesStatusFilter}
+            onChange={(e) => setClasesStatusFilter(e.target.value)}
+          >
+            <option value="Todas">Todos los estados</option>
+            <option value="activa">Activa</option>
+            <option value="cancelada">Cancelada</option>
+            <option value="finalizada">Finalizada</option>
+          </select>
+          <select
+            className={styles.searchInput}
+            style={{ minWidth: 180, margin: 0 }}
+            value={clasesCoachFilter}
+            onChange={(e) => setClasesCoachFilter(e.target.value)}
+          >
+            <option value="Todos">Todos los coaches</option>
+            {coaches.map((coach) => (
+              <option key={coach.id ?? coach.coach_id ?? coach.name ?? coach.nombre} value={coach.id ?? coach.coach_id}>
+                {coach.nombre ?? coach.name ?? `Coach #${coach.id ?? coach.coach_id}`}
+              </option>
+            ))}
+          </select>
           {selectMode && selectedIds.size > 0 && (
             <button
               className={`${styles.btn} ${styles.btnPrimary}`}
               style={{ background: '#ef4444', borderColor: '#ef4444' }}
-              onClick={() => {
+              onClick={async () => {
                 if (!window.confirm(`¿Eliminar ${selectedIds.size} clase${selectedIds.size > 1 ? 's' : ''}?`)) return
-                selectedIds.forEach(id => eliminarClaseConReservas(id))
+                await Promise.all([...selectedIds].map((id) => handleDeleteClase(id, { refetch: false })))
+                if (useApiClasses) {
+                  await useClasesStore.getState().loadClasesFromApi({ force: true })
+                  await fetchApiClasesPage(clasesListPage)
+                }
                 toast.success(`${selectedIds.size} clase${selectedIds.size > 1 ? 's eliminadas' : ' eliminada'}`)
                 setSelectedIds(new Set())
                 setSelectMode(false)
@@ -541,7 +657,7 @@ export default function ClasesSection({
           )}
           <button
             className={`${styles.btn} ${selectMode ? styles.btnSecondary : styles.btnGhost}`}
-            onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
+            onClick={async () => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
           >
             {selectMode ? '✕ Cancelar' : '☑ Seleccionar'}
           </button>
@@ -732,14 +848,14 @@ export default function ClasesSection({
                       <button
                         className={`${styles.btn} ${styles.btnSecondary}`}
                         style={{ padding: '6px 12px', fontSize: 12 }}
-                        onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
+                        onClick={async () => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
                       >
                         👥 {c.cupoActual}
                       </button>
                       <button
                         className={`${styles.btn} ${styles.btnGhost}`}
                         style={{ padding: '6px 12px', fontSize: 12 }}
-                        onClick={() => {
+                        onClick={async () => {
                           setModalEditClase(c)
                           const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
                           setEditClaseForm({
@@ -763,9 +879,9 @@ export default function ClasesSection({
                       <button
                         className={`${styles.btn} ${styles.btnGhost}`}
                         style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
-                        onClick={() => {
+                        onClick={async () => {
                           if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
-                          eliminarClaseConReservas(c.id)
+                          await handleDeleteClase(c.id)
                           logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
                           toast.success('Clase eliminada')
                         }}
@@ -939,12 +1055,12 @@ export default function ClasesSection({
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
-                            onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
+                            onClick={async () => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
                             title="Ver alumnos"
                             style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >👥</button>
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               setModalEditClase(c)
                               const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
                               setEditClaseForm({
@@ -961,9 +1077,9 @@ export default function ClasesSection({
                             style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >✏️</button>
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
-                              eliminarClaseConReservas(c.id)
+                              await handleDeleteClase(c.id)
                               logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
                               toast.success('Clase eliminada')
                             }}

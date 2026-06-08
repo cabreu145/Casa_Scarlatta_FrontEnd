@@ -23,7 +23,7 @@ La integración más madura está en clases. El resto depende de stores persisti
 | Módulo | Componente principal | Store actual | Service actual | Fuente actual | Operaciones soportadas hoy | Endpoint backend esperado | Riesgo | Prioridad |
 |---|---|---|---|---|---|---|---|---|
 | Dashboard | `src/pages/admin/AdminDashboard.jsx`, `src/pages/admin/sections/DashboardSection.jsx` | `clasesStore`, `transaccionesStore`, `usuariosStore`, `reservasStore`, `paquetesStore` | `dashboardService`, `getDashboardMetrics` | mock/local | métricas, conteos, ingresos, actividad reciente | `GET /api/v1/admin/dashboard` o endpoints de métricas agregadas | Alto: métricas no confiables | Admin-4 |
-| Clases | `src/pages/admin/sections/ClasesSection.jsx`, flujo en `AdminPanel.jsx` | `clasesStore` | `clasesApiService`, `reservasService`, `buildClaseApiPayload` | **mixta** | listar, crear, editar; delete y relación con reservas aún híbridos | `GET/POST/PUT/DELETE /api/v1/clases`, `GET /api/v1/clases/{id}/ocurrencias`, `GET /api/v1/clases/{id}/disponibilidad` | Medio-Alto | **Admin-1** |
+| Clases | `src/pages/admin/sections/ClasesSection.jsx`, flujo en `AdminPanel.jsx` | `clasesStore` como cache/fallback | `clasesApiService`, `reservasService`, `buildClaseApiPayload` | **API-first** | listar, crear, editar, eliminar/desactivar, ver ocurrencias/disponibilidad | `GET/POST/PUT/DELETE /api/v1/clases`, `GET /api/v1/clases/{id}/ocurrencias`, `GET /api/v1/clases/{id}/disponibilidad` | Medio | **Admin-1** |
 | Coaches | `src/pages/admin/sections/CoachesSection.jsx`, flujo en `AdminPanel.jsx` | `coachesStore` | `coachesService` (local), `coachesApiService.getCoachesApi()` | mock/local con lectura API parcial | listar, crear, editar, eliminar, activar/desactivar | `GET/POST/PUT/DELETE /api/v1/coaches`, opcional `GET /api/v1/coaches/{id}/agenda` | Alto: IDs mock y CRUD local | **Admin-1** |
 | Usuarios/clientes | `src/pages/admin/sections/UsuariosSection.jsx`, flujo en `AdminPanel.jsx` | `usuariosStore`, `paquetesStore` | `usuariosService` | mock/local | listar, buscar, editar, eliminar, asignar paquete, ajustar datos | `GET/POST/PUT/PATCH/DELETE /api/v1/clientes`, `POST /api/v1/clientes/{id}/paquetes` | Alto: clientes falsos/locales | **Admin-2** |
 | Paquetes/membresías | `src/pages/admin/sections/PaquetesSection.jsx`, flujo en `AdminPanel.jsx` | `paquetesStore`, `transaccionesStore` | no hay servicio admin backend real; client-side usa `membershipPackagesApiService` solo para catálogo público | mock/local | CRUD local, destacar paquete, beneficios, uso en POS | `GET/POST/PUT/PATCH/DELETE /api/v1/memberships/packages` (o equivalente admin) | Alto: catálogo admin no real | **Admin-2** |
@@ -43,6 +43,8 @@ Estado:
 - Ya hay API real para catálogo y CRUD base.
 - `AdminPanel.jsx` usa `useApiClasses` para activar lectura API.
 - `ClasesSection.jsx` ya consume `getClasesPaginatedApi()`.
+- `ClasesSection.jsx` ya consume API real para listado filtrado, create/update/delete y refetch.
+- En create/update, frontend bloquea `fecha` específica y `publicarEn` porque backend actual solo cubre clase base.
 - Sigue habiendo mutaciones locales en `clasesStore` para compatibilidad/fallback.
 
 Riesgo:

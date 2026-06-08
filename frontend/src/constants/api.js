@@ -27,7 +27,8 @@ export const ENDPOINTS = {
 
   clases: withPrefix('/clases'),
   clasesList: withPrefix('/clases'),
-  clasesPaginated: ({ page, pageSize }) => withQuery('/clases', { page, page_size: pageSize }),
+  clasesPaginated: ({ page, pageSize, search, discipline, status, coach_id }) =>
+    withQuery('/clases', { page, page_size: pageSize, search, discipline, status, coach_id }),
   claseById: (id) => withPrefix(`/clases/${id}`),
   claseDisponibilidad: (id) => withPrefix(`/clases/${id}/disponibilidad`),
   claseOcurrencias: (id, { from, to } = {}) =>

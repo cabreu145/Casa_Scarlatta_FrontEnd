@@ -4,7 +4,8 @@ vi.mock('@/constants/api', () => ({
   ENDPOINTS: {
     clases: '/api/v1/clases',
     clasesList: '/api/v1/clases',
-    clasesPaginated: ({ page, pageSize }) => `/api/v1/clases?page=${page}&page_size=${pageSize}`,
+    clasesPaginated: ({ page, pageSize, search, discipline, status, coach_id }) =>
+      `/api/v1/clases?page=${page}&page_size=${pageSize}${search ? `&search=${search}` : ''}${discipline ? `&discipline=${discipline}` : ''}${status ? `&status=${status}` : ''}${coach_id ? `&coach_id=${coach_id}` : ''}`,
     claseById: (id) => `/api/v1/clases/${id}`,
     claseDisponibilidad: (id) => `/api/v1/clases/${id}/disponibilidad`,
   },
@@ -13,10 +14,12 @@ vi.mock('@/constants/api', () => ({
 const httpGet = vi.fn()
 const httpPost = vi.fn()
 const httpPut = vi.fn()
+const httpDelete = vi.fn()
 vi.mock('@/lib/http', () => ({
   httpGet: (...args) => httpGet(...args),
   httpPost: (...args) => httpPost(...args),
   httpPut: (...args) => httpPut(...args),
+  httpDelete: (...args) => httpDelete(...args),
 }))
 
 describe('clasesApiService write', () => {
@@ -25,6 +28,7 @@ describe('clasesApiService write', () => {
     httpGet.mockReset()
     httpPost.mockReset()
     httpPut.mockReset()
+    httpDelete.mockReset()
   })
 
   test('createClaseApi envia payload con coach_id', async () => {
@@ -44,8 +48,8 @@ describe('clasesApiService write', () => {
   test('getClasesPaginatedApi llama endpoint paginado', async () => {
     httpGet.mockResolvedValue({ page: 1, page_size: 2, total: 10, items: [{ id: 1, name: 'A' }] })
     const { getClasesPaginatedApi } = await import('./clasesApiService')
-    const result = await getClasesPaginatedApi({ page: 1, pageSize: 2 })
-    expect(httpGet).toHaveBeenCalledWith('/api/v1/clases?page=1&page_size=2')
+    const result = await getClasesPaginatedApi({ page: 1, pageSize: 2, search: 'slow', discipline: 'slow', status: 'activa', coachId: 4 })
+    expect(httpGet).toHaveBeenCalledWith('/api/v1/clases?page=1&page_size=2&search=slow&discipline=slow&status=programada&coach_id=4')
     expect(result.isPaginated).toBe(true)
     expect(result.total).toBe(10)
   })
@@ -57,5 +61,13 @@ describe('clasesApiService write', () => {
     expect(httpGet).toHaveBeenCalledWith('/api/v1/clases')
     expect(result).toHaveLength(1)
     expect(result[0]).toMatchObject({ id: 2, nombre: 'B' })
+  })
+
+  test('deleteClaseApi llama endpoint correcto', async () => {
+    httpDelete.mockResolvedValue({ success: true })
+    const { deleteClaseApi } = await import('./clasesApiService')
+    const result = await deleteClaseApi(7)
+    expect(httpDelete).toHaveBeenCalledWith('/api/v1/clases/7')
+    expect(result).toMatchObject({ success: true })
   })
 })

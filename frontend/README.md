@@ -66,10 +66,14 @@ Variables:
 
 Comportamiento:
 - `VITE_USE_API_CLASSES=true`: frontend carga clases desde backend (`GET /api/v1/clases`, `GET /api/v1/clases/{id}`, `GET /api/v1/clases/{id}/disponibilidad`).
+- Admin > Clases en API mode también usa `GET /api/v1/clases?page=&page_size=&search=&discipline=&status=&coach_id=`, `POST /api/v1/clases`, `PUT /api/v1/clases/{id}` y `DELETE /api/v1/clases/{id}`.
+- En API mode, `Fecha específica` y `Programar publicación` quedan bloqueados hasta que exista contrato de ocurrencias/publicación.
 - `VITE_USE_API_CLASSES=false`: frontend conserva flujo actual con mocks/store local.
 
 Notas:
 - Adapter `classAdapter` transforma payload backend a shape actual de UI.
+- `duration_minutes` es alias preferido en frontend; backend también acepta `duration_min`.
+- `description` se acepta en contrato, pero backend aún no la persiste.
 - No se integraron aún reservas ni waitlist.
 
 ## Validación manual (backend real)

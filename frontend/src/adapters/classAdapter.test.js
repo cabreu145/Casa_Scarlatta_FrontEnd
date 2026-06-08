@@ -10,10 +10,11 @@ describe('classAdapter', () => {
     const result = mapBackendClassToFrontendClass({
       id: 5,
       name: 'Stryde AM',
+      discipline: 'stryde',
       coach_id: 3,
       capacity_max: 20,
       capacity_current: 8,
-      duration_min: 50,
+      duration_minutes: 50,
       start_time: '07:00',
       start_at: '2026-06-02T07:00:00',
       status: 'programada',
@@ -34,6 +35,8 @@ describe('classAdapter', () => {
       displayTime: '07:00',
       displayDate: expect.any(String),
       estado: 'programada',
+      statusDisplay: 'activa',
+      estadoDisplay: 'activa',
       coachNombre: 'Coach #3',
     })
   })
@@ -51,7 +54,33 @@ describe('classAdapter', () => {
       displayTime: 'Horario por definir',
       displayDate: 'Fecha por definir',
       estado: 'programada',
+      statusDisplay: 'activa',
     })
+  })
+
+  test('mapea Slow desde discipline y description', () => {
+    const result = mapBackendClassToFrontendClass({
+      id: 9,
+      name: 'Slow Core',
+      discipline: 'slow',
+      duration_min: 60,
+      description: 'Clase calma',
+    })
+
+    expect(result).toMatchObject({
+      tipo: 'Slow',
+      discipline: 'slow',
+      duracion: 60,
+      description: 'Clase calma',
+      descripcion: 'Clase calma',
+    })
+  })
+
+  test('mapea cancelada y finalizada a display correcto', () => {
+    const cancelada = mapBackendClassToFrontendClass({ id: 1, name: 'Cancel', status: 'cancelada' })
+    const finalizada = mapBackendClassToFrontendClass({ id: 2, name: 'Final', status: 'finalizada' })
+    expect(cancelada.statusDisplay).toBe('cancelada')
+    expect(finalizada.statusDisplay).toBe('finalizada')
   })
 
   test('mapBackendClassesToFrontend transforma arreglo', () => {
