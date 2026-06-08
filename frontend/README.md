@@ -311,3 +311,11 @@ Siguiente módulo recomendado: BUG-009 (integración Mercado Pago).
 - `/reservar` recupera flujo visual premium: cards grandes STRYDE X / SLOW, paso sala -> clase -> spot.
 - Reserva real sigue usando flujo actual por spots/holds; no se toca backend ni contratos.
 - Público ve catálogo/clases; acciones de reservar siguen bajo auth de cliente.
+
+## Admin Usuarios/clientes API-first
+
+- Usa `GET/POST/PUT/DELETE /api/v1/clientes` y detalle real por id.
+- Password solo en create; update no modifica password.
+- Asignacion manual usa `/clientes/{id}/paquetes`; creditos usan `/clientes/{id}/credits`.
+- Catalogo de asignacion viene de `GET /api/v1/memberships/packages`.
+- `usuariosStore` y `paquetesStore` quedan solo como fallback con API desactivada.

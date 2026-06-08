@@ -478,3 +478,14 @@ Decisión final:
 - `/reservar` recupera flujo visual premium: cards grandes STRYDE X / SLOW, paso sala -> clase -> spot.
 - Reserva real sigue usando flujo actual por spots/holds; no se toca backend ni contratos.
 - Público ve catálogo/clases; acciones de reservar siguen bajo auth de cliente.
+
+## QA Admin Usuarios/clientes API-first
+
+- [ ] Login admin y abrir Admin > Usuarios.
+- [ ] Validar `GET /api/v1/clientes?page=1&page_size=20` y filtros reales.
+- [ ] Crear cliente con password inicial; validar refetch y login del nuevo cliente.
+- [ ] Editar cliente; confirmar `PUT` sin password.
+- [ ] Eliminar/desactivar; confirmar baja logica y refetch.
+- [ ] Asignar paquete desde catalogo backend.
+- [ ] Ajustar creditos positivo y negativo; confirmar detalle/listado actualizado.
+- [ ] Confirmar ausencia de clientes mock y `page_size=1000` en API mode.

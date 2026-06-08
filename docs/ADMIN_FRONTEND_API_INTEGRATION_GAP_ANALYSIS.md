@@ -260,3 +260,11 @@ Backend necesario:
 - `AdminDashboard.jsx` aparece como legacy/dead code y no debería ser base de nueva integración.
 - `Clases` ya está más cerca de API real que resto del admin.
 - `POS`, `Usuarios`, `Paquetes`, `Finanzas` y `Configuración` siguen siendo mayormente mock/local.
+
+## Actualizacion Admin-2A clientes (2026-06-08)
+
+- Admin > Usuarios/clientes ya es API-first en modo API.
+- `clientsApiService` cubre listado paginado, create, detalle, update, baja logica, asignacion de paquete y ajuste de creditos.
+- `clientAdapter` normaliza membresia, saldo, ultima visita, reservas y aliases legacy.
+- `usuariosStore` y `paquetesStore` quedan solo como fallback cuando API esta desactivada.
+- CRUD admin de paquetes sigue pendiente; selector de asignacion usa `GET /api/v1/memberships/packages`.

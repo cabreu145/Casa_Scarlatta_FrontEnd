@@ -55,6 +55,18 @@ import { paginateArray } from '@/utils/paginationUtils'
 import { getClassDisplayTime } from '@/utils/classSchedule'
 import { COACHES_SELECTOR_PAGE_SIZE } from './adminCoachesApiUtils'
 import { resolveCoachAvatarUrl } from '@/adapters/coachAdapter'
+import {
+  adjustClientCreditsApi,
+  assignClientPackageApi,
+  createClientApi,
+  deleteClientApi,
+  getClientByIdApi,
+  getClientsPaginatedApi,
+  updateClientApi,
+} from '@/services/clientsApiService'
+import { getMembershipPackagesApi } from '@/services/membershipPackagesApiService'
+import { buildClientApiPayload, validateClientApiPayload } from './clientApiPayload'
+import { ADMIN_CLIENTS_PAGE_SIZE, buildAdminClientsApiQuery } from './adminClientsApiUtils'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
@@ -127,6 +139,7 @@ export default function AdminPanel() {
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useApiCoaches = useApiClasses
+  const useApiClients = import.meta.env.VITE_USE_API_AUTH === 'true'
   const [apiCoaches, setApiCoaches] = useState([])
   const [apiCoachList, setApiCoachList] = useState([])
   const [apiCoachesLoading, setApiCoachesLoading] = useState(false)
@@ -137,6 +150,14 @@ export default function AdminPanel() {
   const [coachesStatus, setCoachesStatus] = useState('Todos')
   const [coachesRefreshToken, setCoachesRefreshToken] = useState(0)
   const [clasesRefreshToken, setClasesRefreshToken] = useState(0)
+  const [apiClients, setApiClients] = useState([])
+  const [apiClientsLoading, setApiClientsLoading] = useState(false)
+  const [apiClientsError, setApiClientsError] = useState('')
+  const [apiClientsTotal, setApiClientsTotal] = useState(0)
+  const [apiClientsPage, setApiClientsPage] = useState(1)
+  const [apiClientsRefreshToken, setApiClientsRefreshToken] = useState(0)
+  const [apiClientPackages, setApiClientPackages] = useState([])
+  const [apiClientDetailLoading, setApiClientDetailLoading] = useState(false)
   const [rangoDash, setRangoDash]         = useState('mes')
   const [modalPago, setModalPago]         = useState(false)
   const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
@@ -245,6 +266,8 @@ export default function AdminPanel() {
   const [nuevoBeneficio,   setNuevoBeneficio]   = useState('')
   // Usuario form
   const [usuarioForm, setUsuarioForm] = useState({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
+  const [editClientForm, setEditClientForm] = useState({ nombre: '', email: '', telefono: '', estado: 'active' })
+  const [clientCreditForm, setClientCreditForm] = useState({ amount: '', notes: '' })
   // Usuario — ver detalle
   const [modalVerUsuario, setModalVerUsuario] = useState(null)
   const [reservasModalPage, setReservasModalPage] = useState(1)
@@ -258,6 +281,8 @@ export default function AdminPanel() {
   // Notas editables en modal Ver
   const [editNotas, setEditNotas] = useState('')
   const coachesForClassForms = useApiCoaches ? apiCoaches : coaches
+  const clientsForAdmin = useApiClients ? apiClients : usuarios
+  const packagesForClients = useApiClients ? apiClientPackages : paquetes
   const currentEditCoachAvatar = editAvatarPreview || resolveCoachAvatarUrl(modalEditCoach?.avatarUrl ?? modalEditCoach?.foto)
 
   const loadApiCoaches = useCallback(async () => {
@@ -298,6 +323,85 @@ export default function AdminPanel() {
     }
   }, [coachesSearch, coachesStatus, useApiCoaches])
 
+  const loadApiClients = useCallback(async () => {
+    if (!useApiClients) return
+    const query = buildAdminClientsApiQuery({
+      page: apiClientsPage,
+      pageSize: ADMIN_CLIENTS_PAGE_SIZE,
+      search: usersSearch,
+      filter: usersFilter,
+    })
+    setApiClientsLoading(true)
+    setApiClientsError('')
+    try {
+      const response = await getClientsPaginatedApi(query)
+      setApiClients(response.items ?? [])
+      setApiClientsTotal(response.total ?? 0)
+    } catch (error) {
+      setApiClients([])
+      setApiClientsTotal(0)
+      setApiClientsError(error?.message ?? 'No se pudieron cargar los clientes')
+    } finally {
+      setApiClientsLoading(false)
+    }
+  }, [apiClientsPage, useApiClients, usersFilter, usersSearch])
+
+  const loadApiClientPackages = useCallback(async () => {
+    if (!useApiClients) return
+    try {
+      setApiClientPackages(await getMembershipPackagesApi())
+    } catch (error) {
+      setApiClientPackages([])
+      setApiClientsError((current) => current || error?.message || 'No se pudieron cargar los paquetes')
+    }
+  }, [useApiClients])
+
+  const openClientDetail = useCallback(async (client) => {
+    setAsignarPaqueteForm({ paqueteNombre: client.paquete || '', metodoPago: 'efectivo' })
+    setEditNotas(client.notas || '')
+    setCederClaseUserId('')
+    if (!useApiClients) {
+      setModalVerUsuario(client)
+      return
+    }
+    setApiClientDetailLoading(true)
+    try {
+      const detail = await getClientByIdApi(client.id)
+      setModalVerUsuario(detail)
+      setEditClientForm({
+        nombre: detail.nombre,
+        email: detail.email,
+        telefono: detail.telefono ?? '',
+        estado: detail.status,
+      })
+      setAsignarPaqueteForm({
+        paqueteNombre: detail.activeMembership?.packageId ? String(detail.activeMembership.packageId) : '',
+        metodoPago: 'efectivo',
+      })
+    } catch (error) {
+      toast.error(error?.message ?? 'No se pudo cargar el detalle del cliente')
+    } finally {
+      setApiClientDetailLoading(false)
+    }
+  }, [useApiClients])
+
+  const refreshClientDetail = useCallback(async (clientId) => {
+    const detail = await getClientByIdApi(clientId)
+    setModalVerUsuario(detail)
+    setApiClientsRefreshToken((value) => value + 1)
+    return detail
+  }, [])
+
+  const handleDeleteClients = useCallback(async (ids) => {
+    const clientIds = Array.isArray(ids) ? ids : [ids]
+    if (!useApiClients) {
+      clientIds.forEach((id) => eliminarUsuario(id))
+      return
+    }
+    await Promise.all(clientIds.map((id) => deleteClientApi(id)))
+    setApiClientsRefreshToken((value) => value + 1)
+  }, [eliminarUsuario, useApiClients])
+
   useEffect(() => {
     setReservasModalPage(1)
   }, [modalVerUsuario?.id])
@@ -320,6 +424,20 @@ export default function AdminPanel() {
     if (!useApiCoaches) return
     loadApiCoachList()
   }, [loadApiCoachList, useApiCoaches, coachesRefreshToken])
+
+  useEffect(() => {
+    if (!useApiClients) return
+    const timeoutId = window.setTimeout(loadApiClients, 250)
+    return () => window.clearTimeout(timeoutId)
+  }, [apiClientsRefreshToken, loadApiClients, useApiClients])
+
+  useEffect(() => {
+    loadApiClientPackages()
+  }, [loadApiClientPackages])
+
+  useEffect(() => {
+    setApiClientsPage(1)
+  }, [usersFilter, usersSearch])
 
   const handleSaveCoach = useCallback(async () => {
     const form = modalEditCoach ? editCoachForm : coachForm
@@ -890,8 +1008,8 @@ export default function AdminPanel() {
           {/* ── USUARIOS ── */}
           <section className={`${styles.section}${activeSection === 'usuarios' ? ' ' + styles.active : ''}`}>
             <UsuariosSection
-              usuarios={usuarios}
-              paquetes={paquetes}
+              usuarios={clientsForAdmin}
+              paquetes={packagesForClients}
               usersFilter={usersFilter}
               setUsersFilter={setUsersFilter}
               usersSearch={usersSearch}
@@ -900,12 +1018,16 @@ export default function AdminPanel() {
               setUserSelectMode={setUserSelectMode}
               userSelectedIds={userSelectedIds}
               setUserSelectedIds={setUserSelectedIds}
-              eliminarUsuario={eliminarUsuario}
+              eliminarUsuario={handleDeleteClients}
               openModal={openModal}
-              setModalVerUsuario={setModalVerUsuario}
-              setAsignarPaqueteForm={setAsignarPaqueteForm}
-              setEditNotas={setEditNotas}
-              setCederClaseUserId={setCederClaseUserId}
+              onViewClient={openClientDetail}
+              useApiMode={useApiClients}
+              isLoading={apiClientsLoading}
+              error={apiClientsError}
+              total={apiClientsTotal}
+              page={apiClientsPage}
+              pageSize={ADMIN_CLIENTS_PAGE_SIZE}
+              onPageChange={setApiClientsPage}
             />
           </section>
 
@@ -1328,11 +1450,11 @@ export default function AdminPanel() {
                 <input className={styles.formInput} autoComplete="name" placeholder="Ej: Sofía Reyes" value={usuarioForm.nombre}
                   onChange={e => setUsuarioForm(f => ({ ...f, nombre: e.target.value }))} />
               </div>
-              <div className={styles.formGroup}>
+              {!useApiClients && <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Fecha de nacimiento</label>
                 <input className={styles.formInput} type="date" value={usuarioForm.nacimiento}
                   onChange={e => setUsuarioForm(f => ({ ...f, nacimiento: e.target.value }))} />
-              </div>
+              </div>}
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Email</label>
                 <input className={styles.formInput} type="email" autoComplete="off" placeholder="sofia@email.com" value={usuarioForm.email}
@@ -1353,14 +1475,14 @@ export default function AdminPanel() {
                 <select className={styles.formSelect} value={usuarioForm.paquete}
                   onChange={e => setUsuarioForm(f => ({ ...f, paquete: e.target.value }))}>
                   <option value="ninguno">Sin paquete por ahora</option>
-                  {paquetes.map(p => (
-                    <option key={p.id} value={p.nombre}>
+                  {packagesForClients.map(p => (
+                    <option key={p.id} value={useApiClients ? String(p.id) : p.nombre}>
                       {p.nombre} — ${p.precio.toLocaleString()} {p.clases === 0 ? '(ilimitadas)' : `(${p.clases} clases)`}
                     </option>
                   ))}
                 </select>
               </div>
-              {usuarioForm.paquete !== 'ninguno' && (
+              {!useApiClients && usuarioForm.paquete !== 'ninguno' && (
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Método de pago</label>
                   <select className={styles.formSelect} value={usuarioForm.metodoPago}
@@ -1372,7 +1494,7 @@ export default function AdminPanel() {
                 </div>
               )}
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
-                <label className={styles.formLabel}>Notas / Observaciones</label>
+                <label className={styles.formLabel}>{useApiClients ? 'Notas de asignacion inicial' : 'Notas / Observaciones'}</label>
                 <textarea className={styles.formInput} rows={2} placeholder="Lesiones, preferencias, cómo nos encontró…"
                   value={usuarioForm.notas} onChange={e => setUsuarioForm(f => ({ ...f, notas: e.target.value }))}
                   style={{ resize: 'vertical' }} />
@@ -1382,7 +1504,32 @@ export default function AdminPanel() {
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => {
+                onClick={async () => {
+                  if (useApiClients) {
+                    const payload = buildClientApiPayload(usuarioForm, { isCreate: true })
+                    const validationError = validateClientApiPayload(payload, { isCreate: true })
+                    if (validationError) {
+                      toast.error(validationError)
+                      return
+                    }
+                    try {
+                      const created = await createClientApi(payload)
+                      if (usuarioForm.paquete !== 'ninguno') {
+                        await assignClientPackageApi(created.id, {
+                          packageId: Number(usuarioForm.paquete),
+                          notes: usuarioForm.notas,
+                        })
+                      }
+                      toast.success(`${usuarioForm.nombre} dado de alta`)
+                      setApiClientsPage(1)
+                      setApiClientsRefreshToken((value) => value + 1)
+                      setUsuarioForm({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
+                      closeModal()
+                    } catch (error) {
+                      toast.error(error?.message ?? 'No se pudo crear el cliente')
+                    }
+                    return
+                  }
                   if (!usuarioForm.nombre.trim() || !usuarioForm.email.trim()) return
                   const paqSel = paquetes.find(p => p.nombre === usuarioForm.paquete)
                   let fechaVencimiento = null
@@ -2249,7 +2396,9 @@ export default function AdminPanel() {
       {/* ── VER USUARIO ── */}
       {modalVerUsuario && (() => {
         const u = modalVerUsuario
-        const reservasU = todasReservas.filter(r => String(r.userId) === String(u.id))
+        const reservasU = useApiClients
+          ? (u.recentReservations ?? [])
+          : todasReservas.filter(r => String(r.userId) === String(u.id))
         const reservasOrdenadas = reservasU.slice().reverse()
         const paginatedReservasModal = paginateArray(reservasOrdenadas, { page: reservasModalPage, pageSize: 8 })
         const paqActivo = paquetes.find(p => p.nombre === u.paquete)
@@ -2287,7 +2436,7 @@ export default function AdminPanel() {
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>Datos del cliente</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px' }}>
                     {(() => {
-                      const paqActivo = paquetes.find(p => p.nombre === u.paquete)
+                      const paqActivo = packagesForClients.find(p => p.nombre === u.paquete)
                       const vencimientoDisplay = (() => {
                         if (u.paqueteInfo?.fechaVencimiento) return u.paqueteInfo.fechaVencimiento
                         if (!u.paqueteInfo?.fechaCompra || !paqActivo?.vigencia) return '—'
@@ -2311,7 +2460,36 @@ export default function AdminPanel() {
                       </div>
                     ))}
                   </div>
-                  <div style={{ marginTop: 10 }}>
+                  {useApiClients && (
+                    <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <input className={styles.formInput} value={editClientForm.nombre} placeholder="Nombre"
+                        onChange={(event) => setEditClientForm((form) => ({ ...form, nombre: event.target.value }))} />
+                      <input className={styles.formInput} value={editClientForm.email} placeholder="Email"
+                        onChange={(event) => setEditClientForm((form) => ({ ...form, email: event.target.value }))} />
+                      <input className={styles.formInput} value={editClientForm.telefono} placeholder="Telefono"
+                        onChange={(event) => setEditClientForm((form) => ({ ...form, telefono: event.target.value }))} />
+                      <select className={styles.formSelect} value={editClientForm.estado}
+                        onChange={(event) => setEditClientForm((form) => ({ ...form, estado: event.target.value }))}>
+                        <option value="active">Activo</option>
+                        <option value="inactive">Inactivo</option>
+                      </select>
+                      <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={async () => {
+                        const payload = buildClientApiPayload(editClientForm)
+                        const validationError = validateClientApiPayload(payload)
+                        if (validationError) return toast.error(validationError)
+                        try {
+                          await updateClientApi(u.id, payload)
+                          await refreshClientDetail(u.id)
+                          toast.success('Cliente actualizado')
+                        } catch (error) {
+                          toast.error(error?.message ?? 'No se pudo actualizar el cliente')
+                        }
+                      }}>
+                        Guardar datos
+                      </button>
+                    </div>
+                  )}
+                  {!useApiClients && <div style={{ marginTop: 10 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 6 }}>
                       📝 Notas / Observaciones
                     </div>
@@ -2335,7 +2513,7 @@ export default function AdminPanel() {
                         Guardar
                       </button>
                     </div>
-                  </div>
+                  </div>}
                 </div>
 
                 {/* ── ASIGNAR / CAMBIAR PAQUETE ── */}
@@ -2354,14 +2532,14 @@ export default function AdminPanel() {
                         }}
                       >
                         <option value="">Sin paquete</option>
-                        {paquetes.map(p => (
-                          <option key={p.id} value={p.nombre}>
+                        {packagesForClients.map(p => (
+                          <option key={p.id} value={useApiClients ? String(p.id) : p.nombre}>
                             {p.nombre} — ${p.precio.toLocaleString()} {p.clases === 0 ? '(ilimitadas)' : `(${p.clases} clases)`}
                           </option>
                         ))}
                       </select>
                     </div>
-                    <div style={{ flex: 1 }}>
+                    {!useApiClients && <div style={{ flex: 1 }}>
                       <select
                         className={styles.formSelect}
                         value={asignarPaqueteForm.metodoPago}
@@ -2371,11 +2549,26 @@ export default function AdminPanel() {
                         <option value="tarjeta">Tarjeta</option>
                         <option value="transferencia">Transferencia</option>
                       </select>
-                    </div>
+                    </div>}
                     <button
                       className={`${styles.btn} ${styles.btnPrimary}`}
                       style={{ whiteSpace: 'nowrap' }}
-                      onClick={() => {
+                      onClick={async () => {
+                        if (useApiClients) {
+                          const packageId = Number(asignarPaqueteForm.paqueteNombre)
+                          if (!packageId) return toast.error('Selecciona un paquete valido.')
+                          try {
+                            await assignClientPackageApi(u.id, {
+                              packageId,
+                              notes: `Asignacion manual admin para ${u.nombre}`,
+                            })
+                            await refreshClientDetail(u.id)
+                            toast.success('Paquete asignado')
+                          } catch (error) {
+                            toast.error(error?.message ?? 'No se pudo asignar el paquete')
+                          }
+                          return
+                        }
                         const paqSel = paquetes.find(p => p.nombre === asignarPaqueteForm.paqueteNombre)
                         if (!paqSel) {
                           editarUsuario(u.id, { paquete: null, clasesPaquete: 0, paqueteInfo: null })
@@ -2430,8 +2623,40 @@ export default function AdminPanel() {
                   )} */}
                 </div>
 
+                {useApiClients && (
+                  <div style={{ marginBottom: 24, padding: '16px 18px', borderRadius: 10, border: '1px solid var(--muted-2)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 12 }}>
+                      Ajuste manual de creditos
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr auto', gap: 10 }}>
+                      <input className={styles.formInput} type="number" value={clientCreditForm.amount} placeholder="+2 o -1"
+                        onChange={(event) => setClientCreditForm((form) => ({ ...form, amount: event.target.value }))} />
+                      <input className={styles.formInput} value={clientCreditForm.notes} placeholder="Motivo administrativo"
+                        onChange={(event) => setClientCreditForm((form) => ({ ...form, notes: event.target.value }))} />
+                      <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={async () => {
+                        const amount = Number(clientCreditForm.amount)
+                        if (!Number.isFinite(amount) || amount === 0) return toast.error('El ajuste debe ser distinto de cero.')
+                        try {
+                          await adjustClientCreditsApi(u.id, {
+                            amount,
+                            reason: 'manual_adjustment',
+                            notes: clientCreditForm.notes,
+                          })
+                          await refreshClientDetail(u.id)
+                          setClientCreditForm({ amount: '', notes: '' })
+                          toast.success('Creditos actualizados')
+                        } catch (error) {
+                          toast.error(error?.message ?? 'No se pudieron ajustar los creditos')
+                        }
+                      }}>
+                        Aplicar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* ── CEDER CLASE ── */}
-                {u.paquete && (u.clasesPaquete ?? 0) > 0 && (
+                {!useApiClients && u.paquete && (u.clasesPaquete ?? 0) > 0 && (
                   <div style={{ marginBottom: 24, padding: '16px 18px', background: 'rgba(123,30,34,0.08)', borderRadius: 10, border: '1px solid rgba(123,30,34,0.2)' }}>
                     <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>
                       Ceder clase a otro usuario
@@ -2470,6 +2695,26 @@ export default function AdminPanel() {
                         Ceder 1 clase
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {useApiClients && (
+                  <div style={{ marginBottom: 24 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 12 }}>
+                      Movimientos recientes ({u.recentCreditMovements?.length ?? 0})
+                    </div>
+                    {(u.recentCreditMovements?.length ?? 0) === 0 ? (
+                      <div style={{ color: 'var(--muted)', fontSize: 13 }}>Sin movimientos recientes.</div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {u.recentCreditMovements.map((movement, index) => (
+                          <div key={movement.id ?? `movement-${index}`} style={{ display: 'flex', justifyContent: 'space-between', padding: 10, border: '1px solid var(--muted-2)', borderRadius: 8 }}>
+                            <span>{movement.reason ?? 'Movimiento'}</span>
+                            <strong>{movement.amount > 0 ? '+' : ''}{movement.amount}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

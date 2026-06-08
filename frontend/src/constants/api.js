@@ -60,6 +60,18 @@ export const ENDPOINTS = {
     withQuery('/clientes/me/credit-movements', { page, page_size: pageSize }),
   clientPayments: ({ page, pageSize, status } = {}) =>
     withQuery('/clientes/me/pagos', { page, page_size: pageSize, status }),
+  adminClients: withPrefix('/clientes'),
+  adminClientsPaginated: ({ page, pageSize, search, status, membershipStatus }) =>
+    withQuery('/clientes', {
+      page,
+      page_size: pageSize,
+      search,
+      status,
+      membership_status: membershipStatus,
+    }),
+  adminClientById: (id) => withPrefix(`/clientes/${id}`),
+  adminClientPackages: (id) => withPrefix(`/clientes/${id}/paquetes`),
+  adminClientCredits: (id) => withPrefix(`/clientes/${id}/credits`),
 
   membershipsPackages: withPrefix('/memberships/packages'),
   paquetes: withPrefix('/paquetes'),

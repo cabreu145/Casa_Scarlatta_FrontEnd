@@ -118,3 +118,17 @@ Notas BUG-013:
 - Botón Comprar no procesa pago en landing; solo guarda intención y redirige a login o dashboard pagos.
 - Post-login seguro: `redirect` interno solo si empieza con `/`.
 - Dashboard pagos recibe `section=pagos&packageId=...` para resaltar paquete y abrir `PagoModal` real dentro de cliente autenticado.
+
+## Mapeo Clientes Admin
+
+| Funcion | Endpoint | Payload/Query |
+|---|---|---|
+| `getClientsPaginatedApi` | `GET /api/v1/clientes` | `page,page_size,search,status,membership_status` |
+| `createClientApi` | `POST /api/v1/clientes` | `name,email,phone,password,status` |
+| `getClientByIdApi` | `GET /api/v1/clientes/{id}` | detalle real |
+| `updateClientApi` | `PUT /api/v1/clientes/{id}` | `name,email,phone,status`; sin password |
+| `deleteClientApi` | `DELETE /api/v1/clientes/{id}` | baja logica |
+| `assignClientPackageApi` | `POST /api/v1/clientes/{id}/paquetes` | `package_id,notes` |
+| `adjustClientCreditsApi` | `POST /api/v1/clientes/{id}/credits` | `amount,reason,notes` |
+
+Adapter: `clientAdapter`. Payload: `clientApiPayload`. Paginacion maxima frontend: 100.

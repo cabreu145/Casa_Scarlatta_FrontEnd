@@ -1047,3 +1047,13 @@ Objetivo backend:
 - `POST /api/v1/coaches/{id}/avatar` ya es ruta real.
 - Frontend manda `multipart/form-data` con `file`.
 - `avatar_url` sale del backend; no se captura manualmente en form.
+
+## Usuarios/clientes contrato cerrado (2026-06-08)
+
+- Listado: `GET /api/v1/clientes?page=&page_size=&search=&status=&membership_status=`.
+- CRUD: `POST /api/v1/clientes`, `GET/PUT/DELETE /api/v1/clientes/{id}`.
+- Password inicial solo en create; update nunca envia password.
+- Asignacion manual: `POST /api/v1/clientes/{id}/paquetes`.
+- Ajuste de creditos: `POST /api/v1/clientes/{id}/credits` con `reason=manual_adjustment`.
+- Frontend puede avanzar: si. Backend requerido primero: no.
+- Stores locales quedan como fallback; paquetes admin CRUD sigue pendiente.
