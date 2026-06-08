@@ -489,3 +489,21 @@ Decisión final:
 - [ ] Asignar paquete desde catalogo backend.
 - [ ] Ajustar creditos positivo y negativo; confirmar detalle/listado actualizado.
 - [ ] Confirmar ausencia de clientes mock y `page_size=1000` en API mode.
+
+## Update 2026-06-08 - QA paquetes admin
+
+- Caso admin > paquetes: validar `GET /api/v1/memberships/packages?page=&page_size=&status=&search=`.
+- Validar create/update/delete/toggle featured/status sobre `/api/v1/memberships/packages`.
+- Validar que `type` no aparezca editable en API mode.
+- Validar que no existe opción ilimitada.
+- Validar que historial de ventas se muestre como pendiente de reportes.
+
+## Paquetes compartibles QA
+
+- Crear paquete con `is_shareable=true` y `max_beneficiaries>=1`
+- Ver `GET /api/v1/clientes/me/memberships`
+- Buyer agrega beneficiario por email
+- Buyer queda en solo lectura despu�s de alta inicial
+- Admin ve `shared_memberships` en detalle cliente
+- Admin agrega/quita beneficiario sin consumo previo
+- Backend bloquea cambios con consumo previo

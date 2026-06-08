@@ -35,10 +35,30 @@ describe('clientAdapter', () => {
     const client = mapBackendClientToFrontend({
       id: 8,
       active_membership: null,
+      shared_memberships: [
+        {
+          membership_id: 5,
+          package_id: 9,
+          display_name: 'Compartido 12',
+          credits_available: 4,
+          credits_total: 12,
+          is_shareable: true,
+          max_beneficiaries: 1,
+          beneficiaries: [{ beneficiary_id: 11, email: 'beneficiario@demo.local' }],
+        },
+      ],
       recent_credit_movements: [{ id: 1 }],
       recent_reservations: [{ id: 2 }],
     })
     expect(client.activeMembership).toBeNull()
+    expect(client.sharedMemberships[0]).toMatchObject({
+      membershipId: 5,
+      packageId: 9,
+      displayName: 'Compartido 12',
+      isShareable: true,
+      maxBeneficiaries: 1,
+      beneficiaries: [expect.objectContaining({ beneficiaryId: 11 })],
+    })
     expect(client.recentCreditMovements[0]).toEqual(expect.objectContaining({ id: 1, amount: 0 }))
     expect(client.recentReservations[0]).toEqual(expect.objectContaining({ id: 2, claseNombre: 'Clase' }))
   })

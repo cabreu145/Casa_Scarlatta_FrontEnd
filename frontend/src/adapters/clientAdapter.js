@@ -1,3 +1,5 @@
+import { mapBackendMembershipToFrontend, mapBackendMembershipsToFrontend } from './membershipAdapter'
+
 function normalizeStatus(value) {
   const raw = String(value ?? '').trim().toLowerCase()
   if (raw === 'inactive' || raw === 'inactivo') return 'inactive'
@@ -6,15 +8,7 @@ function normalizeStatus(value) {
 
 function mapMembership(value) {
   if (!value || typeof value !== 'object') return null
-  return {
-    membershipId: value.membership_id ?? value.membershipId ?? null,
-    packageId: value.package_id ?? value.packageId ?? null,
-    packageName: value.package_name ?? value.packageName ?? null,
-    creditsTotal: value.credits_total ?? value.creditsTotal ?? null,
-    creditsAvailable: value.credits_available ?? value.creditsAvailable ?? null,
-    expiresAt: value.expires_at ?? value.expiresAt ?? null,
-    raw: value,
-  }
+  return mapBackendMembershipToFrontend(value)
 }
 
 function mapCreditMovement(item = {}) {
@@ -45,6 +39,7 @@ export function mapBackendClientToFrontend(item = {}) {
   const status = normalizeStatus(item.status ?? item.estado)
   const creditsBalance = Number(item.credits_balance ?? item.creditsBalance ?? item.creditos ?? 0)
   const activeMembership = mapMembership(item.active_membership ?? item.activeMembership ?? item.membresia)
+  const sharedMemberships = mapBackendMembershipsToFrontend(item.shared_memberships ?? item.sharedMemberships ?? [])
   const packageName = activeMembership?.packageName ?? null
 
   return {
@@ -67,6 +62,8 @@ export function mapBackendClientToFrontend(item = {}) {
     membresia: activeMembership,
     paqueteActivo: activeMembership,
     paquete: packageName,
+    sharedMemberships,
+    shared_memberships: sharedMemberships,
     paqueteInfo: activeMembership
       ? {
           packageId: activeMembership.packageId,

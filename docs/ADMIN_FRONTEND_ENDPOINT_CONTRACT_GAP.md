@@ -1057,3 +1057,39 @@ Objetivo backend:
 - Ajuste de creditos: `POST /api/v1/clientes/{id}/credits` con `reason=manual_adjustment`.
 - Frontend puede avanzar: si. Backend requerido primero: no.
 - Stores locales quedan como fallback; paquetes admin CRUD sigue pendiente.
+
+## Update 2026-06-08 - Paquetes admin
+
+- Estado actual: `Admin > Paquetes` ya consume catálogo backend real.
+- Contrato vigente: `GET /api/v1/memberships/packages?page=&page_size=&status=&search=`, `POST/PUT/PATCH/DELETE /api/v1/memberships/packages`.
+- `type` no se persiste; frontend lo oculta o deriva visualmente.
+- No existe paquete ilimitado; `credits` siempre > 0.
+- `benefits` es lista real persistida.
+- Historial de ventas no sale de esta pantalla en API mode.
+
+## Paquetes compartibles
+
+Frontend ya mapea:
+- `display_name` -> `displayName`
+- `is_shareable` -> `isShareable`
+- `max_beneficiaries` -> `maxBeneficiaries`
+- `benefits` como lista limpia
+
+Admin form:
+- `name` opcional
+- no usar `type`
+- no usar ilimitado
+- `is_shareable` + `max_beneficiaries`
+
+Buyer/Admin memberships:
+- `GET /api/v1/clientes/me/memberships`
+- `POST /api/v1/clientes/me/memberships/{membership_id}/beneficiaries`
+- `DELETE /api/v1/clientes/me/memberships/{membership_id}/beneficiaries/{beneficiary_id}`
+- `shared_memberships` en detalle admin cliente
+- `POST /api/v1/clientes/{id}/memberships/{membership_id}/beneficiaries`
+- `DELETE /api/v1/clientes/{id}/memberships/{membership_id}/beneficiaries/{beneficiary_id}`
+
+Regla UX:
+- buyer solo configura una vez
+- admin puede corregir mientras no haya consumo
+- cambios con consumo previo bloquean con backend

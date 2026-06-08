@@ -1,5 +1,14 @@
 import toast from 'react-hot-toast'
 import styles from '../AdminPanel.module.css'
+import PaginationControls from '@/components/ui/PaginationControls'
+import {
+  formatPackagePriceLabel,
+  formatPackageShareabilityLabel,
+  formatPackageValidityLabel,
+  getPackageBenefits,
+  getPackageDisplayName,
+  getPackageCredits,
+} from '@/utils/packageDisplay'
 
 export default function PaquetesSection({
   paquetes,
@@ -10,7 +19,152 @@ export default function PaquetesSection({
   setEditPaqueteForm,
   eliminarPaquete,
   marcarDestacado,
+  useApiMode = false,
+  isLoading = false,
+  error = '',
+  total = 0,
+  page = 1,
+  pageSize = 20,
+  search = '',
+  setSearch,
+  status = 'all',
+  setStatus,
+  onPageChange,
+  onToggleActive,
+  onToggleFeatured,
 }) {
+  const totalPages = Math.max(1, Math.ceil((total || paquetes.length || 0) / pageSize))
+
+  if (useApiMode) {
+    return (
+      <>
+        <div className={styles.sectionTopRow}>
+          <div className={styles.usersFilters} style={{ gap: 10 }}>
+            <input
+              className={styles.searchInput}
+              placeholder="Buscar paquete..."
+              value={search}
+              onChange={(event) => setSearch?.(event.target.value)}
+            />
+            <select
+              className={styles.formSelect}
+              value={status}
+              onChange={(event) => setStatus?.(event.target.value)}
+              style={{ minWidth: 140 }}
+            >
+              <option value="all">Todos</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+            </select>
+          </div>
+          <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('paquete')}>
+            + Nuevo Paquete
+          </button>
+        </div>
+
+        {error && <div style={{ padding: '8px 0', color: '#f87171' }}>{error}</div>}
+        {isLoading && <div style={{ padding: '8px 0', color: 'var(--muted)' }}>Cargando catálogo...</div>}
+
+        <div className={styles.paquetesGrid}>
+          {paquetes.map((p) => (
+            <div key={p.id} className={`${styles.paqueteCard} ${p.isFeatured ? styles.featured : ''}`}>
+              {p.isFeatured && <div className={styles.paqueteBadge}>⭐ Más popular</div>}
+              <div className={styles.paqueteName}>{getPackageDisplayName(p)}</div>
+              <div className={styles.paqueteClases}>
+                {getPackageCredits(p)} créditos
+                {formatPackageValidityLabel(p) ? ` · ${formatPackageValidityLabel(p).replace('Válido por ', '')}` : ''}
+              </div>
+              <div className={styles.paquetePrice}>
+                {formatPackagePriceLabel(p)}
+              </div>
+              <div className={styles.paqueteStats}>
+                <div className={styles.paqueteStat}><strong>{getPackageBenefits(p).length}</strong> beneficios</div>
+                <div className={styles.paqueteStat}><strong>{p.isActive ? 'activo' : 'inactivo'}</strong></div>
+                {formatPackageShareabilityLabel(p) && (
+                  <div className={styles.paqueteStat}><strong>{formatPackageShareabilityLabel(p)}</strong></div>
+                )}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <button
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  style={{ fontSize: 11, padding: '6px' }}
+                  onClick={() => {
+                    setModalEditPaquete(p)
+                    setEditPaqueteForm({
+                      nombre: getPackageDisplayName(p),
+                      precio: String(p.precio ?? p.priceMxn ?? p.price_mxn ?? 0),
+                      clases: String(p.creditos ?? p.clases ?? 0),
+                      vigencia: String(p.durationDays ?? p.duration_days ?? ''),
+                      destacado: Boolean(p.isFeatured),
+                      isActive: Boolean(p.isActive),
+                      beneficios: [...getPackageBenefits(p)],
+                      isShareable: Boolean(p.isShareable),
+                      maxBeneficiaries: Number(p.maxBeneficiaries ?? p.max_beneficiaries ?? 0),
+                    })
+                  }}
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  style={{ fontSize: 11, padding: '6px', color: '#ef4444' }}
+                  onClick={async () => {
+                    if (!window.confirm(`¿Eliminar el paquete "${getPackageDisplayName(p)}"?`)) return
+                    await eliminarPaquete?.(p.id)
+                    if (!useApiMode) {
+                      toast.success(`Paquete "${getPackageDisplayName(p)}" eliminado`)
+                    }
+                  }}
+                >
+                  🗑 Eliminar
+                </button>
+                <button
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  style={{ fontSize: 11, padding: '6px', gridColumn: '1/-1', color: p.isActive ? '#d97706' : '#16a34a' }}
+                  onClick={() => onToggleActive?.(p.id, !p.isActive)}
+                >
+                  {p.isActive ? 'Desactivar' : 'Activar'}
+                </button>
+                <button
+                  className={`${styles.btn} ${styles.btnGhost}`}
+                  style={{ fontSize: 11, padding: '6px', gridColumn: '1/-1', color: '#d97706' }}
+                  onClick={() => onToggleFeatured?.(p.id, !p.isFeatured)}
+                >
+                  {p.isFeatured ? 'Quitar destacado' : 'Marcar popular'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {totalPages > 1 && (
+          <div style={{ marginTop: 16 }}>
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              label="Paquetes"
+              compact
+              onPrev={() => onPageChange?.(Math.max(1, page - 1))}
+              onNext={() => onPageChange?.(Math.min(totalPages, page + 1))}
+            />
+          </div>
+        )}
+
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardTitle}>Historial de ventas de paquetes</div>
+            <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+              Disponible próximamente en Reportes
+            </span>
+          </div>
+          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13, fontFamily: 'var(--font-body)' }}>
+            Historial de ventas disponible próximamente en Reportes.
+          </div>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <div className={styles.sectionTopRow}>
@@ -19,21 +173,21 @@ export default function PaquetesSection({
           + Nuevo Paquete
         </button>
       </div>
-      <div className={styles.paquetesGrid}>
+          <div className={styles.paquetesGrid}>
         {paquetes.map((p) => (
           <div key={p.id} className={`${styles.paqueteCard} ${p.destacado ? styles.featured : ''}`}>
             {p.destacado && <div className={styles.paqueteBadge}>⭐ Más popular</div>}
-            <div className={styles.paqueteName}>{p.nombre}</div>
+            <div className={styles.paqueteName}>{getPackageDisplayName(p)}</div>
             <div className={styles.paqueteClases}>
-              {p.clases === 0 ? 'Clases ilimitadas' : `${p.clases} clases`}
-              {p.vigencia ? ` · ${p.vigencia}` : ''}
+              {getPackageCredits(p)} clases
+              {formatPackageValidityLabel(p) ? ` · ${formatPackageValidityLabel(p).replace('Válido por ', '')}` : ''}
             </div>
             <div className={styles.paquetePrice}>
-              ${p.precio.toLocaleString()}<span>/{p.categoria === 'mensual' ? 'mes' : 'paquete'}</span>
+              {formatPackagePriceLabel(p)}
             </div>
             <div className={styles.paqueteStats}>
-              <div className={styles.paqueteStat}><strong>{p.beneficios.length}</strong>beneficios</div>
-              <div className={styles.paqueteStat}><strong>{p.categoria}</strong></div>
+              <div className={styles.paqueteStat}><strong>{getPackageBenefits(p).length}</strong> beneficios</div>
+              <div className={styles.paqueteStat}><strong>{formatPackageShareabilityLabel(p) || 'No compartible'}</strong></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               <button
@@ -42,13 +196,14 @@ export default function PaquetesSection({
                 onClick={() => {
                   setModalEditPaquete(p)
                   setEditPaqueteForm({
-                    nombre:    p.nombre,
-                    precio:    String(p.precio),
-                    clases:    String(p.clases),
-                    vigencia:  p.vigencia || '',
-                    categoria: p.categoria,
-                    destacado: p.destacado || false,
-                    beneficios: [...(p.beneficios || [])],
+                    nombre: getPackageDisplayName(p),
+                    precio: String(p.precio ?? p.priceMxn ?? p.price_mxn ?? 0),
+                    clases: String(p.clases ?? p.creditos ?? 0),
+                    vigencia: String(p.vigencia ?? p.durationDays ?? p.duration_days ?? ''),
+                    destacado: Boolean(p.destacado ?? p.isFeatured),
+                    beneficios: [...getPackageBenefits(p)],
+                    isShareable: Boolean(p.isShareable),
+                    maxBeneficiaries: Number(p.maxBeneficiaries ?? p.max_beneficiaries ?? 0),
                   })
                 }}
               >✏️ Editar</button>
@@ -56,16 +211,16 @@ export default function PaquetesSection({
                 className={`${styles.btn} ${styles.btnGhost}`}
                 style={{ fontSize: 11, padding: '6px', color: '#ef4444' }}
                 onClick={() => {
-                  if (!window.confirm(`¿Eliminar el paquete "${p.nombre}"?`)) return
+                  if (!window.confirm(`¿Eliminar el paquete "${getPackageDisplayName(p)}"?`)) return
                   eliminarPaquete(p.id)
-                  toast.success(`Paquete "${p.nombre}" eliminado`)
+                  toast.success(`Paquete "${getPackageDisplayName(p)}" eliminado`)
                 }}
               >🗑 Eliminar</button>
               {!p.destacado && (
                 <button
                   className={`${styles.btn} ${styles.btnGhost}`}
                   style={{ fontSize: 11, padding: '6px', gridColumn: '1/-1', color: '#d97706' }}
-                  onClick={() => { marcarDestacado(p.id); toast.success(`"${p.nombre}" marcado como popular`) }}
+                  onClick={() => { marcarDestacado(p.id); toast.success(`"${getPackageDisplayName(p)}" marcado como popular`) }}
                 >⭐ Marcar popular</button>
               )}
             </div>
@@ -99,7 +254,7 @@ export default function PaquetesSection({
                 <tbody>
                   {ventasPaq.map((tx, i) => {
                     const usuario = usuarios.find(u => u.id === tx.userId)
-                    const paqInfo = paquetes.find(p => tx.concepto?.includes(p.nombre))
+                    const paqInfo = paquetes.find(p => tx.concepto?.includes(getPackageDisplayName(p)))
                     const vencimiento = (() => {
                       if (!tx.fecha || !paqInfo?.vigencia) return '—'
                       const dias = parseInt(paqInfo.vigencia) || 30

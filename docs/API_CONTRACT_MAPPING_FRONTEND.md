@@ -132,3 +132,35 @@ Notas BUG-013:
 | `adjustClientCreditsApi` | `POST /api/v1/clientes/{id}/credits` | `amount,reason,notes` |
 
 Adapter: `clientAdapter`. Payload: `clientApiPayload`. Paginacion maxima frontend: 100.
+
+## Update 2026-06-08 - Paquetes admin
+
+- Admin > Paquetes ya usa `/api/v1/memberships/packages` como catálogo backend.
+- CRUD admin usa `POST/PUT/PATCH/DELETE /api/v1/memberships/packages`.
+- `POST /api/v1/memberships` no se usa para catálogo admin.
+- `type` no es canónico y se oculta en API mode.
+- `credits` es finito y mayor a 0.
+- `benefits` persiste como lista de strings.
+- Historial de ventas queda fuera de esta pantalla en API mode.
+
+## Paquetes compartibles y beneficiarios
+
+Frontend consume:
+- `GET /api/v1/memberships/packages`
+- `GET /api/v1/memberships/packages?page=&page_size=&status=&search=`
+- `GET /api/v1/clientes/me/memberships`
+- `POST /api/v1/clientes/me/memberships/{membership_id}/beneficiaries`
+- `DELETE /api/v1/clientes/me/memberships/{membership_id}/beneficiaries/{beneficiary_id}`
+- `GET /api/v1/clientes/{id}` -> `shared_memberships`
+- `POST /api/v1/clientes/{id}/memberships/{membership_id}/beneficiaries`
+- `DELETE /api/v1/clientes/{id}/memberships/{membership_id}/beneficiaries/{beneficiary_id}`
+
+Reglas frontend:
+- `name` es opcional; si falta, mostrar `display_name`.
+- `credits` siempre finito > 0.
+- `type` no es contrato backend.
+- `benefits` es lista de strings.
+- `is_shareable` + `max_beneficiaries` controla UI de compartir paquete.
+- Buyer: solo alta inicial de beneficiarios; después queda solo lectura.
+- Admin: puede agregar/quitar/reemplazar mientras no haya consumo.
+- Errores backend esperados: `SHARED_CREDITS_NOT_DIVISIBLE`, `SHARED_BENEFICIARY_CHANGE_ADMIN_ONLY`, `SHARED_MEMBERSHIP_HAS_CONSUMPTION`, `BENEFICIARY_NOT_FOUND`.

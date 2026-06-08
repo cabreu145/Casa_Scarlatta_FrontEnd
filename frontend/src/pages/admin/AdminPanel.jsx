@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useMemo, useEffect } from 'react'
+﻿import { useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PasswordInput from '@/components/ui/PasswordInput'
 import DashboardSection from './sections/DashboardSection'
@@ -50,10 +50,20 @@ import {
 } from '@/services/coachesApiService'
 import { buildClaseApiPayload } from './classApiPayload'
 import { buildCoachApiPayload, validateCoachApiPayload } from './coachApiPayload'
+import { buildPackageApiPayload, validatePackageApiPayload } from './packageApiPayload'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { paginateArray } from '@/utils/paginationUtils'
 import { getClassDisplayTime } from '@/utils/classSchedule'
+import {
+  formatPackagePriceLabel,
+  formatPackageShareabilityLabel,
+  formatPackageValidityLabel,
+  getPackageBenefits,
+  getPackageDisplayName,
+  getPackageCredits,
+} from '@/utils/packageDisplay'
 import { COACHES_SELECTOR_PAGE_SIZE } from './adminCoachesApiUtils'
+import { ADMIN_PACKAGES_PAGE_SIZE, buildAdminPackagesApiQuery } from './adminPackagesApiUtils'
 import { resolveCoachAvatarUrl } from '@/adapters/coachAdapter'
 import {
   adjustClientCreditsApi,
@@ -64,9 +74,20 @@ import {
   getClientsPaginatedApi,
   updateClientApi,
 } from '@/services/clientsApiService'
-import { getMembershipPackagesApi } from '@/services/membershipPackagesApiService'
 import { buildClientApiPayload, validateClientApiPayload } from './clientApiPayload'
 import { ADMIN_CLIENTS_PAGE_SIZE, buildAdminClientsApiQuery } from './adminClientsApiUtils'
+import {
+  createMembershipPackageApi,
+  deleteMembershipPackageApi,
+  getMembershipPackagesPaginatedApi,
+  updateMembershipPackageApi,
+  updateMembershipPackageFeaturedApi,
+  updateMembershipPackageStatusApi,
+} from '@/services/membershipPackagesApiService'
+import {
+  addClientMembershipBeneficiaryApi,
+  removeClientMembershipBeneficiaryApi,
+} from '@/services/clientMembershipsApiService'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
@@ -110,7 +131,7 @@ const PRODUCTS = [
 const PAQUETES_POS = [
   { emoji: '📦', name: 'Básico — 8 clases',    price: 999  },
   { emoji: '📦', name: 'Esencial — 16 clases',  price: 1499 },
-  { emoji: '⭐', name: 'Premium — Ilimitadas',  price: 1999 },
+  { emoji: '⭐', name: 'Premium — 24 clases',  price: 1999 },
 ]
 
 // ── Tag helper ───────────────────────────────────────────────────────────────
@@ -131,6 +152,26 @@ function categoryEmoji(categoria) {
   return { Accesorios: '🎽', Nutrición: '🧴', Equipo: '🏋️', Ropa: '👕' }[categoria] || '📦'
 }
 
+function resolveMembershipErrorMessage(error) {
+  const raw = String(error?.message ?? '').trim()
+  if (raw === 'SHARED_CREDITS_NOT_DIVISIBLE') {
+    return 'Este paquete no se puede dividir exactamente entre los beneficiarios seleccionados.'
+  }
+  if (raw === 'SHARED_BENEFICIARY_CHANGE_ADMIN_ONLY') {
+    return 'Los cambios posteriores deben solicitarse a administración.'
+  }
+  if (raw === 'SHARED_MEMBERSHIP_HAS_CONSUMPTION') {
+    return 'No se pueden modificar beneficiarios porque ya hay consumo de créditos.'
+  }
+  if (raw === 'BENEFICIARY_NOT_FOUND') {
+    return 'No encontramos un cliente con ese correo.'
+  }
+  if (raw === 'BENEFICIARY_ROLE_INVALID') {
+    return 'El beneficiario debe ser un cliente registrado.'
+  }
+  return raw || 'No se pudo actualizar la membresía compartida.'
+}
+
 // ── Main component ───────────────────────────────────────────────────────────
 export default function AdminPanel() {
   const navigate = useNavigate()
@@ -140,6 +181,7 @@ export default function AdminPanel() {
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useApiCoaches = useApiClasses
   const useApiClients = import.meta.env.VITE_USE_API_AUTH === 'true'
+  const useApiPackages = useApiClients
   const [apiCoaches, setApiCoaches] = useState([])
   const [apiCoachList, setApiCoachList] = useState([])
   const [apiCoachesLoading, setApiCoachesLoading] = useState(false)
@@ -156,8 +198,15 @@ export default function AdminPanel() {
   const [apiClientsTotal, setApiClientsTotal] = useState(0)
   const [apiClientsPage, setApiClientsPage] = useState(1)
   const [apiClientsRefreshToken, setApiClientsRefreshToken] = useState(0)
-  const [apiClientPackages, setApiClientPackages] = useState([])
   const [apiClientDetailLoading, setApiClientDetailLoading] = useState(false)
+  const [apiPackages, setApiPackages] = useState([])
+  const [apiPackagesLoading, setApiPackagesLoading] = useState(false)
+  const [apiPackagesError, setApiPackagesError] = useState('')
+  const [apiPackagesTotal, setApiPackagesTotal] = useState(0)
+  const [apiPackagesPage, setApiPackagesPage] = useState(1)
+  const [apiPackagesSearch, setApiPackagesSearch] = useState('')
+  const [apiPackagesStatus, setApiPackagesStatus] = useState('all')
+  const [apiPackagesRefreshToken, setApiPackagesRefreshToken] = useState(0)
   const [rangoDash, setRangoDash]         = useState('mes')
   const [modalPago, setModalPago]         = useState(false)
   const { coaches, agregarCoach, editarCoach, eliminarCoach } = useCoachesStore()
@@ -259,10 +308,28 @@ export default function AdminPanel() {
   const [modalEditClase,  setModalEditClase]  = useState(null)  // clase | null
   const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
   // Paquete form (crear)
-  const [paqueteForm, setPaqueteForm] = useState({ nombre: '', tipo: 'clases', numClases: '', precio: '', vigencia: '', descripcion: '', destacado: false })
+  const [paqueteForm, setPaqueteForm] = useState({
+    nombre: '',
+    numClases: '',
+    precio: '',
+    vigencia: '',
+    descripcion: '',
+    destacado: false,
+    isShareable: false,
+    maxBeneficiaries: 0,
+  })
   // Paquete — editar
   const [modalEditPaquete, setModalEditPaquete] = useState(null)
-  const [editPaqueteForm,  setEditPaqueteForm]  = useState({ nombre: '', precio: '', clases: '', vigencia: '', categoria: 'mensual', destacado: false, beneficios: [] })
+  const [editPaqueteForm,  setEditPaqueteForm]  = useState({
+    nombre: '',
+    precio: '',
+    clases: '',
+    vigencia: '',
+    destacado: false,
+    beneficios: [],
+    isShareable: false,
+    maxBeneficiaries: 0,
+  })
   const [nuevoBeneficio,   setNuevoBeneficio]   = useState('')
   // Usuario form
   const [usuarioForm, setUsuarioForm] = useState({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
@@ -274,6 +341,8 @@ export default function AdminPanel() {
   // Usuario — asignar paquete desde modal Ver
   const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
   const [compartirAdminData, setCompartirAdminData] = useState({ activo: false, participantes: [] })
+  const [sharedMembershipEmails, setSharedMembershipEmails] = useState({})
+  const [sharedMembershipActionKey, setSharedMembershipActionKey] = useState('')
   const [cederClaseUserId, setCederClaseUserId] = useState('')
   // Asignación pendiente de pago: se aplica al procesar la venta en POS
   const [pendingAsignacion, setPendingAsignacion] = useState(null)
@@ -282,7 +351,8 @@ export default function AdminPanel() {
   const [editNotas, setEditNotas] = useState('')
   const coachesForClassForms = useApiCoaches ? apiCoaches : coaches
   const clientsForAdmin = useApiClients ? apiClients : usuarios
-  const packagesForClients = useApiClients ? apiClientPackages : paquetes
+  const packagesForAdmin = useApiPackages ? apiPackages : paquetes
+  const packagesForClients = useApiPackages ? apiPackages.filter((pkg) => pkg.isActive !== false) : paquetes
   const currentEditCoachAvatar = editAvatarPreview || resolveCoachAvatarUrl(modalEditCoach?.avatarUrl ?? modalEditCoach?.foto)
 
   const loadApiCoaches = useCallback(async () => {
@@ -346,15 +416,28 @@ export default function AdminPanel() {
     }
   }, [apiClientsPage, useApiClients, usersFilter, usersSearch])
 
-  const loadApiClientPackages = useCallback(async () => {
-    if (!useApiClients) return
+  const loadApiPackages = useCallback(async () => {
+    if (!useApiPackages) return
+    const query = buildAdminPackagesApiQuery({
+      page: apiPackagesPage,
+      pageSize: ADMIN_PACKAGES_PAGE_SIZE,
+      search: apiPackagesSearch,
+      status: apiPackagesStatus,
+    })
+    setApiPackagesLoading(true)
+    setApiPackagesError('')
     try {
-      setApiClientPackages(await getMembershipPackagesApi())
+      const response = await getMembershipPackagesPaginatedApi(query)
+      setApiPackages(response.items ?? [])
+      setApiPackagesTotal(response.total ?? 0)
     } catch (error) {
-      setApiClientPackages([])
-      setApiClientsError((current) => current || error?.message || 'No se pudieron cargar los paquetes')
+      setApiPackages([])
+      setApiPackagesTotal(0)
+      setApiPackagesError(error?.message ?? 'No se pudieron cargar los paquetes')
+    } finally {
+      setApiPackagesLoading(false)
     }
-  }, [useApiClients])
+  }, [apiPackagesPage, apiPackagesRefreshToken, apiPackagesSearch, apiPackagesStatus, useApiPackages])
 
   const openClientDetail = useCallback(async (client) => {
     setAsignarPaqueteForm({ paqueteNombre: client.paquete || '', metodoPago: 'efectivo' })
@@ -402,6 +485,149 @@ export default function AdminPanel() {
     setApiClientsRefreshToken((value) => value + 1)
   }, [eliminarUsuario, useApiClients])
 
+  const handleSavePackage = useCallback(async () => {
+    const isEdit = Boolean(modalEditPaquete)
+    const form = isEdit ? editPaqueteForm : paqueteForm
+
+    if (useApiPackages) {
+      const payload = buildPackageApiPayload(form)
+      const validationError = validatePackageApiPayload(payload)
+      if (validationError) {
+        toast.error(validationError)
+        return
+      }
+      try {
+        if (isEdit) {
+          await updateMembershipPackageApi(modalEditPaquete.id, payload)
+        } else {
+          await createMembershipPackageApi(payload)
+          setApiPackagesPage(1)
+        }
+        setApiPackagesRefreshToken((value) => value + 1)
+        if (isEdit) {
+          setModalEditPaquete(null)
+          setNuevoBeneficio('')
+        } else {
+          setPaqueteForm({
+            nombre: '',
+            numClases: '',
+            precio: '',
+            vigencia: '',
+            descripcion: '',
+            destacado: false,
+            isShareable: false,
+            maxBeneficiaries: 0,
+          })
+          closeModal()
+        }
+        toast.success(`Paquete "${getPackageDisplayName(payload)}" ${isEdit ? 'actualizado' : 'creado'}`)
+      } catch (error) {
+        toast.error(error?.message ?? 'No se pudo guardar el paquete')
+      }
+      return
+    }
+
+    if (isEdit) {
+      editarPaquete(modalEditPaquete.id, {
+        nombre:     editPaqueteForm.nombre || null,
+        precio:     Number(editPaqueteForm.precio) || 0,
+        clases:     Number(editPaqueteForm.clases) || 0,
+        vigencia:   editPaqueteForm.vigencia,
+        destacado:  editPaqueteForm.destacado,
+        beneficios: editPaqueteForm.beneficios,
+        isShareable: Boolean(editPaqueteForm.isShareable),
+        maxBeneficiaries: Number(editPaqueteForm.maxBeneficiaries) || 0,
+      })
+      toast.success(`Paquete "${editPaqueteForm.nombre || 'Paquete'}" actualizado`)
+      setModalEditPaquete(null)
+      setNuevoBeneficio('')
+      return
+    }
+
+    agregarPaquete({
+      nombre:     paqueteForm.nombre || null,
+      precio:     Number(paqueteForm.precio) || 0,
+      clases:     Number(paqueteForm.numClases) || 0,
+      vigencia:   Number(paqueteForm.vigencia) || 0,
+      beneficios: paqueteForm.descripcion ? [paqueteForm.descripcion] : [],
+      destacado:  paqueteForm.destacado,
+      isShareable: Boolean(paqueteForm.isShareable),
+      maxBeneficiaries: Number(paqueteForm.isShareable ? paqueteForm.maxBeneficiaries : 0) || 0,
+    })
+    toast.success(`Paquete "${paqueteForm.nombre || 'Paquete'}" creado`)
+    setPaqueteForm({
+      nombre: '',
+      numClases: '',
+      precio: '',
+      vigencia: '',
+      descripcion: '',
+      destacado: false,
+      isShareable: false,
+      maxBeneficiaries: 0,
+    })
+    closeModal()
+  }, [
+    agregarPaquete,
+    buildPackageApiPayload,
+    closeModal,
+    createMembershipPackageApi,
+    editarPaquete,
+    editPaqueteForm,
+    modalEditPaquete,
+    paqueteForm,
+    setApiPackagesPage,
+    setApiPackagesRefreshToken,
+    setModalEditPaquete,
+    setNuevoBeneficio,
+    updateMembershipPackageApi,
+    useApiPackages,
+    validatePackageApiPayload,
+  ])
+
+  const handleDeletePackage = useCallback(async (packageId) => {
+    if (useApiPackages) {
+      try {
+        await deleteMembershipPackageApi(packageId)
+        setApiPackagesRefreshToken((value) => value + 1)
+        toast.success('Paquete eliminado')
+      } catch (error) {
+        toast.error(error?.message ?? 'No se pudo eliminar el paquete')
+      }
+      return
+    }
+    eliminarPaquete(packageId)
+    toast.success('Paquete eliminado')
+  }, [deleteMembershipPackageApi, eliminarPaquete, setApiPackagesRefreshToken, useApiPackages])
+
+  const handleTogglePackageStatus = useCallback(async (packageId, isActive) => {
+    if (useApiPackages) {
+      try {
+        await updateMembershipPackageStatusApi(packageId, isActive)
+        setApiPackagesRefreshToken((value) => value + 1)
+      } catch (error) {
+        toast.error(error?.message ?? 'No se pudo actualizar el paquete')
+      }
+      return
+    }
+    const current = paquetes.find((item) => item.id === packageId)
+    if (current) {
+      editarPaquete(packageId, { ...current, activo: isActive })
+    }
+  }, [editarPaquete, paquetes, setApiPackagesRefreshToken, updateMembershipPackageStatusApi, useApiPackages])
+
+  const handleTogglePackageFeatured = useCallback(async (packageId, isFeatured) => {
+    if (useApiPackages) {
+      try {
+        await updateMembershipPackageFeaturedApi(packageId, isFeatured)
+        setApiPackagesRefreshToken((value) => value + 1)
+      } catch (error) {
+        toast.error(error?.message ?? 'No se pudo actualizar el paquete destacado')
+      }
+      return
+    }
+    marcarDestacado(packageId)
+  }, [marcarDestacado, setApiPackagesRefreshToken, updateMembershipPackageFeaturedApi, useApiPackages])
+
   useEffect(() => {
     setReservasModalPage(1)
   }, [modalVerUsuario?.id])
@@ -432,12 +658,17 @@ export default function AdminPanel() {
   }, [apiClientsRefreshToken, loadApiClients, useApiClients])
 
   useEffect(() => {
-    loadApiClientPackages()
-  }, [loadApiClientPackages])
+    if (!useApiPackages) return
+    loadApiPackages()
+  }, [loadApiPackages, useApiPackages])
 
   useEffect(() => {
     setApiClientsPage(1)
   }, [usersFilter, usersSearch])
+
+  useEffect(() => {
+    setApiPackagesPage(1)
+  }, [apiPackagesSearch, apiPackagesStatus])
 
   const handleSaveCoach = useCallback(async () => {
     const form = modalEditCoach ? editCoachForm : coachForm
@@ -606,6 +837,18 @@ export default function AdminPanel() {
   function closeModal() {
     clearAvatarSelection(setCoachAvatarPreview, setCoachAvatarFile)
     clearAvatarSelection(setEditAvatarPreview, setEditAvatarFile)
+    setPaqueteForm({
+      nombre: '',
+      numClases: '',
+      precio: '',
+      vigencia: '',
+      descripcion: '',
+      destacado: false,
+      isShareable: false,
+      maxBeneficiaries: 0,
+    })
+    setSharedMembershipEmails({})
+    setSharedMembershipActionKey('')
     setModalType(null)
   }
   function openModal(type) { setModalType(type) }
@@ -667,7 +910,7 @@ export default function AdminPanel() {
     // Si hay una asignación pendiente, activar el paquete ahora que se cobró
     if (pendingAsignacion) {
       const { userId, userName, paqSel, fechaVencimiento, metodoPago } = pendingAsignacion
-      const clasesPaquete = paqSel.clases === 0 ? 999 : paqSel.clases
+      const clasesPaquete = getPackageCredits(paqSel)
       editarUsuario(userId, {
         paquete:      paqSel.nombre,
         clasesPaquete,
@@ -964,21 +1207,34 @@ export default function AdminPanel() {
           {/* ── PAQUETES ── */}
           <section className={`${styles.section}${activeSection === 'paquetes' ? ' ' + styles.active : ''}`}>
             <PaquetesSection
-              paquetes={paquetes}
+              paquetes={packagesForAdmin}
               transacciones={transacciones}
-              usuarios={usuarios}
+              usuarios={clientsForAdmin}
               openModal={openModal}
               setModalEditPaquete={setModalEditPaquete}
               setEditPaqueteForm={setEditPaqueteForm}
-              eliminarPaquete={eliminarPaquete}
-              marcarDestacado={marcarDestacado}
+              eliminarPaquete={handleDeletePackage}
+              marcarDestacado={handleTogglePackageFeatured}
+              useApiMode={useApiPackages}
+              isLoading={apiPackagesLoading}
+              error={apiPackagesError}
+              total={apiPackagesTotal}
+              page={apiPackagesPage}
+              pageSize={ADMIN_PACKAGES_PAGE_SIZE}
+              search={apiPackagesSearch}
+              setSearch={setApiPackagesSearch}
+              status={apiPackagesStatus}
+              setStatus={setApiPackagesStatus}
+              onPageChange={setApiPackagesPage}
+              onToggleActive={handleTogglePackageStatus}
+              onToggleFeatured={handleTogglePackageFeatured}
             />
           </section>
 
           {/* ── PUNTO DE VENTA ── */}
           <section className={`${styles.section}${activeSection === 'pos' ? ' ' + styles.active : ''}`}>
             <PuntoDeVentaSection
-              paquetes={paquetes}
+              paquetes={useApiPackages ? packagesForClients : paquetes}
               productos={productos}
               agregarProducto={agregarProducto}
               editarProducto={editarProducto}
@@ -1367,76 +1623,122 @@ export default function AdminPanel() {
             </div>
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Nombre del paquete</label>
-                <input className={styles.formInput} placeholder="Ej: Mensual Ilimitado" value={paqueteForm.nombre}
-                  onChange={e => setPaqueteForm(f => ({ ...f, nombre: e.target.value }))} />
+                <label className={styles.formLabel}>Nombre del paquete (opcional)</label>
+                <input
+                  className={styles.formInput}
+                  placeholder="Ej: Mensual 12"
+                  value={paqueteForm.nombre}
+                  onChange={(event) => setPaqueteForm((form) => ({ ...form, nombre: event.target.value }))}
+                />
               </div>
+
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Tipo</label>
-                <select className={styles.formSelect} value={paqueteForm.tipo}
-                  onChange={e => setPaqueteForm(f => ({ ...f, tipo: e.target.value }))}>
-                  <option value="clases">Paquete de clases</option>
-                  <option value="individual">Por clase individual</option>
-                </select>
+                <label className={styles.formLabel}>Número de clases / créditos</label>
+                <input
+                  className={styles.formInput}
+                  type="number"
+                  min="1"
+                  placeholder="Ej: 12"
+                  value={paqueteForm.numClases}
+                  onChange={(event) => setPaqueteForm((form) => ({ ...form, numClases: event.target.value }))}
+                />
               </div>
-              {paqueteForm.tipo === 'clases' && (
-                <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Número de clases</label>
-                  <input className={styles.formInput} type="number" min="1" placeholder="Ej: 10" value={paqueteForm.numClases}
-                    onChange={e => setPaqueteForm(f => ({ ...f, numClases: e.target.value }))} />
-                </div>
-              )}
+
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Precio (MXN)</label>
-                <input className={styles.formInput} type="number" min="0" placeholder="Ej: 1200" value={paqueteForm.precio}
-                  onChange={e => setPaqueteForm(f => ({ ...f, precio: e.target.value }))} />
+                <input
+                  className={styles.formInput}
+                  type="number"
+                  min="0"
+                  placeholder="Ej: 1200"
+                  value={paqueteForm.precio}
+                  onChange={(event) => setPaqueteForm((form) => ({ ...form, precio: event.target.value }))}
+                />
               </div>
+
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Vigencia (días)</label>
-                <input className={styles.formInput} type="number" min="0" placeholder="30 · dejar 0 para sin límite" value={paqueteForm.vigencia}
-                  onChange={e => setPaqueteForm(f => ({ ...f, vigencia: e.target.value }))} />
+                <label className={styles.formLabel}>Vigencia en días</label>
+                <input
+                  className={styles.formInput}
+                  type="number"
+                  min="1"
+                  placeholder="Ej: 30"
+                  value={paqueteForm.vigencia}
+                  onChange={(event) => setPaqueteForm((form) => ({ ...form, vigencia: event.target.value }))}
+                />
               </div>
+
               <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 20 }}>
-                <input type="checkbox" id="destacado" checked={paqueteForm.destacado}
-                  onChange={e => setPaqueteForm(f => ({ ...f, destacado: e.target.checked }))}
-                  style={{ width: 16, height: 16, accentColor: 'var(--wine)', cursor: 'pointer' }} />
+                <input
+                  type="checkbox"
+                  id="destacado"
+                  checked={paqueteForm.destacado}
+                  onChange={(event) => setPaqueteForm((form) => ({ ...form, destacado: event.target.checked }))}
+                  style={{ width: 16, height: 16, accentColor: 'var(--wine)', cursor: 'pointer' }}
+                />
                 <label htmlFor="destacado" className={styles.formLabel} style={{ margin: 0, cursor: 'pointer' }}>
                   Marcar como "Más popular"
                 </label>
               </div>
+
+              <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 20 }}>
+                <input
+                  type="checkbox"
+                  id="shareable"
+                  checked={paqueteForm.isShareable}
+                  onChange={(event) => setPaqueteForm((form) => ({
+                    ...form,
+                    isShareable: event.target.checked,
+                    maxBeneficiaries: event.target.checked ? Math.max(Number(form.maxBeneficiaries) || 1, 1) : 0,
+                  }))}
+                  style={{ width: 16, height: 16, accentColor: 'var(--wine)', cursor: 'pointer' }}
+                />
+                <label htmlFor="shareable" className={styles.formLabel} style={{ margin: 0, cursor: 'pointer' }}>
+                  Permitir compartir paquete
+                </label>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Número máximo de beneficiarios</label>
+                <input
+                  className={styles.formInput}
+                  type="number"
+                  min="1"
+                  disabled={!paqueteForm.isShareable}
+                  placeholder={paqueteForm.isShareable ? 'Ej: 1' : 'Activa el paquete compartible'}
+                  value={paqueteForm.maxBeneficiaries}
+                  onChange={(event) => setPaqueteForm((form) => ({ ...form, maxBeneficiaries: event.target.value }))}
+                />
+                <small style={{ color: 'var(--muted)', display: 'block', marginTop: 6 }}>
+                  {paqueteForm.isShareable
+                    ? `Compartible con hasta ${Number(paqueteForm.maxBeneficiaries) || 1} ${Number(paqueteForm.maxBeneficiaries) === 1 ? 'beneficiario' : 'beneficiarios'}`
+                    : 'No compartible'}
+                </small>
+              </div>
+
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
-                <label className={styles.formLabel}>Descripción</label>
-                <textarea className={styles.formInput} rows={2} placeholder="Beneficios e información adicional del paquete…"
-                  value={paqueteForm.descripcion} onChange={e => setPaqueteForm(f => ({ ...f, descripcion: e.target.value }))}
-                  style={{ resize: 'vertical' }} />
+                <label className={styles.formLabel}>{useApiPackages ? 'Beneficios' : 'Descripción'}</label>
+                <textarea
+                  className={styles.formInput}
+                  rows={2}
+                  placeholder={useApiPackages ? 'Una línea por beneficio...' : 'Beneficios e información adicional del paquete...'}
+                  value={paqueteForm.descripcion}
+                  onChange={(event) => setPaqueteForm((form) => ({ ...form, descripcion: event.target.value }))}
+                  style={{ resize: 'vertical' }}
+                />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => {
-                  if (!paqueteForm.nombre.trim()) return
-                  agregarPaquete({
-                    nombre:     paqueteForm.nombre,
-                    precio:     Number(paqueteForm.precio) || 0,
-                    clases:     paqueteForm.tipo === 'mensual' ? 0 : Number(paqueteForm.numClases) || 1,
-                    vigencia:   paqueteForm.vigencia ? `${paqueteForm.vigencia} días` : 'Mensual',
-                    categoria:  paqueteForm.tipo === 'mensual' ? 'mensual' : 'pack',
-                    beneficios: paqueteForm.descripcion ? [paqueteForm.descripcion] : [],
-                    destacado:  paqueteForm.destacado,
-                  })
-                  toast.success(`Paquete "${paqueteForm.nombre}" creado`)
-                  setPaqueteForm({ nombre: '', tipo: 'mensual', numClases: '', precio: '', vigencia: '', descripcion: '', destacado: false })
-                  closeModal()
-                }}
+                onClick={handleSavePackage}
               >
                 Guardar Paquete
               </button>
             </div>
           </div>
         )}
-
         {/* ── USUARIO ── */}
         {modalType === 'usuario' && (
           <div className={styles.modal}>
@@ -1476,8 +1778,8 @@ export default function AdminPanel() {
                   onChange={e => setUsuarioForm(f => ({ ...f, paquete: e.target.value }))}>
                   <option value="ninguno">Sin paquete por ahora</option>
                   {packagesForClients.map(p => (
-                    <option key={p.id} value={useApiClients ? String(p.id) : p.nombre}>
-                      {p.nombre} — ${p.precio.toLocaleString()} {p.clases === 0 ? '(ilimitadas)' : `(${p.clases} clases)`}
+                    <option key={p.id} value={useApiClients ? String(p.id) : getPackageDisplayName(p)}>
+                      {getPackageDisplayName(p)} — {formatPackagePriceLabel(p)} ({getPackageCredits(p)} clases)
                     </option>
                   ))}
                 </select>
@@ -1531,7 +1833,7 @@ export default function AdminPanel() {
                     return
                   }
                   if (!usuarioForm.nombre.trim() || !usuarioForm.email.trim()) return
-                  const paqSel = paquetes.find(p => p.nombre === usuarioForm.paquete)
+                    const paqSel = paquetes.find(p => String(p.id) === String(usuarioForm.paquete) || getPackageDisplayName(p) === usuarioForm.paquete)
                   let fechaVencimiento = null
                   if (paqSel?.vigencia) {
                     const dias = parseInt(paqSel.vigencia) || 30
@@ -1564,8 +1866,10 @@ export default function AdminPanel() {
                       fechaVencimiento,
                       metodoPago:       usuarioForm.metodoPago,
                     })
-                    const labelClases = paqSel.clases === 0 ? 'Ilimitadas' : `${paqSel.clases} clases`
-                    setCart([{ name: `${paqSel.nombre} — ${labelClases}`, price: paqSel.precio, emoji: paqSel.clases === 0 ? '⭐' : '📦', cliente: usuarioForm.nombre }])
+                    const labelClases = useApiPackages
+                      ? `${getPackageCredits(paqSel)} clases`
+                      : `${getPackageCredits(paqSel)} clases`
+                    setCart([{ name: `${getPackageDisplayName(paqSel)} — ${labelClases}`, price: paqSel.precio, emoji: '📦', cliente: usuarioForm.nombre }])
                     setPosFilter('📦 Paquetes')
                     setActiveSection('pos')
                     toast(`💳 Cobra el paquete para activarlo`, { icon: '🛒', duration: 4000 })
@@ -2185,7 +2489,7 @@ export default function AdminPanel() {
                   if (!u) return null
                   return (
                     <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6, fontFamily: 'var(--font-body)' }}>
-                      {u.clasesPaquete === 999 ? 'Clases ilimitadas' : u.clasesPaquete > 0 ? `${u.clasesPaquete} crédito(s) disponibles` : '⚠️ Sin créditos — se inscribirá sin descontar'}
+                      {u.clasesPaquete > 0 ? `${u.clasesPaquete} crédito(s) disponibles` : '⚠️ Sin créditos — se inscribirá sin descontar'}
                     </p>
                   )
                 })()}
@@ -2290,37 +2594,60 @@ export default function AdminPanel() {
 
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Nombre</label>
+                <label className={styles.formLabel}>Nombre (opcional)</label>
                 <input className={styles.formInput} value={editPaqueteForm.nombre}
                   onChange={e => setEditPaqueteForm(f => ({ ...f, nombre: e.target.value }))} />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Precio ($)</label>
+                <label className={styles.formLabel}>Precio (MXN)</label>
                 <input className={styles.formInput} type="number" min="0" value={editPaqueteForm.precio}
                   onChange={e => setEditPaqueteForm(f => ({ ...f, precio: e.target.value }))} />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Clases (0 = ilimitadas)</label>
-                <input className={styles.formInput} type="number" min="0" value={editPaqueteForm.clases}
+                <label className={styles.formLabel}>Créditos</label>
+                <input className={styles.formInput} type="number" min="1" value={editPaqueteForm.clases}
                   onChange={e => setEditPaqueteForm(f => ({ ...f, clases: e.target.value }))} />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Vigencia</label>
-                <input className={styles.formInput} placeholder="Ej: Mensual, 30 días" value={editPaqueteForm.vigencia}
+                <label className={styles.formLabel}>Vigencia en días</label>
+                <input className={styles.formInput} type="number" min="1" placeholder="Ej: 30" value={editPaqueteForm.vigencia}
                   onChange={e => setEditPaqueteForm(f => ({ ...f, vigencia: e.target.value }))} />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Categoría</label>
-                <select className={styles.formSelect} value={editPaqueteForm.categoria}
-                  onChange={e => setEditPaqueteForm(f => ({ ...f, categoria: e.target.value }))}>
-                  <option value="mensual">Mensual</option>
-                  <option value="pack">Pack de clases</option>
-                </select>
               </div>
               <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <input type="checkbox" id="destEdit" checked={editPaqueteForm.destacado}
                   onChange={e => setEditPaqueteForm(f => ({ ...f, destacado: e.target.checked }))} />
                 <label htmlFor="destEdit" className={styles.formLabel} style={{ margin: 0 }}>Marcar como popular</label>
+              </div>
+
+              <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input
+                  type="checkbox"
+                  id="shareEdit"
+                  checked={editPaqueteForm.isShareable}
+                  onChange={e => setEditPaqueteForm(f => ({
+                    ...f,
+                    isShareable: e.target.checked,
+                    maxBeneficiaries: e.target.checked ? Math.max(Number(f.maxBeneficiaries) || 1, 1) : 0,
+                  }))}
+                />
+                <label htmlFor="shareEdit" className={styles.formLabel} style={{ margin: 0 }}>Permitir compartir paquete</label>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Máximo de beneficiarios</label>
+                <input
+                  className={styles.formInput}
+                  type="number"
+                  min="1"
+                  disabled={!editPaqueteForm.isShareable}
+                  value={editPaqueteForm.maxBeneficiaries}
+                  onChange={e => setEditPaqueteForm(f => ({ ...f, maxBeneficiaries: e.target.value }))}
+                />
+                <small style={{ color: 'var(--muted)', display: 'block', marginTop: 6 }}>
+                  {editPaqueteForm.isShareable
+                    ? `Compartible con hasta ${Number(editPaqueteForm.maxBeneficiaries) || 1} ${Number(editPaqueteForm.maxBeneficiaries) === 1 ? 'beneficiario' : 'beneficiarios'}`
+                    : 'No compartible'}
+                </small>
               </div>
 
               {/* Beneficios */}
@@ -2347,7 +2674,7 @@ export default function AdminPanel() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input
                     className={styles.formInput}
-                    placeholder="Nuevo beneficio…"
+                    placeholder="Nuevo beneficio..."
                     value={nuevoBeneficio}
                     onChange={e => setNuevoBeneficio(e.target.value)}
                     onKeyDown={e => {
@@ -2372,27 +2699,12 @@ export default function AdminPanel() {
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalEditPaquete(null)}>Cancelar</button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={() => {
-                  if (!editPaqueteForm.nombre.trim()) return
-                  editarPaquete(modalEditPaquete.id, {
-                    nombre:     editPaqueteForm.nombre,
-                    precio:     Number(editPaqueteForm.precio) || 0,
-                    clases:     Number(editPaqueteForm.clases) || 0,
-                    vigencia:   editPaqueteForm.vigencia,
-                    categoria:  editPaqueteForm.categoria,
-                    destacado:  editPaqueteForm.destacado,
-                    beneficios: editPaqueteForm.beneficios,
-                  })
-                  toast.success(`Paquete "${editPaqueteForm.nombre}" actualizado`)
-                  setModalEditPaquete(null)
-                  setNuevoBeneficio('')
-                }}
+                onClick={handleSavePackage}
               >Guardar cambios</button>
             </div>
           </div>
         </div>
       )}
-
       {/* ── VER USUARIO ── */}
       {modalVerUsuario && (() => {
         const u = modalVerUsuario
@@ -2401,8 +2713,8 @@ export default function AdminPanel() {
           : todasReservas.filter(r => String(r.userId) === String(u.id))
         const reservasOrdenadas = reservasU.slice().reverse()
         const paginatedReservasModal = paginateArray(reservasOrdenadas, { page: reservasModalPage, pageSize: 8 })
-        const paqActivo = paquetes.find(p => p.nombre === u.paquete)
-        const restantes = u.clasesPaquete === 999 ? 'Ilimitadas' : (u.clasesPaquete ?? 0)
+        const paqActivo = packagesForClients.find(p => getPackageDisplayName(p) === u.paquete)
+        const restantes = Number(u.clasesPaquete ?? 0)
         const tag   = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
         const label = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
         const [vistaVer, setVistaVer] = [null, null] // placeholder, manejado abajo
@@ -2436,7 +2748,7 @@ export default function AdminPanel() {
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>Datos del cliente</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px' }}>
                     {(() => {
-                      const paqActivo = packagesForClients.find(p => p.nombre === u.paquete)
+                      const paqActivo = packagesForClients.find(p => getPackageDisplayName(p) === u.paquete)
                       const vencimientoDisplay = (() => {
                         if (u.paqueteInfo?.fechaVencimiento) return u.paqueteInfo.fechaVencimiento
                         if (!u.paqueteInfo?.fechaCompra || !paqActivo?.vigencia) return '—'
@@ -2459,11 +2771,11 @@ export default function AdminPanel() {
                         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', fontFamily: 'var(--font-body)', fontWeight: 500 }}>{val}</div>
                       </div>
                     ))}
-                  </div>
-                  {useApiClients && (
-                    <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                      <input className={styles.formInput} value={editClientForm.nombre} placeholder="Nombre"
-                        onChange={(event) => setEditClientForm((form) => ({ ...form, nombre: event.target.value }))} />
+                </div>
+                {useApiClients && (
+                  <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <input className={styles.formInput} value={editClientForm.nombre} placeholder="Nombre"
+                      onChange={(event) => setEditClientForm((form) => ({ ...form, nombre: event.target.value }))} />
                       <input className={styles.formInput} value={editClientForm.email} placeholder="Email"
                         onChange={(event) => setEditClientForm((form) => ({ ...form, email: event.target.value }))} />
                       <input className={styles.formInput} value={editClientForm.telefono} placeholder="Telefono"
@@ -2489,6 +2801,134 @@ export default function AdminPanel() {
                       </button>
                     </div>
                   )}
+
+                {useApiClients && (u.sharedMemberships ?? []).length > 0 && (
+                  <div style={{ marginTop: 24, padding: '16px 18px', background: 'rgba(123,30,34,0.08)', borderRadius: 12, border: '1px solid rgba(123,30,34,0.18)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>
+                      Membresías compartidas
+                    </div>
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      {(u.sharedMemberships ?? []).map((membership) => {
+                        const beneficiaries = membership.beneficiaries ?? []
+                        const emailKey = String(membership.membershipId ?? membership.packageId ?? '')
+                        const currentEmail = sharedMembershipEmails[emailKey] ?? ''
+                        const actionKey = sharedMembershipActionKey
+                        return (
+                          <div key={emailKey || membership.packageId} style={{ padding: 14, borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ fontWeight: 600, color: 'rgba(255,255,255,0.92)' }}>
+                                  {membership.displayName ?? membership.packageName ?? 'Paquete'}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                                  {membership.creditsAvailable ?? 0} créditos disponibles
+                                  {membership.expiresAt ? ` · Vence ${membership.expiresAt}` : ''}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                                  {membership.isShareable
+                                    ? `Compartible con hasta ${membership.maxBeneficiaries ?? 1} ${(membership.maxBeneficiaries ?? 1) === 1 ? 'beneficiario' : 'beneficiarios'}`
+                                    : 'No compartible'}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                                {membership.status ?? 'active'}
+                              </div>
+                            </div>
+
+                            <div style={{ marginTop: 12 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.86)', marginBottom: 8 }}>
+                                Beneficiarios
+                              </div>
+                              {beneficiaries.length === 0 ? (
+                                <div style={{ fontSize: 12, color: 'var(--muted)' }}>Sin beneficiarios configurados.</div>
+                              ) : (
+                                <div style={{ display: 'grid', gap: 8 }}>
+                                  {beneficiaries.map((beneficiary) => (
+                                    <div key={beneficiary.beneficiaryId ?? beneficiary.email} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                      <div>
+                                        <div style={{ color: 'rgba(255,255,255,0.9)' }}>{beneficiary.name || beneficiary.email || 'Beneficiario'}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{beneficiary.email || 'Sin email'}</div>
+                                      </div>
+                                      <button
+                                        className={`${styles.btn} ${styles.btnGhost}`}
+                                        style={{ fontSize: 11, padding: '6px 10px' }}
+                                        disabled={actionKey === `${emailKey}:${beneficiary.beneficiaryId}:remove`}
+                                        onClick={async () => {
+                                          if (!beneficiary.beneficiaryId) return
+                                          const confirmRemove = window.confirm('Quitar beneficiario del paquete compartido?')
+                                          if (!confirmRemove) return
+                                          setSharedMembershipActionKey(`${emailKey}:${beneficiary.beneficiaryId}:remove`)
+                                          try {
+                                            await removeClientMembershipBeneficiaryApi(u.id, membership.membershipId, beneficiary.beneficiaryId)
+                                            await refreshClientDetail(u.id)
+                                            toast.success('Beneficiario removido')
+                                          } catch (error) {
+                                            toast.error(resolveMembershipErrorMessage(error))
+                                          } finally {
+                                            setSharedMembershipActionKey('')
+                                          }
+                                        }}
+                                      >
+                                        Quitar
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {membership.isShareable && (
+                              <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                                <input
+                                  className={styles.formInput}
+                                  type="email"
+                                  placeholder="Email del beneficiario"
+                                  value={currentEmail}
+                                  onChange={(event) => setSharedMembershipEmails((state) => ({
+                                    ...state,
+                                    [emailKey]: event.target.value,
+                                  }))}
+                                />
+                                <button
+                                  className={`${styles.btn} ${styles.btnPrimary}`}
+                                  style={{ whiteSpace: 'nowrap' }}
+                                  disabled={actionKey === `${emailKey}:add`}
+                                  onClick={async () => {
+                                    const email = String(currentEmail ?? '').trim()
+                                    if (!email) {
+                                      toast.error('Ingresa correo del beneficiario.')
+                                      return
+                                    }
+                                    setSharedMembershipActionKey(`${emailKey}:add`)
+                                    try {
+                                      await addClientMembershipBeneficiaryApi(u.id, membership.membershipId, email)
+                                      await refreshClientDetail(u.id)
+                                      setSharedMembershipEmails((state) => ({ ...state, [emailKey]: '' }))
+                                      toast.success('Beneficiario agregado')
+                                    } catch (error) {
+                                      toast.error(resolveMembershipErrorMessage(error))
+                                    } finally {
+                                      setSharedMembershipActionKey('')
+                                    }
+                                  }}
+                                >
+                                  Agregar beneficiario
+                                </button>
+                              </div>
+                            )}
+
+                            {!membership.isShareable && (
+                              <div style={{ marginTop: 12, fontSize: 12, color: 'var(--muted)' }}>
+                                Paquete no compartible.
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
                   {!useApiClients && <div style={{ marginTop: 10 }}>
                     <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 6 }}>
                       📝 Notas / Observaciones
@@ -2533,8 +2973,8 @@ export default function AdminPanel() {
                       >
                         <option value="">Sin paquete</option>
                         {packagesForClients.map(p => (
-                          <option key={p.id} value={useApiClients ? String(p.id) : p.nombre}>
-                            {p.nombre} — ${p.precio.toLocaleString()} {p.clases === 0 ? '(ilimitadas)' : `(${p.clases} clases)`}
+                          <option key={p.id} value={useApiClients ? String(p.id) : getPackageDisplayName(p)}>
+                            {getPackageDisplayName(p)} — {formatPackagePriceLabel(p)} ({getPackageCredits(p)} clases)
                           </option>
                         ))}
                       </select>
@@ -2569,7 +3009,7 @@ export default function AdminPanel() {
                           }
                           return
                         }
-                        const paqSel = paquetes.find(p => p.nombre === asignarPaqueteForm.paqueteNombre)
+                        const paqSel = paquetes.find(p => String(p.id) === String(asignarPaqueteForm.paqueteNombre) || getPackageDisplayName(p) === asignarPaqueteForm.paqueteNombre)
                         if (!paqSel) {
                           editarUsuario(u.id, { paquete: null, clasesPaquete: 0, paqueteInfo: null })
                           setModalVerUsuario(null)
@@ -2600,8 +3040,8 @@ export default function AdminPanel() {
                           fechaVencimiento,
                           metodoPago:      asignarPaqueteForm.metodoPago,
                         })
-                        const labelClases = paqSel.clases === 0 ? 'Ilimitadas' : `${paqSel.clases} clases`
-                        setCart([{ name: `${paqSel.nombre} — ${labelClases}`, price: paqSel.precio, emoji: paqSel.clases === 0 ? '⭐' : '📦', cliente: u.nombre }])
+                        const labelClases = `${getPackageCredits(paqSel)} clases`
+                        setCart([{ name: `${getPackageDisplayName(paqSel)} — ${labelClases}`, price: paqSel.precio, emoji: '📦', cliente: u.nombre }])
                         setPosFilter('📦 Paquetes')
                         setModalVerUsuario(null)
                         setActiveSection('pos')
@@ -2615,7 +3055,7 @@ export default function AdminPanel() {
                   {/* Compartir paquete — comentado, pendiente de implementación futura */}
                   {/* {asignarPaqueteForm.paqueteNombre && (
                     <CompartirPaquete
-                      paquete={paquetes.find(p => p.nombre === asignarPaqueteForm.paqueteNombre)}
+                      paquete={paquetes.find(p => String(p.id) === String(asignarPaqueteForm.paqueteNombre) || getPackageDisplayName(p) === asignarPaqueteForm.paqueteNombre)}
                       usuarioActualId={u.id}
                       variant="dark"
                       onChange={setCompartirAdminData}

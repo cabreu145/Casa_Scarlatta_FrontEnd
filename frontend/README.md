@@ -319,3 +319,28 @@ Siguiente módulo recomendado: BUG-009 (integración Mercado Pago).
 - Asignacion manual usa `/clientes/{id}/paquetes`; creditos usan `/clientes/{id}/credits`.
 - Catalogo de asignacion viene de `GET /api/v1/memberships/packages`.
 - `usuariosStore` y `paquetesStore` quedan solo como fallback con API desactivada.
+
+## Paquetes admin en API mode
+
+- Admin > Paquetes usa catálogo backend real `GET /api/v1/memberships/packages`.
+- CRUD admin usa `POST/PUT/PATCH/DELETE /api/v1/memberships/packages`.
+- `type` no es canónico.
+- No existe ilimitado; `credits` siempre > 0.
+- `benefits` se captura como lista de líneas.
+- Historial de ventas queda como pendiente de Reportes en API mode.
+
+## Paquetes compartibles
+
+Frontend ya consume catálogo vendible y membresías compartidas:
+- `GET /api/v1/memberships/packages`
+- `GET /api/v1/clientes/me/memberships`
+- `GET /api/v1/clientes/{id}` -> `shared_memberships`
+
+Reglas:
+- `name` opcional; mostrar `display_name` si falta
+- `credits` siempre finito > 0
+- `type` no es contrato backend
+- no hay ilimitados
+- `is_shareable` + `max_beneficiaries` controlan UI de compartir paquete
+- buyer solo configura beneficiarios una vez
+- admin puede corregir mientras no haya consumo

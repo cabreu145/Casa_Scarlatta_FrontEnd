@@ -24,6 +24,10 @@ import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/
 import { logListaEsperaUnirse, logListaEsperaSalir } from '@/services/actividadService'
 import { getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
 import { getMembershipPackagesApi } from '@/services/membershipPackagesApiService'
+import {
+  addMyMembershipBeneficiaryApi,
+  getMyMembershipsApi,
+} from '@/services/clientMembershipsApiService'
 import { getMisReservasPaginatedApi } from '@/services/reservasApiService'
 import {
   hoyLocal,
@@ -43,6 +47,13 @@ import { buildMisClasesApiFilters } from './misClasesPagination'
 import { normalizeDiscipline } from '@/utils/discipline'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
+import {
+  formatPackagePriceLabel,
+  formatPackageShareabilityLabel,
+  formatPackageValidityLabel,
+  getPackageCredits,
+  getPackageDisplayName,
+} from '@/utils/packageDisplay'
 
 const AVATAR_COLORS = [
   { bg: 'var(--brand-wine-13)',  text: '#7B1E2B' },
@@ -87,6 +98,26 @@ function StatusPill({ status }) {
     completada: 'Completada',
   }
   return <span className={`${s.statusPill} ${map[status] ?? ''}`}>{labels[status] ?? status}</span>
+}
+
+function resolveMembershipErrorMessage(error) {
+  const raw = String(error?.message ?? '').trim()
+  if (raw === 'SHARED_CREDITS_NOT_DIVISIBLE') {
+    return 'Este paquete no se puede dividir exactamente entre los beneficiarios seleccionados.'
+  }
+  if (raw === 'SHARED_BENEFICIARY_CHANGE_ADMIN_ONLY') {
+    return 'Los cambios posteriores deben solicitarse a administración.'
+  }
+  if (raw === 'SHARED_MEMBERSHIP_HAS_CONSUMPTION') {
+    return 'Este paquete ya tiene clases consumidas y no permite cambios de beneficiarios.'
+  }
+  if (raw === 'BENEFICIARY_NOT_FOUND') {
+    return 'No encontramos un cliente con ese correo.'
+  }
+  if (raw === 'BENEFICIARY_ROLE_INVALID') {
+    return 'El beneficiario debe ser un cliente registrado.'
+  }
+  return raw || 'No se pudo actualizar la membresía compartida.'
 }
 
 // â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -155,6 +186,12 @@ export default function ClientPanel() {
   const [apiMembershipPackages, setApiMembershipPackages] = useState([])
   const [isMembershipPackagesLoading, setIsMembershipPackagesLoading] = useState(false)
   const [membershipPackagesError, setMembershipPackagesError] = useState('')
+  const [apiMemberships, setApiMemberships] = useState([])
+  const [isMembershipsLoading, setIsMembershipsLoading] = useState(false)
+  const [membershipsError, setMembershipsError] = useState('')
+  const [shareMembershipModal, setShareMembershipModal] = useState(null)
+  const [shareMembershipEmail, setShareMembershipEmail] = useState('')
+  const [shareMembershipSubmitting, setShareMembershipSubmitting] = useState(false)
   const sectionQuery = new URLSearchParams(location.search).get('section')
   const packageIdQuery = new URLSearchParams(location.search).get('packageId')
 
@@ -208,6 +245,22 @@ export default function ClientPanel() {
   const requestFinancialRefresh = useCallback(() => {
     setFinancialRefreshTick((tick) => tick + 1)
   }, [])
+  const loadMyMemberships = useCallback(async () => {
+    if (!useApiFinancialState || usuario?.rol !== 'cliente') return []
+    setIsMembershipsLoading(true)
+    setMembershipsError('')
+    try {
+      const items = await getMyMembershipsApi()
+      setApiMemberships(items)
+      return items
+    } catch (error) {
+      setApiMemberships([])
+      setMembershipsError(error?.message ?? 'No se pudieron cargar tus membresías compartidas')
+      throw error
+    } finally {
+      setIsMembershipsLoading(false)
+    }
+  }, [useApiFinancialState, usuario?.rol])
   const apiClassIdsSignature = useMemo(
     () => clases
       .map((c) => c?.id)
@@ -270,6 +323,29 @@ export default function ClientPanel() {
       })
     return () => { active = false }
   }, [activeSection, useApiFinancialState])
+
+  useEffect(() => {
+    if (!useApiFinancialState || activeSection !== 'pagos' || usuario?.rol !== 'cliente') return
+    let active = true
+    setIsMembershipsLoading(true)
+    setMembershipsError('')
+    getMyMembershipsApi()
+      .then((items) => {
+        if (!active) return
+        setApiMemberships(items)
+      })
+      .catch((error) => {
+        if (!active) return
+        setApiMemberships([])
+        setMembershipsError(error?.message ?? 'No se pudieron cargar tus membresías compartidas')
+      })
+      .finally(() => {
+        if (active) setIsMembershipsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [activeSection, financialRefreshTick, loadMyMemberships, useApiFinancialState, usuario?.rol])
 
   useEffect(() => {
     if (!sectionQuery) return
@@ -1534,6 +1610,115 @@ export default function ClientPanel() {
               )}
             </div>
 
+            {useApiFinancialState && (
+              <div className={s.card} style={{ marginBottom: 20 }}>
+                <div className={s.cardHeader}>
+                  <div className={s.cardTitle}>Mis membresías</div>
+                  <div className={s.cardSubtitle}>Beneficiarios y configuración compartida</div>
+                </div>
+                <div className={s.cardBody}>
+                  {isMembershipsLoading ? (
+                    <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, padding: '12px 0' }}>
+                      Cargando membresías...
+                    </div>
+                  ) : membershipsError ? (
+                    <div style={{ textAlign: 'center', color: '#b42318', fontSize: 13, padding: '12px 0' }}>
+                      {membershipsError}
+                    </div>
+                  ) : apiMemberships.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, padding: '12px 0' }}>
+                      No hay membresías compartidas para mostrar.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gap: 14 }}>
+                      {apiMemberships.map((membership) => {
+                        const beneficiaries = membership.beneficiaries ?? []
+                        const canInitialShare = Boolean(membership.isShareable) && beneficiaries.length === 0
+                        const isLocked = beneficiaries.length > 0
+                        return (
+                          <div
+                            key={membership.membershipId ?? membership.packageId}
+                            style={{
+                              border: '1px solid rgba(123,31,46,0.12)',
+                              borderRadius: 14,
+                              padding: 14,
+                              background: 'rgba(255,255,255,0.55)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ fontWeight: 600, color: 'var(--ink)' }}>
+                                  {membership.displayName ?? membership.packageName ?? 'Paquete'}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                                  {membership.creditsAvailable ?? 0} créditos disponibles
+                                  {membership.expiresAt ? ` · Vence ${formatFechaISO(membership.expiresAt)}` : ''}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                                  {membership.isShareable
+                                    ? formatPackageShareabilityLabel({
+                                        isShareable: true,
+                                        maxBeneficiaries: membership.maxBeneficiaries,
+                                      })
+                                    : 'No compartible'}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--muted)' }}>
+                                {membership.status ?? 'active'}
+                              </div>
+                            </div>
+
+                            <div style={{ marginTop: 12 }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>
+                                Beneficiarios activos
+                              </div>
+                              {beneficiaries.length === 0 ? (
+                                <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                                  Sin beneficiarios configurados.
+                                </div>
+                              ) : (
+                                <div style={{ display: 'grid', gap: 8 }}>
+                                  {beneficiaries.map((beneficiary) => (
+                                    <div key={beneficiary.beneficiaryId ?? beneficiary.email} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, background: 'rgba(123,31,46,0.04)', border: '1px solid rgba(123,31,46,0.08)' }}>
+                                      <div>
+                                        <div style={{ fontSize: 13, color: 'var(--ink)' }}>{beneficiary.name || beneficiary.email || 'Beneficiario'}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{beneficiary.email || 'Sin email'}</div>
+                                      </div>
+                                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>{beneficiary.status ?? 'activo'}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {canInitialShare && (
+                              <div style={{ marginTop: 12 }}>
+                                <button
+                                  className={`${s.btn} ${s.btnOutline}`}
+                                  onClick={() => {
+                                    setShareMembershipModal(membership)
+                                    setShareMembershipEmail('')
+                                  }}
+                                >
+                                  Compartir paquete
+                                </button>
+                              </div>
+                            )}
+
+                            {isLocked && (
+                              <div style={{ marginTop: 12, fontSize: 12, color: 'var(--muted)' }}>
+                                Para cambios, contacta a administración.
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontStyle: 'italic', color: 'var(--ink)', marginBottom: 4 }}>Nuestros planes</div>
               <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20 }}>Elige el que mejor se adapte a tu ritmo</div>
@@ -1548,7 +1733,7 @@ export default function ClientPanel() {
                   fontSize: 13,
                   lineHeight: 1.5,
                 }}>
-                  Continúa tu compra de <strong>{selectedPackage.nombre}</strong>. El paquete quedó resaltado para que sigas el flujo desde aquí.
+                  Continúa tu compra de <strong>{getPackageDisplayName(selectedPackage)}</strong>. El paquete quedó resaltado para que sigas el flujo desde aquí.
                 </div>
               )}
             </div>
@@ -1568,9 +1753,10 @@ export default function ClientPanel() {
                 </div>
               ) : paquetesDisponibles.map((p) => {
                 const esPlanActual = useApiFinancialState
-                  ? activeMembership?.packageName === p.nombre
-                  : usuario?.paquete === p.nombre
+                  ? activeMembership?.packageName === getPackageDisplayName(p)
+                  : usuario?.paquete === getPackageDisplayName(p)
                 const isSelectedPackage = selectedPackageId != null && String(p.id) === String(selectedPackageId)
+                const shareableLabel = formatPackageShareabilityLabel(p)
                 return (
                   <div
                     key={p.id}
@@ -1583,17 +1769,14 @@ export default function ClientPanel() {
                       </span>
                     )}
                     {p.destacado && <span className={s.pricingTag}>Popular</span>}
-                    <div className={s.pricingName}>{p.nombre}</div>
+                    <div className={s.pricingName}>{getPackageDisplayName(p)}</div>
                     <div className={s.pricingClasses}>
-                      {useApiFinancialState
-                        ? `${p.creditos ?? p.clases ?? 0} créditos`
-                        : p.clases === 0
-                          ? 'Clases ilimitadas'
-                          : `${p.clases} clases al mes`}
+                      {getPackageCredits(p)} créditos
                     </div>
-                    <div className={s.pricingPrice}>${p.precio.toLocaleString()}</div>
-                    <div className={s.pricingPeriod}>{useApiFinancialState ? '' : 'pago mensual'}</div>
+                    <div className={s.pricingPrice}>{formatPackagePriceLabel(p)}</div>
+                    <div className={s.pricingPeriod}>{formatPackageValidityLabel(p)}</div>
                     <div className={s.pricingFeatures}>
+                      {shareableLabel && <div className={s.pricingFeature}>{shareableLabel}</div>}
                       {(p.beneficios || []).map((b, i) => (
                         <div key={i} className={s.pricingFeature}>{b}</div>
                       ))}
@@ -1682,12 +1865,98 @@ export default function ClientPanel() {
               </div>
             </div>
           </div>
-          {pagoModal && (
+        {pagoModal && (
           <PagoModal
           paquete={pagoModal}
           onClose={() => setPagoModal(null)}
           onSuccess={() => { setPagoModal(null); goTo('reservar') }}
           />
+        )}
+        {shareMembershipModal && (
+          <div
+            className={`${s.modalOverlay ?? ''}`}
+            style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setShareMembershipModal(null)
+                setShareMembershipEmail('')
+              }
+            }}
+          >
+            <div style={{ width: 'min(520px, 100%)', borderRadius: 18, background: '#fff', boxShadow: '0 30px 80px rgba(0,0,0,0.2)', padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontStyle: 'italic', color: 'var(--ink)' }}>
+                    Compartir paquete
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>
+                    {getPackageDisplayName(shareMembershipModal)} · {formatPackageShareabilityLabel(shareMembershipModal)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className={s.modalClose}
+                  onClick={() => {
+                    setShareMembershipModal(null)
+                    setShareMembershipEmail('')
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
+                <label className={s.formLabel}>Email del beneficiario</label>
+                <input
+                  className={s.formInput}
+                  type="email"
+                  value={shareMembershipEmail}
+                  onChange={(event) => setShareMembershipEmail(event.target.value)}
+                  placeholder="cliente@correo.com"
+                />
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                  Los cambios posteriores deben solicitarse a administración.
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+                <button
+                  className={`${s.btn} ${s.btnOutline}`}
+                  onClick={() => {
+                    setShareMembershipModal(null)
+                    setShareMembershipEmail('')
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className={`${s.btn} ${s.btnPrimary}`}
+                  disabled={shareMembershipSubmitting}
+                  onClick={async () => {
+                    const email = String(shareMembershipEmail ?? '').trim()
+                    if (!email) {
+                      toast.error('Ingresa correo del beneficiario.')
+                      return
+                    }
+                    setShareMembershipSubmitting(true)
+                    try {
+                      await addMyMembershipBeneficiaryApi(shareMembershipModal.membershipId, email)
+                      toast.success('Beneficiario agregado')
+                      setShareMembershipModal(null)
+                      setShareMembershipEmail('')
+                      await loadMyMemberships()
+                    } catch (error) {
+                      toast.error(resolveMembershipErrorMessage(error))
+                    } finally {
+                      setShareMembershipSubmitting(false)
+                    }
+                  }}
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
         )}
         </div>{/* /content */}
       </main>

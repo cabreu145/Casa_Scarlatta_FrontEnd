@@ -60,6 +60,11 @@ export const ENDPOINTS = {
     withQuery('/clientes/me/credit-movements', { page, page_size: pageSize }),
   clientPayments: ({ page, pageSize, status } = {}) =>
     withQuery('/clientes/me/pagos', { page, page_size: pageSize, status }),
+  clientMemberships: withPrefix('/clientes/me/memberships'),
+  clientMembershipBeneficiaries: (membershipId) =>
+    withPrefix(`/clientes/me/memberships/${membershipId}/beneficiaries`),
+  clientMembershipBeneficiaryById: (membershipId, beneficiaryId) =>
+    withPrefix(`/clientes/me/memberships/${membershipId}/beneficiaries/${beneficiaryId}`),
   adminClients: withPrefix('/clientes'),
   adminClientsPaginated: ({ page, pageSize, search, status, membershipStatus }) =>
     withQuery('/clientes', {
@@ -72,8 +77,17 @@ export const ENDPOINTS = {
   adminClientById: (id) => withPrefix(`/clientes/${id}`),
   adminClientPackages: (id) => withPrefix(`/clientes/${id}/paquetes`),
   adminClientCredits: (id) => withPrefix(`/clientes/${id}/credits`),
+  adminClientMembershipBeneficiaries: (clientId, membershipId) =>
+    withPrefix(`/clientes/${clientId}/memberships/${membershipId}/beneficiaries`),
+  adminClientMembershipBeneficiaryById: (clientId, membershipId, beneficiaryId) =>
+    withPrefix(`/clientes/${clientId}/memberships/${membershipId}/beneficiaries/${beneficiaryId}`),
 
   membershipsPackages: withPrefix('/memberships/packages'),
+  adminMembershipPackagesPaginated: ({ page, pageSize, search, status }) =>
+    withQuery('/memberships/packages', { page, page_size: pageSize, search, status }),
+  adminMembershipPackageById: (id) => withPrefix(`/memberships/packages/${id}`),
+  adminMembershipPackageStatusById: (id) => withPrefix(`/memberships/packages/${id}/status`),
+  adminMembershipPackageFeaturedById: (id) => withPrefix(`/memberships/packages/${id}/featured`),
   paquetes: withPrefix('/paquetes'),
   comprarPaquete: withPrefix('/paquetes/comprar'),
 

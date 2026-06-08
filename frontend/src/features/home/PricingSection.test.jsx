@@ -76,6 +76,8 @@ describe('PricingSection', () => {
     )
 
     expect(await screen.findByText('Mensual 12')).toBeInTheDocument()
+    expect(screen.getByText(/MX/)).toBeInTheDocument()
+    expect(screen.queryByText(/\/mes/i)).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /comprar/i }))
 
     await waitFor(() => {

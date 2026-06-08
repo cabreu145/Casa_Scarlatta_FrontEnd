@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const mockUsuario = {
@@ -35,6 +36,7 @@ const mockLogListaEsperaUnirse = vi.fn()
 const mockLogListaEsperaSalir = vi.fn()
 const mockGetMyCreditMovementsPaginatedApi = vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 8 })
 const mockGetMembershipPackagesApi = vi.fn().mockResolvedValue([])
+const mockGetMyMembershipsApi = vi.fn().mockResolvedValue([])
 const mockGetMisReservasPaginatedApi = vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 })
 
 vi.mock('@/context/AuthContext', () => ({
@@ -161,6 +163,11 @@ vi.mock('@/services/membershipPackagesApiService', () => ({
   getMembershipPackagesApi: mockGetMembershipPackagesApi,
 }))
 
+vi.mock('@/services/clientMembershipsApiService', () => ({
+  getMyMembershipsApi: mockGetMyMembershipsApi,
+  addMyMembershipBeneficiaryApi: vi.fn(),
+}))
+
 vi.mock('@/services/reservasApiService', () => ({
   getMisReservasPaginatedApi: mockGetMisReservasPaginatedApi,
 }))
@@ -175,6 +182,8 @@ describe('ClientPanel payments section', () => {
     window.history.pushState({}, '', '/cliente/dashboard?section=pagos')
     mockGetMembershipPackagesApi.mockReset()
     mockGetMembershipPackagesApi.mockResolvedValue([])
+    mockGetMyMembershipsApi.mockReset()
+    mockGetMyMembershipsApi.mockResolvedValue([])
     mockGetOccurrencesForDateRangeApi.mockReset()
     mockGetOccurrencesForDateRangeApi.mockResolvedValue([])
   })
@@ -215,6 +224,34 @@ describe('ClientPanel payments section', () => {
 
     expect(await screen.findByRole('button', { name: /comprar ahora/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /comprar ahora/i })).toBeInTheDocument()
+  })
+
+  test('muestra membresias compartidas y abre modal', async () => {
+    mockGetMyMembershipsApi.mockResolvedValueOnce([
+      {
+        membershipId: 1,
+        packageId: 2,
+        displayName: 'Mensual 12',
+        creditsAvailable: 8,
+        expiresAt: '2026-07-07',
+        isShareable: true,
+        maxBeneficiaries: 1,
+        beneficiaries: [],
+      },
+    ])
+
+    const { default: ClientPanel } = await import('./ClientPanel')
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos']} >
+        <ClientPanel />
+      </MemoryRouter>
+    )
+
+    expect(await screen.findByText('Mis membresías')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /compartir paquete/i }))
+    expect(await screen.findByPlaceholderText('cliente@correo.com')).toBeInTheDocument()
   })
 
   test('no emite warning de keys duplicadas al renderizar ocurrencias duplicadas', async () => {

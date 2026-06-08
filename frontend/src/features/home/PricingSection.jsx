@@ -5,6 +5,14 @@ import { usePaquetesStore } from '@/stores/paquetesStore'
 import { useAuth } from '@/context/AuthContext'
 import { getMembershipPackagesApi } from '@/services/membershipPackagesApiService'
 import {
+  formatPackagePriceLabel,
+  formatPackageShareabilityLabel,
+  formatPackageValidityLabel,
+  getPackageBenefits,
+  getPackageCredits,
+  getPackageDisplayName,
+} from '@/utils/packageDisplay'
+import {
   buildPackagePurchaseRedirect,
   savePendingPackagePurchaseIntent,
 } from '@/utils/packagePurchaseIntent'
@@ -15,18 +23,16 @@ const useApiPackages =
   import.meta.env.VITE_USE_API_RESERVATIONS === 'true' ||
   import.meta.env.VITE_USE_API_WAITLIST === 'true'
 
-function formatPackageCredits(pkg) {
-  const credits = Number(pkg?.creditos ?? pkg?.clases ?? 0)
-  if (!Number.isFinite(credits) || credits <= 0) return 'Clases ilimitadas'
-  return `${credits} ${credits === 1 ? 'clase' : 'clases'}`
-}
-
 function buildPackageBenefits(pkg) {
-  const benefits = Array.isArray(pkg?.beneficios) ? pkg.beneficios.filter(Boolean) : []
+  const benefits = getPackageBenefits(pkg)
   if (benefits.length) return benefits
 
-  const fallback = [formatPackageCredits(pkg)]
-  if (pkg?.vigencia) fallback.push(`Vigencia ${pkg.vigencia}`)
+  const credits = getPackageCredits(pkg)
+  const fallback = [credits > 0 ? `${credits} ${credits === 1 ? 'clase' : 'clases'}` : 'Paquete finito']
+  const validity = formatPackageValidityLabel(pkg)
+  if (validity) fallback.push(validity)
+  const shareable = formatPackageShareabilityLabel(pkg)
+  if (shareable) fallback.push(shareable)
   if (pkg?.descripcion) fallback.push(pkg.descripcion)
   return fallback.filter(Boolean)
 }
@@ -162,11 +168,14 @@ export default function PricingSection() {
 
 function PaqueteCard({ p, onComprar }) {
   const esFeatured = Boolean(p?.destacado)
-  const clases = Number(p?.creditos ?? p?.clases ?? 0)
-  const clasesDisplay = clases === 0 ? '∞' : clases
-  const clasesLabel = clases === 0 ? 'Ilimitadas' : clases === 1 ? 'Clase' : 'Clases'
+  const clases = getPackageCredits(p)
+  const clasesDisplay = clases > 0 ? clases : '—'
+  const clasesLabel = clases === 1 ? 'Clase' : 'Clases'
   const benefits = buildPackageBenefits(p)
-  const price = Number(p?.precio ?? 0)
+  const priceLabel = formatPackagePriceLabel(p)
+  const validityLabel = formatPackageValidityLabel(p)
+  const shareableLabel = formatPackageShareabilityLabel(p)
+  const displayName = getPackageDisplayName(p)
 
   if (esFeatured) {
     return (
@@ -191,17 +200,28 @@ function PaqueteCard({ p, onComprar }) {
 
         <div className="z-10 px-8 pb-2 pt-7">
           <p className="font-display text-xl font-medium tracking-wide text-[rgba(245,237,232,0.9)]">
-            {p?.nombre ?? 'Paquete'}
+            {displayName}
           </p>
         </div>
         <div className="z-10 flex items-baseline gap-1 px-8 pb-6">
           <span className="font-display text-[40px] italic font-semibold text-[#F5EDE8]">
-            ${price.toLocaleString()}
+            {priceLabel}
           </span>
-          <span className="font-sans text-xs font-light text-[rgba(245,237,232,0.55)]"> MX /mes</span>
         </div>
 
         <ul className="z-10 mb-8 flex flex-1 flex-col gap-3 px-8">
+          {validityLabel && (
+            <li className="font-sans flex items-start gap-3 text-[13px] font-normal leading-snug text-[rgba(245,237,232,0.78)]">
+              <span className="mt-0.5 shrink-0 text-[11px] text-[rgba(245,237,232,0.65)]">•</span>
+              {validityLabel}
+            </li>
+          )}
+          {shareableLabel && (
+            <li className="font-sans flex items-start gap-3 text-[13px] font-normal leading-snug text-[rgba(245,237,232,0.78)]">
+              <span className="mt-0.5 shrink-0 text-[11px] text-[rgba(245,237,232,0.65)]">•</span>
+              {shareableLabel}
+            </li>
+          )}
           {benefits.map((b) => (
             <li key={b} className="font-sans flex items-start gap-3 text-[13px] font-normal leading-snug text-[rgba(245,237,232,0.78)]">
               <span className="mt-0.5 shrink-0 text-[11px] text-[rgba(245,237,232,0.65)]">✓</span>
@@ -237,17 +257,28 @@ function PaqueteCard({ p, onComprar }) {
 
       <div className="z-10 px-8 pb-2 pt-7">
         <p className="font-display text-xl font-medium tracking-wide text-[#3D1A20]">
-          {p?.nombre ?? 'Paquete'}
+          {displayName}
         </p>
       </div>
       <div className="z-10 flex items-baseline gap-1 px-8 pb-6">
         <span className="font-display text-[40px] italic font-semibold text-[#7B1E22]">
-          ${price.toLocaleString()}
+          {priceLabel}
         </span>
-        <span className="font-sans text-xs font-light text-[#A08878]"> MX /mes</span>
       </div>
 
       <ul className="z-10 mb-8 flex flex-1 flex-col gap-3 px-8">
+        {validityLabel && (
+          <li className="font-sans flex items-start gap-3 text-[13px] font-light leading-snug text-[#7A6560]">
+            <span className="mt-0.5 shrink-0 text-[11px] font-semibold text-[#C26B7A]">•</span>
+            {validityLabel}
+          </li>
+        )}
+        {shareableLabel && (
+          <li className="font-sans flex items-start gap-3 text-[13px] font-light leading-snug text-[#7A6560]">
+            <span className="mt-0.5 shrink-0 text-[11px] font-semibold text-[#C26B7A]">•</span>
+            {shareableLabel}
+          </li>
+        )}
         {benefits.map((b) => (
           <li key={b} className="font-sans flex items-start gap-3 text-[13px] font-light leading-snug text-[#7A6560]">
             <span className="mt-0.5 shrink-0 text-[11px] font-semibold text-[#C26B7A]">✓</span>
