@@ -12,6 +12,7 @@ import {
 import { useReservasStore } from '@/stores/reservasStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import { normalizeDiscipline } from '@/utils/discipline'
+import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import s from './CoachPanel.module.css'
 
 // â”€â”€ Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -73,7 +74,9 @@ function classStatusLabel(booked, cap) {
 
 function isClasePasada(c) {
   if (c.fecha) {
-    const [h, m] = (c.hora || '00:00').split(':').map(Number)
+    const timeToken = getClassTimeToken(c)
+    if (!timeToken) return false
+    const [h, m] = timeToken.split(':').map(Number)
     const fin = new Date(c.fecha + 'T00:00:00')
     fin.setHours(h, m, 0, 0)
     return fin <= new Date()
@@ -85,7 +88,9 @@ function isClasePasada(c) {
   const diff = targetDow - today.getDay()
   const occurrence = new Date(today)
   occurrence.setDate(today.getDate() + diff)
-  const [h, m] = (c.hora || '00:00').split(':').map(Number)
+  const timeToken = getClassTimeToken(c)
+  if (!timeToken) return false
+  const [h, m] = timeToken.split(':').map(Number)
   occurrence.setHours(h, m, 0, 0)
   return occurrence <= today
 }
@@ -132,9 +137,9 @@ export default function CoachPanel() {
   const hoyISO = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`
   const clasesHoy = useMemo(() => {
     if (useApiMode) {
-      const todayOccurrences = getTodayOccurrences(agendaOccurrences, hoy)
-      return mapAgendaToCoachClassRows(todayOccurrences, usuario?.nombre ?? 'Coach')
-    }
+  const todayOccurrences = getTodayOccurrences(agendaOccurrences, hoy)
+  return mapAgendaToCoachClassRows(todayOccurrences, usuario?.nombre ?? 'Coach')
+}
     return misClases.filter(c => c.fecha ? c.fecha === hoyISO : c.dia === diaHoy)
   }, [agendaOccurrences, diaHoy, hoy, hoyISO, misClases, useApiMode, usuario?.nombre])
   const coachMetricsApi = useMemo(
@@ -344,7 +349,7 @@ export default function CoachPanel() {
                     return (
                       <div key={cls.id} className={s.classCardToday} onClick={() => openModal(cls)}>
                         <div className={s.classTimeBlock}>
-                          <div className={s.classTime}>{cls.hora}</div>
+                          <div className={s.classTime}>{getClassDisplayTime(cls)}</div>
                           <div className={s.classDuration}>60 min</div>
                         </div>
                         <div className={s.classDivider} />
@@ -577,7 +582,7 @@ function WeekTable({ classes, onOpen }) {
                   })()
                 }
               </td>
-              <td><span className={s2.mono} style={{ color:'var(--blush)' }}>{cls.hora}</span></td>
+              <td><span className={s2.mono} style={{ color:'var(--blush)' }}>{getClassDisplayTime(cls)}</span></td>
               <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
               <td><span className={`${s2.pill} ${isSlowDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo) ? s2.pillSlow : s2.pillStride}`}>{getDisciplineLabel(cls.discipline ?? cls.classDiscipline ?? cls.tipo)}</span></td>
               <td><span className={`${s2.mono} ${s2[color]}`} style={{ fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
@@ -659,7 +664,7 @@ function MisClasesTable({ classes, onOpen }) {
                 })()
                 }
               </td>
-              <td><span className={s2.mono} style={{ color: 'var(--blush)' }}>{cls.hora}</span></td>
+              <td><span className={s2.mono} style={{ color: 'var(--blush)' }}>{getClassDisplayTime(cls)}</span></td>
               <td style={{ fontWeight:500, color:'#fff' }}>{cls.nombre}</td>
               <td><span className={`${s2.pill} ${isSlowDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo) ? s2.pillSlow : s2.pillStride}`}>{getDisciplineLabel(cls.discipline ?? cls.classDiscipline ?? cls.tipo)}</span></td>
               <td><span className={s2.mono} style={{ color: color === 'red' ? '#E85A5A' : color === 'orange' ? '#E8924A' : '#5CB97A', fontSize:13 }}>{cls.cupoActual} / {cls.cupoMax}</span></td>
@@ -702,7 +707,7 @@ function ClassModal({ cls, onClose }) {
     ? { label: 'Finalizada', cls: 'gray' }
     : classStatusLabel(cls.cupoActual, cls.cupoMax)
   const statusClr = pasada ? '#888' : stCls === 'danger' ? 'var(--danger)' : stCls === 'warning' ? 'var(--warning)' : 'var(--success)'
-  const dayInfo = `${cls.dia} · ${cls.hora} · ${cls.cupoActual}/${cls.cupoMax} inscritos`
+  const dayInfo = `${cls.dia} · ${getClassDisplayTime(cls)} · ${cls.cupoActual}/${cls.cupoMax} inscritos`
 
   return (
     <div className={s2.modal}>

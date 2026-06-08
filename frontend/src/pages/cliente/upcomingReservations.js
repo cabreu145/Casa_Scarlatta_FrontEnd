@@ -24,7 +24,7 @@ export function buildUpcomingReservationDateTime(reserva, options = {}) {
 
     const classDate = toIsoDate(getOccurrenceDate(reserva))
     if (!classDate) return null
-    const classTime = toIsoTime(reserva?.classStartTime ?? reserva?.claseHora)
+    const classTime = toIsoTime(reserva?.classStartTime ?? reserva?.displayTime ?? reserva?.claseHora)
     const isoDateTime = classTime ? `${classDate}T${classTime}:00` : `${classDate}T00:00:00`
     const parsed = new Date(isoDateTime)
     return Number.isNaN(parsed.getTime()) ? null : parsed

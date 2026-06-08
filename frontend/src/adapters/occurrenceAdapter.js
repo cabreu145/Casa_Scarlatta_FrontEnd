@@ -1,3 +1,5 @@
+import { formatClassDate, getClassDisplayDate, getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
+
 function safeNumber(value, fallback = 0) {
   const n = Number(value)
   return Number.isFinite(n) ? n : fallback
@@ -11,8 +13,12 @@ export function mapBackendOccurrenceToFrontend(item = {}) {
     id: item.id ?? item.occurrence_id ?? null,
     claseId: item.class_id ?? item.clase_id ?? null,
     fecha: item.occurrence_date ?? item.class_date ?? null,
+    displayDate: formatClassDate(getClassDisplayDate(item)),
     inicio: item.start_at ?? item.class_start_at ?? null,
     fin: item.end_at ?? null,
+    hora: getClassTimeToken(item),
+    startTime: getClassTimeToken(item),
+    displayTime: getClassDisplayTime(item),
     cupoMax,
     cupoActual,
     cupoDisponible: safeNumber(item.cupo_disponible, Math.max(0, cupoMax - cupoActual)),

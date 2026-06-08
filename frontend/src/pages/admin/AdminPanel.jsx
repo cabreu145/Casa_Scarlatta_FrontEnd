@@ -44,6 +44,7 @@ import { getCoachesApi } from '@/services/coachesApiService'
 import { buildClaseApiPayload } from './classApiPayload'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { paginateArray } from '@/utils/paginationUtils'
+import { getClassDisplayTime } from '@/utils/classSchedule'
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
@@ -1567,7 +1568,7 @@ export default function AdminPanel() {
               userId,
               claseId:     cls.id,
               claseNombre: cls.nombre,
-              claseHora:   cls.hora,
+              claseHora:   getClassDisplayTime(cls),
               claseDia:    cls.dia,
               coachNombre: cls.coachNombre,
               tipo:        cls.tipo,
@@ -1593,7 +1594,7 @@ export default function AdminPanel() {
                 <div>
                   <div className={styles.modalTitle}>Alumnos — {cls.nombre}</div>
                   <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--font-body)' }}>
-                    {cls.dia} · {cls.hora} · {cls.cupoActual}/{cls.cupoMax} inscritos
+                    {cls.dia} · {getClassDisplayTime(cls)} · {cls.cupoActual}/{cls.cupoMax} inscritos
                   </div>
                 </div>
                 <button className={styles.modalClose} onClick={() => setModalAlumnosClase(null)}>×</button>
@@ -1811,7 +1812,7 @@ export default function AdminPanel() {
                           <td style={{ fontWeight: 500 }}>{c.nombre}</td>
                           <td><Tag color={!c.tipo?.toLowerCase().includes('slow') ? 'pink' : 'blue'}>{c.tipo}</Tag></td>
                           <td>{c.dia}</td>
-                          <td>{c.hora}</td>
+                          <td>{getClassDisplayTime(c)}</td>
                           <td style={{ color: 'var(--muted)', fontSize: 12 }}>{c.cupoActual}/{c.cupoMax}</td>
                         </tr>
                       ))}
@@ -2223,7 +2224,7 @@ export default function AdminPanel() {
                             <tr key={r.id} style={{ borderBottom: i < paginatedReservasModal.items.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
                               <td style={{ padding: '9px 12px', fontSize: 13, fontFamily: 'var(--font-body)', color: 'rgba(255,255,255,0.85)' }}>{r.claseNombre}</td>
                               <td style={{ padding: '9px 12px', fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--muted)' }}>{r.fecha || r.claseDia}</td>
-                              <td style={{ padding: '9px 12px', fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--muted)' }}>{r.claseHora}</td>
+                              <td style={{ padding: '9px 12px', fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--muted)' }}>{getClassDisplayTime(r)}</td>
                               <td style={{ padding: '9px 12px' }}>
                                 <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-body)', background: r.estado === 'confirmada' ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)', color: r.estado === 'confirmada' ? '#4ade80' : '#f87171', border: `1px solid ${r.estado === 'confirmada' ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}` }}>
                                   {r.estado === 'confirmada' ? 'Confirmada' : 'Cancelada'}

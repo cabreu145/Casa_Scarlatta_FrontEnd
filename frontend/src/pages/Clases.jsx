@@ -25,6 +25,7 @@ import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/
 import { cancelarReserva as cancelarReservaService } from '@/services/reservasService'
 import { ROUTES } from '@/constants/routes'
 import { getWeekDays, isSameDay, formatHour, getInitials, DAYS_ABBR, MONTHS_ES } from '@/utils/formatters'
+import { getClassTimeToken } from '@/utils/classSchedule'
 import { normalizeDiscipline } from '@/utils/discipline'
 import styles from './Clases.module.css'
 
@@ -133,7 +134,7 @@ export default function Clases() {
           ...cls,
           occurrenceId: occ.occurrenceId,
           fecha: occ.fecha,
-          hora: occ.inicio ? new Date(occ.inicio).toISOString().slice(11, 16) : cls.hora,
+          hora: getClassTimeToken(occ) ?? getClassTimeToken(cls) ?? null,
           cupoMax: occ.cupoMax ?? cls.cupoMax,
           cupoActual: occ.cupoActual ?? cls.cupoActual,
           estado: occ.estado ?? cls.estado,
@@ -265,6 +266,7 @@ export default function Clases() {
               const isLow   = status === 'low'
               const { bg, text } = avatarStyle(cls.coachNombre)
                             const coachFoto   = coachFotoByName[cls.coachNombre] || null
+              const classTime = getClassTimeToken(cls)
 
               // selectedDate is a Date object - convert to ISO string before matching reservation occurrence
               const selectedDateISO = selectedDate instanceof Date
@@ -281,8 +283,8 @@ export default function Clases() {
                     return occurrenceDate === selectedDateISO
                   })
                 : null
-              const cancelAllowed = miReserva ? canCancelClass(selectedDate, cls.hora) : false
-              const clasePasada = new Date(selectedDateISO + 'T' + cls.hora + ':00') <= new Date()
+              const cancelAllowed = miReserva && classTime ? canCancelClass(selectedDate, classTime) : false
+              const clasePasada = classTime ? new Date(selectedDateISO + 'T' + classTime + ':00') <= new Date() : false
 
               return (
                 <div key={i} className={`${styles.classCard} ${isFull ? styles.classCardFull : ''}`}>
@@ -306,7 +308,7 @@ export default function Clases() {
 
                   {/* TIME */}
                   <div className={styles.classTime}>
-                    <span className={styles.timeHour}>{formatHour(cls.hora)}</span>
+                    <span className={styles.timeHour}>{formatHour(classTime)}</span>
                     <span className={styles.timeDur}>{cls.duracion} min</span>
                   </div>
 

@@ -6,6 +6,7 @@ import { useTransaccionesStore } from '@/stores/transaccionesStore'
 import { useUsuariosStore }      from '@/stores/usuariosStore'
 import { useClasesStore }        from '@/stores/clasesStore'
 import { usePaquetesStore }      from '@/stores/paquetesStore'
+import { getClassDisplayTime } from '@/utils/classSchedule'
 import DateNavigator from '@/components/ui/DateNavigator'
 import styles from '../AdminPanel.module.css'
 
@@ -469,7 +470,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
                   <div>
                     <div className={styles.miniName}>{c.nombre}</div>
                     <div className={styles.miniSub}>
-                      {formatHora(c.hora)} · {c.coachNombre} · {c.cupoActual}/{c.cupoMax}
+                      {getClassDisplayTime(c)} · {c.coachNombre} · {c.cupoActual}/{c.cupoMax}
                     </div>
                   </div>
                   <div className={styles.miniRight}>

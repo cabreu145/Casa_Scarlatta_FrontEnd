@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, act, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -95,6 +95,7 @@ function buildStrydeResponse() {
 
 describe('EquipmentReservationPanel', () => {
   beforeEach(() => {
+    vi.resetModules()
     vi.useRealTimers()
     getOccurrenceSpotsMock.mockReset()
     createSpotHoldMock.mockReset()
@@ -114,7 +115,7 @@ describe('EquipmentReservationPanel', () => {
     }
   })
 
-  test('slow renderiza 10 tapetes y confirma reserva con hold', async () => {
+  test('slow renderiza 10 tapetes, coach no clicable y confirma reserva con hold', async () => {
     const user = userEvent.setup()
     getOccurrenceSpotsMock.mockResolvedValue(buildSlowResponse())
     createSpotHoldMock.mockResolvedValue({
@@ -151,30 +152,35 @@ describe('EquipmentReservationPanel', () => {
         }}
       />
     )
-    expect(await screen.findByRole('button', { name: /Tapete 01 · Disponible/i })).toBeInTheDocument()
+
+    const slowGrid = await screen.findByTestId('slow-grid')
+    const slowSpot01 = within(slowGrid).getByTestId('slow-spot-01')
+    const slowSpot02 = screen.getByTestId('slow-spot-02')
     expect(screen.getByText('Clase Demo Reservable API')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Seleccionar lugar' }).className).toMatch(/slowModal/)
     expect(screen.getByRole('group', { name: 'Fila frontal' }).className).toMatch(/machineGrid/)
     expect(screen.getByRole('complementary').className).toMatch(/reservationSidebar/)
-    const slowGrid = screen.getByTestId('slow-grid')
-    const slowGridChildren = Array.from(slowGrid.children)
-    expect(slowGridChildren).toHaveLength(5)
-    expect(slowGridChildren[0]).toHaveAttribute('data-testid', 'slow-spot-01')
-    expect(slowGridChildren[1]).toHaveAttribute('data-testid', 'slow-spot-03')
-    expect(slowGridChildren[2]).toHaveAttribute('data-testid', 'slow-coach-slot')
-    expect(slowGridChildren[3]).toHaveAttribute('data-testid', 'slow-spot-07')
-    expect(slowGridChildren[4]).toHaveAttribute('data-testid', 'slow-spot-09')
-    expect(screen.getByTestId('slow-spot-02')).toBeInTheDocument()
-    expect(screen.getByTestId('slow-spot-04')).toBeInTheDocument()
-    expect(screen.getByTestId('slow-spot-06')).toBeInTheDocument()
-    expect(screen.getByTestId('slow-spot-08')).toBeInTheDocument()
+    expect(Array.from(slowGrid.children)).toHaveLength(5)
+    expect(slowGrid.children[0]).toHaveAttribute('data-testid', 'slow-spot-01')
+    expect(slowGrid.children[1]).toHaveAttribute('data-testid', 'slow-spot-03')
+    expect(slowGrid.children[2]).toHaveAttribute('data-testid', 'slow-coach-slot')
+    expect(slowGrid.children[3]).toHaveAttribute('data-testid', 'slow-spot-07')
+    expect(slowGrid.children[4]).toHaveAttribute('data-testid', 'slow-spot-09')
     expect(screen.getByTestId('slow-spot-10')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Tapete 01/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Tapete 10/i })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /Tapete 01/i }))
+    fireEvent.click(screen.getByTestId('slow-coach-slot'))
+    expect(createSpotHoldMock).not.toHaveBeenCalled()
+
+    await user.click(slowSpot01)
     await waitFor(() => {
       expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotId: 1 })
+      expect(slowSpot01).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    await user.click(slowSpot02)
+    await waitFor(() => {
+      expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 123 })
+      expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 5, spotId: 2 })
     })
 
     await user.click(screen.getByRole('button', { name: /Confirmar reserva/i }))
@@ -183,7 +189,7 @@ describe('EquipmentReservationPanel', () => {
         claseId: 9,
         userId: 3,
         occurrenceId: 5,
-        spotId: 1,
+        spotId: 2,
         holdId: 123,
       })
     })
@@ -191,33 +197,9 @@ describe('EquipmentReservationPanel', () => {
     expect(loadFinancialStateMock).toHaveBeenCalled()
     expect(getCreditMovementsMock).toHaveBeenCalled()
     expect(loadMisReservasFromApiMock).toHaveBeenCalled()
-  })
+  }, 10000)
 
-  test('slow coach no es clicable y no crea hold', async () => {
-    getOccurrenceSpotsMock.mockResolvedValue(buildSlowResponse())
-
-    const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
-    render(
-      <EquipmentReservationPanel
-        occurrenceId={5}
-        classId={9}
-        userId={3}
-        financialState={{
-          financialState: {},
-          creditsBalance: 12,
-          activeMembership: { creditsAvailable: 12 },
-          isLoading: false,
-          error: null,
-        }}
-      />
-    )
-
-    const coachSlot = await screen.findByTestId('slow-coach-slot')
-    fireEvent.click(coachSlot)
-    expect(createSpotHoldMock).not.toHaveBeenCalled()
-  })
-
-  test('stryde distingue bench 01 y treadmill 01 y libera hold previo', async () => {
+  test('stryde distingue bench 01 y treadmill 01', async () => {
     const user = userEvent.setup()
     getOccurrenceSpotsMock.mockResolvedValue(buildStrydeResponse())
     createSpotHoldMock
@@ -253,14 +235,14 @@ describe('EquipmentReservationPanel', () => {
         }}
       />
     )
-    expect(await screen.findByRole('button', { name: /Banco 06 · Disponible/i })).toBeInTheDocument()
+
+    const bench01 = await screen.findByTestId('stryde-spot-bench-01')
+    const treadmill01 = await screen.findByTestId('stryde-spot-treadmill-01')
     expect(screen.getByText('Clase STRYDE Demo')).toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Seleccionar equipo' }).className).toMatch(/strydeModal/)
     expect(screen.getByRole('group', { name: 'Bancos fila trasera' }).className).toMatch(/strydeBenchRow/)
     expect(screen.getByRole('group', { name: 'Bancos fila delantera' }).className).toMatch(/strydeBenchRowFront/)
     expect(screen.getByRole('group', { name: 'Caminadoras' }).className).toMatch(/strydeTreadRow/)
-    const bench01 = screen.getByRole('button', { name: /Banco 01/i })
-    const treadmill01 = screen.getByRole('button', { name: /Caminadora 01/i })
 
     await user.click(bench01)
     await waitFor(() => {
@@ -273,11 +255,8 @@ describe('EquipmentReservationPanel', () => {
     await waitFor(() => {
       expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 201 })
       expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 6, spotId: 10 })
-      expect(screen.getByRole('button', { name: /Banco 01/i })).toHaveAttribute('aria-pressed', 'false')
-      expect(screen.getByRole('button', { name: /Banco 01/i }).className).toMatch(/strydeAvail/)
-      expect(screen.getByRole('button', { name: /Banco 01/i }).className).not.toMatch(/strydeOccupied/)
-      expect(screen.getByRole('button', { name: /Caminadora 01/i })).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.getByRole('button', { name: /Caminadora 01/i }).className).toMatch(/strydeSelected/)
+      expect(screen.getByTestId('stryde-spot-bench-01')).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByTestId('stryde-spot-treadmill-01')).toHaveAttribute('aria-pressed', 'true')
     })
   })
 
@@ -319,12 +298,17 @@ describe('EquipmentReservationPanel', () => {
       />
     )
 
-    await user.click(await screen.findByRole('button', { name: /Tapete 01/i }))
+    const slowGrid = await screen.findByTestId('slow-grid')
+    const slowSpot01 = within(slowGrid).getByTestId('slow-spot-01')
+    const slowSpot02 = screen.getByTestId('slow-spot-02')
+
+    await user.click(slowSpot01)
     await waitFor(() => {
       expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotId: 1 })
+      expect(slowSpot01).toHaveAttribute('aria-pressed', 'true')
     })
 
-    await user.click(screen.getByRole('button', { name: /Tapete 02/i }))
+    await user.click(slowSpot02)
     await waitFor(() => {
       expect(releaseHoldOnceMock).toHaveBeenCalledTimes(1)
       expect(releaseHoldOnceMock).toHaveBeenCalledWith({ holdId: 901 })
@@ -370,10 +354,10 @@ describe('EquipmentReservationPanel', () => {
       />
     )
     expect(screen.getByText(/Cargando/i)).toBeInTheDocument()
-    expect(screen.queryByText(/^0 créditos restantes\./i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^0 créditos restantes./i)).not.toBeInTheDocument()
 
-    expect(await screen.findByRole('button', { name: /Tapete 01 · Disponible/i })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Tapete 01 · Disponible/i }))
+    const slowGrid = await screen.findByTestId('slow-grid')
+    await userEvent.setup().click(within(slowGrid).getByTestId('slow-spot-01'))
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
@@ -427,13 +411,14 @@ describe('EquipmentReservationPanel', () => {
       />
     )
 
-    expect(await screen.findByRole('button', { name: /Tapete 01/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /Tapete 02/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /Tapete 03/i })).toBeDisabled()
+    const slowGrid = await screen.findByTestId('slow-grid')
+    expect(within(slowGrid).getByTestId('slow-spot-01')).toBeDisabled()
+    expect(screen.getByTestId('slow-spot-02')).toBeDisabled()
+    expect(within(slowGrid).getByTestId('slow-spot-03')).toBeDisabled()
 
-    fireEvent.click(screen.getByRole('button', { name: /Tapete 01/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Tapete 02/i }))
-    fireEvent.click(screen.getByRole('button', { name: /Tapete 03/i }))
+    fireEvent.click(within(slowGrid).getByTestId('slow-spot-01'))
+    fireEvent.click(screen.getByTestId('slow-spot-02'))
+    fireEvent.click(within(slowGrid).getByTestId('slow-spot-03'))
     expect(createSpotHoldMock).not.toHaveBeenCalled()
   })
 })

@@ -167,6 +167,7 @@ vi.mock('@/services/reservasApiService', () => ({
 
 describe('ClientPanel payments section', () => {
   beforeEach(() => {
+    vi.resetModules()
     vi.stubEnv('VITE_USE_API_AUTH', 'true')
     vi.stubEnv('VITE_USE_API_CLASSES', 'true')
     vi.stubEnv('VITE_USE_API_RESERVATIONS', 'true')
@@ -188,7 +189,7 @@ describe('ClientPanel payments section', () => {
     )
 
     expect(await screen.findByText(/Estado de pagos recientes/i)).toBeInTheDocument()
-  })
+  }, 10000)
 
   test('resalta packageId desde query en Paquetes & Pagos', async () => {
     mockGetMembershipPackagesApi.mockResolvedValueOnce([

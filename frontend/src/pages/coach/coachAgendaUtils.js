@@ -1,9 +1,11 @@
+import { getClassTimeToken } from '@/utils/classSchedule'
+
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
 export function mapAgendaOccurrenceToCoachClassRow(o = {}, coachName = 'Coach') {
   const fecha = o.occurrenceDate ?? null
   const dayName = fecha ? DIAS[new Date(`${fecha}T12:00:00`).getDay()] : ''
-  const hora = o.startTime ?? (o.startAt ? new Date(o.startAt).toISOString().slice(11, 16) : '00:00')
+  const hora = getClassTimeToken(o) ?? '00:00'
   return {
     id: o.occurrenceId ?? o.classId ?? null,
     occurrenceId: o.occurrenceId ?? null,
@@ -72,16 +74,7 @@ function isValidIsoDate(value) {
 }
 
 function getOccurrenceHourKey(o = {}) {
-  if (typeof o.startTime === 'string' && /^\d{2}:\d{2}/.test(o.startTime)) {
-    return o.startTime.slice(0, 5)
-  }
-  if (typeof o.startAt === 'string') {
-    const match = o.startAt.match(/T(\d{2}:\d{2})/)
-    if (match?.[1]) {
-      return match[1]
-    }
-  }
-  return '99:99'
+  return getClassTimeToken(o) ?? '99:99'
 }
 
 export function getTodayOccurrences(occurrences = [], today = new Date()) {

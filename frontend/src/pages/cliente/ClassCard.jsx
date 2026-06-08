@@ -1,4 +1,6 @@
-﻿import { formatHour } from '@/utils/formatters'
+import { formatHour } from '@/utils/formatters'
+import { formatClassDate, getClassDisplayDate, getClassTimeToken } from '@/utils/classSchedule'
+
 import { normalizeDiscipline } from '@/utils/discipline'
 import s from './ClientPanel.module.css'
 
@@ -43,8 +45,20 @@ function StatusPill({ status }) {
 export default function ClassCard({ cls, showCancel, onCancel, coachFoto }) {
   const coachName = cls?.coach ?? 'Por definir'
   const title = cls?.title ?? 'Clase'
-  const dateLabel = cls?.date ? String(cls.date).slice(0, 3) : 'Sin fecha'
-  const timeLabel = cls?.time ? formatHour(cls.time) : 'Sin horario'
+  const dateLabel = cls?.displayDate ?? formatClassDate(getClassDisplayDate({
+    classDate: cls?.classDate ?? cls?.claseFecha ?? null,
+    occurrenceDate: cls?.occurrenceDate ?? null,
+    classStartAt: cls?.classStartAt ?? null,
+    startAt: cls?.startAt ?? null,
+    fecha: cls?.date ?? null,
+  }))
+  const timeToken = getClassTimeToken({
+    time: cls?.time ?? null,
+    displayTime: cls?.displayTime ?? null,
+    startTime: cls?.startTime ?? null,
+    classStartTime: cls?.classStartTime ?? null,
+  })
+  const timeLabel = formatHour(timeToken ?? cls?.time ?? cls?.displayTime ?? cls?.startTime ?? cls?.classStartTime)
   const discipline = cls?.discipline ?? cls?.tipo ?? 'Sin tipo'
   const status = cls?.status ?? 'pendiente'
   const location = cls?.location ?? ''
@@ -72,8 +86,9 @@ export default function ClassCard({ cls, showCancel, onCancel, coachFoto }) {
       <div className={s.classRight}>
         {(() => {
           if (status !== 'confirmada') return <StatusPill status={status} />
-          if (cls?.claseFecha && cls?.time) {
-            const classTime = new Date(`${cls.claseFecha}T${cls.time}:00`)
+          const sessionDate = cls?.claseFecha ?? cls?.classDate ?? null
+          if (sessionDate && timeToken) {
+            const classTime = new Date(`${sessionDate}T${timeToken}:00`)
             if (classTime <= new Date()) {
               return (
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>

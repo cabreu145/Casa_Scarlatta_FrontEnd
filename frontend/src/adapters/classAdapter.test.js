@@ -15,6 +15,7 @@ describe('classAdapter', () => {
       capacity_current: 8,
       duration_min: 50,
       start_time: '07:00',
+      start_at: '2026-06-02T07:00:00',
       status: 'programada',
       cupo_disponible: 12,
     })
@@ -28,6 +29,10 @@ describe('classAdapter', () => {
       cupoDisponible: 12,
       duracion: 50,
       hora: '07:00',
+      startTime: '07:00',
+      startAt: '2026-06-02T07:00:00',
+      displayTime: '07:00',
+      displayDate: expect.any(String),
       estado: 'programada',
       coachNombre: 'Coach #3',
     })
@@ -42,7 +47,9 @@ describe('classAdapter', () => {
       cupoMax: 0,
       cupoActual: 0,
       duracion: 50,
-      hora: '08:00',
+      hora: null,
+      displayTime: 'Horario por definir',
+      displayDate: 'Fecha por definir',
       estado: 'programada',
     })
   })

@@ -30,6 +30,7 @@ import {
   DAYS_ES, DAYS_ABBR, MONTHS_ES,
   buildWeek, weekRangeLabel, formatHour, formatFechaISO,
 } from '@/utils/formatters'
+import { formatClassDate, getClassDisplayDate, getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import s from './ClientPanel.module.css'
 import MisClasesCard from './MisClasesCard'
 import ClassCard from './ClassCard'
@@ -91,13 +92,23 @@ function StatusPill({ status }) {
 // â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Mapea una reserva al shape interno usado por MisClasesCard / ClassCard
 function toClsShape(r) {
+  const timeToken = getClassTimeToken(r)
+  const displayDate = formatClassDate(getClassDisplayDate({
+    classDate: r.classDate ?? r.class_date ?? r.fecha ?? null,
+    occurrenceDate: r.occurrenceDate ?? r.occurrence_date ?? r.fecha ?? null,
+    classStartAt: r.classStartAt ?? r.class_start_at ?? null,
+    startAt: r.startAt ?? r.start_at ?? null,
+    fecha: r.fecha ?? null,
+  }))
   return {
     id:         r.id,
     title:      r.claseNombre,
     coach:      r.coachNombre,
     date:       r.claseDia,
     claseFecha: r.fecha,
-    time:       r.claseHora,
+    displayDate,
+    time:       timeToken ?? r.claseHora ?? null,
+    displayTime: getClassDisplayTime(r),
     discipline: normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'slow' ? 'SLOW' : normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'stryde' ? 'STRYDE' : null,
     status:     r.estado,
     location:   '',
@@ -511,6 +522,11 @@ export default function ClientPanel() {
   const upcoming = upcomingReservas.map(r => {
     const cls = toClsShape(r)
     cls.claseFecha = useApiReservations ? (getReservationOccurrenceDate(r) ?? null) : realClassDate(r)
+    cls.displayDate = formatClassDate(getClassDisplayDate({
+      classDate: cls.claseFecha,
+      occurrenceDate: cls.claseFecha,
+      fecha: cls.claseFecha,
+    }))
     return cls
   })
   const nextClass = upcoming[0] ?? null
@@ -579,15 +595,17 @@ export default function ClientPanel() {
         const occs = occurrencesByClass?.[c.id] ?? []
         for (const occ of occs) {
           if (occ.fecha !== day.isoDate) continue
+          const occurrenceTime = getClassTimeToken(occ) ?? getClassTimeToken(c) ?? null
           sessions.push({
-            _raw: { ...c, occurrenceId: occ.occurrenceId, fecha: occ.fecha, hora: occ.inicio ? new Date(occ.inicio).toISOString().slice(11, 16) : c.hora },
+            _raw: { ...c, occurrenceId: occ.occurrenceId, fecha: occ.fecha, hora: occurrenceTime ?? c.hora ?? null },
             id: c.id,
             occurrenceId: occ.occurrenceId,
             title: occ.claseNombre ?? c.nombre,
             coach: c.coachNombre,
             date: c.dia,
             fecha: occ.fecha,
-            time: occ.inicio ? new Date(occ.inicio).toISOString().slice(11, 16) : c.hora,
+            time: occurrenceTime ?? c.hora ?? null,
+            displayTime: getClassDisplayTime(occ),
             discipline: getReservationDiscipline(c) === 'slow' ? 'SLOW' : getReservationDiscipline(c) === 'stryde' ? 'STRYDE' : null,
             spots: Math.max(0, (occ.cupoMax ?? c.cupoMax) - (occ.cupoActual ?? c.cupoActual)),
             capacity: occ.cupoMax ?? c.cupoMax,
@@ -610,7 +628,8 @@ export default function ClientPanel() {
       coach:      c.coachNombre,
       date:       c.dia,
       fecha:      c.fecha ?? null,
-      time:       c.hora,
+      time:       getClassTimeToken(c) ?? c.hora ?? null,
+      displayTime: getClassDisplayTime(c),
       discipline: getReservationDiscipline(c) === 'slow' ? 'SLOW' : getReservationDiscipline(c) === 'stryde' ? 'STRYDE' : null,
       spots:      Math.max(0, c.cupoMax - c.cupoActual),
       capacity:   c.cupoMax,
@@ -824,8 +843,8 @@ export default function ClientPanel() {
                     </div>
                     <div className={s.heroNextDivider} />
                     <div>
-                      <div className={s.heroNextTime}>{nextClass.time}</div>
-                      <div className={s.heroNextDay}>{nextClass.date}</div>
+                      <div className={s.heroNextTime}>{formatHour(nextClass.time ?? nextClass.displayTime)}</div>
+                      <div className={s.heroNextDay}>{nextClass.displayDate ?? nextClass.date}</div>
                     </div>
                   </div>
                 )}
@@ -1224,7 +1243,7 @@ export default function ClientPanel() {
                           </div>
                         </div>
                         <div className={s.pubTime}>
-                          <span className={s.pubTimeHour}>{formatHour(av.time)}</span>
+                          <span className={s.pubTimeHour}>{formatHour(av.time ?? av.displayTime)}</span>
                           <span className={s.pubTimeDur}>50 min</span>
                         </div>
                         <div className={s.pubDivider} />
@@ -1241,8 +1260,9 @@ export default function ClientPanel() {
                         </div>
                         <div className={s.pubActions}>
                           {(() => {
-                            const classTime = new Date(day.isoDate + 'T' + av.time + ':00')
-                            const isPast = classTime <= new Date()
+                            const classTimeToken = getClassTimeToken(av)
+                            const classTime = classTimeToken ? new Date(day.isoDate + 'T' + classTimeToken + ':00') : null
+                            const isPast = classTime ? classTime <= new Date() : false
                             if (alreadyBooked) {
                               if (isPast) return (
                                 <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>

@@ -1,4 +1,5 @@
 import { normalizeDiscipline } from '@/utils/discipline'
+import { formatClassDate, getClassDisplayDate, getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 
 function safeNumber(value, fallback = 0) {
   const n = Number(value)
@@ -28,7 +29,20 @@ export function mapBackendClassToFrontendClass(item = {}) {
     cupoActual,
     cupoDisponible: safeNumber(item.cupo_disponible, Math.max(0, cupoMax - cupoActual)),
     duracion: safeNumber(item.duration_min, 50),
-    hora: item.start_time ?? item.hora ?? '08:00',
+    hora: getClassTimeToken(item),
+    startTime: getClassTimeToken({ startTime: item.start_time ?? item.startTime ?? null, startAt: item.start_at ?? item.startAt ?? null }) ?? null,
+    startAt: item.start_at ?? item.startAt ?? null,
+    classStartTime: getClassTimeToken({ startTime: item.class_start_time ?? item.classStartTime ?? null, startAt: item.class_start_at ?? item.classStartAt ?? null }) ?? null,
+    classStartAt: item.class_start_at ?? item.classStartAt ?? null,
+    displayDate: formatClassDate(getClassDisplayDate({
+      classDate: item.class_date ?? item.classDate ?? null,
+      occurrenceDate: item.occurrence_date ?? item.occurrenceDate ?? null,
+      classStartAt: item.class_start_at ?? item.classStartAt ?? null,
+      startAt: item.start_at ?? item.startAt ?? null,
+      fecha: item.fecha ?? null,
+      date: item.date ?? null,
+    })),
+    displayTime: getClassDisplayTime(item),
     estado: resolveStatus(item.status),
     status: resolveStatus(item.status),
     dia: item.dia ?? null,

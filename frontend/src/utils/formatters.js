@@ -10,6 +10,8 @@
  * ─────────────────────────────────────────────────────
  */
 
+import { formatClassTime } from '@/utils/classSchedule'
+
 // ── Constantes de calendario ──────────────────────────────────────────────────
 export const DAYS_ES   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
 export const DAYS_ABBR = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB']
@@ -130,7 +132,10 @@ export function isToday(date) {
  * @returns {string} Ejemplo: "7:00 a.m." o "2:30 p.m."
  */
 export function formatHour(hora) {
-  const [h, m] = hora.split(':').map(Number)
+  const raw = formatClassTime(hora)
+  if (raw === 'Horario por definir') return raw
+  const [h, m] = raw.split(':').map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return raw
   const suffix = h >= 12 ? 'p.m.' : 'a.m.'
   const hr     = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${hr}:${String(m || 0).padStart(2, '0')} ${suffix}`

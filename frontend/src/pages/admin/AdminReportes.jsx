@@ -27,6 +27,7 @@ import { useTabuladorStore }   from '@/stores/tabuladorStore'
 import { usePaquetesStore }    from '@/stores/paquetesStore'
 import { useUsuariosStore }    from '@/stores/usuariosStore'
 import { getReporteCoaches }   from '@/services/finanzasService'
+import { getClassDisplayTime } from '@/utils/classSchedule'
 import { mockUsers }           from '@/data/mockUsers'
 import { ingresosUltimosMeses } from '@/data/mockTransacciones'
 import { abrirReportePDF }     from '@/utils/reportePDF'
@@ -179,7 +180,7 @@ function useReporteData(periodoReporte = { tipo: 'todos' }) {
   const clasesData = useMemo(() => clases.map(c => ({
     Fecha:       c.fecha ?? fechaDesdeDia(c.dia),
     Día:         c.dia,
-    Hora:        c.hora,
+    Hora:        getClassDisplayTime(c),
     Nombre:      c.nombre,
     Tipo:        c.tipo,
     Coach:       c.coachNombre,
@@ -476,7 +477,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
       Tipo:          c.tipo,
       Fecha:         c.fecha ?? '—',
       Día:           c.dia,
-      Hora:          c.hora,
+      Hora:          getClassDisplayTime(c),
       Asistentes:    c.asistentes,
       Capacidad:     c.cupoMax,
       'Ocupación %': c.ocupPct,
@@ -694,7 +695,7 @@ function TablaCoaches({ periodo, setPeriodo }) {
                             })()
                           : (c.dia ?? '—')}
                       </td>
-                      <td style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>{c.hora}</td>
+                      <td style={{ padding: '10px 10px', fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>{getClassDisplayTime(c)}</td>
                       <td style={{ padding: '10px 10px', textAlign: 'center' }}>
                         <span style={{
                           fontFamily: 'var(--font-display)', fontSize: 15,

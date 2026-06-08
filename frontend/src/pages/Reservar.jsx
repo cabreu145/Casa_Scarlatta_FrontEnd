@@ -11,6 +11,7 @@ import { useClasesStore } from '@/stores/clasesStore'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { formatOccurrenceDateTime } from '@/features/reservas/equipmentLayoutConfig'
 import { formatHour } from '@/utils/formatters'
+import { getClassTimeToken } from '@/utils/classSchedule'
 import styles from './Reservar.module.css'
 
 const SALAS = [
@@ -115,18 +116,20 @@ export default function Reservar() {
   }, [filteredClasses, selectedClassFromQuery])
 
   const selectedSala = SALAS.find((sala) => sala.key === selectedSalaKey) ?? null
+  const selectedClassTimeToken = getClassTimeToken(selectedClass)
   const selectedClassDateTime = useMemo(() => formatOccurrenceDateTime({
     occurrenceDate: selectedClass?.occurrenceDate ?? selectedClass?.fecha ?? selectedClass?.classDate,
     classDate: selectedClass?.fecha ?? selectedClass?.classDate,
-    startAt: selectedClass?.startAt ?? selectedClass?.hora ?? selectedClass?.classStartAt,
+    startTime: selectedClassTimeToken,
+    startAt: selectedClass?.startAt ?? selectedClass?.classStartAt,
     classStartAt: selectedClass?.classStartAt,
   }), [selectedClass])
 
   const selectedClassDisplayDate = selectedClassDateTime.fullLabel === 'Sin fecha'
-    ? (selectedClass?.dia && selectedClass?.hora
-      ? `${selectedClass.dia} · ${formatHour(selectedClass.hora)}`
-      : selectedClass?.hora
-        ? formatHour(selectedClass.hora)
+    ? (selectedClass?.dia && selectedClassTimeToken
+      ? `${selectedClass.dia} · ${formatHour(selectedClassTimeToken)}`
+      : selectedClassTimeToken
+        ? formatHour(selectedClassTimeToken)
         : 'Sin fecha')
     : selectedClassDateTime.fullLabel
 

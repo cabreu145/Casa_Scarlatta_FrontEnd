@@ -16,6 +16,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import { useClasesStore } from '@/stores/clasesStore'
 import { mockTransacciones, ingresosUltimosMeses } from '@/data/mockTransacciones'
 import { getDashboardMetrics } from '@/services/dashboardService'
+import { getClassDisplayTime } from '@/utils/classSchedule'
 import styles from '@/styles/dashboard.module.css'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip)
@@ -288,7 +289,7 @@ export default function AdminDashboard() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className={styles.miniName}>{c.nombre}</div>
-                      <div className={styles.miniSub}>{c.hora} · {c.coachNombre}</div>
+                      <div className={styles.miniSub}>{getClassDisplayTime(c)} · {c.coachNombre}</div>
                       <div className={styles.spotsBar} style={{ width: '100%', maxWidth: 80 }}>
                         <div className={styles.spotsFill} style={{ width: `${Math.min(pct, 100)}%` }} />
                       </div>

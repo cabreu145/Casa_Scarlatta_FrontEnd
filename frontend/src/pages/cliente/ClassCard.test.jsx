@@ -19,8 +19,31 @@ describe('ClassCard null-safe render', () => {
       />
     )
 
-    expect(screen.getByText('Sin fecha')).toBeInTheDocument()
-    expect(screen.getByText('Sin horario')).toBeInTheDocument()
+    expect(screen.getByText('Fecha por definir')).toBeInTheDocument()
+    expect(screen.getByText('Horario por definir')).toBeInTheDocument()
     expect(screen.getByText('Por definir')).toBeInTheDocument()
+  })
+
+  test('usa displayTime y fecha real cuando time viene vacío', () => {
+    render(
+      <ClassCard
+        cls={{
+          title: 'Clase Demo',
+          coach: 'Coach Demo',
+          date: 'Lun',
+          time: null,
+          displayTime: '09:00',
+          displayDate: 'mar, 02 jun',
+          discipline: 'Stryde X',
+          status: 'confirmada',
+          claseFecha: '2026-06-02',
+        }}
+        showCancel={false}
+      />
+    )
+
+    expect(screen.getByText(/9:00 a\.m\./i)).toBeInTheDocument()
+    expect(screen.getByText(/02.*jun/i)).toBeInTheDocument()
+    expect(screen.getByText('Coach Demo')).toBeInTheDocument()
   })
 })

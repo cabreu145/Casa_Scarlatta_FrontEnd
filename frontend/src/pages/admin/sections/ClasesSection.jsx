@@ -12,6 +12,7 @@ import { useClasses } from '@/hooks/useClasses'
 import { useClasesStore } from '@/stores/clasesStore'
 import { diaDesdefecha } from '@/utils/formatters'
 import { normalizeDiscipline } from '@/utils/discipline'
+import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
 import { getClasesPaginatedApi } from '@/services/clasesApiService'
 import styles from '../AdminPanel.module.css'
@@ -398,7 +399,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
                       </td>
                       <td style={{ padding: '7px 10px', color: c.coachId ? 'var(--text-secondary)' : '#eab308' }}>{c.coachNombre || '—'}{!c.coachId && c.coachNombre ? ' ⚠' : ''}</td>
                       <td style={{ padding: '7px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{c.fecha}</td>
-                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)' }}>{c.hora}</td>
+                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)' }}>{getClassDisplayTime(c)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -640,7 +641,8 @@ export default function ClasesSection({
                 const pct          = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
                 const isPasada = (() => {
                   if (!c.fecha) return false
-                  const [h, m] = (c.hora || '00:00').split(':').map(Number)
+                  const timeToken = getClassTimeToken(c)
+                  const [h, m] = (timeToken || '00:00').split(':').map(Number)
                   const fin = new Date(c.fecha + 'T00:00:00')
                   fin.setHours(h + Math.floor((c.duracion || 50) / 60), m + (c.duracion || 50) % 60)
                   return fin < new Date()
@@ -700,7 +702,7 @@ export default function ClasesSection({
                           </span>
                         )}
                       </div>
-                      <div className={styles.claseMeta}>{c.hora} · {c.duracion} min · {c.coachNombre}</div>
+                      <div className={styles.claseMeta}>{getClassDisplayTime(c)} · {c.duracion} min · {c.coachNombre}</div>
                     </div>
                     <Tag color={isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'blue' : 'pink'}>{isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'Slow' : 'Stryde X'}</Tag>
                     <div className={styles.claseSpots}>
@@ -863,7 +865,8 @@ export default function ClasesSection({
                   const pct = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
                   const isFinalizada = (() => {
                     if (!c.fecha) return false
-                    const [h, m] = (c.hora || '00:00').split(':').map(Number)
+                    const timeToken = getClassTimeToken(c)
+                    const [h, m] = (timeToken || '00:00').split(':').map(Number)
                     const fin = new Date(c.fecha + 'T00:00:00')
                     fin.setHours(h, m, 0, 0)
                     return fin <= new Date()
@@ -881,7 +884,7 @@ export default function ClasesSection({
                           : c.dia}
                       </td>
                       <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {c.hora}
+                        {getClassDisplayTime(c)}
                       </td>
                       <td style={{ padding: '12px 16px', color: 'var(--text-primary)', fontWeight: 500 }}>
                         {c.nombre}

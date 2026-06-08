@@ -1,4 +1,5 @@
 import { normalizeDiscipline } from '@/utils/discipline'
+import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 
 function safeNumber(value, fallback = 0) {
   const n = Number(value)
@@ -18,8 +19,9 @@ function mapOccurrence(item = {}) {
     fecha: item.occurrence_date ?? item.occurrenceDate ?? null,
     startAt: item.start_at ?? item.startAt ?? null,
     endAt: item.end_at ?? item.endAt ?? null,
-    startTime: item.start_time ?? item.startTime ?? null,
-    hora: item.start_time ?? item.startTime ?? null,
+    startTime: getClassTimeToken(item),
+    hora: getClassTimeToken(item),
+    displayTime: getClassDisplayTime(item),
     status: item.status ?? 'programada',
     estado: item.status ?? 'programada',
     capacityMax: safeNumber(item.capacity_max ?? item.capacityMax, 0),

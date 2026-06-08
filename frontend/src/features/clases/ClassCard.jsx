@@ -1,10 +1,12 @@
 import { Clock, Users, Calendar } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import HeartButton from '@/components/ui/HeartButton'
+import { formatClassTime } from '@/utils/classSchedule'
 import styles from './ClassCard.module.css'
 
-export default function ClassCard({ name, type, instructor, time, day, duration, spots, totalSpots }) {
+export default function ClassCard({ name, type, instructor, time, displayTime, startTime, classStartTime, day, duration, spots, totalSpots }) {
   const isLow = spots <= 4
+  const timeSource = time ?? displayTime ?? startTime ?? classStartTime ?? null
 
   return (
     <div className={styles.card}>
@@ -26,7 +28,7 @@ export default function ClassCard({ name, type, instructor, time, day, duration,
         </div>
         <div className={styles.metaItem}>
           <Clock size={13} />
-          {time} · {duration} min
+          {formatClassTime(timeSource)} · {duration} min
         </div>
         <div className={styles.metaItem}>
           <Users size={13} />

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatClassTime, getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import styles from './WeeklyCalendar.module.css'
 
 const DAYS_ES   = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -36,37 +37,43 @@ function getMonthLabel(days) {
 }
 
 function formatTime(time) {
-  const [h, m] = time.split(':').map(Number)
+  const raw = formatClassTime(time)
+  if (raw === 'Horario por definir') return raw
+  const [h, m] = raw.split(':').map(Number)
   const suffix = h >= 12 ? 'pm' : 'am'
   const hr     = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${hr}:${String(m || 0).padStart(2, '0')} ${suffix}`
 }
 
 function isPastTime(time) {
+  if (!time) return false
   const now    = new Date()
-  const [h, m] = time.split(':').map(Number)
+  const [h, m] = String(time).split(':').map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return false
   return (h * 60 + (m || 0)) < (now.getHours() * 60 + now.getMinutes())
 }
 
 function ClassBlock({ cls, onSelect, isToday }) {
   const spotsDisponibles = cls.cupoMax - cls.cupoActual
   const isFull    = spotsDisponibles === 0
-  const isPast    = isToday && isPastTime(cls.hora)
+  const classTime = getClassTimeToken(cls)
+  const isPast    = isToday && classTime ? isPastTime(classTime) : false
   const disabled  = isFull || isPast
   const spotsLow  = spotsDisponibles > 0 && spotsDisponibles <= 3
+  const timeLabel = formatTime(getClassDisplayTime(cls))
 
   return (
-    <button
+      <button
       className={`${styles.block} ${isFull ? styles.blockFull : ''} ${isPast ? styles.blockPast : ''}`}
       onClick={() => !disabled && onSelect && onSelect(cls)}
       disabled={disabled}
-      aria-label={`${cls.nombre} con ${cls.coachNombre} a las ${cls.hora}`}
+      aria-label={`${cls.nombre} con ${cls.coachNombre} a las ${timeLabel}`}
     >
       <span className={`${styles.typeTag} ${styles['type_' + cls.tipo.toLowerCase()]}`}>
         {cls.tipo}
       </span>
       <p className={styles.blockName}>{cls.nombre}</p>
-      <p className={styles.blockMeta}>{formatTime(cls.hora)} · {cls.duracion} min</p>
+      <p className={styles.blockMeta}>{timeLabel} · {cls.duracion} min</p>
       <p className={styles.blockInstructor}>{cls.coachNombre}</p>
       {isFull
         ? <span className={styles.spotsFull}>LLENO</span>
@@ -87,7 +94,11 @@ export default function WeeklyCalendar({ classes, onSelectClass }) {
   const byDay = days.map(({ fullName }) =>
     classes
       .filter(c => c.dia === fullName)
-      .sort((a, b) => a.hora.localeCompare(b.hora))
+      .sort((a, b) => {
+        const timeA = getClassTimeToken(a) ?? '99:99'
+        const timeB = getClassTimeToken(b) ?? '99:99'
+        return timeA.localeCompare(timeB)
+      })
   )
 
   return (

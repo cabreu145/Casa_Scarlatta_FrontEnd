@@ -1,5 +1,6 @@
 import { ESTADOS_RESERVA } from '@/data/mockData'
 import { normalizeDiscipline } from '@/utils/discipline'
+import { formatClassDate, getClassDisplayDate, getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 
 function toIsoDateFromDateTime(value) {
   if (!value) return null
@@ -45,13 +46,28 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
 
   const fechaCreacionReserva = toIsoDateFromDateTime(reservation.reserved_at)
   const classStartAt = reservation.class_start_at ?? reservation.classStartAt ?? null
+  const occurrenceDate = reservation.occurrence_date ?? reservation.occurrenceDate ?? null
   const classDateRaw = reservation.class_date ?? reservation.classDate ?? null
   const classDate = toIsoDateSafe(classDateRaw)
-  const classStartTime = reservation.class_start_time ?? reservation.classStartTime ?? null
+  const classStartTime = getClassTimeToken({
+    startTime: reservation.class_start_time ?? reservation.classStartTime ?? null,
+    startAt: classStartAt,
+    class_start_time: reservation.class_start_time ?? reservation.classStartTime ?? null,
+    class_start_at: classStartAt,
+    hora: classData?.hora ?? null,
+    time: classData?.time ?? null,
+  })
   const classNameSnapshot = reservation.class_name ?? reservation.className ?? null
   const classStatusSnapshot = reservation.class_status ?? reservation.classStatus ?? null
 
   const fechaSesion = classDate ?? toIsoDateFromDateTime(classStartAt) ?? classData?.fecha ?? null
+  const displayDate = formatClassDate(getClassDisplayDate({
+    classDate,
+    occurrenceDate,
+    classStartAt,
+    startAt: reservation.start_at ?? reservation.startAt ?? null,
+    fecha: fechaSesion,
+  }))
 
   return {
     id: reservation.id,
@@ -61,7 +77,14 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
     spotId: reservation.spot_id ?? reservation.spotId ?? null,
     holdId: reservation.hold_id ?? reservation.holdId ?? null,
     claseNombre: classNameSnapshot ?? classData?.nombre ?? classData?.name ?? `Clase #${claseId ?? 'N/A'}`,
-    claseHora: classStartTime ?? classData?.hora ?? '00:00',
+    claseHora: classStartTime ?? getClassTimeToken(classData ?? {}) ?? null,
+    displayTime: getClassDisplayTime({
+      classStartTime,
+      classStartAt,
+      startTime: classData?.hora ?? classData?.time ?? null,
+      hora: classData?.hora ?? null,
+    }),
+    displayDate,
     claseDia: classData?.dia ?? null,
     coachNombre: classData?.coachNombre ?? 'Sin coach',
     tipo: classData?.tipo ?? 'Stryde X',

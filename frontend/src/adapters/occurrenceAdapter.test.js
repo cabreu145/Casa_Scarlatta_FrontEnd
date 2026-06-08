@@ -9,6 +9,7 @@ describe('occurrenceAdapter', () => {
       occurrence_date: '2026-05-30',
       start_at: '2026-05-30T09:00:00-06:00',
       end_at: '2026-05-30T09:50:00-06:00',
+      start_time: '09:00:00',
       capacity_max: 20,
       capacity_current: 3,
       coach_id: 9,
@@ -20,12 +21,15 @@ describe('occurrenceAdapter', () => {
       occurrenceId: 10,
       claseId: 5,
       fecha: '2026-05-30',
+      displayDate: expect.any(String),
       cupoMax: 20,
       cupoActual: 3,
       cupoDisponible: 17,
       coachId: 9,
       estado: 'programada',
       claseNombre: 'Stryde AM',
+      hora: '09:00',
+      displayTime: '09:00',
     })
   })
 

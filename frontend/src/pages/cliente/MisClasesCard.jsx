@@ -1,4 +1,5 @@
 import { formatHour } from '@/utils/formatters'
+import { getClassTimeToken } from '@/utils/classSchedule'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { useConfiguracionStore } from '@/stores/configuracionStore'
 import s from './ClientPanel.module.css'
@@ -43,6 +44,12 @@ function StatusPill({ status }) {
 export default function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) {
   const initials = cls.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const { bg, text } = avatarStyle(cls.coach)
+  const timeToken = getClassTimeToken({
+    time: cls?.time ?? null,
+    displayTime: cls?.displayTime ?? null,
+    startTime: cls?.startTime ?? null,
+    classStartTime: cls?.classStartTime ?? null,
+  })
   return (
     <div className={s.mcCard}>
       <div className={s.mcAvatarCol}>
@@ -55,7 +62,7 @@ export default function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) 
         </div>
       </div>
       <div className={s.mcTimeCol}>
-        <div className={s.mcTimeVal}>{formatHour(cls.time)}</div>
+        <div className={s.mcTimeVal}>{formatHour(timeToken ?? cls.time ?? cls.displayTime ?? cls.startTime ?? cls.classStartTime)}</div>
         <div className={s.mcTimeSub}>50 min</div>
       </div>
       <div className={s.mcBody}>
@@ -67,8 +74,8 @@ export default function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) 
         {(() => {
           if (cls.status !== 'confirmada') return <StatusPill status={cls.status} />
           const fechaRef = dayIsoDate ?? cls.claseFecha
-          if (!fechaRef || !cls.time) return <StatusPill status="confirmada" />
-          const classTime = new Date(fechaRef + 'T' + cls.time + ':00')
+          if (!fechaRef || !timeToken) return <StatusPill status="confirmada" />
+          const classTime = new Date(fechaRef + 'T' + timeToken + ':00')
           const n = new Date()
           if (classTime <= n) {
             return (

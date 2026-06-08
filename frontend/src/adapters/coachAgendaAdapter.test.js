@@ -27,6 +27,8 @@ describe('coachAgendaAdapter', () => {
     expect(mapped.occurrences).toHaveLength(1)
     expect(mapped.occurrences[0].occurrenceId).toBe(101)
     expect(mapped.occurrences[0].occurrenceDate).toBe('2026-06-02')
+    expect(mapped.occurrences[0].hora).toBe('09:00')
+    expect(mapped.occurrences[0].displayTime).toBe('09:00')
   })
 
   test('tolera occurrences vacias', () => {

@@ -103,11 +103,12 @@ function capitalizeFirst(value) {
 export function formatOccurrenceDateTime({
   occurrenceDate,
   classDate,
+  startTime,
   startAt,
   classStartAt,
 } = {}) {
   const dateSource = occurrenceDate ?? classDate ?? startAt ?? classStartAt ?? null
-  const timeSource = startAt ?? classStartAt ?? null
+  const timeSource = startTime ?? startAt ?? classStartAt ?? null
   if (!dateSource) return { dateLabel: 'Sin fecha', timeLabel: 'Sin hora', fullLabel: 'Sin fecha' }
 
   const normalizedDateSource = typeof dateSource === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateSource)

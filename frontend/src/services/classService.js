@@ -11,6 +11,8 @@
  * ─────────────────────────────────────────────────────
  */
 
+import { getClassTimeToken } from '@/utils/classSchedule'
+
 const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
 // ── Admin / store format (dia, hora, cupoMax, cupoActual) ─────────────────────
@@ -32,7 +34,11 @@ export function getClassesByDate(classes, date) {
       if (c.dia) return c.dia === dayName
       return true
     })
-    .sort((a, b) => a.hora.localeCompare(b.hora))
+    .sort((a, b) => {
+      const timeA = getClassTimeToken(a) ?? '99:99'
+      const timeB = getClassTimeToken(b) ?? '99:99'
+      return timeA.localeCompare(timeB)
+    })
 }
 
 /**
@@ -70,7 +76,12 @@ export function getPublicClassesByDate(classes, date) {
   const mo = String(date.getMonth() + 1).padStart(2, '0')
   const d  = String(date.getDate()).padStart(2, '0')
   const isoDate = `${y}-${mo}-${d}`
-  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  const toMin = (item) => {
+    const time = getClassTimeToken(item)
+    if (!time) return Number.MAX_SAFE_INTEGER
+    const [h, m] = time.split(':').map(Number)
+    return h * 60 + m
+  }
   return [...classes]
     .filter((c) => {
       // Specific-date class → match isoDate; recurring class → match day name;
@@ -78,7 +89,7 @@ export function getPublicClassesByDate(classes, date) {
       const matchDay = c.fecha ? c.fecha === isoDate : (c.dia ? c.dia === dayName : true)
       return matchDay && isPublished(c)
     })
-    .sort((a, b) => toMin(a.hora) - toMin(b.hora))
+    .sort((a, b) => toMin(a) - toMin(b))
 }
 
 /**

@@ -78,6 +78,8 @@ describe('reservationAdapter', () => {
     expect(mapped.occurrenceId).toBe(33)
     expect(mapped.claseNombre).toBe('Clase Demo Reservable API')
     expect(mapped.classStartTime).toBe('09:00')
+    expect(mapped.displayTime).toBe('09:00')
+    expect(mapped.displayDate).toBe('Fecha por definir')
     expect(mapped.classStatus).toBe('programada')
   })
 
@@ -96,6 +98,7 @@ describe('reservationAdapter', () => {
 
     expect(mapped.fechaSesion).toBe('2026-05-30')
     expect(mapped.fecha).toBe('2026-05-30')
+    expect(mapped.displayDate).toMatch(/30|may/i)
   })
 
   test('mapBackendReservationsToFrontend transforma lista', () => {
