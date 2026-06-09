@@ -7,6 +7,13 @@ import { useUsuariosStore }      from '@/stores/usuariosStore'
 import { useClasesStore }        from '@/stores/clasesStore'
 import { usePaquetesStore }      from '@/stores/paquetesStore'
 import { getClassDisplayTime } from '@/utils/classSchedule'
+import {
+  useFinanceCategoriesQuery,
+  useFinanceDaySummaryQuery,
+  useFinanceKpisQuery,
+  useFinanceLowStockQuery,
+  useFinanceRecentSalesQuery,
+} from '@/hooks/useApiQueries'
 import DateNavigator from '@/components/ui/DateNavigator'
 import styles from '../AdminPanel.module.css'
 
@@ -263,8 +270,355 @@ function VerMas({ onClick }) {
 }
 
 // ── Componente principal ───────────────────────────────────────────────────
+const useApiModeDefault = import.meta.env.VITE_USE_API_AUTH === 'true'
+
+function formatMeridaDate(date = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Merida' }).format(date)
+}
+
+function formatMoneyMx(value) {
+  const amount = Number(value ?? 0)
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(amount) ? amount : 0)
+}
+
+function formatDateMx(value) {
+  if (!value) return '—'
+  const raw = String(value).trim()
+  const date = raw.length === 10 ? new Date(`${raw}T12:00:00`) : new Date(raw)
+  if (Number.isNaN(date.getTime())) return raw
+  return date.toLocaleDateString('es-MX', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+function formatDateTimeMx(value) {
+  if (!value) return '—'
+  const date = new Date(String(value))
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleString('es-MX', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
+function paymentMethodLabel(method) {
+  const key = String(method ?? '').trim().toLowerCase()
+  return ({
+    cash: 'Efectivo',
+    card: 'Tarjeta',
+    transfer: 'Transferencia',
+    other: 'Otro',
+  })[key] ?? (method ? String(method) : '—')
+}
+
+function buildDashboardRange(rangoDash, fechaEspecifica) {
+  const hoy = formatMeridaDate(new Date())
+  const monthStart = `${hoy.slice(0, 7)}-01`
+  const weekStart = formatMeridaDate(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000))
+  if (fechaEspecifica) {
+    return { from: fechaEspecifica, to: fechaEspecifica, label: 'Fecha' }
+  }
+  if (rangoDash === 'dia') return { from: hoy, to: hoy, label: 'Hoy' }
+  if (rangoDash === 'semana') return { from: weekStart, to: hoy, label: 'Semana' }
+  return { from: monthStart, to: hoy, label: 'Mes' }
+}
+
 export default function DashboardSection({ rangoDash, setRangoDash, showSection, showSectionWithFilter }) {
   const [fechaEspecifica, setFechaEspecifica] = useState(null)
+
+  const useApiMode = useApiModeDefault
+  const dashboardRange = useMemo(() => buildDashboardRange(rangoDash, fechaEspecifica), [rangoDash, fechaEspecifica])
+  const financeKpisQuery = useFinanceKpisQuery({
+    from: dashboardRange.from,
+    to: dashboardRange.to,
+    enabled: useApiMode,
+  })
+  const financeDayQuery = useFinanceDaySummaryQuery(dashboardRange.to, {
+    enabled: useApiMode && dashboardRange.from === dashboardRange.to,
+  })
+  const financeCategoriesQuery = useFinanceCategoriesQuery({
+    from: dashboardRange.from,
+    to: dashboardRange.to,
+    enabled: useApiMode,
+  })
+  const financeLowStockQuery = useFinanceLowStockQuery({
+    threshold: 5,
+    enabled: useApiMode,
+  })
+  const financeRecentSalesQuery = useFinanceRecentSalesQuery({
+    limit: 10,
+    enabled: useApiMode,
+  })
+
+  if (useApiMode) {
+    const kpis = financeKpisQuery.data ?? {
+      sales: { count: 0, subtotalMxn: 0, taxMxn: 0, totalMxn: 0 },
+      expenses: { count: 0, totalMxn: 0 },
+      net: { totalMxn: 0 },
+      paymentMethods: { cashMxn: 0, cardMxn: 0, transferMxn: 0, otherMxn: 0 },
+      cashClosing: { isClosed: false, lastClosingDate: null, todayClosingId: null },
+      operations: { productsSold: 0, packagesSold: 0, activeClients: 0, reservationsCount: 0 },
+    }
+    const categories = financeCategoriesQuery.data ?? { expenseCategories: [], productCategories: [] }
+    const lowStock = financeLowStockQuery.data ?? []
+    const recentSales = financeRecentSalesQuery.data ?? []
+    const recentExpenses = financeDayQuery.data?.recentExpenses ?? []
+    const isLoading = financeKpisQuery.isLoading && !financeKpisQuery.data
+    const errorMessage = financeKpisQuery.error ? 'No se pudieron cargar los KPIs financieros.' : ''
+    const title = dashboardRange.label === 'Hoy'
+      ? 'Hoy'
+      : dashboardRange.label === 'Semana'
+        ? 'Esta semana'
+        : dashboardRange.label === 'Fecha'
+          ? 'Fecha personalizada'
+          : 'Este mes'
+    const subtitle = dashboardRange.label === 'Fecha'
+      ? formatDateMx(dashboardRange.from)
+      : dashboardRange.label === 'Semana'
+        ? `${formatDateMx(dashboardRange.from)} - ${formatDateMx(dashboardRange.to)}`
+        : dashboardRange.label === 'Hoy'
+          ? formatDateMx(dashboardRange.to)
+          : `Del ${formatDateMx(dashboardRange.from)} al ${formatDateMx(dashboardRange.to)}`
+
+    const financeCards = [
+      { icono: '💰', label: 'Ventas', valor: formatMoneyMx(kpis.sales.totalMxn), cambio: `${kpis.sales.count} ventas`, up: true },
+      { icono: '🧾', label: 'Gastos', valor: formatMoneyMx(kpis.expenses.totalMxn), cambio: `${kpis.expenses.count} gastos`, up: false },
+      { icono: '📈', label: 'Neto', valor: formatMoneyMx(kpis.net.totalMxn), cambio: 'Ventas − gastos', up: kpis.net.totalMxn >= 0 },
+      { icono: '🧾', label: 'Corte', valor: kpis.cashClosing.isClosed ? 'Cerrado' : 'Abierto', cambio: kpis.cashClosing.lastClosingDate ? `Último ${formatDateMx(kpis.cashClosing.lastClosingDate)}` : 'Sin corte previo', up: kpis.cashClosing.isClosed },
+      { icono: '🛒', label: 'Productos vendidos', valor: String(kpis.operations.productsSold), cambio: 'Unidades', up: true },
+      { icono: '🎟️', label: 'Paquetes vendidos', valor: String(kpis.operations.packagesSold), cambio: 'Ventas de membresía', up: true },
+      { icono: '👥', label: 'Clientes activos', valor: String(kpis.operations.activeClients), cambio: 'Clientes con acceso', up: true },
+      { icono: '📅', label: 'Reservas', valor: String(kpis.operations.reservationsCount), cambio: 'Reservas del rango', up: true },
+    ]
+
+    return (
+      <>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', marginBottom: 24,
+          flexWrap: 'wrap', gap: 12,
+        }}>
+          <div>
+            <div style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 28,
+              fontStyle: 'italic',
+              fontWeight: 400,
+              color: '#fff',
+              lineHeight: 1.1,
+              marginBottom: 4,
+            }}>
+              {title}
+            </div>
+            <div style={{
+              fontFamily: 'var(--font-body)',
+              fontSize: 13,
+              color: 'rgba(255,255,255,0.4)',
+            }}>
+              {subtitle}
+            </div>
+          </div>
+          <DateNavigator
+            modo="libre"
+            darkMode={true}
+            hideFecha={true}
+            inicial="mes"
+            onChange={(rango) => {
+              const mapa = { hoy: 'dia', semana: 'semana', mes: 'mes', todos: 'todos', fecha: 'fecha' }
+              setRangoDash(mapa[rango.tipo] ?? 'dia')
+              setFechaEspecifica(rango.fecha ?? null)
+            }}
+          />
+        </div>
+
+        {errorMessage && (
+          <div className={styles.card} style={{ marginBottom: 16, color: '#FCA5A5' }}>
+            {errorMessage}
+          </div>
+        )}
+        {isLoading && (
+          <div className={styles.card} style={{ marginBottom: 16, color: 'rgba(255,255,255,0.55)' }}>
+            Cargando KPIs financieros...
+          </div>
+        )}
+
+        <div className={styles.kpiGrid} style={{ marginBottom: 20 }}>
+          {financeCards.map((card) => (
+            <KpiCard
+              key={card.label}
+              icono={card.icono}
+              label={card.label}
+              valor={card.valor}
+              cambio={card.cambio}
+              up={card.up}
+            />
+          ))}
+        </div>
+
+        <div className={styles.dashGrid} style={{ marginBottom: 20 }}>
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div>
+                <div className={styles.cardTitle}>Métodos de pago</div>
+                <div className={styles.cardSub}>Ventas del rango seleccionado</div>
+              </div>
+            </div>
+            <div className={styles.miniList}>
+              {[
+                ['Efectivo', kpis.paymentMethods.cashMxn],
+                ['Tarjeta', kpis.paymentMethods.cardMxn],
+                ['Transferencia', kpis.paymentMethods.transferMxn],
+                ['Otro', kpis.paymentMethods.otherMxn],
+              ].map(([label, amount]) => (
+                <div key={label} className={styles.miniItem}>
+                  <div className={styles.miniAvatar}>{label.charAt(0)}</div>
+                  <div>
+                    <div className={styles.miniName}>{label}</div>
+                    <div className={styles.miniSub}>{formatMoneyMx(amount)}</div>
+                  </div>
+                  <div className={styles.miniRight}>
+                    <div className={styles.miniVal}>{formatMoneyMx(amount)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div>
+                <div className={styles.cardTitle}>Categorías</div>
+                <div className={styles.cardSub}>Gastos y productos del rango</div>
+              </div>
+            </div>
+            <div className={styles.miniList}>
+              {categories.expenseCategories.length > 0 ? categories.expenseCategories.map((item) => (
+                <div key={`expense-${item.category}`} className={styles.miniItem}>
+                  <div className={styles.miniAvatar}>🧾</div>
+                  <div>
+                    <div className={styles.miniName}>{item.category}</div>
+                    <div className={styles.miniSub}>{item.count} gasto{item.count !== 1 ? 's' : ''}</div>
+                  </div>
+                  <div className={styles.miniRight}>
+                    <div className={styles.miniVal}>{formatMoneyMx(item.totalMxn)}</div>
+                  </div>
+                </div>
+              )) : (
+                <div style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                  Sin categorías de gastos.
+                </div>
+              )}
+              {categories.productCategories.length > 0 && (
+                <div style={{ marginTop: 12, fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                  Productos
+                </div>
+              )}
+              {categories.productCategories.map((item) => (
+                <div key={`product-${item.category}`} className={styles.miniItem}>
+                  <div className={styles.miniAvatar}>🛍️</div>
+                  <div>
+                    <div className={styles.miniName}>{item.category}</div>
+                    <div className={styles.miniSub}>{item.itemsSold} vendido{item.itemsSold !== 1 ? 's' : ''}</div>
+                  </div>
+                  <div className={styles.miniRight}>
+                    <div className={styles.miniVal}>{formatMoneyMx(item.totalMxn)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.fullGrid}>
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardTitle}>Ventas recientes</div>
+            </div>
+            <div className={styles.miniList}>
+              {recentSales.length > 0 ? recentSales.map((sale) => (
+                <div key={sale.id ?? sale.folio} className={styles.miniItem}>
+                  <div className={styles.miniAvatar}>{(sale.customerName || sale.customerEmail || 'V').charAt(0).toUpperCase()}</div>
+                  <div>
+                    <div className={styles.miniName}>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</div>
+                    <div className={styles.miniSub}>{sale.folio} · {paymentMethodLabel(sale.paymentMethod)} · {formatDateTimeMx(sale.createdAt)}</div>
+                  </div>
+                  <div className={styles.miniRight}>
+                    <div className={styles.miniVal}>{formatMoneyMx(sale.totalMxn)}</div>
+                    <Tag color="green">Pagado</Tag>
+                  </div>
+                </div>
+              )) : (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                  Sin ventas registradas
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardTitle}>Stock bajo</div>
+            </div>
+            <div className={styles.miniList}>
+              {lowStock.length > 0 ? lowStock.map((item) => (
+                <div key={item.id ?? `${item.productName}-${item.category}`} className={styles.miniItem}>
+                  <div className={styles.miniAvatar}>⚠️</div>
+                  <div>
+                    <div className={styles.miniName}>{item.productName}</div>
+                    <div className={styles.miniSub}>{item.category} · stock {item.stock}</div>
+                  </div>
+                  <div className={styles.miniRight}>
+                    <Tag color={item.stock <= 2 ? 'red' : 'yellow'}>{item.stock} disp.</Tag>
+                  </div>
+                </div>
+              )) : (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                  No hay productos con stock bajo.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardTitle}>Gastos recientes</div>
+            </div>
+            <div className={styles.miniList}>
+              {(recentExpenses ?? []).length > 0 ? recentExpenses.map((expense) => (
+                <div key={expense.id ?? expense.description} className={styles.miniItem}>
+                  <div className={styles.miniAvatar}>🧾</div>
+                  <div>
+                    <div className={styles.miniName}>{expense.description || expense.category}</div>
+                    <div className={styles.miniSub}>{expense.category} · {paymentMethodLabel(expense.paymentMethod)} · {formatDateTimeMx(expense.createdAt)}</div>
+                  </div>
+                  <div className={styles.miniRight}>
+                    <div className={styles.miniVal}>{formatMoneyMx(expense.amountMxn)}</div>
+                    <Tag color="red">Activo</Tag>
+                  </div>
+                </div>
+              )) : (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                  Sin gastos recientes.
+                </div>
+              )}
+            </div>
+            <VerMas onClick={() => showSection('gastos')} />
+          </div>
+        </div>
+      </>
+    )
+  }
 
   // Subscribirse a los stores para reactividad
   const { transacciones } = useTransaccionesStore()

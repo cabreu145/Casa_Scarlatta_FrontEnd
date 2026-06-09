@@ -151,6 +151,17 @@ export const ENDPOINTS = {
   notificaciones: withPrefix('/notificaciones'),
   marcarLeida: (id) => withPrefix(`/notificaciones/${id}/leida`),
 
+  finanzasKpis: ({ from, to } = {}) =>
+    withQuery('/finanzas/kpis', { from, to }),
+  finanzasDia: ({ date } = {}) =>
+    withQuery('/finanzas/dia', { date }),
+  finanzasCategorias: ({ from, to } = {}) =>
+    withQuery('/finanzas/categorias', { from, to }),
+  finanzasStockBajo: ({ threshold } = {}) =>
+    withQuery('/finanzas/stock-bajo', { threshold }),
+  finanzasVentasRecientes: ({ limit } = {}) =>
+    withQuery('/finanzas/ventas-recientes', { limit }),
+
   coaches: withPrefix('/coaches'),
   coachesPaginated: ({ page, pageSize, search, status }) =>
     withQuery('/coaches', { page, page_size: pageSize, search, status }),

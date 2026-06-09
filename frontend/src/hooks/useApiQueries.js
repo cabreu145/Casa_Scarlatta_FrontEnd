@@ -25,6 +25,13 @@ import {
   listCashClosings,
 } from '@/services/cashClosingsApiService'
 import {
+  getFinanceCategories,
+  getFinanceDaySummary,
+  getFinanceKpis,
+  getLowStock,
+  getRecentFinanceSales,
+} from '@/services/financeApiService'
+import {
   adjustClientCreditsApi,
   assignClientPackageApi,
   createClientApi,
@@ -249,6 +256,51 @@ export function useExpensesQuery({
     }),
     enabled,
     placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useFinanceKpisQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.finance.kpis({ from: from || '', to: to || '' }),
+    queryFn: () => getFinanceKpis({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useFinanceDaySummaryQuery(date, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.finance.day(date || ''),
+    queryFn: () => getFinanceDaySummary(date),
+    enabled: Boolean(enabled && date),
+    ...shortDefaults,
+  })
+}
+
+export function useFinanceCategoriesQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.finance.categories({ from: from || '', to: to || '' }),
+    queryFn: () => getFinanceCategories({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useFinanceLowStockQuery({ threshold = 5, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.finance.lowStock({ threshold }),
+    queryFn: () => getLowStock({ threshold }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useFinanceRecentSalesQuery({ limit = 10, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.finance.recentSales({ limit }),
+    queryFn: () => getRecentFinanceSales({ limit }),
+    enabled,
     ...shortDefaults,
   })
 }

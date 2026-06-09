@@ -20,4 +20,11 @@ export const queryKeys = {
     list: (params = {}) => ['cashClosings', 'list', params],
     detail: (id) => ['cashClosings', 'detail', id],
   },
+  finance: {
+    kpis: (params = {}) => ['finance', 'kpis', params],
+    day: (date) => ['finance', 'day', date],
+    categories: (params = {}) => ['finance', 'categories', params],
+    lowStock: (params = {}) => ['finance', 'lowStock', params],
+    recentSales: (params = {}) => ['finance', 'recentSales', params],
+  },
 }

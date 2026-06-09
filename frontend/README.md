@@ -378,6 +378,17 @@ Comportamiento:
 - `POS` no usa Mercado Pago.
 - Fallback legacy se conserva cuando flags API están en `false`.
 
+## Integración Finanzas Admin (API mode)
+
+Variable:
+- usa mismo modo API admin que dashboard/POS.
+
+Comportamiento:
+- `DashboardSection` consume KPIs reales desde `/api/v1/finanzas/kpis`, `/api/v1/finanzas/dia`, `/api/v1/finanzas/categorias`, `/api/v1/finanzas/stock-bajo` y `/api/v1/finanzas/ventas-recientes`.
+- Métricas visibles: ventas, gastos, neto, corte, métodos de pago, clientes activos, reservas, productos vendidos, paquetes vendidos, stock bajo y ventas recientes.
+- Frontend solo formatea moneda/fecha y deja backend como source of truth en API mode.
+- Fallback legacy se conserva cuando flags API están en `false`.
+
 Notas:
 - `useApiQueries` y TanStack Query manejan server state.
 - `posApiService` maneja productos, ventas y tickets.
