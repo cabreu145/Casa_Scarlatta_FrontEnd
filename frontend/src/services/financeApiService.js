@@ -3,6 +3,7 @@ import { httpGet, httpRequestRaw } from '@/lib/http'
 import {
   mapBackendFinanceCategoriesToFrontend,
   mapBackendFinanceDaySummaryToFrontend,
+  mapBackendFinanceHistoricalToFrontend,
   mapBackendFinanceKpisToFrontend,
   mapBackendLowStockToFrontend,
   mapBackendRecentFinanceSalesToFrontend,
@@ -12,6 +13,7 @@ import { downloadBlob, getFilenameFromContentDisposition } from '@/utils/downloa
 const inFlight = {
   kpis: new Map(),
   day: new Map(),
+  historical: new Map(),
   categories: new Map(),
   lowStock: new Map(),
   recentSales: new Map(),
@@ -59,6 +61,18 @@ export async function getFinanceDaySummary(date) {
   const key = JSON.stringify(query)
   return dedupe(inFlight.day, key, async () =>
     mapBackendFinanceDaySummaryToFrontend(await httpGet(ENDPOINTS.finanzasDia(query)))
+  )
+}
+
+export async function getFinanceHistoricalApi(params = {}) {
+  const query = {
+    from: params.from || undefined,
+    to: params.to || undefined,
+    groupBy: params.groupBy || undefined,
+  }
+  const key = JSON.stringify(query)
+  return dedupe(inFlight.historical, key, async () =>
+    mapBackendFinanceHistoricalToFrontend(await httpGet(ENDPOINTS.finanzasHistorico(query)))
   )
 }
 

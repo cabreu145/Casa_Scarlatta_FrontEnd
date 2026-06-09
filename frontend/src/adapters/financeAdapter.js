@@ -46,6 +46,26 @@ function mapRecentExpense(item = {}) {
   }
 }
 
+function mapHistoricalItem(item = {}) {
+  return {
+    groupBy: normalizeString(item.group_by ?? item.groupBy, 'day'),
+    label: normalizeString(
+      item.label ?? item.period_label ?? item.periodLabel ?? item.date ?? item.week ?? item.month,
+      '—'
+    ),
+    salesCount: toNumber(item.sales_count ?? item.salesCount, 0),
+    salesTotalMxn: toNumber(item.sales_total_mxn ?? item.salesTotalMxn, 0),
+    expensesTotalMxn: toNumber(item.expenses_total_mxn ?? item.expensesTotalMxn, 0),
+    netTotalMxn: toNumber(item.net_total_mxn ?? item.netTotalMxn, 0),
+    averageTicketMxn: toNumber(item.average_ticket_mxn ?? item.averageTicketMxn, 0),
+    cashMxn: toNumber(item.cash_mxn ?? item.cashMxn, 0),
+    cardMxn: toNumber(item.card_mxn ?? item.cardMxn, 0),
+    transferMxn: toNumber(item.transfer_mxn ?? item.transferMxn, 0),
+    otherMxn: toNumber(item.other_mxn ?? item.otherMxn, 0),
+    raw: item,
+  }
+}
+
 function mapLowStockItem(item = {}) {
   const id = item.id ?? item.product_id ?? null
   return {
@@ -114,6 +134,26 @@ export function mapBackendFinanceDaySummaryToFrontend(payload = {}) {
     ...mapped,
     recentSales,
     recentExpenses,
+  }
+}
+
+export function mapBackendFinanceHistoricalToFrontend(payload = {}) {
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload.items)
+      ? payload.items
+      : Array.isArray(payload.series)
+        ? payload.series
+        : Array.isArray(payload.data)
+          ? payload.data
+          : []
+
+  return {
+    from: payload.from ?? null,
+    to: payload.to ?? null,
+    groupBy: payload.group_by ?? payload.groupBy ?? null,
+    items: items.map(mapHistoricalItem),
+    raw: payload,
   }
 }
 

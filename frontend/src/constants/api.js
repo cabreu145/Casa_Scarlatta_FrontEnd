@@ -155,6 +155,8 @@ export const ENDPOINTS = {
     withQuery('/finanzas/kpis', { from, to }),
   finanzasDia: ({ date } = {}) =>
     withQuery('/finanzas/dia', { date }),
+  finanzasHistorico: ({ from, to, groupBy } = {}) =>
+    withQuery('/finanzas/historico', { from, to, group_by: groupBy }),
   finanzasCategorias: ({ from, to } = {}) =>
     withQuery('/finanzas/categorias', { from, to }),
   finanzasStockBajo: ({ threshold } = {}) =>
@@ -174,6 +176,8 @@ export const ENDPOINTS = {
     withQuery('/reportes/pos', { from, to }),
   reportesCoaches: ({ from, to } = {}) =>
     withQuery('/reportes/coaches', { from, to }),
+  reportesCoachesPagos: ({ from, to } = {}) =>
+    withQuery('/reportes/coaches/pagos', { from, to }),
   reportesTopClases: ({ from, to, limit } = {}) =>
     withQuery('/reportes/top-clases', { from, to, limit }),
   reportesOcupacionPorDisciplina: ({ from, to } = {}) =>
@@ -194,4 +198,6 @@ export const ENDPOINTS = {
 
   reportes: withPrefix('/admin/reportes'),
   finanzas: withPrefix('/admin/finanzas'),
+  tabulador: withPrefix('/tabulador'),
+  tabuladorById: (id) => withPrefix(`/tabulador/${id}`),
 }

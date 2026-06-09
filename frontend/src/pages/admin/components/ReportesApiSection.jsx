@@ -1,9 +1,14 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import DateNavigator from '@/components/ui/DateNavigator'
 import {
+  useCoachPaymentsReportQuery,
   useCoachesReportQuery,
   useFinanceReportQuery,
+  useCreatePayTableMutation,
+  useDeletePayTableMutation,
+  usePayTableQuery,
+  useUpdatePayTableMutation,
   useOccupancyByDisciplineReportQuery,
   usePackagesReportQuery,
   usePosReportQuery,
@@ -73,6 +78,53 @@ function SectionCard({ title, subtitle, children, footer }) {
       {children}
       {footer}
     </div>
+  )
+}
+
+function EmptyState({ children, title = 'Sin datos', description = 'No hay informaci?n para mostrar en este rango.' }) {
+  return (
+    <div style={{
+      borderRadius: 16,
+      border: '1px dashed var(--neutral-border)',
+      background: 'rgba(255,255,255,0.03)',
+      padding: '18px 20px',
+      textAlign: 'center',
+      color: 'var(--text-muted)',
+      fontFamily: 'var(--font-body)',
+    }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{children ? null : title}</div>
+      <div style={{ fontSize: 13, lineHeight: 1.5, marginTop: children ? 0 : 4 }}>{children ?? description}</div>
+    </div>
+  )
+}
+
+function Badge({ color = 'green', children }) {
+  const palette = {
+    green: { background: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.28)', color: '#86efac' },
+    yellow: { background: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.28)', color: '#fbbf24' },
+    red: { background: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.28)', color: '#fca5a5' },
+    blue: { background: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.28)', color: '#93c5fd' },
+  }
+  const theme = palette[color] ?? palette.green
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 72,
+        padding: '5px 10px',
+        borderRadius: 999,
+        border: `1px solid ${theme.border}`,
+        background: theme.background,
+        color: theme.color,
+        fontFamily: 'var(--font-body)',
+        fontSize: 11,
+        fontWeight: 600,
+      }}
+    >
+      {children}
+    </span>
   )
 }
 
@@ -245,6 +297,32 @@ function occupancyRowsFromReport(occupancy) {
   }))
 }
 
+function coachPaymentsRowsFromReport(report = {}) {
+  return (report.items ?? []).flatMap((coach) =>
+    (coach.details ?? []).map((detail) => ({
+      Coach: coach.name,
+      Fecha: detail.date ?? '—',
+      Hora: detail.time ?? '—',
+      Clase: detail.className ?? 'Clase',
+      Disciplina: detail.discipline ?? '—',
+      Asistentes: detail.attendees ?? 0,
+      Tarifa: detail.rateMxn ?? 0,
+      Pago: detail.payMxn ?? 0,
+      Estatus: detail.status === 'missing_rate' ? 'missing_rate' : 'calculated',
+    }))
+  )
+}
+
+function payTableRowsFromReport(payTableItems = []) {
+  return payTableItems.map((item) => ({
+    Disciplina: item.discipline,
+    'Mín': item.minAttendees,
+    'Máx': item.maxAttendees,
+    'Pago MXN': item.payMxn,
+    Estado: item.isActive ? 'Activo' : 'Inactivo',
+  }))
+}
+
 export default function ReportesApiSection({ inPanel = false }) {
   const [periodoReporte, setPeriodoReporte] = useState({ tipo: 'todos' })
   const [navKey, setNavKey] = useState(0)
@@ -257,10 +335,25 @@ export default function ReportesApiSection({ inPanel = false }) {
   const coachesQuery = useCoachesReportQuery({ from, to, enabled: true })
   const topClassesQuery = useTopClassesReportQuery({ from, to, limit: 5, enabled: true })
   const occupancyQuery = useOccupancyByDisciplineReportQuery({ from, to, enabled: true })
+  const coachPaymentsQuery = useCoachPaymentsReportQuery({ from, to, enabled: true })
+  const payTableQuery = usePayTableQuery({ enabled: true })
+  const createPayTableMutation = useCreatePayTableMutation()
+  const updatePayTableMutation = useUpdatePayTableMutation()
+  const deletePayTableMutation = useDeletePayTableMutation()
+  const [payTableEditorOpen, setPayTableEditorOpen] = useState(false)
+  const [payTableEditingId, setPayTableEditingId] = useState(null)
+  const [payTableForm, setPayTableForm] = useState({
+    discipline: '',
+    minAttendees: '',
+    maxAttendees: '',
+    payMxn: '',
+    isActive: true,
+  })
+  const [coachPaymentsExpandedId, setCoachPaymentsExpandedId] = useState(null)
 
-  const hasError = [financeQuery, usersQuery, packagesQuery, posQuery, coachesQuery, topClassesQuery, occupancyQuery]
+  const hasError = [financeQuery, usersQuery, packagesQuery, posQuery, coachesQuery, topClassesQuery, occupancyQuery, coachPaymentsQuery, payTableQuery]
     .some((query) => Boolean(query.error))
-  const isLoading = [financeQuery, usersQuery, packagesQuery, posQuery, coachesQuery, topClassesQuery, occupancyQuery]
+  const isLoading = [financeQuery, usersQuery, packagesQuery, posQuery, coachesQuery, topClassesQuery, occupancyQuery, coachPaymentsQuery, payTableQuery]
     .some((query) => query.isLoading && !query.data)
 
   const finance = financeQuery.data ?? {
@@ -302,6 +395,8 @@ export default function ReportesApiSection({ inPanel = false }) {
   const coaches = coachesQuery.data?.items ?? []
   const topClasses = topClassesQuery.data?.items ?? []
   const occupancy = occupancyQuery.data?.items ?? []
+  const coachPayments = coachPaymentsQuery.data ?? { items: [], coachesCount: 0, classesCount: 0, attendanceCount: 0, totalPayMxn: 0, missingRateClasses: 0 }
+  const payTableItems = payTableQuery.data?.items ?? []
 
   const financeRows = useMemo(() => lineItemsFromSummary(finance, label), [finance, label])
   const usersRows = useMemo(() => usersRowsFromReport(users), [users])
@@ -310,6 +405,8 @@ export default function ReportesApiSection({ inPanel = false }) {
   const coachesRows = useMemo(() => coachesRowsFromReport(coaches), [coaches])
   const topClassesRows = useMemo(() => topClassesRowsFromReport(topClasses), [topClasses])
   const occupancyRows = useMemo(() => occupancyRowsFromReport(occupancy), [occupancy])
+  const coachPaymentsRows = useMemo(() => coachPaymentsRowsFromReport(coachPayments), [coachPayments])
+  const payTableRows = useMemo(() => payTableRowsFromReport(payTableItems), [payTableItems])
 
   const exportCsv = (prefix, rows, headers) => {
     downloadCsvFromRows({
@@ -322,7 +419,7 @@ export default function ReportesApiSection({ inPanel = false }) {
 
   const exportPdf = (tipo, titulo, rows, landscape = false) => {
     if (!rows.length) {
-      toast('PDF vacío generado con encabezados.', { icon: 'ℹ️' })
+      toast('PDF vacío generado con encabezados.', { icon: '??' })
     }
     abrirReportePDF({
       tipo,
@@ -331,6 +428,107 @@ export default function ReportesApiSection({ inPanel = false }) {
       periodo: `${formatDateMx(from)} a ${formatDateMx(to)}`,
       landscape,
     })
+  }
+
+  const openPayTableEditor = (item = null) => {
+    if (item) {
+      setPayTableEditingId(item.id ?? null)
+      setPayTableForm({
+        discipline: item.discipline ?? '',
+        minAttendees: String(item.minAttendees ?? ''),
+        maxAttendees: String(item.maxAttendees ?? ''),
+        payMxn: String(item.payMxn ?? ''),
+        isActive: Boolean(item.isActive),
+      })
+    } else {
+      setPayTableEditingId(null)
+      setPayTableForm({
+        discipline: '',
+        minAttendees: '',
+        maxAttendees: '',
+        payMxn: '',
+        isActive: true,
+      })
+    }
+    setPayTableEditorOpen(true)
+  }
+
+  const closePayTableEditor = () => {
+    setPayTableEditorOpen(false)
+    setPayTableEditingId(null)
+    setPayTableForm({
+      discipline: '',
+      minAttendees: '',
+      maxAttendees: '',
+      payMxn: '',
+      isActive: true,
+    })
+  }
+
+  const savePayTable = async () => {
+    const payload = {
+      discipline: payTableForm.discipline,
+      minAttendees: payTableForm.minAttendees,
+      maxAttendees: payTableForm.maxAttendees,
+      payMxn: payTableForm.payMxn,
+      isActive: payTableForm.isActive,
+    }
+
+    try {
+      if (payTableEditingId) {
+        await updatePayTableMutation.mutateAsync({ id: payTableEditingId, ...payload })
+        toast.success('Rango de tabulador actualizado')
+      } else {
+        await createPayTableMutation.mutateAsync(payload)
+        toast.success('Rango de tabulador creado')
+      }
+      closePayTableEditor()
+    } catch (error) {
+      if (error?.code === 'PAY_TABLE_RANGE_OVERLAP') {
+        toast.error('Rango solapado. Ajusta min/max.')
+        return
+      }
+      if (error?.code === 'PAY_TABLE_INVALID_RANGE') {
+        toast.error('Rango inválido. Revisa min/max y pago.')
+        return
+      }
+      toast.error(error?.message || 'No se pudo guardar tabulador')
+    }
+  }
+
+  const togglePayTableActive = async (item) => {
+    try {
+      await updatePayTableMutation.mutateAsync({
+        id: item.id,
+        discipline: item.discipline,
+        minAttendees: item.minAttendees,
+        maxAttendees: item.maxAttendees,
+        payMxn: item.payMxn,
+        isActive: !item.isActive,
+      })
+      toast.success(item.isActive ? 'Rango desactivado' : 'Rango activado')
+    } catch (error) {
+      if (error?.code === 'PAY_TABLE_RANGE_OVERLAP') {
+        toast.error('Rango solapado. Ajusta min/max.')
+        return
+      }
+      if (error?.code === 'PAY_TABLE_INVALID_RANGE') {
+        toast.error('Rango inválido. Revisa min/max y pago.')
+        return
+      }
+      toast.error(error?.message || 'No se pudo actualizar tabulador')
+    }
+  }
+
+  const deletePayTable = async (item) => {
+    const ok = window.confirm('Eliminar rango. Baja lógica, historial se conserva.')
+    if (!ok) return
+    try {
+      await deletePayTableMutation.mutateAsync(item.id)
+      toast.success('Rango eliminado')
+    } catch (error) {
+      toast.error(error?.message || 'No se pudo eliminar rango')
+    }
   }
 
   return (
@@ -355,7 +553,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           border: '1px solid rgba(123,31,46,0.25)',
           borderRadius: 8,
         }}>
-          <span style={{ fontSize: 14 }}>📋</span>
+          <span style={{ fontSize: 14 }}>??</span>
           <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#E8A4AD' }}>
             Reportes en rango: <strong>{label}</strong>
           </span>
@@ -444,7 +642,14 @@ export default function ReportesApiSection({ inPanel = false }) {
           onPdf={() => exportPdf('coaches', 'Reporte de Coaches operativo', coachesRows, true)}
         />
         <ReportCard
-          icono="🏃"
+          icono="💰"
+          titulo="Pago de coaches"
+          descripcion="Tarifa, pago y clases sin tarifa."
+          onCsv={() => exportCsv('reporte-pago-coaches', coachPaymentsRows, ['Coach', 'Fecha', 'Hora', 'Clase', 'Disciplina', 'Asistentes', 'Tarifa', 'Pago', 'Estatus'])}
+          onPdf={() => exportPdf('coaches_pagos', 'Pago de Coaches operativo', coachPaymentsRows, true)}
+        />
+        <ReportCard
+          icono="🔝"
           titulo="Top clases"
           descripcion="Clases más llenas por rango seleccionado."
           onCsv={() => exportCsv('reporte-top-clases', topClassesRows, ['Clase', 'Disciplina', 'Reservas', 'Capacidad', 'Ocupación %', 'Ocurrencias'])}
@@ -534,7 +739,7 @@ export default function ReportesApiSection({ inPanel = false }) {
 
         <SectionCard title="Reporte de coaches" subtitle="Clases, reservas y asistencia">
           <div style={{ marginBottom: 8, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
-            Tabulador de pago pendiente de backend.
+            Pago de coaches real disponible en sección inferior.
           </div>
           {coaches.length > 0 ? (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -566,6 +771,328 @@ export default function ReportesApiSection({ inPanel = false }) {
           )}
         </SectionCard>
       </div>
+
+      <SectionCard title="Pago de coaches" subtitle={`Rango ${formatDateMx(from)} a ${formatDateMx(to)}`}>
+        {coachPayments.missingRateClasses > 0 && (
+          <div style={{
+            marginBottom: 12,
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.3)',
+            color: '#fbbf24',
+            fontFamily: 'var(--font-body)',
+            fontSize: 13,
+          }}>
+            Hay clases sin tarifa configurada en el tabulador.
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 16 }}>
+          <MetricCard label="Coaches" value={String(coachPayments.coachesCount ?? coachPayments.items.length)} helper={`Clases ${coachPayments.classesCount ?? 0}`} accent="#22c55e" />
+          <MetricCard label="Total a pagar" value={formatMoneyMx(coachPayments.totalPayMxn)} helper={`Asistencias ${coachPayments.attendanceCount ?? 0}`} accent="#3b82f6" />
+          <MetricCard label="Clases sin tarifa" value={String(coachPayments.missingRateClasses ?? 0)} helper="Requiere tabulador" accent="#ef4444" />
+        </div>
+
+        {coachPayments.items.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Coach', 'Clases', 'Asist.', 'No show', 'Total a pagar', 'Sin tarifa', 'Detalle'].map((head) => (
+                  <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {head}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {coachPayments.items.map((coach) => (
+                <Fragment key={coach.coachId ?? coach.name}>
+                  <tr style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                    <td style={{ padding: '10px', fontFamily: 'var(--font-body)', fontSize: 13 }}>{coach.name}</td>
+                    <td style={{ padding: '10px' }}>{coach.classesCount}</td>
+                    <td style={{ padding: '10px' }}>{coach.attendanceCount}</td>
+                    <td style={{ padding: '10px' }}>{coach.noShowCount}</td>
+                    <td style={{ padding: '10px', fontWeight: 600, color: '#22c55e' }}>{formatMoneyMx(coach.totalPayMxn)}</td>
+                    <td style={{ padding: '10px', color: coach.missingRateClasses > 0 ? '#fbbf24' : 'var(--text-primary)' }}>{coach.missingRateClasses}</td>
+                    <td style={{ padding: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setCoachPaymentsExpandedId((current) => (current === coach.coachId ? null : coach.coachId))}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(59,130,246,0.35)',
+                          background: 'rgba(59,130,246,0.08)',
+                          color: '#93c5fd',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {coachPaymentsExpandedId === coach.coachId ? 'Ocultar' : 'Ver detalle'}
+                      </button>
+                    </td>
+                  </tr>
+                  {coachPaymentsExpandedId === coach.coachId && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '0 10px 14px' }}>
+                        <div style={{ marginTop: 10, border: '1px solid var(--neutral-border)', borderRadius: 10, overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                {['Fecha', 'Hora', 'Clase', 'Disciplina', 'Asist.', 'Tarifa', 'Pago', 'Estatus'].map((head) => (
+                                  <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    {head}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {coach.details.length > 0 ? coach.details.map((detail, index) => (
+                                <tr key={`${coach.coachId ?? coach.name}-${index}`} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                                  <td style={{ padding: '8px 10px' }}>{detail.date ?? '—'}</td>
+                                  <td style={{ padding: '8px 10px' }}>{detail.time ?? '—'}</td>
+                                  <td style={{ padding: '8px 10px' }}>{detail.className ?? 'Clase'}</td>
+                                  <td style={{ padding: '8px 10px' }}>{detail.discipline ?? '—'}</td>
+                                  <td style={{ padding: '8px 10px' }}>{detail.attendees ?? 0}</td>
+                                  <td style={{ padding: '8px 10px' }}>{formatMoneyMx(detail.rateMxn)}</td>
+                                  <td style={{ padding: '8px 10px', fontWeight: 600, color: detail.status === 'missing_rate' ? '#fbbf24' : '#22c55e' }}>{formatMoneyMx(detail.payMxn)}</td>
+                                  <td style={{ padding: '8px 10px' }}>{detail.status === 'missing_rate' ? 'missing_rate' : 'calculated'}</td>
+                                </tr>
+                              )) : (
+                                <tr>
+                                  <td colSpan={8} style={{ padding: '12px 10px', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                                    Sin detalle para este coach.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <EmptyState>No hay datos de pago de coaches para este rango.</EmptyState>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Tabulador de pagos por clase" subtitle="Disciplina, Rango y Pago">
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+            {payTableItems.length} rangos configurados
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => exportCsv('tabulador-pagos', payTableRows, ['Disciplina', 'Mín', 'Máx', 'Pago MXN', 'Estado'])}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: '1px solid rgba(59,130,246,0.35)',
+                background: 'rgba(59,130,246,0.08)',
+                color: '#93c5fd',
+                fontFamily: 'var(--font-body)',
+                fontSize: 12,
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => openPayTableEditor()}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: '1px solid #7B1E22',
+                background: 'rgba(123,30,34,0.12)',
+                color: '#E8A4AD',
+                fontFamily: 'var(--font-body)',
+                fontSize: 12,
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Nuevo rango
+            </button>
+          </div>
+        </div>
+
+        {payTableEditorOpen && (
+          <div style={{ marginBottom: 16, padding: 14, borderRadius: 10, background: 'rgba(255,255,255,0.02)', border: '1px solid var(--neutral-border)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+              {[
+                ['discipline', 'Disciplina', 'text'],
+                ['minAttendees', 'Mín asistentes', 'number'],
+                ['maxAttendees', 'Máx asistentes', 'number'],
+                ['payMxn', 'Pago MXN', 'number'],
+              ].map(([key, labelInput, type]) => (
+                <label key={key} style={{ display: 'grid', gap: 6, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)' }}>
+                  <span>{labelInput}</span>
+                  <input
+                    type={type}
+                    value={payTableForm[key]}
+                    onChange={(event) => setPayTableForm((current) => ({ ...current, [key]: event.target.value }))}
+                    style={{
+                      width: '100%',
+                      padding: '9px 10px',
+                      borderRadius: 8,
+                      border: '1px solid var(--neutral-border)',
+                      background: '#1E1014',
+                      color: 'var(--text-primary)',
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 13,
+                    }}
+                  />
+                </label>
+              ))}
+              <label style={{ display: 'grid', gap: 6, fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)' }}>
+                <span>Estado</span>
+                <select
+                  value={payTableForm.isActive ? 'active' : 'inactive'}
+                  onChange={(event) => setPayTableForm((current) => ({ ...current, isActive: event.target.value === 'active' }))}
+                  style={{
+                    width: '100%',
+                    padding: '9px 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--neutral-border)',
+                    background: '#1E1014',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 13,
+                  }}
+                >
+                  <option value="active">Activo</option>
+                  <option value="inactive">Inactivo</option>
+                </select>
+              </label>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={closePayTableEditor}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid var(--neutral-border)',
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={savePayTable}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #22c55e44',
+                  background: '#1a472a',
+                  color: '#22c55e',
+                  fontFamily: 'var(--font-body)',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {payTableItems.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Disciplina', 'Mín', 'Máx', 'Pago MXN', 'Estado', 'Acciones'].map((head) => (
+                  <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {head}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {payTableItems.map((item) => (
+                <tr key={item.id ?? `${item.discipline}-${item.minAttendees}-${item.maxAttendees}`} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                  <td style={{ padding: '10px' }}>{item.discipline}</td>
+                  <td style={{ padding: '10px' }}>{item.minAttendees}</td>
+                  <td style={{ padding: '10px' }}>{item.maxAttendees}</td>
+                  <td style={{ padding: '10px', color: '#22c55e', fontWeight: 600 }}>{formatMoneyMx(item.payMxn)}</td>
+                  <td style={{ padding: '10px' }}>
+                    <Badge color={item.isActive ? 'green' : 'yellow'}>{item.isActive ? 'Activo' : 'Inactivo'}</Badge>
+                  </td>
+                  <td style={{ padding: '10px' }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => openPayTableEditor(item)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid var(--neutral-border)',
+                          background: 'transparent',
+                          color: 'var(--text-primary)',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => togglePayTableActive(item)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(245,158,11,0.35)',
+                          background: 'rgba(245,158,11,0.08)',
+                          color: '#fbbf24',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {item.isActive ? 'Desactivar' : 'Activar'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deletePayTable(item)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(239,68,68,0.35)',
+                          background: 'rgba(239,68,68,0.08)',
+                          color: '#fca5a5',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <EmptyState>Sin rangos de tabulador para este rango.</EmptyState>
+        )}
+      </SectionCard>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 16 }}>
         <SectionCard title="Top clases" subtitle="Clases más llenas">

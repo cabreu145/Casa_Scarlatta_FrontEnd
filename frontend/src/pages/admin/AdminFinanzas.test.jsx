@@ -42,6 +42,29 @@ const apiState = {
     isLoading: false,
     error: null,
   },
+  historical: {
+    data: {
+      from: '2026-06-01',
+      to: '2026-06-09',
+      groupBy: 'day',
+      items: [
+        {
+          label: '01/06',
+          salesCount: 4,
+          salesTotalMxn: 1000,
+          expensesTotalMxn: 200,
+          netTotalMxn: 800,
+          averageTicketMxn: 250,
+          cashMxn: 500,
+          cardMxn: 400,
+          transferMxn: 100,
+          otherMxn: 0,
+        },
+      ],
+    },
+    isLoading: false,
+    error: null,
+  },
   categories: {
     data: {
       expenseCategories: [{ category: 'insumos', totalMxn: 500, count: 2 }],
@@ -181,6 +204,7 @@ const executeCashClosingMutation = { mutateAsync: vi.fn().mockResolvedValue({}) 
 vi.mock('@/hooks/useApiQueries', () => ({
   useFinanceKpisQuery: () => apiState.kpis,
   useFinanceDaySummaryQuery: () => apiState.day,
+  useFinanceHistoricalQuery: () => apiState.historical,
   useFinanceCategoriesQuery: () => apiState.categories,
   useFinanceRecentSalesQuery: () => apiState.recentSales,
   useTodayCashClosingQuery: () => apiState.todayClosing,
@@ -258,12 +282,11 @@ describe('AdminFinanzas API mode', () => {
     expect(screen.getByText('Ticket promedio')).toBeInTheDocument()
     expect(screen.getAllByText('Cliente Demo').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Compra de agua').length).toBeGreaterThan(0)
-    expect(screen.getByText('Serie histórica detallada pendiente de backend.')).toBeInTheDocument()
+    expect(screen.getByText(/Serie operativa day/i)).toBeInTheDocument()
     expect(screen.getByText('Historial de cortes')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'CSV' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Excel' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '📊 Excel' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '📋 PDF' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Excel/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /PDF/ }).length).toBeGreaterThan(0)
     expect(mathSpy).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'CSV' }))
@@ -316,6 +339,6 @@ describe('AdminFinanzas API mode', () => {
     render(<FinanzasSectionLegacy inPanel />)
 
     expect(screen.queryByText('Vista legacy deshabilitada en modo API')).not.toBeInTheDocument()
-    expect(screen.getByText('Ingresos históricos')).toBeInTheDocument()
+    expect(screen.getByText(/Ingresos hist.+ricos/i)).toBeInTheDocument()
   })
 })

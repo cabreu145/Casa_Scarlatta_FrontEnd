@@ -1,6 +1,7 @@
 import { ENDPOINTS } from '@/constants/api'
 import { httpGet } from '@/lib/http'
 import {
+  mapBackendCoachPaymentsReportToFrontend,
   mapBackendCoachesReportToFrontend,
   mapBackendFinanceReportToFrontend,
   mapBackendOccupancyByDisciplineReportToFrontend,
@@ -46,6 +47,11 @@ export async function getPosReport(params = {}) {
 export async function getCoachesReport(params = {}) {
   const payload = await httpGet(ENDPOINTS.reportesCoaches(normalizeRange(params)))
   return mapBackendCoachesReportToFrontend(payload)
+}
+
+export async function getCoachPaymentsReport(params = {}) {
+  const payload = await httpGet(ENDPOINTS.reportesCoachesPagos(normalizeRange(params)))
+  return mapBackendCoachPaymentsReportToFrontend(payload)
 }
 
 export async function getTopClassesReport(params = {}) {

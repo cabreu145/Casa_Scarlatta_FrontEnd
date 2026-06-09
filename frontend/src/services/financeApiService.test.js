@@ -9,6 +9,13 @@ vi.mock('@/constants/api', () => ({
       return `/api/v1/finanzas/kpis${params.toString() ? `?${params.toString()}` : ''}`
     },
     finanzasDia: ({ date } = {}) => `/api/v1/finanzas/dia${date ? `?date=${date}` : ''}`,
+    finanzasHistorico: ({ from, to, groupBy } = {}) => {
+      const params = new URLSearchParams()
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
+      if (groupBy) params.set('group_by', groupBy)
+      return `/api/v1/finanzas/historico${params.toString() ? `?${params.toString()}` : ''}`
+    },
     finanzasCategorias: ({ from, to } = {}) => {
       const params = new URLSearchParams()
       if (from) params.set('from', from)
@@ -67,6 +74,12 @@ describe('financeApiService', () => {
         recent_expenses: [{ id: 2, category: 'insumos', amount_mxn: 50, payment_method: 'cash', created_at: '2026-06-09T09:00:00-06:00' }],
       })
       .mockResolvedValueOnce({
+        from: '2026-06-01',
+        to: '2026-06-09',
+        group_by: 'day',
+        items: [{ label: '01/06', sales_total_mxn: 1000, expenses_total_mxn: 200, net_total_mxn: 800, average_ticket_mxn: 250 }],
+      })
+      .mockResolvedValueOnce({
         expense_categories: [{ category: 'insumos', total_mxn: 500, count: 2 }],
         product_categories: [{ category: 'Bebidas', total_mxn: 1200, items_sold: 10 }],
       })
@@ -77,18 +90,21 @@ describe('financeApiService', () => {
 
     const kpis = await service.getFinanceKpis({ from: '2026-06-09', to: '2026-06-09' })
     const day = await service.getFinanceDaySummary('2026-06-09')
+    const historical = await service.getFinanceHistoricalApi({ from: '2026-06-01', to: '2026-06-09', groupBy: 'day' })
     const categories = await service.getFinanceCategories({ from: '2026-06-01', to: '2026-06-09' })
     const lowStock = await service.getLowStock({ threshold: 5 })
     const recentSales = await service.getRecentFinanceSales({ limit: 10 })
 
     expect(httpGet).toHaveBeenNthCalledWith(1, '/api/v1/finanzas/kpis?from=2026-06-09&to=2026-06-09')
     expect(httpGet).toHaveBeenNthCalledWith(2, '/api/v1/finanzas/dia?date=2026-06-09')
-    expect(httpGet).toHaveBeenNthCalledWith(3, '/api/v1/finanzas/categorias?from=2026-06-01&to=2026-06-09')
-    expect(httpGet).toHaveBeenNthCalledWith(4, '/api/v1/finanzas/stock-bajo?threshold=5')
-    expect(httpGet).toHaveBeenNthCalledWith(5, '/api/v1/finanzas/ventas-recientes?limit=10')
+    expect(httpGet).toHaveBeenNthCalledWith(3, '/api/v1/finanzas/historico?from=2026-06-01&to=2026-06-09&group_by=day')
+    expect(httpGet).toHaveBeenNthCalledWith(4, '/api/v1/finanzas/categorias?from=2026-06-01&to=2026-06-09')
+    expect(httpGet).toHaveBeenNthCalledWith(5, '/api/v1/finanzas/stock-bajo?threshold=5')
+    expect(httpGet).toHaveBeenNthCalledWith(6, '/api/v1/finanzas/ventas-recientes?limit=10')
 
     expect(kpis.sales).toMatchObject({ count: 12, totalMxn: 11600 })
     expect(day.recentSales[0]).toMatchObject({ customerName: 'Cliente Demo' })
+    expect(historical.items[0]).toMatchObject({ label: '01/06', salesTotalMxn: 1000 })
     expect(categories.expenseCategories[0]).toMatchObject({ category: 'insumos', totalMxn: 500 })
     expect(lowStock[0]).toMatchObject({ productName: 'Toalla', stock: 2 })
     expect(recentSales[0]).toMatchObject({ customerName: 'Cliente Demo', totalMxn: 350 })

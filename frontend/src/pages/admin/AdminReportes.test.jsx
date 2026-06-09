@@ -63,6 +63,49 @@ const apiState = {
     isLoading: false,
     error: null,
   },
+  coachPayments: {
+    data: {
+      coachesCount: 1,
+      classesCount: 2,
+      attendanceCount: 30,
+      totalPayMxn: 600,
+      missingRateClasses: 1,
+      items: [
+        {
+          coachId: 1,
+          name: 'Coach Demo',
+          classesCount: 2,
+          attendanceCount: 30,
+          noShowCount: 2,
+          totalPayMxn: 600,
+          missingRateClasses: 1,
+          details: [
+            {
+              date: '2026-06-09',
+              time: '09:00',
+              className: 'SLOW 09:00',
+              discipline: 'slow',
+              attendees: 18,
+              rateMxn: 300,
+              payMxn: 300,
+              status: 'calculated',
+            },
+          ],
+        },
+      ],
+    },
+    isLoading: false,
+    error: null,
+  },
+  payTable: {
+    data: {
+      items: [
+        { id: 1, discipline: 'slow', minAttendees: 1, maxAttendees: 6, payMxn: 200, isActive: true },
+      ],
+    },
+    isLoading: false,
+    error: null,
+  },
   topClasses: {
     data: {
       items: [
@@ -93,6 +136,11 @@ vi.mock('@/hooks/useApiQueries', () => ({
   usePackagesReportQuery: () => apiState.packages,
   usePosReportQuery: () => apiState.pos,
   useCoachesReportQuery: () => apiState.coaches,
+  useCoachPaymentsReportQuery: () => apiState.coachPayments,
+  usePayTableQuery: () => apiState.payTable,
+  useCreatePayTableMutation: () => ({ mutateAsync: vi.fn().mockResolvedValue({}) }),
+  useUpdatePayTableMutation: () => ({ mutateAsync: vi.fn().mockResolvedValue({}) }),
+  useDeletePayTableMutation: () => ({ mutateAsync: vi.fn().mockResolvedValue({}) }),
   useTopClassesReportQuery: () => apiState.topClasses,
   useOccupancyByDisciplineReportQuery: () => apiState.occupancy,
 }))
@@ -130,14 +178,15 @@ describe('AdminReportes API mode', () => {
     expect(screen.getAllByText('Reporte de paquetes').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Reporte POS').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Reporte de coaches').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Pago de coaches').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Top clases').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Ocupación por disciplina').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Ocupaci.+disciplina/i).length).toBeGreaterThan(0)
     expect(screen.getByText('Ingresos totales')).toBeInTheDocument()
     expect(screen.getAllByText('$10,000.00')).toHaveLength(2)
-    expect(screen.getByText('Coach Demo')).toBeInTheDocument()
+    expect(screen.getAllByText('Coach Demo').length).toBeGreaterThan(0)
     expect(screen.getByText('Mensual 12')).toBeInTheDocument()
-    expect(screen.getByText('Tabulador de pago pendiente de backend.')).toBeInTheDocument()
-    expect(screen.queryByText('Tabulador de pagos')).not.toBeInTheDocument()
+    expect(screen.getByText('Hay clases sin tarifa configurada en el tabulador.')).toBeInTheDocument()
+    expect(screen.getByText('Tabulador de pagos por clase')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'CSV' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'PDF' }).length).toBeGreaterThan(0)
   })
@@ -158,7 +207,7 @@ describe('AdminReportes API mode', () => {
 
     render(<mod.ReportesSection inPanel />)
 
-    expect(screen.getByText('Tabulador de pagos')).toBeInTheDocument()
+    expect(screen.getByText('Tabulador de pagos por clase')).toBeInTheDocument()
     expect(screen.queryByText('Reportes legacy deshabilitados en modo API')).not.toBeInTheDocument()
   })
 

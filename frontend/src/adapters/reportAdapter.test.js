@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import {
+  mapBackendCoachPaymentsReportToFrontend,
   mapBackendCoachesReportToFrontend,
   mapBackendFinanceReportToFrontend,
   mapBackendOccupancyByDisciplineReportToFrontend,
@@ -72,7 +73,7 @@ describe('reportAdapter', () => {
     })
   })
 
-  test('mapea pos, coaches, top clases y ocupaciÃ³n', () => {
+  test('mapea pos, coaches, top clases y ocupación', () => {
     const pos = mapBackendPosReportToFrontend({
       sales_count: 8,
       average_ticket_mxn: 340,
@@ -123,6 +124,65 @@ describe('reportAdapter', () => {
       reservationsCount: 48,
       capacityTotal: 60,
       occupancyPct: 80,
+    })
+  })
+  test('mapea reporte de pago de coaches', () => {
+    const report = mapBackendCoachPaymentsReportToFrontend({
+      from: '2026-06-01',
+      to: '2026-06-09',
+      summary: { coaches_count: 1, classes_count: 2, attendance_count: 30, total_pay_mxn: 600, missing_rate_classes: 1 },
+      items: [
+        {
+          coach_id: 1,
+          name: 'Coach Demo',
+          classes_count: 2,
+          attendance_count: 30,
+          no_show_count: 2,
+          total_pay_mxn: 600,
+          missing_rate_classes: 1,
+          details: [
+            {
+              date: '2026-06-09',
+              time: '09:00',
+              class_name: 'SLOW 09:00',
+              discipline: 'slow',
+              attendees: 18,
+              rate_mxn: 300,
+              pay_mxn: 300,
+              status: 'calculated',
+            },
+            {
+              date: '2026-06-09',
+              time: '10:00',
+              class_name: 'SLOW 10:00',
+              discipline: 'slow',
+              attendees: 12,
+              rate_mxn: 0,
+              pay_mxn: 0,
+              status: 'missing_rate',
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(report).toMatchObject({
+      from: '2026-06-01',
+      to: '2026-06-09',
+      coachesCount: 1,
+      classesCount: 2,
+      attendanceCount: 30,
+      totalPayMxn: 600,
+      missingRateClasses: 1,
+    })
+    expect(report.items[0]).toMatchObject({
+      name: 'Coach Demo',
+      totalPayMxn: 600,
+      missingRateClasses: 1,
+    })
+    expect(report.items[0].details[1]).toMatchObject({
+      className: 'SLOW 10:00',
+      status: 'missing_rate',
     })
   })
 })

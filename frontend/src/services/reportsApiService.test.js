@@ -7,6 +7,7 @@ vi.mock('@/constants/api', () => ({
     reportesPaquetes: ({ from, to } = {}) => `/api/v1/reportes/paquetes?from=${from ?? ''}&to=${to ?? ''}`,
     reportesPos: ({ from, to } = {}) => `/api/v1/reportes/pos?from=${from ?? ''}&to=${to ?? ''}`,
     reportesCoaches: ({ from, to } = {}) => `/api/v1/reportes/coaches?from=${from ?? ''}&to=${to ?? ''}`,
+    reportesCoachesPagos: ({ from, to } = {}) => `/api/v1/reportes/coaches/pagos?from=${from ?? ''}&to=${to ?? ''}`,
     reportesTopClases: ({ from, to, limit } = {}) => `/api/v1/reportes/top-clases?from=${from ?? ''}&to=${to ?? ''}&limit=${limit ?? ''}`,
     reportesOcupacionPorDisciplina: ({ from, to } = {}) => `/api/v1/reportes/ocupacion-por-disciplina?from=${from ?? ''}&to=${to ?? ''}`,
   },
@@ -61,6 +62,32 @@ describe('reportsApiService', () => {
         items: [{ coach_id: 1, name: 'Coach Demo', classes_count: 6, reservations_count: 40, attendance_count: 35, no_show_count: 5, average_occupancy_pct: 72, primary_discipline: 'slow' }],
       })
       .mockResolvedValueOnce({
+        from: '2026-06-01',
+        to: '2026-06-09',
+        summary: { coaches_count: 1, classes_count: 2, attendance_count: 30, total_pay_mxn: 600, missing_rate_classes: 1 },
+        items: [{
+          coach_id: 1,
+          name: 'Coach Demo',
+          classes_count: 2,
+          attendance_count: 30,
+          no_show_count: 2,
+          total_pay_mxn: 600,
+          missing_rate_classes: 1,
+          details: [
+            {
+              date: '2026-06-09',
+              time: '09:00',
+              class_name: 'SLOW 09:00',
+              discipline: 'slow',
+              attendees: 18,
+              rate_mxn: 300,
+              pay_mxn: 300,
+              status: 'calculated',
+            },
+          ],
+        }],
+      })
+      .mockResolvedValueOnce({
         items: [{ class_id: 10, name: 'SLOW 09:00', discipline: 'slow', reservations_count: 18, capacity_total: 20, occupancy_pct: 90, occurrences_count: 5 }],
       })
       .mockResolvedValueOnce({
@@ -74,6 +101,7 @@ describe('reportsApiService', () => {
     const packages = await service.getPackagesReport({ from: '2026-06-01', to: '2026-06-09' })
     const pos = await service.getPosReport({ from: '2026-06-01', to: '2026-06-09' })
     const coaches = await service.getCoachesReport({ from: '2026-06-01', to: '2026-06-09' })
+    const coachPayments = await service.getCoachPaymentsReport({ from: '2026-06-01', to: '2026-06-09' })
     const topClasses = await service.getTopClassesReport({ from: '2026-06-01', to: '2026-06-09', limit: 5 })
     const occupancy = await service.getOccupancyByDisciplineReport({ from: '2026-06-01', to: '2026-06-09' })
 
@@ -82,14 +110,16 @@ describe('reportsApiService', () => {
     expect(httpGet).toHaveBeenNthCalledWith(3, '/api/v1/reportes/paquetes?from=2026-06-01&to=2026-06-09')
     expect(httpGet).toHaveBeenNthCalledWith(4, '/api/v1/reportes/pos?from=2026-06-01&to=2026-06-09')
     expect(httpGet).toHaveBeenNthCalledWith(5, '/api/v1/reportes/coaches?from=2026-06-01&to=2026-06-09')
-    expect(httpGet).toHaveBeenNthCalledWith(6, '/api/v1/reportes/top-clases?from=2026-06-01&to=2026-06-09&limit=5')
-    expect(httpGet).toHaveBeenNthCalledWith(7, '/api/v1/reportes/ocupacion-por-disciplina?from=2026-06-01&to=2026-06-09')
+    expect(httpGet).toHaveBeenNthCalledWith(6, '/api/v1/reportes/coaches/pagos?from=2026-06-01&to=2026-06-09')
+    expect(httpGet).toHaveBeenNthCalledWith(7, '/api/v1/reportes/top-clases?from=2026-06-01&to=2026-06-09&limit=5')
+    expect(httpGet).toHaveBeenNthCalledWith(8, '/api/v1/reportes/ocupacion-por-disciplina?from=2026-06-01&to=2026-06-09')
 
     expect(finance.summary).toMatchObject({ salesTotalMxn: 10000, netTotalMxn: 8800 })
     expect(users).toMatchObject({ activeClients: 30, clientsWithActiveMembership: 22 })
     expect(packages).toMatchObject({ packagesSold: 5, topPackage: null })
     expect(pos.productCategories[0]).toMatchObject({ category: 'Bebidas', totalMxn: 1200 })
     expect(coaches.items[0]).toMatchObject({ name: 'Coach Demo' })
+    expect(coachPayments.items[0]).toMatchObject({ name: 'Coach Demo', totalPayMxn: 600 })
     expect(topClasses.items[0]).toMatchObject({ name: 'SLOW 09:00' })
     expect(occupancy.items[0]).toMatchObject({ discipline: 'slow' })
   })

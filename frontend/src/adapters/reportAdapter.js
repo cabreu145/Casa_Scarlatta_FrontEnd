@@ -189,6 +189,72 @@ export function mapBackendCoachesReportToFrontend(payload = {}) {
   }
 }
 
+function mapCoachPaymentsDetailItem(item = {}) {
+  const id = item.id ?? item.occurrence_id ?? item.occurrenceId ?? item.class_id ?? item.classId ?? null
+  const rateMxn = toNumber(item.rate_mxn ?? item.rateMxn ?? item.pay_rate_mxn ?? item.payRateMxn, 0)
+  const payMxn = toNumber(item.pay_mxn ?? item.payMxn ?? item.payment_mxn ?? item.paymentMxn, rateMxn)
+  const status = normalizeString(
+    item.status ?? (rateMxn > 0 ? 'calculated' : 'missing_rate'),
+    rateMxn > 0 ? 'calculated' : 'missing_rate'
+  )
+
+  return {
+    id,
+    date: item.date ?? item.class_date ?? item.classDate ?? null,
+    time: normalizeString(item.time ?? item.hour ?? item.start_time ?? item.startTime, ''),
+    className: normalizeString(item.class_name ?? item.className ?? item.name, 'Clase'),
+    discipline: normalizeString(item.discipline ?? item.primary_discipline ?? item.primaryDiscipline, 'Sin disciplina'),
+    attendees: toNumber(item.attendees ?? item.assistants ?? item.attendance_count ?? item.attendanceCount, 0),
+    rateMxn,
+    payMxn,
+    status,
+    raw: item,
+  }
+}
+
+function mapCoachPaymentsCoach(item = {}) {
+  const details = normalizeArray(item.details ?? item.items ?? item.occurrences ?? item.lines ?? item.classes)
+    .map(mapCoachPaymentsDetailItem)
+  const totalPayMxn = toNumber(
+    item.total_pay_mxn ?? item.totalPayMxn ?? item.total_payment_mxn ?? item.totalPaymentMxn,
+    details.reduce((acc, row) => acc + Number(row.payMxn ?? 0), 0)
+  )
+  const missingRateClasses = toNumber(
+    item.missing_rate_classes ?? item.missingRateClasses,
+    details.filter((row) => row.status === 'missing_rate').length
+  )
+
+  return {
+    coachId: item.coach_id ?? item.coachId ?? item.id ?? null,
+    name: normalizeString(item.name ?? item.coach_name ?? item.coachName, 'Coach'),
+    classesCount: toNumber(item.classes_count ?? item.classesCount ?? details.length, details.length),
+    attendanceCount: toNumber(item.attendance_count ?? item.attendanceCount, 0),
+    noShowCount: toNumber(item.no_show_count ?? item.noShowCount, 0),
+    totalPayMxn,
+    missingRateClasses,
+    details,
+    raw: item,
+  }
+}
+
+export function mapBackendCoachPaymentsReportToFrontend(payload = {}) {
+  const items = normalizeArray(payload)
+    .map(mapCoachPaymentsCoach)
+  const summary = payload.summary ?? payload.totals ?? {}
+
+  return {
+    from: payload.from ?? null,
+    to: payload.to ?? null,
+    coachesCount: toNumber(summary.coaches_count ?? summary.coachesCount, items.length),
+    classesCount: toNumber(summary.classes_count ?? summary.classesCount, items.reduce((acc, coach) => acc + coach.classesCount, 0)),
+    attendanceCount: toNumber(summary.attendance_count ?? summary.attendanceCount, items.reduce((acc, coach) => acc + coach.attendanceCount, 0)),
+    totalPayMxn: toNumber(summary.total_pay_mxn ?? summary.totalPayMxn, items.reduce((acc, coach) => acc + coach.totalPayMxn, 0)),
+    missingRateClasses: toNumber(summary.missing_rate_classes ?? summary.missingRateClasses, items.reduce((acc, coach) => acc + coach.missingRateClasses, 0)),
+    items,
+    raw: payload,
+  }
+}
+
 function mapTopClassItem(item = {}) {
   const id = item.class_id ?? item.classId ?? item.id ?? null
   return {

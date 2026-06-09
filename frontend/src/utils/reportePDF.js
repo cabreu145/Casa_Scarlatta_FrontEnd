@@ -13,6 +13,7 @@ const ICONO_TIPO = {
   paquetes:   '📦',
   pdv:        '🛒',
   coaches:    '👩‍🏫',
+  coaches_pagos: '💸',
 }
 
 function fmtFecha(iso) {
@@ -107,6 +108,19 @@ export function calcularStats(tipo, datos) {
       { valor: coaches.toLocaleString('es-MX'),          etiqueta: 'Coaches activos' },
       { valor: totalClases.toLocaleString('es-MX'),      etiqueta: 'Clases impartidas' },
       { valor: '$' + totalPago.toLocaleString('es-MX'),  etiqueta: 'Pago total estimado' },
+    ]
+  }
+
+  if (tipo === 'coaches_pagos') {
+    const coaches     = new Set(datos.map(c => c.Coach)).size
+    const totalClases = datos.length
+    const totalPago   = datos.reduce((a, c) => a + parseMonto(c.Pago ?? 0), 0)
+    const sinTarifa   = datos.filter(c => String(c.Estatus ?? '').includes('missing_rate')).length
+    return [
+      { valor: coaches.toLocaleString('es-MX'),          etiqueta: 'Coaches' },
+      { valor: totalClases.toLocaleString('es-MX'),      etiqueta: 'Clases pagadas' },
+      { valor: '$' + totalPago.toLocaleString('es-MX'),  etiqueta: 'Pago total' },
+      { valor: sinTarifa.toLocaleString('es-MX'),        etiqueta: 'Sin tarifa' },
     ]
   }
 

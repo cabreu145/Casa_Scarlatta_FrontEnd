@@ -28,10 +28,12 @@ import {
   getFinanceCategories,
   getFinanceDaySummary,
   getFinanceKpis,
+  getFinanceHistoricalApi,
   getLowStock,
   getRecentFinanceSales,
 } from '@/services/financeApiService'
 import {
+  getCoachPaymentsReport,
   getCoachesReport,
   getFinanceReport,
   getOccupancyByDisciplineReport,
@@ -67,6 +69,12 @@ import {
   updateProductCategoryApi,
   updateProductCategoryStatusApi,
 } from '@/services/posCategoriesApiService'
+import {
+  createPayTableApi,
+  deletePayTableApi,
+  getPayTableApi,
+  updatePayTableApi,
+} from '@/services/payTableApiService'
 
 const shortDefaults = {
   staleTime: 30_000,
@@ -287,6 +295,15 @@ export function useFinanceDaySummaryQuery(date, { enabled = false } = {}) {
   })
 }
 
+export function useFinanceHistoricalQuery({ from, to, groupBy = 'day', enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.finance.historical({ from: from || '', to: to || '', groupBy: groupBy || 'day' }),
+    queryFn: () => getFinanceHistoricalApi({ from, to, groupBy }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
 export function useFinanceCategoriesQuery({ from, to, enabled = false } = {}) {
   return useQuery({
     queryKey: queryKeys.finance.categories({ from: from || '', to: to || '' }),
@@ -314,10 +331,28 @@ export function useFinanceRecentSalesQuery({ limit = 10, enabled = false } = {})
   })
 }
 
+export function usePayTableQuery({ enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.payTable.all,
+    queryFn: getPayTableApi,
+    enabled,
+    ...shortDefaults,
+  })
+}
+
 export function useFinanceReportQuery({ from, to, enabled = false } = {}) {
   return useQuery({
     queryKey: queryKeys.reports.finance({ from: from || '', to: to || '' }),
     queryFn: () => getFinanceReport({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useCoachPaymentsReportQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.coachesPayments({ from: from || '', to: to || '' }),
+    queryFn: () => getCoachPaymentsReport({ from, to }),
     enabled,
     ...shortDefaults,
   })
@@ -407,6 +442,45 @@ export function useRemoveMyMembershipBeneficiaryMutation() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
         queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+      ])
+    },
+  })
+}
+
+export function useCreatePayTableMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createPayTableApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.payTable.all }),
+        queryClient.invalidateQueries({ queryKey: ['reports', 'coachesPayments'] }),
+      ])
+    },
+  })
+}
+
+export function useUpdatePayTableMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...payload }) => updatePayTableApi(id, payload),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.payTable.all }),
+        queryClient.invalidateQueries({ queryKey: ['reports', 'coachesPayments'] }),
+      ])
+    },
+  })
+}
+
+export function useDeletePayTableMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deletePayTableApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.payTable.all }),
+        queryClient.invalidateQueries({ queryKey: ['reports', 'coachesPayments'] }),
       ])
     },
   })

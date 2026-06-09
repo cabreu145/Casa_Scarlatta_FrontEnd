@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   mapBackendFinanceCategoriesToFrontend,
   mapBackendFinanceDaySummaryToFrontend,
+  mapBackendFinanceHistoricalToFrontend,
   mapBackendFinanceKpisToFrontend,
   mapBackendLowStockToFrontend,
   mapBackendRecentFinanceSalesToFrontend,
@@ -50,5 +51,47 @@ describe('financeAdapter', () => {
     expect(categories.productCategories[0]).toMatchObject({ category: 'Bebidas', totalMxn: 1200, itemsSold: 10 })
     expect(lowStock[0]).toMatchObject({ productName: 'Toalla', category: 'Accesorios', stock: 2 })
     expect(recentSales[0]).toMatchObject({ customerName: 'Cliente Demo', paymentMethod: 'card', totalMxn: 350 })
+  })
+
+  test('mapea historico financiero', () => {
+    const historical = mapBackendFinanceHistoricalToFrontend({
+      from: '2026-06-01',
+      to: '2026-06-09',
+      group_by: 'day',
+      items: [
+        {
+          group_by: 'day',
+          label: '01/06',
+          sales_total_mxn: 1000,
+          expenses_total_mxn: 200,
+          net_total_mxn: 800,
+          average_ticket_mxn: 250,
+          cash_mxn: 500,
+          card_mxn: 400,
+          transfer_mxn: 100,
+          other_mxn: 0,
+        },
+      ],
+    })
+
+    expect(historical).toMatchObject({
+      from: '2026-06-01',
+      to: '2026-06-09',
+      groupBy: 'day',
+      items: [
+        {
+          groupBy: 'day',
+          label: '01/06',
+          salesTotalMxn: 1000,
+          expensesTotalMxn: 200,
+          netTotalMxn: 800,
+          averageTicketMxn: 250,
+          cashMxn: 500,
+          cardMxn: 400,
+          transferMxn: 100,
+          otherMxn: 0,
+        },
+      ],
+    })
   })
 })

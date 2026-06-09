@@ -23,9 +23,14 @@ export const queryKeys = {
   finance: {
     kpis: (params = {}) => ['finance', 'kpis', params],
     day: (date) => ['finance', 'day', date],
+    historical: (params = {}) => ['finance', 'historical', params],
     categories: (params = {}) => ['finance', 'categories', params],
     lowStock: (params = {}) => ['finance', 'lowStock', params],
     recentSales: (params = {}) => ['finance', 'recentSales', params],
+  },
+  payTable: {
+    all: ['payTable'],
+    list: (params = {}) => ['payTable', 'list', params],
   },
   reports: {
     finance: (params = {}) => ['reports', 'finance', params],
@@ -33,6 +38,7 @@ export const queryKeys = {
     packages: (params = {}) => ['reports', 'packages', params],
     pos: (params = {}) => ['reports', 'pos', params],
     coaches: (params = {}) => ['reports', 'coaches', params],
+    coachesPayments: (params = {}) => ['reports', 'coachesPayments', params],
     topClasses: (params = {}) => ['reports', 'topClasses', params],
     occupancyByDiscipline: (params = {}) => ['reports', 'occupancyByDiscipline', params],
   },

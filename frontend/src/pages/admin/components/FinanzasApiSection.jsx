@@ -12,6 +12,7 @@ import {
   useExpensesQuery,
   useFinanceCategoriesQuery,
   useFinanceDaySummaryQuery,
+  useFinanceHistoricalQuery,
   useFinanceKpisQuery,
   useFinanceRecentSalesQuery,
   useTodayCashClosingQuery,
@@ -216,6 +217,28 @@ function formatCutHistoryItem(item = {}) {
   }
 }
 
+function resolveHistoricalGroupBy(rango) {
+  if (rango === 'dia') return 'day'
+  if (rango === 'semana') return 'day'
+  if (rango === 'mes') return 'week'
+  return 'day'
+}
+
+function formatHistoricalItem(item = {}) {
+  return {
+    label: item.label ?? '—',
+    salesCount: Number(item.salesCount ?? 0),
+    salesTotalMxn: Number(item.salesTotalMxn ?? 0),
+    expensesTotalMxn: Number(item.expensesTotalMxn ?? 0),
+    netTotalMxn: Number(item.netTotalMxn ?? 0),
+    averageTicketMxn: Number(item.averageTicketMxn ?? 0),
+    cashMxn: Number(item.cashMxn ?? 0),
+    cardMxn: Number(item.cardMxn ?? 0),
+    transferMxn: Number(item.transferMxn ?? 0),
+    otherMxn: Number(item.otherMxn ?? 0),
+  }
+}
+
 function buildTransactionRows({ sales = [], expenses = [] }) {
   const salesRows = sales.map((sale) => ({
     id: `sale-${sale.id ?? sale.folio}`,
@@ -315,6 +338,12 @@ export default function FinanzasApiSection({ inPanel = false }) {
     limit: 10,
     enabled: true,
   })
+  const historicalQuery = useFinanceHistoricalQuery({
+    from: dashboardRange.from,
+    to: dashboardRange.to,
+    groupBy: resolveHistoricalGroupBy(rango),
+    enabled: true,
+  })
   const todayClosingQuery = useTodayCashClosingQuery({ enabled: true })
   const cashClosingsQuery = useCashClosingsQuery({
     page: 1,
@@ -361,14 +390,16 @@ export default function FinanzasApiSection({ inPanel = false }) {
   const recentExpenses = dayExpenses.length > 0 ? dayExpenses : expensesItems.slice(0, 5)
   const cutsItems = (cashClosingsQuery.data?.items ?? []).map(formatCutHistoryItem)
   const cutDetail = cutDetailQuery.data ?? null
+  const historicalItems = (historicalQuery.data?.items ?? []).map(formatHistoricalItem)
   const hasAnyError = Boolean(
     kpisQuery.error
     || todayClosingQuery.error
     || cashClosingsQuery.error
     || expensesQuery.error
     || recentSalesQuery.error
+    || historicalQuery.error
   )
-  const hasAnyLoading = kpisQuery.isLoading && !kpisQuery.data
+  const hasAnyLoading = (kpisQuery.isLoading && !kpisQuery.data) || (historicalQuery.isLoading && !historicalQuery.data)
 
   const txRows = useMemo(
     () => buildTransactionRows({ sales: recentSales, expenses: expensesItems.length ? expensesItems : recentExpenses }),
@@ -605,25 +636,36 @@ export default function FinanzasApiSection({ inPanel = false }) {
           <div style={panel}>
             <PanelTitle
               title="Ingresos históricos"
-              sub="Serie detallada pendiente de backend."
-              right={<Badge color="yellow">Pendiente</Badge>}
+              sub={`Serie operativa ${historicalQuery.data?.groupBy ?? resolveHistoricalGroupBy(rango)} · Backend real`}
+              right={historicalItems.length > 0 ? <Badge color="blue">Real</Badge> : <Badge color="yellow">Sin datos</Badge>}
             />
-            <div style={{
-              minHeight: 120,
-              borderRadius: 10,
-              border: '1px dashed rgba(255,255,255,0.14)',
-              background: 'rgba(255,255,255,0.02)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'rgba(255,255,255,0.38)',
-              fontFamily: 'var(--font-body)',
-              fontSize: 13,
-              textAlign: 'center',
-              padding: 16,
-            }}>
-              Serie histórica detallada pendiente de backend.
-            </div>
+            {historicalItems.length > 0 ? (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {historicalItems.map((item) => {
+                  const maxSales = Math.max(...historicalItems.map((row) => Number(row.salesTotalMxn ?? 0)), 1)
+                  const width = Math.max(8, Math.round((Number(item.salesTotalMxn ?? 0) / maxSales) * 100))
+                  return (
+                    <div key={item.label} style={{ display: 'grid', gap: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontFamily: 'var(--font-body)', fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{formatMoneyMx(item.salesTotalMxn)}</span>
+                      </div>
+                      <div style={{ height: 8, background: 'var(--neutral-border)', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ width: `${width}%`, height: '100%', background: '#7B1E22', borderRadius: 999 }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)' }}>
+                        <span>{item.salesCount} ventas</span>
+                        <span>{formatMoneyMx(item.expensesTotalMxn)} gastos</span>
+                        <span>Neto {formatMoneyMx(item.netTotalMxn)}</span>
+                        <span>Ticket {formatMoneyMx(item.averageTicketMxn)}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <EmptyState>Sin serie histórica para este rango.</EmptyState>
+            )}
           </div>
 
           <div style={panel}>
