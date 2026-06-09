@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CheckCircle2, Clock3, ImageIcon, MessageCircle, ReceiptText, X } from 'lucide-react'
+import { CheckCircle2, ImageIcon, MessageCircle, ReceiptText, X } from 'lucide-react'
 import styles from './SaleConfirmationCard.module.css'
 
 function money(value) {
@@ -22,6 +22,16 @@ function translatePaymentMethod(value) {
   }[raw] || raw || 'No definido'
 }
 
+function formatDateTime(value) {
+  if (!value) return 'N/D'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return new Intl.DateTimeFormat('es-MX', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}
+
 export default function SaleConfirmationCard({
   folio,
   paymentMethod,
@@ -30,7 +40,7 @@ export default function SaleConfirmationCard({
   taxAmount,
   totalAmount,
   publicTicketImageUrl,
-  ticketUrl,
+  publicTicketUrl,
   onViewTicket,
   onSendWhatsApp,
   onClose,
@@ -38,16 +48,31 @@ export default function SaleConfirmationCard({
   const [phone, setPhone] = useState('')
   const [error, setError] = useState('')
 
+  const resolvedPublicUrl = useMemo(() => publicTicketImageUrl || publicTicketUrl || '', [publicTicketImageUrl, publicTicketUrl])
+
   const shareHint = useMemo(() => {
-    if (publicTicketImageUrl) return 'Usa imagen pública del ticket para compartir por WhatsApp Web.'
-    if (ticketUrl) return 'Sin imagen pública. Ticket puede requerir sesión.'
+    if (publicTicketImageUrl) return 'ticket para compartir por WhatsApp Web.'
+    if (publicTicketUrl) return 'Sin imagen público. Ticket público disponible.'
     return 'No hay link público de ticket disponible.'
-  }, [publicTicketImageUrl, ticketUrl])
+  }, [publicTicketImageUrl, publicTicketUrl])
+
+  function handleViewTicket() {
+    if (!resolvedPublicUrl) {
+      setError('No hay link público disponible para este ticket.')
+      return
+    }
+    setError('')
+    onViewTicket?.()
+  }
 
   function handleShare() {
     const normalized = String(phone ?? '').replace(/[^\d]/g, '')
     if (!normalized) {
       setError('Ingresa número telefónico.')
+      return
+    }
+    if (!resolvedPublicUrl) {
+      setError('No hay link público disponible para enviar el ticket por WhatsApp.')
       return
     }
     setError('')
@@ -57,14 +82,14 @@ export default function SaleConfirmationCard({
   return (
     <div className={styles.card} role="dialog" aria-modal="true" aria-label="Venta completada">
       <button className={styles.closeButton} type="button" onClick={onClose} aria-label="Cerrar">
-        <X size={16} />
+        <X size={17} />
       </button>
 
       <div className={styles.header}>
-        <div className={styles.iconWrap}>
+        <div className={styles.iconWrap} aria-hidden="true">
           <CheckCircle2 size={28} />
         </div>
-        <div>
+        <div className={styles.headerText}>
           <div className={styles.kicker}>Venta completada</div>
           <h2 className={styles.title}>Ticket POS listo</h2>
         </div>
@@ -81,17 +106,19 @@ export default function SaleConfirmationCard({
         </div>
         <div className={styles.summaryItem}>
           <span>Fecha / hora</span>
-          <strong>{dateTime || 'N/D'}</strong>
+          <strong>{formatDateTime(dateTime)}</strong>
         </div>
       </div>
 
-      {publicTicketImageUrl && (
+      {resolvedPublicUrl && (
         <div className={styles.preview}>
           <div className={styles.previewLabel}>
             <ImageIcon size={14} />
-            Vista pública del ticket
+            Vista  del ticket
           </div>
-          <img src={publicTicketImageUrl} alt="Ticket público" className={styles.previewImage} />
+          <div className={styles.previewFrame}>
+            <img src={resolvedPublicUrl} alt="Ticket público" className={styles.previewImage} />
+          </div>
         </div>
       )}
 
@@ -104,14 +131,14 @@ export default function SaleConfirmationCard({
           <span>IVA 16%</span>
           <strong>{money(taxAmount)}</strong>
         </div>
-        <div className={`${styles.amountRow} ${styles.amountRowTotal}`}>
+        <div className={styles.amountRow + ' ' + styles.amountRowTotal}>
           <span>Total</span>
           <strong>{money(totalAmount)}</strong>
         </div>
       </div>
 
       <div className={styles.actions}>
-        <button className={styles.primaryButton} type="button" onClick={onViewTicket}>
+        <button className={styles.primaryButton} type="button" onClick={handleViewTicket}>
           <ReceiptText size={16} />
           Ver ticket
         </button>

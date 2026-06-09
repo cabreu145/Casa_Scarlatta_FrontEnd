@@ -1015,12 +1015,12 @@
 /* ── FORM ──────────────────────────────────────────────────────────────────── */
 .formGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .formGroup { display: flex; flex-direction: column; gap: 6px; }
-.formLabel { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.formLabel { font-size: 11px; font-weight: 500; color: rgba(255, 255, 255, 0.72); text-transform: uppercase; letter-spacing: 0.1em; }
 
 .formInput {
   padding: 10px 14px;
-  background: var(--dark-3);
-  border: 1px solid var(--muted-2);
+  background: #241418;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   color: #fff;
   font-family: var(--font-body);
@@ -1029,14 +1029,16 @@
   transition: border-color 0.2s;
 }
 
-.formInput:focus { border-color: var(--blush); }
+.formInput::placeholder { color: rgba(255, 255, 255, 0.42); }
+
+.formInput:focus { border-color: var(--blush); background: #2b171c; }
 
 .formInput[rows] { min-height: 70px; }
 
 .formSelect {
   padding: 10px 14px;
-  background: var(--dark-3);
-  border: 1px solid var(--muted-2);
+  background: #241418;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   color: #fff;
   font-family: var(--font-body);
@@ -1060,14 +1062,16 @@
 .modalOverlay.open { display: flex; }
 
 .modal {
-  background: var(--dark-2);
-  border: 1px solid var(--muted-2);
+  background: #1a0f13;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius);
   padding: 28px;
   width: 560px;
   max-width: 90vw;
-  max-height: 90vh;
+  max-height: calc(100vh - 32px);
   overflow-y: auto;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.7);
+  backdrop-filter: none;
 }
 
 .modalHeader {
@@ -1078,6 +1082,30 @@
 }
 
 .modalTitle { font-family: var(--font-display); font-size: 24px; font-style: italic; color: #fff; }
+
+.modalBody {
+  display: grid;
+  gap: 14px;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.modalSm {
+  width: 520px;
+}
+
+.modalLg {
+  width: 720px;
+}
+
+.formGroupFull {
+  grid-column: 1 / -1;
+}
 
 .modalClose {
   width: 32px; height: 32px;

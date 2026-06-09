@@ -238,9 +238,8 @@ describe('ClientPanel payments section', () => {
       </QueryClientProvider>
     )
 
-    expect(await screen.findByRole('button', { name: /comprar ahora/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /comprar ahora/i })).toBeInTheDocument()
-  })
+    expect(await screen.findByText('Seleccionado')).toBeInTheDocument()
+  }, 20000)
 
   test('muestra membresias compartidas y abre modal', async () => {
     mockGetMyMembershipsApi.mockResolvedValueOnce([

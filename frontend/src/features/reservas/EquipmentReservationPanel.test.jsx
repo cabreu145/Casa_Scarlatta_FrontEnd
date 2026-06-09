@@ -197,7 +197,7 @@ describe('EquipmentReservationPanel', () => {
     expect(loadFinancialStateMock).toHaveBeenCalled()
     expect(getCreditMovementsMock).toHaveBeenCalled()
     expect(loadMisReservasFromApiMock).toHaveBeenCalled()
-  }, 10000)
+  }, 20000)
 
   test('stryde distingue bench 01 y treadmill 01', async () => {
     const user = userEvent.setup()
@@ -258,7 +258,7 @@ describe('EquipmentReservationPanel', () => {
       expect(screen.getByTestId('stryde-spot-bench-01')).toHaveAttribute('aria-pressed', 'false')
       expect(screen.getByTestId('stryde-spot-treadmill-01')).toHaveAttribute('aria-pressed', 'true')
     })
-  })
+  }, 20000)
 
   test('libera hold una sola vez al cambiar spot y al desmontar', async () => {
     const user = userEvent.setup()

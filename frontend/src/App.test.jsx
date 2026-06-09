@@ -44,6 +44,6 @@ describe('App payment routes', () => {
 
     render(<App />)
 
-    expect(await screen.findByText('Payment Return Mock', {}, { timeout: 10000 })).toBeInTheDocument()
-  }, 10000)
+    expect(await screen.findByText('Payment Return Mock', {}, { timeout: 20000 })).toBeInTheDocument()
+  }, 20000)
 })

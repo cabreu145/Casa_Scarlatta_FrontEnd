@@ -116,5 +116,5 @@ export function mapBackendSalesToFrontend(items = []) {
 }
 
 export function resolvePublicTicketImageUrl(sale = {}) {
-  return sale.publicTicketImageUrl ?? sale.public_ticket_image_url ?? sale.ticketImageUrl ?? sale.ticket_image_url ?? null
+  return sale.publicTicketImageUrl ?? sale.public_ticket_image_url ?? null
 }

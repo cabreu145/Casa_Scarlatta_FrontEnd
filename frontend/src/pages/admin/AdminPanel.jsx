@@ -6,6 +6,7 @@ import CoachesSection from './sections/CoachesSection'
 import ClasesSection from './sections/ClasesSection'
 import PaquetesSection from './sections/PaquetesSection'
 import PuntoDeVentaSection from './sections/PuntoDeVentaSection'
+import PosEntityModal from './components/PosEntityModal'
 import UsuariosSection from './sections/UsuariosSection'
 import ActividadSection from './sections/ActividadSection'
 import ConfiguracionSection from './sections/ConfiguracionSection'
@@ -941,6 +942,10 @@ export default function AdminPanel() {
     const productCategoryId = prodForm.categoryId
       || (productCategoriesQuery.data?.items ?? []).find((category) => String(category.name ?? category.nombre ?? '') === String(prodForm.categoria ?? ''))?.id
       || null
+    if (useApiPos && !productCategoryId) {
+      toast.error('Selecciona una categoría válida.')
+      return
+    }
     const payload = buildPosProductApiPayload({
       nombre: prodForm.nombre,
       categoria: prodForm.categoria,
@@ -2008,11 +2013,19 @@ export default function AdminPanel() {
           className={`${styles.modalOverlay} ${styles.open}`}
           onClick={(e) => { if (e.target === e.currentTarget) setProdModal(null) }}
         >
-          <div className={styles.modal}>
-            <div className={styles.modalHeader}>
-              <div className={styles.modalTitle}>{prodModal === 'nuevo' ? 'Agregar producto' : 'Editar producto'}</div>
-              <button className={styles.modalClose} onClick={() => setProdModal(null)}>×</button>
-            </div>
+          <PosEntityModal
+            title={prodModal === 'nuevo' ? 'Agregar producto' : 'Editar producto'}
+            ariaLabel={prodModal === 'nuevo' ? 'Agregar producto' : 'Editar producto'}
+            onClose={() => setProdModal(null)}
+            footer={(
+              <>
+                <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => setProdModal(null)}>Cancelar</button>
+                <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={handleSaveProducto}>
+                  {prodModal === 'nuevo' ? 'Agregar' : 'Guardar cambios'}
+                </button>
+              </>
+            )}
+          >
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Nombre</label>
@@ -2022,26 +2035,34 @@ export default function AdminPanel() {
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Categoría</label>
                 {useApiPos ? (
-                  <select
-                    className={styles.formSelect}
-                    value={String(prodForm.categoryId ?? '')}
-                    onChange={(e) => {
-                      const selectedId = e.target.value
-                      const selectedCategory = (productCategoriesQuery.data?.items ?? []).find((category) => String(category.id) === String(selectedId))
-                      setProdForm((f) => ({
-                        ...f,
-                        categoryId: selectedId,
-                        categoria: selectedCategory?.name ?? selectedCategory?.nombre ?? '',
-                      }))
-                    }}
-                  >
-                    <option value="">Selecciona categoría</option>
-                    {(productCategoriesQuery.data?.items ?? []).map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name ?? category.nombre}
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      className={styles.formSelect}
+                      value={String(prodForm.categoryId ?? '')}
+                      onChange={(e) => {
+                        const selectedId = e.target.value
+                        const selectedCategory = (productCategoriesQuery.data?.items ?? []).find((category) => String(category.id) === String(selectedId))
+                        setProdForm((f) => ({
+                          ...f,
+                          categoryId: selectedId,
+                          categoria: selectedCategory?.name ?? selectedCategory?.nombre ?? '',
+                        }))
+                      }}
+                      disabled={(productCategoriesQuery.data?.items ?? []).length === 0}
+                    >
+                      <option value="">Selecciona categoría</option>
+                      {(productCategoriesQuery.data?.items ?? []).map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name ?? category.nombre}
+                        </option>
+                      ))}
+                    </select>
+                    {!(productCategoriesQuery.data?.items ?? []).length && (
+                      <div className={`${styles.formGroupFull}`} style={{ fontSize: 12, color: 'var(--muted)' }}>
+                        Crea una categoría antes de registrar productos.
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <select className={styles.formSelect} value={prodForm.categoria}
                     onChange={(e) => setProdForm((f) => ({ ...f, categoria: e.target.value }))}>
@@ -2065,13 +2086,7 @@ export default function AdminPanel() {
                   onChange={(e) => setProdForm((f) => ({ ...f, emoji: e.target.value }))} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' }}>
-              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setProdModal(null)}>Cancelar</button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleSaveProducto}>
-                {prodModal === 'nuevo' ? 'Agregar' : 'Guardar cambios'}
-              </button>
-            </div>
-          </div>
+          </PosEntityModal>
         </div>
       )}
 

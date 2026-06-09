@@ -65,11 +65,11 @@ describe('PaquetesSection', () => {
     expect(setModalEditPaquete).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }))
     expect(setEditPaqueteForm).toHaveBeenCalledWith(expect.objectContaining({ nombre: '' }))
 
-    await user.click(screen.getByRole('button', { name: /Inactivar/i }))
-    expect(screen.getAllByText('Inactivar paquete')).toHaveLength(2)
+    await user.click(screen.getByRole('button', { name: /Eliminar/i }))
+    expect(screen.getAllByText('Eliminar paquete')).toHaveLength(2)
 
-    await user.click(screen.getByRole('button', { name: 'Inactivar paquete' }))
+    await user.click(screen.getByRole('button', { name: 'Eliminar paquete' }))
     expect(eliminarPaquete).toHaveBeenCalledWith(1)
-    expect(screen.queryByText('Inactivar paquete')).not.toBeInTheDocument()
+    expect(screen.queryByText('Eliminar paquete')).not.toBeInTheDocument()
   })
 })

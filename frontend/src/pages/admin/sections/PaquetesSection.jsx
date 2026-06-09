@@ -114,7 +114,7 @@ export default function PaquetesSection({
                     setPackageToInactivate(p)
                   }}
                 >
-                  🚫 Inactivar
+                  🚫 Eliminar
                 </button>
                 <button
                   className={`${styles.btn} ${styles.btnGhost}`}
@@ -168,7 +168,7 @@ export default function PaquetesSection({
           >
             <div className={styles.modal} style={{ maxWidth: 520 }}>
               <div className={styles.modalHeader}>
-                <div className={styles.modalTitle}>Inactivar paquete</div>
+                <div className={styles.modalTitle}>Eliminar paquete</div>
                 <button className={styles.modalClose} onClick={() => setPackageToInactivate(null)}>×</button>
               </div>
               <div style={{ padding: '8px 0 18px', color: 'var(--muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
@@ -187,7 +187,7 @@ export default function PaquetesSection({
                     await eliminarPaquete?.(pkg.id)
                   }}
                 >
-                  Inactivar paquete
+                  Eliminar paquete
                 </button>
               </div>
             </div>
@@ -244,7 +244,7 @@ export default function PaquetesSection({
                 style={{ fontSize: 11, padding: '6px', color: '#ef4444' }}
                 onClick={() => setPackageToInactivate(p)}
               >
-                🚫 Inactivar
+                🚫 Eliminar
               </button>
               {!p.destacado && (
                 <button
@@ -320,7 +320,7 @@ export default function PaquetesSection({
         >
           <div className={styles.modal} style={{ maxWidth: 520 }}>
             <div className={styles.modalHeader}>
-              <div className={styles.modalTitle}>Inactivar paquete</div>
+              <div className={styles.modalTitle}>Eliminar paquete</div>
               <button className={styles.modalClose} onClick={() => setPackageToInactivate(null)}>×</button>
             </div>
             <div style={{ padding: '8px 0 18px', color: 'var(--muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
@@ -339,7 +339,7 @@ export default function PaquetesSection({
                   await eliminarPaquete?.(pkg.id)
                 }}
               >
-                Inactivar paquete
+                Eliminar paquete
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+﻿import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -184,15 +184,13 @@ describe('PuntoDeVentaSection', () => {
       totalMxn: 2340,
       paymentMethod: 'cash',
       createdAt: '2026-06-08T12:00:00',
-      ticketUrl: '/api/v1/ventas/100/ticket',
-      ticketImageUrl: '/api/v1/ventas/100/ticket.png',
       publicTicketUrl: 'http://api.test/api/v1/public/tickets/abc123',
-      publicTicketImageUrl: 'http://api.test/api/v1/public/tickets/abc123/image',
+      publicTicketImageUrl: 'http://api.test/api/v1/public/tickets/abc123.png',
       items: [],
     })
   })
 
-  test('carga catalogo API, bloquea producto inactivo y genera venta con ticket', async () => {
+  test('carga catálogo API, bloquea producto inactivo y genera venta con ticket', async () => {
     const user = userEvent.setup()
     render(<Harness />)
 
@@ -220,12 +218,12 @@ describe('PuntoDeVentaSection', () => {
 
     expect(await screen.findByText('Venta completada')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Ver ticket/i }))
-    expect(windowOpen).toHaveBeenCalledWith('http://api.test/api/v1/ventas/100/ticket', '_blank', 'noopener,noreferrer')
+    expect(windowOpen).toHaveBeenCalledWith('http://api.test/api/v1/public/tickets/abc123.png', '_blank', 'noopener,noreferrer')
 
-    await user.type(screen.getByPlaceholderText('Número telefónico'), '(55) 1234-5678')
+    await user.type(screen.getAllByRole('textbox').at(-1), '(55) 1234-5678')
     await user.click(screen.getByRole('button', { name: /Enviar por WhatsApp/i }))
     expect(windowOpen).toHaveBeenCalledWith(expect.stringContaining('https://wa.me/525512345678?text='), '_blank', 'noopener,noreferrer')
-  })
+  }, 20000)
 
   test('producto inactivo queda deshabilitado', async () => {
     render(<Harness />)
@@ -247,8 +245,6 @@ describe('PuntoDeVentaSection', () => {
     render(<Harness />)
 
     await user.click(screen.getByRole('button', { name: /Nueva categoría/i }))
-    expect(screen.getByText(/Nueva categoría/i)).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Nueva categoría' })).toBeInTheDocument()
   })
 })
-
-

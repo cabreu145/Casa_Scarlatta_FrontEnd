@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import styles from '../AdminPanel.module.css'
 import SaleConfirmationCard from '@/components/ui/SaleConfirmationCard'
+import PosEntityModal from '../components/PosEntityModal'
 import {
   formatPackageCreditsLabel,
   formatPackagePriceLabel,
@@ -331,6 +332,19 @@ export default function PuntoDeVentaSection({
     setCategoryForm({ name: '', description: '', status: 'active' })
   }
 
+  function openProductModal() {
+    const firstCategory = apiCategories[0] ?? null
+    setProdModal('nuevo')
+    setProdForm({
+      nombre: '',
+      categoria: firstCategory?.name ?? firstCategory?.nombre ?? '',
+      categoryId: firstCategory?.id ?? '',
+      precio: '',
+      stock: '',
+      emoji: '',
+    })
+  }
+
   async function saveCategory() {
     try {
       const payload = {
@@ -398,9 +412,7 @@ export default function PuntoDeVentaSection({
                   <option value="all">Todos</option>
                 </select>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-                Productos y paquetes vienen de API. Carrito queda local.
-              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'var(--font-body)' }} />
             </div>
 
             {posProductsQuery.isLoading && <div style={{ color: 'var(--muted)', marginBottom: 10 }}>Cargando productos...</div>}
@@ -411,10 +423,25 @@ export default function PuntoDeVentaSection({
             <div className={styles.card} style={{ marginBottom: 20 }}>
               <div className={styles.cardHeader}>
                 <div className={styles.cardTitle}>Categorías POS</div>
-                <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => openCategoryModal()}>
-                  Nueva categoría
-                </button>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <button
+                    className={`${styles.btn} ${styles.btnGhost}`}
+                    type="button"
+                    onClick={openProductModal}
+                    disabled={!apiCategories.length}
+                  >
+                    Nuevo producto
+                  </button>
+                  <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => openCategoryModal()}>
+                    Nueva categoría
+                  </button>
+                </div>
               </div>
+              {!apiCategories.length && (
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
+                  Crea una categoría antes de registrar productos.
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 10, marginBottom: 12 }}>
                 <input
                   className={styles.searchInput}
@@ -777,17 +804,17 @@ export default function PuntoDeVentaSection({
                 taxAmount={saleResult.taxMxn ?? 0}
                 totalAmount={saleResult.totalMxn}
                 publicTicketImageUrl={saleResult.publicTicketImageUrl}
-                ticketUrl={saleResult.ticketUrl}
+                publicTicketUrl={saleResult.publicTicketUrl}
                 onViewTicket={() => {
-                  const url = resolveUrl(saleResult.ticketUrl)
-                  if (!url) return toast.error('Ticket no disponible')
+                  const url = resolveUrl(saleResult.publicTicketImageUrl || saleResult.publicTicketUrl)
+                  if (!url) return toast.error('No hay link público disponible para este ticket.')
                   window.open(url, '_blank', 'noopener,noreferrer')
                 }}
                 onSendWhatsApp={(phone) => {
-                  const ticketUrl = saleResult?.publicTicketImageUrl || saleResult?.publicTicketUrl || saleResult?.ticketUrl
+                  const ticketUrl = saleResult?.publicTicketImageUrl || saleResult?.publicTicketUrl
                   const resolvedTicket = resolveUrl(ticketUrl)
                   if (!resolvedTicket) {
-                    toast.error('No hay link p?blico de ticket disponible.')
+                    toast.error('No hay link público disponible para enviar el ticket por WhatsApp.')
                     return
                   }
                   const normalizedPhone = String(phone ?? '').replace(/[^\d]/g, '')
@@ -803,24 +830,20 @@ export default function PuntoDeVentaSection({
         )}
         {categoryModal && createPortal(
           <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.72)',
-              zIndex: 10000,
-              display: 'grid',
-              placeItems: 'center',
-              padding: 20,
-            }}
+            className={`${styles.modalOverlay} ${styles.open}`}
             onClick={() => setCategoryModal(null)}
           >
-            <div
-              style={{ background: '#1E1014', borderRadius: 16, padding: 24, width: '100%', maxWidth: 480, border: '1px solid #3C2A2E', display: 'grid', gap: 12 }}
-              onClick={(event) => event.stopPropagation()}
+            <PosEntityModal
+              title={categoryModal === 'nuevo' ? 'Nueva categoría' : 'Editar categoría'}
+              ariaLabel={categoryModal === 'nuevo' ? 'Nueva categoría' : 'Editar categoría'}
+              onClose={() => setCategoryModal(null)}
+              footer={(
+                <>
+                  <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => setCategoryModal(null)}>Cancelar</button>
+                  <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={saveCategory}>Guardar</button>
+                </>
+              )}
             >
-              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, color: 'var(--text-primary)', fontSize: 20, margin: 0 }}>
-                {categoryModal === 'nuevo' ? 'Nueva categor?a' : 'Editar categor?a'}
-              </h2>
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Nombre</label>
@@ -834,15 +857,11 @@ export default function PuntoDeVentaSection({
                   </select>
                 </div>
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Descripci?n</label>
+              <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
+                <label className={styles.formLabel}>Descripción</label>
                 <textarea className={styles.formInput} rows={3} value={categoryForm.description} onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))} />
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => setCategoryModal(null)}>Cancelar</button>
-                <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={saveCategory}>Guardar</button>
-              </div>
-            </div>
+            </PosEntityModal>
           </div>,
           document.body
         )}      </>

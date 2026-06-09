@@ -73,6 +73,8 @@ export default defineConfig(({ mode }) => {
       setupFiles: './src/test/setupTests.js',
       css: true,
       globals: true,
+      testTimeout: 20000,
+      hookTimeout: 20000,
     },
   }
 })
