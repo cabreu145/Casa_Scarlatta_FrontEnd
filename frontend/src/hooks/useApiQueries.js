@@ -42,6 +42,7 @@ import {
   getTopClassesReport,
   getUsersReport,
 } from '@/services/reportsApiService'
+import { getOccurrenceRosterApi } from '@/services/reservasApiService'
 import {
   adjustClientCreditsApi,
   assignClientPackageApi,
@@ -116,6 +117,15 @@ export function useMyPaymentsQuery({ page = 1, pageSize = 10, status, enabled = 
     queryFn: () => getMyPaymentsApi({ page, pageSize, status }),
     enabled,
     placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useOccurrenceRosterQuery(occurrenceId, { includeCanceled = false, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, includeCanceled),
+    queryFn: () => getOccurrenceRosterApi(occurrenceId, { includeCanceled }),
+    enabled: Boolean(enabled && occurrenceId),
     ...shortDefaults,
   })
 }

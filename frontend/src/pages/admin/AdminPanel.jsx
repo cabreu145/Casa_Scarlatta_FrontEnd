@@ -56,6 +56,9 @@ import { buildClaseApiPayload } from './classApiPayload'
 import { buildCoachApiPayload, validateCoachApiPayload } from './coachApiPayload'
 import { buildPackageApiPayload, validatePackageApiPayload } from './packageApiPayload'
 import { buildPosProductApiPayload, validatePosProductApiPayload } from './posApiPayload'
+import {
+  buildClientEnrollmentLabel,
+} from './adminClassOccurrenceUtils'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { paginateArray } from '@/utils/paginationUtils'
 import { getClassDisplayTime } from '@/utils/classSchedule'
@@ -74,6 +77,7 @@ import {
   useAdminClientsQuery,
   useCreateProductMutation,
   useDeleteProductMutation,
+  useOccurrenceRosterQuery,
   useProductCategoriesQuery,
   useUpdateProductMutation,
 } from '@/hooks/useApiQueries'
@@ -198,11 +202,13 @@ export default function AdminPanel() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
+  const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
   const useApiCoaches = useApiClasses
   const useApiClients = import.meta.env.VITE_USE_API_AUTH === 'true'
   const useApiPackages = useApiClients
   const useApiExpenses = useApiClients
   const useApiPos = useApiClasses || useApiClients
+  const useApiMode = useApiClasses || useApiClients || useApiPackages || useApiExpenses || useApiPos || useApiCoaches
   const [apiCoaches, setApiCoaches] = useState([])
   const [apiCoachList, setApiCoachList] = useState([])
   const [apiCoachesLoading, setApiCoachesLoading] = useState(false)
@@ -383,6 +389,11 @@ export default function AdminPanel() {
   const modalVerUsuarioResolved = useApiClients && apiClientDetailQuery.data
     ? apiClientDetailQuery.data
     : modalVerUsuario
+  const modalAlumnosOccurrenceId = modalAlumnosClase?.occurrenceId ?? modalAlumnosClase?.occurrence_id ?? null
+  const occurrenceRosterQuery = useOccurrenceRosterQuery(modalAlumnosOccurrenceId, {
+    includeCanceled: false,
+    enabled: useApiClasses && Boolean(modalAlumnosOccurrenceId && modalAlumnosClase),
+  })
   // Usuario — asignar paquete desde modal Ver
   const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
   const [compartirAdminData, setCompartirAdminData] = useState({ activo: false, participantes: [] })
@@ -2430,40 +2441,83 @@ export default function AdminPanel() {
       {/* ── ALUMNOS DE CLASE ── */}
       {modalAlumnosClase && (() => {
         const cls      = modalAlumnosClase
-        const inscritos = todasReservas.filter(r =>
-          r.claseId === cls.id &&
-          (r.estado === 'confirmada' || r.estado === 'no_asistio')
-        )
-        const inscrUser = inscritos.map(r => ({
+        const occurrenceId = cls.occurrenceId ?? cls.occurrence_id ?? null
+        const rosterStudents = useApiClasses
+          ? (occurrenceRosterQuery.data?.students ?? [])
+          : todasReservas.filter((r) => {
+              const matchesOccurrence = occurrenceId
+                ? String(r.occurrenceId ?? '') === String(occurrenceId)
+                : String(r.claseId ?? '') === String(cls.id)
+              return matchesOccurrence && (r.estado === 'confirmada' || r.estado === 'no_asistio')
+            })
+        const inscritos = rosterStudents.map((r) => ({
           ...r,
-          nombreUsuario: usuarios.find(u => u.id === r.userId)?.nombre ?? `Usuario #${r.userId}`,
+          nombreUsuario:
+            r.name ??
+            r.nombreUsuario ??
+            clientsForAdmin.find((client) => Number(client.id) === Number(r.userId ?? r.user_id))?.name ??
+            clientsForAdmin.find((client) => Number(client.id) === Number(r.userId ?? r.user_id))?.nombre ??
+            usuarios.find((u) => u.id === (r.userId ?? r.user_id))?.nombre ??
+            `Usuario #${r.userId ?? r.user_id}`,
         }))
-        // Usuarios que NO están inscritos ya
-        const idsInscritos = new Set(inscritos.map(r => r.userId))
-        const disponibles  = usuarios.filter(u => !idsInscritos.has(u.id) && u.rol === 'cliente')
+        const idsInscritos = new Set(inscritos.map((r) => Number(r.userId ?? r.user_id)))
+        const disponibles = useApiClients
+          ? (clientsForAdmin ?? []).filter((u) => !idsInscritos.has(Number(u.id)) && String(u.status ?? u.estado ?? 'active') === 'active')
+          : usuarios.filter((u) => !idsInscritos.has(u.id) && u.rol === 'cliente')
+        const rosterLoading = useApiClasses ? occurrenceRosterQuery.isLoading : false
+        const rosterError = useApiClasses ? occurrenceRosterQuery.error : null
+        const rosterErrorMessage = rosterError
+          ? (rosterError?.status === 403
+            ? 'No tienes permisos para ver alumnos de esta ocurrencia.'
+            : rosterError?.status === 404
+              ? 'Ocurrencia no encontrada.'
+              : rosterError?.status === 401
+                ? 'Sesión expirada o no autenticado.'
+                : (rosterError?.message ?? 'No se pudo cargar roster de alumnos.')
+          )
+          : ''
+        const dayLabel = cls.dia ?? cls.discipline ?? 'Sin día'
+        const timeLabel = getClassDisplayTime(cls)
+        const rosterCount = useApiClasses
+          ? (occurrenceRosterQuery.data?.capacityCurrent ?? inscritos.length ?? 0)
+          : (cls.cupoActual ?? inscritos.length ?? 0)
 
         async function handleCancelar(r) {
           const res = await cancelarReservaService(r.id, r.userId)
-          if (res.ok) toast.success(`Reserva de ${r.nombreUsuario} cancelada`)
+          if (res.ok) {
+            toast.success(`Reserva de ${r.nombreUsuario} cancelada`)
+            if (useApiMode && occurrenceId) {
+              await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
+            }
+          }
           else toast.error(res.error)
         }
 
         async function handleAgregar() {
           if (!alumnoAgregarId) return
           const userId = Number(alumnoAgregarId)
-          const usuario = usuarios.find(u => u.id === userId)
-          // Admin override: si el usuario no tiene créditos, igual lo metemos directo
-          const res = await reservarClaseService(userId, cls.id)
+          const usuario = useApiClients
+            ? (clientsForAdmin ?? []).find((u) => Number(u.id) === userId)
+            : usuarios.find(u => u.id === userId)
+          if (useApiClasses && !occurrenceId) {
+            toast.error('Selecciona una fecha de ocurrencia para inscribir alumno')
+            return
+          }
+          const res = await reservarClaseService(userId, cls.id, null, occurrenceId)
           if (res.ok) {
-            toast.success(`${usuario?.nombre} inscrito en ${cls.nombre}`)
+            toast.success(`${usuario?.nombre ?? usuario?.name ?? 'Cliente'} inscrito en ${cls.nombre}`)
             setAlumnoAgregarId('')
-          } else if (res.error === 'Sin créditos disponibles') {
-            // Force: agregar sin descontar crédito
+            if (useApiMode && occurrenceId) {
+              await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
+              await queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
+            }
+          } else if (res.error === 'Sin créditos disponibles' && !useApiReservations) {
             const { agregarReserva } = useReservasStore.getState()
             const { actualizarCupo } = useClasesStore.getState()
             agregarReserva({
               userId,
               claseId:     cls.id,
+              occurrenceId,
               claseNombre: cls.nombre,
               claseHora:   getClassDisplayTime(cls),
               claseDia:    cls.dia,
@@ -2474,8 +2528,11 @@ export default function AdminPanel() {
               fecha:       cls.fecha ?? new Date().toISOString().split('T')[0],
             })
             actualizarCupo(cls.id, 1)
-            toast.success(`${usuario?.nombre} inscrito manualmente (sin créditos descontados)`)
+            toast.success(`${usuario?.nombre ?? usuario?.name ?? 'Cliente'} inscrito manualmente (sin créditos descontados)`)
             setAlumnoAgregarId('')
+            if (useApiMode && occurrenceId) {
+              await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
+            }
           } else {
             toast.error(res.error)
           }
@@ -2491,7 +2548,7 @@ export default function AdminPanel() {
                 <div>
                   <div className={styles.modalTitle}>Alumnos — {cls.nombre}</div>
                   <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--font-body)' }}>
-                    {cls.dia} · {getClassDisplayTime(cls)} · {cls.cupoActual}/{cls.cupoMax} inscritos
+                    {dayLabel} · {timeLabel} · {rosterCount}/{cls.cupoMax} inscritos
                   </div>
                 </div>
                 <button className={styles.modalClose} onClick={() => setModalAlumnosClase(null)}>×</button>
@@ -2499,49 +2556,85 @@ export default function AdminPanel() {
 
               {/* Lista de inscritos */}
               <div style={{ marginBottom: 20 }}>
-                {inscrUser.length === 0 ? (
+                {rosterLoading ? (
                   <p style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px 0', fontSize: 13, fontFamily: 'var(--font-body)' }}>
-                    Nadie inscrito aún
+                    Cargando roster de alumnos...
+                  </p>
+                ) : rosterErrorMessage ? (
+                  <p style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px 0', fontSize: 13, fontFamily: 'var(--font-body)' }}>
+                    {rosterErrorMessage}
+                  </p>
+                ) : inscritos.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px 0', fontSize: 13, fontFamily: 'var(--font-body)' }}>
+                    {useApiClasses && occurrenceId
+                      ? 'Listado de alumnos pendiente de endpoint por ocurrencia.'
+                      : 'Nadie inscrito aún'}
                   </p>
                 ) : (
                   <table className={styles.table} style={{ marginBottom: 0 }}>
                     <thead>
                       <tr>
                         <th>Alumno</th>
+                        <th>Detalle</th>
                         <th>Estado</th>
+                        <th>Asiento</th>
                         <th style={{ textAlign: 'right' }}>Acción</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {inscrUser.map(r => (
-                        <tr key={r.id}>
+                      {inscritos.map(r => (
+                        <tr key={r.reservationId ?? r.id}>
                           <td style={{ fontWeight: 500 }}>{r.nombreUsuario}</td>
                           <td>
-                            {r.estado === 'no_asistio'
+                            <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                              {r.email ?? r.phone ?? `Usuario #${r.userId ?? r.user_id}`}
+                            </div>
+                          </td>
+                          <td>
+                            {String(r.status ?? r.estado ?? '').toLowerCase() === 'no_asistio'
                               ? <span className={`${styles.miniTag} ${styles.tagYellow}`}>No asistió</span>
-                              : <span className={`${styles.miniTag} ${styles.tagGreen}`}>Confirmado</span>
+                              : String(r.status ?? r.estado ?? '').toLowerCase() === 'completada'
+                                ? <span className={`${styles.miniTag} ${styles.tagBlue}`}>Completado</span>
+                                : <span className={`${styles.miniTag} ${styles.tagGreen}`}>Confirmado</span>
                             }
+                          </td>
+                          <td>
+                            <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                              {r.equipmentLabel ?? r.equipment_label ?? r.equipmentType ?? r.equipment_type
+                                ? `${r.equipmentLabel ?? r.equipment_label ?? r.equipmentType ?? r.equipment_type}${r.spotLabel ?? r.spot_label ? ` ${r.spotLabel ?? r.spot_label}` : ''}`
+                                : (r.spotLabel ?? r.spot_label ?? '—')}
+                            </div>
                           </td>
                           <td style={{ textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                              {r.estado === 'confirmada' && (
+                              {String(r.status ?? r.estado ?? '').toLowerCase() === 'confirmada' && (
                                 <button
                                   className={`${styles.btn} ${styles.btnGhost}`}
                                   style={{ fontSize: 11, padding: '4px 10px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.3)' }}
                                   onClick={async () => {
-                                    const res = await marcarNoAsistio(r.id)
-                                    if (res.ok) toast.success(`${r.nombreUsuario} marcado como no asistió`)
+                                    const res = await marcarNoAsistio(r.reservationId ?? r.id)
+                                    if (res.ok) {
+                                      toast.success(`${r.nombreUsuario} marcado como no asistió`)
+                                      if (useApiMode && occurrenceId) {
+                                        await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
+                                      }
+                                    }
                                     else toast.error(res.error)
                                   }}
                                 >
                                   Marcar ausente
                                 </button>
                               )}
-                              {r.estado === 'confirmada' && (
+                              {String(r.status ?? r.estado ?? '').toLowerCase() === 'confirmada' && (
                                 <button
                                   className={`${styles.btn} ${styles.btnGhost}`}
                                   style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
-                                  onClick={() => handleCancelar(r)}
+                                  onClick={() => handleCancelar({
+                                    ...r,
+                                    id: r.reservationId ?? r.id,
+                                    userId: r.userId ?? r.user_id,
+                                    nombreUsuario: r.nombreUsuario,
+                                  })}
                                 >
                                   Cancelar reserva
                                 </button>
@@ -2636,7 +2729,9 @@ export default function AdminPanel() {
                     <option value="">Seleccionar usuario…</option>
                     {disponibles.map(u => (
                       <option key={u.id} value={u.id}>
-                        {u.nombre} {u.paquete ? `· ${u.paquete}` : '· Sin paquete'}
+                        {useApiClients
+                          ? buildClientEnrollmentLabel(u)
+                          : `${u.nombre} ${u.paquete ? `· ${u.paquete}` : '· Sin paquete'}`}
                       </option>
                     ))}
                   </select>
@@ -2644,7 +2739,7 @@ export default function AdminPanel() {
                     className={`${styles.btn} ${styles.btnSecondary}`}
                     style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
                     onClick={handleAgregar}
-                    disabled={!alumnoAgregarId}
+                    disabled={!alumnoAgregarId || (useApiClasses && !occurrenceId)}
                   >
                     + Inscribir
                   </button>
@@ -2652,17 +2747,23 @@ export default function AdminPanel() {
                     className={`${styles.btn} ${styles.btnPrimary}`}
                     style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
                     onClick={() => alumnoAgregarId && setAdminSeatSelector({ cls, userId: Number(alumnoAgregarId) })}
-                    disabled={!alumnoAgregarId}
+                    disabled={!alumnoAgregarId || (useApiClasses && !occurrenceId)}
                   >
                     🪑 Elegir asiento
                   </button>
                 </div>
                 {alumnoAgregarId && (() => {
-                  const u = usuarios.find(uu => uu.id === Number(alumnoAgregarId))
+                  const u = useApiClients
+                    ? (clientsForAdmin ?? []).find((uu) => Number(uu.id) === Number(alumnoAgregarId))
+                    : usuarios.find(uu => uu.id === Number(alumnoAgregarId))
                   if (!u) return null
                   return (
                     <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6, fontFamily: 'var(--font-body)' }}>
-                      {u.clasesPaquete > 0 ? `${u.clasesPaquete} crédito(s) disponibles` : '⚠️ Sin créditos — se inscribirá sin descontar'}
+                      {useApiClients
+                        ? (Number(u.clasesPaquete ?? u.creditsBalance ?? u.creditos ?? 0) > 0
+                          ? `${Number(u.clasesPaquete ?? u.creditsBalance ?? u.creditos ?? 0)} crédito(s) disponibles`
+                          : '⚠️ Sin créditos — backend validará la reserva')
+                        : (u.clasesPaquete > 0 ? `${u.clasesPaquete} crédito(s) disponibles` : '⚠️ Sin créditos — se inscribirá sin descontar')}
                     </p>
                   )
                 })()}
@@ -3461,11 +3562,15 @@ export default function AdminPanel() {
           cls={adminSeatSelector.cls}
           targetUserId={adminSeatSelector.userId}
           adminForce
-          onSuccess={() => {
+          onSuccess={async () => {
             const u = usuarios.find(u => u.id === adminSeatSelector.userId)
             toast.success(`${u?.nombre ?? 'Alumno'} inscrito correctamente`)
             setAdminSeatSelector(null)
             setAlumnoAgregarId('')
+            const occurrenceId = adminSeatSelector.cls.occurrenceId ?? adminSeatSelector.cls.occurrence_id ?? null
+            if (useApiMode && occurrenceId) {
+              await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
+            }
           }}
           onClose={() => setAdminSeatSelector(null)}
         />

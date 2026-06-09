@@ -106,6 +106,10 @@ Nota:
 - Backend es source of truth cuando flag est� activo.
 - Waitlist API sigue pendiente.
 
+## Estado actual Admin Clases
+- Admin > Clases usa occurrences para vista por fecha en API mode.
+- Roster detallado por occurrence sigue pendiente de endpoint backend; UI muestra aviso honesto en vez de alumnos inventados.
+
 ## Integraci�n Waitlist API (Feature Flag)
 
 Variable:
@@ -403,3 +407,10 @@ Notas:
 - CSV y PDF se generan en frontend con datos reales ya cargados por TanStack Query.
 - Tabulador coach sigue pendiente de backend y no se expone como real.
 - Fallback demo se conserva cuando flags API est�n en `false`.
+
+## Admin Clases / CoachPanel roster
+
+- `AdminPanel` and `CoachPanel` consume real roster by occurrence.
+- Private endpoint: `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos`.
+- Manual enrollment and seat flow invalidate roster after save.
+- Hardcoded students stay only as legacy fallback when API flags are off.

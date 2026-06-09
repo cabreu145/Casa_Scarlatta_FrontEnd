@@ -3,6 +3,9 @@ export const queryKeys = {
   myMemberships: ['client', 'me', 'memberships'],
   myCreditMovements: (params = {}) => ['client', 'me', 'creditMovements', params],
   myPayments: (params = {}) => ['client', 'me', 'payments', params],
+  occurrenceRoster: {
+    detail: (occurrenceId, includeCanceled = false) => ['occurrenceRoster', occurrenceId, { includeCanceled: Boolean(includeCanceled) }],
+  },
   adminClients: (params = {}) => ['admin', 'clients', params],
   adminClientDetail: (clientId) => ['admin', 'clients', clientId],
   adminPackages: (params = {}) => ['admin', 'packages', params],

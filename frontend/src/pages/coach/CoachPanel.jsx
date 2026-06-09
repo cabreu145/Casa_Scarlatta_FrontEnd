@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useReservasStore } from '@/stores/reservasStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
+import { useOccurrenceRosterQuery } from '@/hooks/useApiQueries'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import s from './CoachPanel.module.css'
@@ -527,7 +528,7 @@ export default function CoachPanel() {
         className={`${s.modalOverlay} ${modalClass ? s.open : ''}`}
         onClick={e => { if (e.target === e.currentTarget) closeModal() }}
       >
-        {modalClass && <ClassModal cls={modalClass} onClose={closeModal} />}
+        {modalClass && <ClassModal cls={modalClass} onClose={closeModal} useApiMode={useApiMode} />}
       </div>
     </div>
   )
@@ -691,23 +692,39 @@ function MisClasesTable({ classes, onOpen }) {
   )
 }
 
-function ClassModal({ cls, onClose }) {
+function ClassModal({ cls, onClose, useApiMode = false }) {
   const s2 = s
-  const { getReservasByClase } = useReservasStore()
+  const { reservas } = useReservasStore()
   const { usuarios }           = useUsuariosStore()
-  const reservasClase = getReservasByClase(cls.id)
-  const alumnos = reservasClase.map(r => ({
-    ...r,
-    nombreUsuario: usuarios.find(u => u.id === r.userId)?.nombre ?? `Usuario #${r.userId}`,
-  }))
-  const avail = cls.cupoMax - cls.cupoActual
+  const occurrenceId = cls.occurrenceId ?? cls.occurrence_id ?? null
+  const rosterQuery = useOccurrenceRosterQuery(occurrenceId, {
+    includeCanceled: false,
+    enabled: useApiMode && Boolean(occurrenceId),
+  })
+  const reservasClase = (Array.isArray(reservas) ? reservas : []).filter((r) => {
+    const matchesOccurrence = occurrenceId
+      ? String(r.occurrenceId ?? '') === String(occurrenceId)
+      : String(r.claseId ?? '') === String(cls.id)
+    return matchesOccurrence && (r.estado === 'confirmada' || r.estado === 'no_asistio')
+  })
+  const alumnos = useApiMode
+    ? (rosterQuery.data?.students ?? []).map((r) => ({
+        ...r,
+        nombreUsuario: r.name ?? `Usuario #${r.userId ?? r.user_id}`,
+      }))
+    : reservasClase.map(r => ({
+        ...r,
+        nombreUsuario: usuarios.find(u => u.id === r.userId)?.nombre ?? `Usuario #${r.userId}`,
+      }))
+  const currentCount = useApiMode ? (rosterQuery.data?.capacityCurrent ?? cls.cupoActual ?? 0) : (cls.cupoActual ?? 0)
+  const avail = cls.cupoMax - currentCount
   const availColor2 = avail === 0 ? 'var(--danger)' : avail <= cls.cupoMax * 0.5 ? 'var(--warning)' : 'var(--success)'
   const pasada = isClasePasada(cls)
   const { label: statusLabel, cls: stCls } = pasada
     ? { label: 'Finalizada', cls: 'gray' }
-    : classStatusLabel(cls.cupoActual, cls.cupoMax)
+    : classStatusLabel(currentCount, cls.cupoMax)
   const statusClr = pasada ? '#888' : stCls === 'danger' ? 'var(--danger)' : stCls === 'warning' ? 'var(--warning)' : 'var(--success)'
-  const dayInfo = `${cls.dia} · ${getClassDisplayTime(cls)} · ${cls.cupoActual}/${cls.cupoMax} inscritos`
+  const dayInfo = `${cls.dia} · ${getClassDisplayTime(cls)} · ${currentCount}/${cls.cupoMax} inscritos`
 
   return (
     <div className={s2.modal}>
@@ -720,25 +737,54 @@ function ClassModal({ cls, onClose }) {
       </div>
       <div className={s2.modalStats}>
         <div className={s2.modalStat}>Capacidad: <strong>{cls.cupoMax}</strong></div>
-        <div className={s2.modalStat}>Inscritos: <strong>{cls.cupoActual}</strong></div>
+        <div className={s2.modalStat}>Inscritos: <strong>{currentCount}</strong></div>
         <div className={s2.modalStat}>Disponibles: <strong style={{ color: availColor2 }}>{avail}</strong></div>
         <div className={s2.modalStat}>Estado: <strong style={{ color: statusClr }}>{statusLabel}</strong></div>
       </div>
       <div className={s2.modalBody}>
-        {alumnos.length === 0 ? (
+        {useApiMode && rosterQuery.isLoading ? (
           <p style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
-            No hay alumnos inscritos aún
+            Cargando roster de alumnos...
+          </p>
+        ) : useApiMode && rosterQuery.error ? (
+          <p style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
+            {rosterQuery.error?.status === 403
+              ? 'No tienes permisos para ver alumnos de esta clase.'
+              : rosterQuery.error?.status === 404
+                ? 'Ocurrencia no encontrada.'
+                : rosterQuery.error?.status === 401
+                  ? 'Sesión expirada o no autenticado.'
+                  : 'No se pudo cargar roster de alumnos.'}
+          </p>
+        ) : alumnos.length === 0 ? (
+          <p style={{ textAlign:'center', color:'var(--muted)', fontSize:13, padding:'20px 0' }}>
+            {useApiMode && Number(currentCount ?? 0) > 0
+              ? 'Hay inscritos, pero el listado detallado aún no está disponible.'
+              : 'No hay alumnos inscritos aún'}
           </p>
         ) : alumnos.map(r => (
-          <div key={r.id} className={s2.studentRow}>
+          <div key={r.reservationId ?? r.id ?? `${r.userId ?? r.user_id}-${r.nombreUsuario}`} className={s2.studentRow}>
             <div className={s2.studentAvatar}>{r.nombreUsuario?.charAt(0) ?? '?'}</div>
-            <div className={s2.studentName}>{r.nombreUsuario ?? `Usuario #${r.userId}`}</div>
-            <span className={`${s2.statusBadge} ${s2.statusConfirmed}`}>Confirmado</span>
+            <div style={{ flex: 1 }}>
+              <div className={s2.studentName}>{r.nombreUsuario ?? `Usuario #${r.userId}`}</div>
+              <div className={s2.studentSub}>
+                {r.email ?? r.phone ?? 'Sin contacto'}
+                {' · '}
+                {r.equipmentLabel ?? r.equipment_type ?? r.equipmentType ?? r.spotLabel ?? r.spot_label ?? '—'}
+              </div>
+            </div>
+            <span className={`${s2.statusBadge} ${s2.statusConfirmed}`}>
+              {String(r.status ?? r.estado ?? '').toLowerCase() === 'no_asistio'
+                ? 'No asistió'
+                : String(r.status ?? r.estado ?? '').toLowerCase() === 'completada'
+                  ? 'Completado'
+                  : 'Confirmado'}
+            </span>
           </div>
         ))}
       </div>
       <div className={s2.modalFooter}>
-        <span style={{ fontSize:12, color:'var(--muted)' }}>{cls.cupoActual} alumnos inscritos</span>
+        <span style={{ fontSize:12, color:'var(--muted)' }}>{currentCount} alumnos inscritos</span>
         <button className={`${s2.btn} ${s2.btnGhost}`} onClick={onClose}>Cerrar</button>
       </div>
     </div>

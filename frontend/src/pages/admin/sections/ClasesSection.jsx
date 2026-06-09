@@ -15,8 +15,13 @@ import { normalizeDiscipline } from '@/utils/discipline'
 import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
 import { createClaseApi, deleteClaseApi, getClasesPaginatedApi } from '@/services/clasesApiService'
+import { getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { buildClaseApiPayload } from '../classApiPayload'
 import { buildAdminClasesApiQuery } from '../adminClassesApiUtils'
+import {
+  buildAdminClassOccurrenceRows,
+  filterAdminClassRows,
+} from '../adminClassOccurrenceUtils'
 import styles from '../AdminPanel.module.css'
 
 const ABBR_DIA = { Lunes: 'LUN', Martes: 'MAR', Miércoles: 'MIÉ', Jueves: 'JUE', Viernes: 'VIE', Sábado: 'SÁB', Domingo: 'DOM' }
@@ -466,6 +471,9 @@ export default function ClasesSection({
     error: null,
     isPaginated: false,
   })
+  const [apiOccurrencesByClass, setApiOccurrencesByClass] = useState({})
+  const [apiOccurrencesLoading, setApiOccurrencesLoading] = useState(false)
+  const [apiOccurrencesError, setApiOccurrencesError] = useState('')
   const skipNextPageFetchRef = useRef(false)
   const { agregarClase } = useClasesStore()
   const { getPorClase }  = useListaEsperaStore()
@@ -476,6 +484,12 @@ export default function ClasesSection({
     if (clasesFilter === 'Stryde X') return 'stryde'
     return undefined
   }, [clasesFilter])
+  const selectedDateIso = useMemo(() => {
+    const y = fechaSeleccionada.getFullYear()
+    const m = String(fechaSeleccionada.getMonth() + 1).padStart(2, '0')
+    const d = String(fechaSeleccionada.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }, [fechaSeleccionada])
 
   const fetchApiClasesPage = useCallback(async (page = clasesListPage) => {
     setApiListState((prev) => ({ ...prev, isLoading: true, error: null }))
@@ -550,7 +564,91 @@ export default function ClasesSection({
     toast.success(`${clases.length} clase${clases.length !== 1 ? 's' : ''} importadas correctamente`)
   }
 
-  const { classes: clasesDelDia } = useClasses(fechaSeleccionada)
+  const { classes: clasesDelDiaLegacy } = useClasses(fechaSeleccionada)
+  const clasesBaseApi = useMemo(() => (useApiClasses ? clases : []), [clases, useApiClasses])
+  const clasesApiFiltradasBase = useMemo(() => {
+    if (!useApiClasses) return []
+    return clasesBaseApi.filter((row) => {
+      const searchTerm = String(clasesSearch ?? '').trim().toLowerCase()
+      const matchesSearch = !searchTerm || [
+        row.nombre,
+        row.name,
+        row.descripcion,
+        row.description,
+        row.coachNombre,
+        row.coach_name,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(searchTerm))
+      const coachValue = String(clasesCoachFilter ?? '').trim()
+      const matchesCoach = !coachValue || coachValue === 'Todos'
+        || String(row.coachId ?? row.coach_id ?? '').trim() === coachValue
+      const statusValue = String(clasesStatusFilter ?? '').trim().toLowerCase()
+      const rowStatus = String(row.status ?? row.estado ?? '').trim().toLowerCase()
+      const matchesStatus = !statusValue || statusValue === 'todas'
+        || (statusValue === 'activa' && ['programada', 'activa', 'active'].includes(rowStatus))
+        || (statusValue === 'cancelada' && rowStatus.includes('cancel'))
+        || (statusValue === 'finalizada' && rowStatus.includes('final'))
+        || rowStatus === statusValue
+      const matchesDiscipline = !selectedDiscipline
+        || normalizeDiscipline(row.discipline ?? row.tipo) === selectedDiscipline
+      return matchesSearch && matchesCoach && matchesStatus && matchesDiscipline
+    })
+  }, [clasesBaseApi, clasesCoachFilter, clasesSearch, clasesStatusFilter, selectedDiscipline, useApiClasses])
+
+  useEffect(() => {
+    if (!useApiClasses) return
+    const classIds = clasesApiFiltradasBase.map((row) => row.id).filter((id) => id !== null && id !== undefined)
+    if (!classIds.length) {
+      setApiOccurrencesByClass({})
+      setApiOccurrencesError('')
+      setApiOccurrencesLoading(false)
+      return
+    }
+    let active = true
+    setApiOccurrencesLoading(true)
+    setApiOccurrencesError('')
+    getOccurrencesForDateRangeApi(classIds, { from: selectedDateIso, to: selectedDateIso })
+      .then((payload) => {
+        if (!active) return
+        setApiOccurrencesByClass(payload ?? {})
+      })
+      .catch((error) => {
+        if (!active) return
+        setApiOccurrencesByClass({})
+        setApiOccurrencesError(error?.message ?? 'No se pudieron cargar ocurrencias')
+      })
+      .finally(() => {
+        if (active) setApiOccurrencesLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [clasesApiFiltradasBase, selectedDateIso, useApiClasses])
+
+  const clasesDelDia = useMemo(() => {
+    if (!useApiClasses) return clasesDelDiaLegacy
+    const merged = buildAdminClassOccurrenceRows(clasesApiFiltradasBase, apiOccurrencesByClass)
+    return filterAdminClassRows(merged, {
+      search: clasesSearch,
+      discipline: clasesFilter,
+      status: clasesStatusFilter,
+      coachId: clasesCoachFilter,
+    }).sort((a, b) => {
+      const left = `${a.fecha ?? ''} ${a.hora ?? ''}`.trim()
+      const right = `${b.fecha ?? ''} ${b.hora ?? ''}`.trim()
+      return left.localeCompare(right)
+    })
+  }, [
+    apiOccurrencesByClass,
+    clasesApiFiltradasBase,
+    clasesCoachFilter,
+    clasesDelDiaLegacy,
+    clasesFilter,
+    clasesSearch,
+    clasesStatusFilter,
+    useApiClasses,
+  ])
 
   const clasesFiltradas = useMemo(() => {
     if (clasesFilter === 'Stryde X')
@@ -746,6 +844,17 @@ export default function ClasesSection({
               setSelectedIds(new Set())
             }}
           />
+
+          {useApiClasses && apiOccurrencesLoading && (
+            <div style={{ marginBottom: 8, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(96,165,250,0.2)', background: 'rgba(96,165,250,0.08)', color: '#93c5fd', fontFamily: 'var(--font-body)', fontSize: 12 }}>
+              Cargando ocurrencias del día...
+            </div>
+          )}
+          {useApiClasses && apiOccurrencesError && (
+            <div style={{ marginBottom: 8, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.08)', color: '#fca5a5', fontFamily: 'var(--font-body)', fontSize: 12 }}>
+              {apiOccurrencesError}
+            </div>
+          )}
 
           <div className={styles.card}>
             <InfiniteList

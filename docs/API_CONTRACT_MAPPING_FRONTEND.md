@@ -197,3 +197,32 @@ Notas POS:
 Notas:
 - `AdminReportes` conserva shell visual original; export CSV/PDF se arma en frontend con datos ya cargados por API mode.
 - Export legacy con mocks solo sigue cuando flags API están en `false`.
+
+## Mapeo Admin Clases / CoachPanel (vigente)
+
+Frontend consume:
+- `GET /api/v1/clases?page=&page_size=&search=&discipline=&status=&coach_id=`
+- `GET /api/v1/clases/{id}/ocurrencias?from=&to=`
+- `GET /api/v1/coaches`
+- `POST /api/v1/reservas`
+- `GET /api/v1/clientes?page=&page_size=&search=&status=active`
+
+Reglas frontend:
+- Clase base no trae fecha de sesión; la vista de calendario usa occurrences.
+- Acciones de alumnos/manual enrollment usan `occurrenceId` cuando existe.
+- `AdminPanel` y `CoachPanel` no deben mostrar roster falso cuando count > 0 y listado detallado no existe.
+- Manual enrollment usa clientes reales; usuarios hardcoded solo fallback legacy.
+
+## Roster por occurrence (vigente)
+
+Frontend consume:
+- `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos`
+- `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos?includeCanceled=true`
+
+Reglas frontend:
+- Endpoint privado; enviar `Authorization`.
+- Admin ve cualquier occurrence.
+- Coach solo ve occurrences asignadas.
+- Cliente recibe 403.
+- Roster detallado sustituye placeholder cuando respuesta llega bien.
+- Manual enrollment y seat flow invalidan roster tras éxito.

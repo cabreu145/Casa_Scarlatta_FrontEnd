@@ -5,6 +5,7 @@ import {
   mapBackendReservationsToFrontend,
   mapCreateReservationPayload,
 } from '@/adapters/reservationAdapter'
+import { mapBackendOccurrenceRosterToFrontend } from '@/adapters/occurrenceRosterAdapter'
 import { normalizePaginatedResponse } from '@/adapters/paginationAdapter'
 import { useClasesStore } from '@/stores/clasesStore'
 
@@ -35,6 +36,14 @@ export async function crearReservaApi({ claseId, userId, asiento, occurrenceId, 
   const requestPayload = mapCreateReservationPayload({ claseId, userId, asiento, occurrenceId, spotId, holdId })
   const payload = await httpPost(ENDPOINTS.crearReserva, requestPayload)
   return mapBackendReservationToFrontend(payload ?? {}, buildClassesById())
+}
+
+export async function getOccurrenceRosterApi(occurrenceId, { includeCanceled = false } = {}) {
+  if (!occurrenceId) {
+    throw new Error('OCCURRENCE_REQUIRED')
+  }
+  const payload = await httpGet(ENDPOINTS.occurrenceAlumnos(occurrenceId, { includeCanceled }))
+  return mapBackendOccurrenceRosterToFrontend(payload ?? {})
 }
 
 export async function cancelarReservaApi(id) {
