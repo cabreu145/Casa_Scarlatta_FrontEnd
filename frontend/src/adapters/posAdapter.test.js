@@ -33,6 +33,8 @@ describe('posAdapter', () => {
       folio: 'POS-000100',
       status: 'paid',
       customer_id: 1,
+      customer_name: 'Cliente Demo',
+      customer_email: 'cliente@demo.local',
       total_mxn: 2340,
       payment_method: 'cash',
       created_at: '2026-06-08T12:00:00',
@@ -47,6 +49,9 @@ describe('posAdapter', () => {
     expect(result).toMatchObject({
       id: 100,
       folio: 'POS-000100',
+      customerId: 1,
+      customerName: 'Cliente Demo',
+      customerEmail: 'cliente@demo.local',
       totalMxn: 2340,
       paymentMethod: 'cash',
       ticketUrl: '/api/v1/ventas/100/ticket',

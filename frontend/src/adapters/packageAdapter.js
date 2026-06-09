@@ -2,10 +2,10 @@ export function mapBackendPackageToFrontend(payload = {}) {
   const credits = Number(payload.credits ?? payload.clases ?? 0)
   const priceMxn = Number(payload.price_mxn ?? payload.precio ?? 0)
   const durationDays = Number(payload.duration_days ?? payload.vigencia ?? 0)
-  const displayName = String(
-    payload.display_name ?? payload.displayName ?? payload.name ?? payload.nombre ?? ''
-  ).trim() || 'Paquete'
   const rawName = String(payload.name ?? payload.nombre ?? '').trim()
+  const displayName = String(
+    payload.display_name ?? payload.displayName ?? payload.nombre ?? ''
+  ).trim() || 'Paquete'
   const benefits = Array.isArray(payload.benefits)
     ? payload.benefits.filter(Boolean).map((item) => String(item).trim()).filter(Boolean)
     : Array.isArray(payload.beneficios)
@@ -16,8 +16,8 @@ export function mapBackendPackageToFrontend(payload = {}) {
 
   return {
     id: payload.id ?? null,
-    name: rawName || displayName,
-    nombre: rawName || displayName,
+    name: rawName || null,
+    nombre: rawName || '',
     displayName,
     display_name: displayName,
     credits,

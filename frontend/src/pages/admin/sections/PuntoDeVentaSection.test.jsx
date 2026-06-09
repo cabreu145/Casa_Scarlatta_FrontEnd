@@ -1,4 +1,4 @@
-﻿import { render, screen } from '@testing-library/react'
+﻿import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -100,7 +100,16 @@ vi.mock('@/hooks/useApiQueries', () => ({
   }),
   usePosSalesQuery: () => ({
     data: {
-      items: [{ id: 100, folio: 'POS-000100', customerId: 1, totalMxn: 2340, paymentMethod: 'cash', createdAt: '2026-06-08T12:00:00' }],
+      items: [{
+        id: 100,
+        folio: 'POS-000100',
+        customerId: 1,
+        customerName: 'Cliente Demo',
+        customerEmail: 'cliente@demo.local',
+        totalMxn: 2340,
+        paymentMethod: 'cash',
+        createdAt: '2026-06-08T12:00:00',
+      }],
     },
     isLoading: false,
     error: null,
@@ -190,13 +199,18 @@ describe('PuntoDeVentaSection', () => {
     })
   })
 
-  test('carga catálogo API, bloquea producto inactivo y genera venta con ticket', async () => {
+  test('carga catalogo API, bloquea producto inactivo y genera venta con ticket', async () => {
     const user = userEvent.setup()
     render(<Harness />)
 
     expect(await screen.findByRole('button', { name: /Toalla/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Mensual 12/i })).toBeInTheDocument()
-    expect(screen.getByText(/Categorías POS/i)).toBeInTheDocument()
+    expect(screen.getByRole('table')).toBeInTheDocument()
+
+    const recentSalesTable = screen.getByRole('table')
+    expect(within(recentSalesTable).getByText('Cliente Demo')).toBeInTheDocument()
+    expect(within(recentSalesTable).getByText(/08\/06\/2026/)).toBeInTheDocument()
+    expect(within(recentSalesTable).getByText('Efectivo')).toBeInTheDocument()
 
     const buyerSelect = screen.getByText('Selecciona cliente', { selector: 'option' }).closest('select')
     await user.selectOptions(buyerSelect, '1')
@@ -240,11 +254,17 @@ describe('PuntoDeVentaSection', () => {
     expect(toastError).toHaveBeenCalledWith('Selecciona cliente para vender paquete.')
   })
 
-  test('abre modal de categoría', async () => {
+  test('abre modal de categoria', async () => {
     const user = userEvent.setup()
     render(<Harness />)
 
-    await user.click(screen.getByRole('button', { name: /Nueva categoría/i }))
-    expect(screen.getByRole('dialog', { name: 'Nueva categoría' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Nueva categor/i }))
+    const dialog = screen.getByRole('dialog', { name: /Nueva categor/i })
+    expect(dialog).toBeInTheDocument()
+    expect(within(dialog).getByText('Nombre')).toBeInTheDocument()
+    expect(within(dialog).getByText('Estado')).toBeInTheDocument()
+    expect(within(dialog).getByText('Descripción')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: /Cancelar/i })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: /Guardar/i })).toBeInTheDocument()
   })
 })

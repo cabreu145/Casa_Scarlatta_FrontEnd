@@ -1019,8 +1019,8 @@
 
 .formInput {
   padding: 10px 14px;
-  background: #241418;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #2a171e;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
   color: #fff;
   font-family: var(--font-body);
@@ -1029,16 +1029,16 @@
   transition: border-color 0.2s;
 }
 
-.formInput::placeholder { color: rgba(255, 255, 255, 0.42); }
+.formInput::placeholder { color: rgba(255, 255, 255, 0.5); }
 
-.formInput:focus { border-color: var(--blush); background: #2b171c; }
+.formInput:focus { border-color: var(--blush); background: #321c24; }
 
 .formInput[rows] { min-height: 70px; }
 
 .formSelect {
   padding: 10px 14px;
-  background: #241418;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #2a171e;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
   color: #fff;
   font-family: var(--font-body);
@@ -1062,8 +1062,8 @@
 .modalOverlay.open { display: flex; }
 
 .modal {
-  background: #1a0f13;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(180deg, rgba(29, 16, 21, 0.98) 0%, rgba(22, 12, 16, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--radius);
   padding: 28px;
   width: 560px;
@@ -1110,9 +1110,9 @@
 .modalClose {
   width: 32px; height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--muted-2);
-  background: none;
-  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 18px;
   cursor: pointer;
   display: flex;
@@ -1121,7 +1121,7 @@
   transition: all 0.2s;
 }
 
-.modalClose:hover { background: var(--muted-2); color: #fff; }
+.modalClose:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
 
 /* ── SCROLLBAR ─────────────────────────────────────────────────────────────── */
 .root ::-webkit-scrollbar { width: 4px; }

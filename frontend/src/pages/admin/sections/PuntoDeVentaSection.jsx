@@ -54,6 +54,30 @@ function money(value) {
   }).format(Number.isFinite(amount) ? amount : 0)
 }
 
+function formatDateTime(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('es-MX', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+function translatePaymentMethod(value) {
+  const raw = String(value ?? '').trim().toLowerCase()
+  return {
+    cash: 'Efectivo',
+    card: 'Tarjeta',
+    transfer: 'Transferencia',
+    other: 'Otro',
+  }[raw] || raw || '—'
+}
+
 function resolveUrl(path) {
   if (!path) return null
   if (/^https?:\/\//i.test(path)) return path
@@ -590,9 +614,9 @@ export default function PuntoDeVentaSection({
                       {recentSales.map((sale) => (
                         <tr key={sale.id}>
                           <td>{sale.folio}</td>
-                          <td>{sale.customerId ?? '—'}</td>
-                          <td>{sale.createdAt ?? '—'}</td>
-                          <td>{sale.paymentMethod ?? '—'}</td>
+                          <td>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</td>
+                          <td>{formatDateTime(sale.createdAt)}</td>
+                          <td>{translatePaymentMethod(sale.paymentMethod)}</td>
                           <td>{money(sale.totalMxn)}</td>
                         </tr>
                       ))}
@@ -831,7 +855,9 @@ export default function PuntoDeVentaSection({
         {categoryModal && createPortal(
           <div
             className={`${styles.modalOverlay} ${styles.open}`}
-            onClick={() => setCategoryModal(null)}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setCategoryModal(null)
+            }}
           >
             <PosEntityModal
               title={categoryModal === 'nuevo' ? 'Nueva categoría' : 'Editar categoría'}
@@ -847,7 +873,12 @@ export default function PuntoDeVentaSection({
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Nombre</label>
-                  <input className={styles.formInput} value={categoryForm.name} onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))} />
+                  <input
+                    className={styles.formInput}
+                    placeholder="Ej: Accesorios"
+                    value={categoryForm.name}
+                    onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))}
+                  />
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Estado</label>
@@ -856,10 +887,16 @@ export default function PuntoDeVentaSection({
                     <option value="inactive">Inactiva</option>
                   </select>
                 </div>
-              </div>
-              <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-                <label className={styles.formLabel}>Descripción</label>
-                <textarea className={styles.formInput} rows={3} value={categoryForm.description} onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))} />
+                <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
+                  <label className={styles.formLabel}>Descripción</label>
+                  <textarea
+                    className={styles.formInput}
+                    rows={3}
+                    placeholder="Opcional: texto descriptivo para identificar la categoría"
+                    value={categoryForm.description}
+                    onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))}
+                  />
+                </div>
               </div>
             </PosEntityModal>
           </div>,

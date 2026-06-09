@@ -78,12 +78,20 @@ function mapSaleItem(item = {}) {
 
 export function mapBackendSaleToFrontend(item = {}) {
   const saleId = item.id ?? item.sale_id ?? null
+  const customerId = item.customer_id ?? item.customerId ?? null
+  const customerName = normalizeString(item.customer_name ?? item.customerName ?? '', '')
+  const customerEmail = normalizeString(item.customer_email ?? item.customerEmail ?? '', '')
   return {
     id: saleId,
     saleId,
     folio: normalizeString(item.folio ?? item.code ?? `POS-${String(saleId ?? '').padStart(6, '0')}`),
     status: normalizeString(item.status ?? 'paid', 'paid'),
-    customerId: item.customer_id ?? item.customerId ?? null,
+    customerId,
+    customer_id: customerId,
+    customerName,
+    customer_name: customerName,
+    customerEmail,
+    customer_email: customerEmail,
     subtotalMxn: toNumber(item.subtotal_mxn ?? item.subtotalMxn ?? 0, 0),
     subtotal_mxn: toNumber(item.subtotal_mxn ?? item.subtotalMxn ?? 0, 0),
     taxRate: toNumber(item.tax_rate ?? item.taxRate ?? 0.16, 0.16),

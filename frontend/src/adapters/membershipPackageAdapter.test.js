@@ -67,7 +67,7 @@ describe('membershipPackageAdapter', () => {
       max_beneficiaries: 0,
     })
 
-    expect(result.name).toBe('Mensual 16')
+    expect(result.name).toBeNull()
     expect(result.displayName).toBe('Mensual 16')
     expect(result.isShareable).toBe(false)
     expect(result.maxBeneficiaries).toBe(0)
