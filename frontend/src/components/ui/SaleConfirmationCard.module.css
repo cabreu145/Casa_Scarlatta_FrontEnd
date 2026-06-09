@@ -1,0 +1,236 @@
+.card {
+  position: relative;
+  width: min(560px, 100%);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(255, 184, 153, 0.12), transparent 36%),
+    linear-gradient(180deg, rgba(31, 16, 20, 0.98), rgba(21, 12, 15, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.45);
+  padding: 24px;
+  color: var(--text-primary);
+  display: grid;
+  gap: 18px;
+}
+
+.closeButton {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.iconWrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #e8a4ad;
+  background: rgba(232, 164, 173, 0.12);
+  border: 1px solid rgba(232, 164, 173, 0.24);
+  flex-shrink: 0;
+}
+
+.kicker {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.title {
+  margin: 4px 0 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1.05;
+  font-weight: 400;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summaryItem,
+.whatsappBox,
+.preview,
+.amounts {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.summaryItem {
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.summaryItem span,
+.amountRow span,
+.whatsappHint,
+.previewLabel {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+}
+
+.summaryItem strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.preview {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.previewLabel,
+.whatsappHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+}
+
+.previewImage {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  object-fit: cover;
+  max-height: 240px;
+}
+
+.amounts {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.amountRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+}
+
+.amountRowTotal {
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 2px;
+}
+
+.amountRow strong {
+  font-size: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.primaryButton,
+.secondaryButton,
+.ghostButton {
+  border: 0;
+  border-radius: 14px;
+  min-height: 44px;
+  padding: 0 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.primaryButton {
+  flex: 1;
+  background: linear-gradient(135deg, #e8a4ad, #f2c38d);
+  color: #1f1014;
+}
+
+.secondaryButton {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.ghostButton {
+  width: 100%;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.whatsappBox {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.whatsappHint {
+  line-height: 1.5;
+}
+
+.whatsappForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+  padding: 0 14px;
+  outline: none;
+}
+
+.error {
+  color: #f87171;
+  font-size: 12px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .card {
+    padding: 18px;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .whatsappForm {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+}

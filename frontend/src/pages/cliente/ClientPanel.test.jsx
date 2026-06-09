@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -37,7 +38,14 @@ const mockLogListaEsperaSalir = vi.fn()
 const mockGetMyCreditMovementsPaginatedApi = vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 8 })
 const mockGetMembershipPackagesApi = vi.fn().mockResolvedValue([])
 const mockGetMyMembershipsApi = vi.fn().mockResolvedValue([])
+const mockGetMyFinancialStateApi = vi.fn().mockResolvedValue({})
 const mockGetMisReservasPaginatedApi = vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 })
+const testQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: false, refetchOnWindowFocus: false },
+    mutations: { retry: false },
+  },
+})
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
@@ -156,6 +164,7 @@ vi.mock('@/services/actividadService', () => ({
 }))
 
 vi.mock('@/services/financialStateApiService', () => ({
+  getMyFinancialStateApi: mockGetMyFinancialStateApi,
   getMyCreditMovementsPaginatedApi: mockGetMyCreditMovementsPaginatedApi,
 }))
 
@@ -174,6 +183,7 @@ vi.mock('@/services/reservasApiService', () => ({
 
 describe('ClientPanel payments section', () => {
   beforeEach(() => {
+    testQueryClient.clear()
     vi.resetModules()
     vi.stubEnv('VITE_USE_API_AUTH', 'true')
     vi.stubEnv('VITE_USE_API_CLASSES', 'true')
@@ -184,6 +194,8 @@ describe('ClientPanel payments section', () => {
     mockGetMembershipPackagesApi.mockResolvedValue([])
     mockGetMyMembershipsApi.mockReset()
     mockGetMyMembershipsApi.mockResolvedValue([])
+    mockGetMyFinancialStateApi.mockReset()
+    mockGetMyFinancialStateApi.mockResolvedValue({})
     mockGetOccurrencesForDateRangeApi.mockReset()
     mockGetOccurrencesForDateRangeApi.mockResolvedValue([])
   })
@@ -192,9 +204,11 @@ describe('ClientPanel payments section', () => {
     const { default: ClientPanel } = await import('./ClientPanel')
 
     render(
-      <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos']}>
-        <ClientPanel />
-      </MemoryRouter>
+      <QueryClientProvider client={testQueryClient}>
+        <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos']}>
+          <ClientPanel />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
 
     expect(await screen.findByText(/Estado de pagos recientes/i)).toBeInTheDocument()
@@ -217,9 +231,11 @@ describe('ClientPanel payments section', () => {
     const { default: ClientPanel } = await import('./ClientPanel')
 
     render(
-      <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos&packageId=2']}>
-        <ClientPanel />
-      </MemoryRouter>
+      <QueryClientProvider client={testQueryClient}>
+        <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos&packageId=2']}>
+          <ClientPanel />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
 
     expect(await screen.findByRole('button', { name: /comprar ahora/i })).toBeInTheDocument()
@@ -244,13 +260,15 @@ describe('ClientPanel payments section', () => {
     const user = userEvent.setup()
 
     render(
-      <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos']} >
-        <ClientPanel />
-      </MemoryRouter>
+      <QueryClientProvider client={testQueryClient}>
+        <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos']}>
+          <ClientPanel />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
 
     expect(await screen.findByText('Mis membresías')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /compartir paquete/i }))
+    await user.click(await screen.findByRole('button', { name: /compartir paquete/i }))
     expect(await screen.findByPlaceholderText('cliente@correo.com')).toBeInTheDocument()
   })
 
@@ -292,9 +310,11 @@ describe('ClientPanel payments section', () => {
     const { default: ClientPanel } = await import('./ClientPanel')
 
     render(
-      <MemoryRouter initialEntries={['/cliente/dashboard?section=reservar']}>
-        <ClientPanel />
-      </MemoryRouter>
+      <QueryClientProvider client={testQueryClient}>
+        <MemoryRouter initialEntries={['/cliente/dashboard?section=reservar']}>
+          <ClientPanel />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
 
     await waitFor(() => {

@@ -344,3 +344,25 @@ Reglas:
 - `is_shareable` + `max_beneficiaries` controlan UI de compartir paquete
 - buyer solo configura beneficiarios una vez
 - admin puede corregir mientras no haya consumo
+
+## MVP server state
+
+Frontend MVP uses TanStack Query for server state. Zustand queda para fallback legacy y UI local. Lecturas con `useQuery`, mutaciones con `useMutation`, refetch con invalidate tras éxito. No usar `page_size=1000`.
+
+## Integración POS API (Feature Flag)
+
+Variable:
+- `VITE_USE_API_POS=true` o el flag de API general que use la app para admin.
+
+Comportamiento:
+- `PuntoDeVentaSection` usa `GET /api/v1/productos`, `GET /api/v1/memberships/packages`, `GET /api/v1/clientes`, `GET /api/v1/ventas` y `POST /api/v1/ventas` en modo API.
+- Carrito sigue local de UI; backend valida stock, total y beneficiarios.
+- Venta exitosa abre modal con ticket, PDF y link público para WhatsApp Web.
+- `public_ticket_url` es la URL recomendada para compartir.
+- `POS` no usa Mercado Pago.
+- Fallback legacy se conserva cuando flags API están en `false`.
+
+Notas:
+- `useApiQueries` y TanStack Query manejan server state.
+- `posApiService` maneja productos, ventas y tickets.
+- No usar `page_size=1000`.

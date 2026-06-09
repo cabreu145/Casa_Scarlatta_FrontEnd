@@ -353,3 +353,7 @@ No usar:
 - `type` persistente
 - ilimitado
 - `credits=0`
+
+## MVP server state
+
+Frontend MVP uses TanStack Query for server state. Zustand queda para fallback legacy y UI local. Lecturas con `useQuery`, mutaciones con `useMutation`, refetch con invalidate tras éxito. No usar `page_size=1000`.

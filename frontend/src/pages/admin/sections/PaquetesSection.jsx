@@ -1,13 +1,14 @@
-import toast from 'react-hot-toast'
+﻿import toast from 'react-hot-toast'
+import { useState } from 'react'
 import styles from '../AdminPanel.module.css'
 import PaginationControls from '@/components/ui/PaginationControls'
 import {
   formatPackagePriceLabel,
+  formatPackageCreditsLabel,
   formatPackageShareabilityLabel,
   formatPackageValidityLabel,
   getPackageBenefits,
   getPackageDisplayName,
-  getPackageCredits,
 } from '@/utils/packageDisplay'
 
 export default function PaquetesSection({
@@ -33,6 +34,7 @@ export default function PaquetesSection({
   onToggleActive,
   onToggleFeatured,
 }) {
+  const [packageToInactivate, setPackageToInactivate] = useState(null)
   const totalPages = Math.max(1, Math.ceil((total || paquetes.length || 0) / pageSize))
 
   if (useApiMode) {
@@ -71,7 +73,7 @@ export default function PaquetesSection({
               {p.isFeatured && <div className={styles.paqueteBadge}>⭐ Más popular</div>}
               <div className={styles.paqueteName}>{getPackageDisplayName(p)}</div>
               <div className={styles.paqueteClases}>
-                {getPackageCredits(p)} créditos
+                {formatPackageCreditsLabel(p)} créditos
                 {formatPackageValidityLabel(p) ? ` · ${formatPackageValidityLabel(p).replace('Válido por ', '')}` : ''}
               </div>
               <div className={styles.paquetePrice}>
@@ -91,7 +93,7 @@ export default function PaquetesSection({
                   onClick={() => {
                     setModalEditPaquete(p)
                     setEditPaqueteForm({
-                      nombre: getPackageDisplayName(p),
+                      nombre: useApiMode ? String(p.name ?? '') : String(p.name ?? p.nombre ?? ''),
                       precio: String(p.precio ?? p.priceMxn ?? p.price_mxn ?? 0),
                       clases: String(p.creditos ?? p.clases ?? 0),
                       vigencia: String(p.durationDays ?? p.duration_days ?? ''),
@@ -109,14 +111,10 @@ export default function PaquetesSection({
                   className={`${styles.btn} ${styles.btnGhost}`}
                   style={{ fontSize: 11, padding: '6px', color: '#ef4444' }}
                   onClick={async () => {
-                    if (!window.confirm(`¿Eliminar el paquete "${getPackageDisplayName(p)}"?`)) return
-                    await eliminarPaquete?.(p.id)
-                    if (!useApiMode) {
-                      toast.success(`Paquete "${getPackageDisplayName(p)}" eliminado`)
-                    }
+                    setPackageToInactivate(p)
                   }}
                 >
-                  🗑 Eliminar
+                  🚫 Inactivar
                 </button>
                 <button
                   className={`${styles.btn} ${styles.btnGhost}`}
@@ -161,6 +159,40 @@ export default function PaquetesSection({
             Historial de ventas disponible próximamente en Reportes.
           </div>
         </div>
+        {packageToInactivate && (
+          <div
+            className={`${styles.modalOverlay} ${styles.open}`}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setPackageToInactivate(null)
+            }}
+          >
+            <div className={styles.modal} style={{ maxWidth: 520 }}>
+              <div className={styles.modalHeader}>
+                <div className={styles.modalTitle}>Inactivar paquete</div>
+                <button className={styles.modalClose} onClick={() => setPackageToInactivate(null)}>×</button>
+              </div>
+              <div style={{ padding: '8px 0 18px', color: 'var(--muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
+                Este paquete dejará de mostrarse como activo y no estará disponible para nuevas compras o asignaciones. El historial se conservará.
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setPackageToInactivate(null)}>
+                  Cancelar
+                </button>
+                <button
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                  style={{ background: '#ef4444', borderColor: '#ef4444' }}
+                  onClick={async () => {
+                    const pkg = packageToInactivate
+                    setPackageToInactivate(null)
+                    await eliminarPaquete?.(pkg.id)
+                  }}
+                >
+                  Inactivar paquete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </>
     )
   }
@@ -179,7 +211,7 @@ export default function PaquetesSection({
             {p.destacado && <div className={styles.paqueteBadge}>⭐ Más popular</div>}
             <div className={styles.paqueteName}>{getPackageDisplayName(p)}</div>
             <div className={styles.paqueteClases}>
-              {getPackageCredits(p)} clases
+              {formatPackageCreditsLabel(p)} clases
               {formatPackageValidityLabel(p) ? ` · ${formatPackageValidityLabel(p).replace('Válido por ', '')}` : ''}
             </div>
             <div className={styles.paquetePrice}>
@@ -196,7 +228,7 @@ export default function PaquetesSection({
                 onClick={() => {
                   setModalEditPaquete(p)
                   setEditPaqueteForm({
-                    nombre: getPackageDisplayName(p),
+                    nombre: useApiMode ? String(p.name ?? '') : String(p.name ?? p.nombre ?? ''),
                     precio: String(p.precio ?? p.priceMxn ?? p.price_mxn ?? 0),
                     clases: String(p.clases ?? p.creditos ?? 0),
                     vigencia: String(p.vigencia ?? p.durationDays ?? p.duration_days ?? ''),
@@ -206,16 +238,14 @@ export default function PaquetesSection({
                     maxBeneficiaries: Number(p.maxBeneficiaries ?? p.max_beneficiaries ?? 0),
                   })
                 }}
-              >✏️ Editar</button>
+              >âœï¸ Editar</button>
               <button
                 className={`${styles.btn} ${styles.btnGhost}`}
                 style={{ fontSize: 11, padding: '6px', color: '#ef4444' }}
-                onClick={() => {
-                  if (!window.confirm(`¿Eliminar el paquete "${getPackageDisplayName(p)}"?`)) return
-                  eliminarPaquete(p.id)
-                  toast.success(`Paquete "${getPackageDisplayName(p)}" eliminado`)
-                }}
-              >🗑 Eliminar</button>
+                onClick={() => setPackageToInactivate(p)}
+              >
+                🚫 Inactivar
+              </button>
               {!p.destacado && (
                 <button
                   className={`${styles.btn} ${styles.btnGhost}`}
@@ -281,6 +311,40 @@ export default function PaquetesSection({
           })()}
         </div>
       </div>
+      {packageToInactivate && (
+        <div
+          className={`${styles.modalOverlay} ${styles.open}`}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setPackageToInactivate(null)
+          }}
+        >
+          <div className={styles.modal} style={{ maxWidth: 520 }}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Inactivar paquete</div>
+              <button className={styles.modalClose} onClick={() => setPackageToInactivate(null)}>×</button>
+            </div>
+            <div style={{ padding: '8px 0 18px', color: 'var(--muted)', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
+              Este paquete dejará de mostrarse como activo y no estará disponible para nuevas compras o asignaciones. El historial se conservará.
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setPackageToInactivate(null)}>
+                Cancelar
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                style={{ background: '#ef4444', borderColor: '#ef4444' }}
+                onClick={async () => {
+                  const pkg = packageToInactivate
+                  setPackageToInactivate(null)
+                  await eliminarPaquete?.(pkg.id)
+                }}
+              >
+                Inactivar paquete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

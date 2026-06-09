@@ -19,6 +19,7 @@ import {
 import { procesarVentaService, getDailyIncome, getIncomeByCategory } from '../../services/ventaService'
 import { crearCoachService } from '@/services/coachesService'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import styles from './AdminPanel.module.css'
 import { useTransaccionesStore }       from '@/stores/transaccionesStore'
@@ -51,17 +52,28 @@ import {
 import { buildClaseApiPayload } from './classApiPayload'
 import { buildCoachApiPayload, validateCoachApiPayload } from './coachApiPayload'
 import { buildPackageApiPayload, validatePackageApiPayload } from './packageApiPayload'
+import { buildPosProductApiPayload, validatePosProductApiPayload } from './posApiPayload'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { paginateArray } from '@/utils/paginationUtils'
 import { getClassDisplayTime } from '@/utils/classSchedule'
 import {
   formatPackagePriceLabel,
+  formatPackageCreditsLabel,
   formatPackageShareabilityLabel,
   formatPackageValidityLabel,
   getPackageBenefits,
   getPackageDisplayName,
   getPackageCredits,
 } from '@/utils/packageDisplay'
+import { queryKeys } from '@/api/queryKeys'
+import {
+  useAdminClientDetailQuery,
+  useAdminClientsQuery,
+  useCreateProductMutation,
+  useDeleteProductMutation,
+  useProductCategoriesQuery,
+  useUpdateProductMutation,
+} from '@/hooks/useApiQueries'
 import { COACHES_SELECTOR_PAGE_SIZE } from './adminCoachesApiUtils'
 import { ADMIN_PACKAGES_PAGE_SIZE, buildAdminPackagesApiQuery } from './adminPackagesApiUtils'
 import { resolveCoachAvatarUrl } from '@/adapters/coachAdapter'
@@ -182,6 +194,7 @@ export default function AdminPanel() {
   const useApiCoaches = useApiClasses
   const useApiClients = import.meta.env.VITE_USE_API_AUTH === 'true'
   const useApiPackages = useApiClients
+  const useApiPos = useApiClasses || useApiClients
   const [apiCoaches, setApiCoaches] = useState([])
   const [apiCoachList, setApiCoachList] = useState([])
   const [apiCoachesLoading, setApiCoachesLoading] = useState(false)
@@ -205,7 +218,7 @@ export default function AdminPanel() {
   const [apiPackagesTotal, setApiPackagesTotal] = useState(0)
   const [apiPackagesPage, setApiPackagesPage] = useState(1)
   const [apiPackagesSearch, setApiPackagesSearch] = useState('')
-  const [apiPackagesStatus, setApiPackagesStatus] = useState('all')
+  const [apiPackagesStatus, setApiPackagesStatus] = useState('active')
   const [apiPackagesRefreshToken, setApiPackagesRefreshToken] = useState(0)
   const [rangoDash, setRangoDash]         = useState('mes')
   const [modalPago, setModalPago]         = useState(false)
@@ -265,10 +278,28 @@ export default function AdminPanel() {
   const [clasesFilter, setClasesFilter]   = useState('Todas')
   const [usersFilter, setUsersFilter]     = useState('Todos')
   const [usersSearch, setUsersSearch]     = useState('')
+  const queryClient = useQueryClient()
+  const adminClientsQueryParams = useMemo(
+    () => buildAdminClientsApiQuery({
+      page: apiClientsPage,
+      pageSize: ADMIN_CLIENTS_PAGE_SIZE,
+      search: usersSearch,
+      filter: usersFilter,
+    }),
+    [apiClientsPage, usersFilter, usersSearch]
+  )
+  const adminClientsQuery = useAdminClientsQuery({
+    ...adminClientsQueryParams,
+    enabled: useApiClients,
+  })
+  const apiClientsFromQuery = adminClientsQuery.data?.items ?? []
+  const apiClientsTotalFromQuery = adminClientsQuery.data?.total ?? 0
+  const apiClientsLoadingFromQuery = adminClientsQuery.isLoading
+  const apiClientsErrorFromQuery = adminClientsQuery.error?.message ?? ''
 
   // Product CRUD state
   const [prodModal, setProdModal]               = useState(null) // null | 'nuevo' | { producto }
-  const [prodForm, setProdForm]                 = useState({ nombre: '', categoria: 'Accesorios', precio: '', stock: '', emoji: '' })
+  const [prodForm, setProdForm]                 = useState({ nombre: '', categoria: 'Accesorios', categoryId: '', precio: '', stock: '', emoji: '' })
   const [confirmarEliminarProd, setConfirmarEliminarProd] = useState(null)
 
   // Coach avatar — crear
@@ -338,6 +369,12 @@ export default function AdminPanel() {
   // Usuario — ver detalle
   const [modalVerUsuario, setModalVerUsuario] = useState(null)
   const [reservasModalPage, setReservasModalPage] = useState(1)
+  const apiClientDetailQuery = useAdminClientDetailQuery(modalVerUsuario?.id, {
+    enabled: useApiClients && Boolean(modalVerUsuario?.id),
+  })
+  const modalVerUsuarioResolved = useApiClients && apiClientDetailQuery.data
+    ? apiClientDetailQuery.data
+    : modalVerUsuario
   // Usuario — asignar paquete desde modal Ver
   const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
   const [compartirAdminData, setCompartirAdminData] = useState({ activo: false, participantes: [] })
@@ -350,10 +387,19 @@ export default function AdminPanel() {
   // Notas editables en modal Ver
   const [editNotas, setEditNotas] = useState('')
   const coachesForClassForms = useApiCoaches ? apiCoaches : coaches
-  const clientsForAdmin = useApiClients ? apiClients : usuarios
+  const clientsForAdmin = useApiClients ? apiClientsFromQuery : usuarios
   const packagesForAdmin = useApiPackages ? apiPackages : paquetes
   const packagesForClients = useApiPackages ? apiPackages.filter((pkg) => pkg.isActive !== false) : paquetes
   const currentEditCoachAvatar = editAvatarPreview || resolveCoachAvatarUrl(modalEditCoach?.avatarUrl ?? modalEditCoach?.foto)
+  const createProductMutation = useCreateProductMutation()
+  const updateProductMutation = useUpdateProductMutation()
+  const deleteProductMutation = useDeleteProductMutation()
+  const productCategoriesQuery = useProductCategoriesQuery({
+    page: 1,
+    pageSize: 100,
+    status: 'active',
+    enabled: useApiPos,
+  })
 
   const loadApiCoaches = useCallback(async () => {
     if (!useApiCoaches) return
@@ -447,33 +493,16 @@ export default function AdminPanel() {
       setModalVerUsuario(client)
       return
     }
-    setApiClientDetailLoading(true)
-    try {
-      const detail = await getClientByIdApi(client.id)
-      setModalVerUsuario(detail)
-      setEditClientForm({
-        nombre: detail.nombre,
-        email: detail.email,
-        telefono: detail.telefono ?? '',
-        estado: detail.status,
-      })
-      setAsignarPaqueteForm({
-        paqueteNombre: detail.activeMembership?.packageId ? String(detail.activeMembership.packageId) : '',
-        metodoPago: 'efectivo',
-      })
-    } catch (error) {
-      toast.error(error?.message ?? 'No se pudo cargar el detalle del cliente')
-    } finally {
-      setApiClientDetailLoading(false)
-    }
+    setModalVerUsuario(client)
   }, [useApiClients])
 
   const refreshClientDetail = useCallback(async (clientId) => {
-    const detail = await getClientByIdApi(clientId)
-    setModalVerUsuario(detail)
-    setApiClientsRefreshToken((value) => value + 1)
-    return detail
-  }, [])
+    await queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(clientId) })
+    return queryClient.fetchQuery({
+      queryKey: queryKeys.adminClientDetail(clientId),
+      queryFn: () => getClientByIdApi(clientId),
+    })
+  }, [queryClient])
 
   const handleDeleteClients = useCallback(async (ids) => {
     const clientIds = Array.isArray(ids) ? ids : [ids]
@@ -482,7 +511,7 @@ export default function AdminPanel() {
       return
     }
     await Promise.all(clientIds.map((id) => deleteClientApi(id)))
-    setApiClientsRefreshToken((value) => value + 1)
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
   }, [eliminarUsuario, useApiClients])
 
   const handleSavePackage = useCallback(async () => {
@@ -589,7 +618,7 @@ export default function AdminPanel() {
       try {
         await deleteMembershipPackageApi(packageId)
         setApiPackagesRefreshToken((value) => value + 1)
-        toast.success('Paquete eliminado')
+        toast.success('Paquete inactivado')
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo eliminar el paquete')
       }
@@ -652,10 +681,8 @@ export default function AdminPanel() {
   }, [loadApiCoachList, useApiCoaches, coachesRefreshToken])
 
   useEffect(() => {
-    if (!useApiClients) return
-    const timeoutId = window.setTimeout(loadApiClients, 250)
-    return () => window.clearTimeout(timeoutId)
-  }, [apiClientsRefreshToken, loadApiClients, useApiClients])
+    if (useApiClients) return
+  }, [useApiClients])
 
   useEffect(() => {
     if (!useApiPackages) return
@@ -859,11 +886,50 @@ export default function AdminPanel() {
   const cartTotal    = cartSubtotal + cartIva
 
   function addToCart(product) {
-    setCart((c) => [...c, product])
+    setCart((current) => {
+      const normalizedType = String(product?.type ?? 'product').trim().toLowerCase()
+      const beneficiaryKey = normalizedType === 'package'
+        ? JSON.stringify(product?.beneficiaries ?? product?.beneficiariesText ?? [])
+        : ''
+      const existingIndex = current.findIndex((item) => (
+        String(item.type ?? 'product').trim().toLowerCase() === normalizedType
+        && String(item.id ?? item.productId ?? item.packageId) === String(product.id ?? product.productId ?? product.packageId)
+        && (
+          normalizedType !== 'package'
+          || JSON.stringify(item.beneficiaries ?? item.beneficiariesText ?? []) === beneficiaryKey
+        )
+      ))
+
+      if (existingIndex >= 0) {
+        return current.map((item, index) => (
+          index === existingIndex
+            ? { ...item, quantity: Number(item.quantity ?? 1) + 1 }
+            : item
+        ))
+      }
+
+      return [...current, { quantity: 1, ...product }]
+    })
   }
 
   function removeFromCart(idx) {
     setCart((c) => c.filter((_, i) => i !== idx))
+  }
+
+  function updateCartItemQuantity(idx, quantity) {
+    setCart((current) => current.map((item, index) => (
+      index === idx
+        ? { ...item, quantity: Math.max(1, Number(quantity) || 1) }
+        : item
+    )))
+  }
+
+  function updateCartItem(idx, changes) {
+    setCart((current) => current.map((item, index) => (
+      index === idx
+        ? { ...item, ...changes }
+        : item
+    )))
   }
 
   function clearCart() {
@@ -871,32 +937,78 @@ export default function AdminPanel() {
     setPendingAsignacion(null)
   }
 
-  function handleSaveProducto() {
-    if (!prodForm.nombre.trim()) return
-    const datos = {
-      nombre:    prodForm.nombre,
+  async function handleSaveProducto() {
+    const productCategoryId = prodForm.categoryId
+      || (productCategoriesQuery.data?.items ?? []).find((category) => String(category.name ?? category.nombre ?? '') === String(prodForm.categoria ?? ''))?.id
+      || null
+    const payload = buildPosProductApiPayload({
+      nombre: prodForm.nombre,
       categoria: prodForm.categoria,
-      precio:    Number(prodForm.precio) || 0,
-      stock:     Number(prodForm.stock)  || 0,
-      imagen:    null,
-      activo:    true,
-      emoji:     prodForm.emoji || categoryEmoji(prodForm.categoria),
+      categoryId: productCategoryId,
+      precio: prodForm.precio,
+      stock: prodForm.stock,
+      status: prodModal === 'nuevo'
+        ? 'active'
+        : (prodModal?.producto?.status ?? (prodModal?.producto?.isActive === false || prodModal?.producto?.activo === false ? 'inactive' : 'active')),
+      description: '',
+    })
+    const validationError = validatePosProductApiPayload(payload)
+    if (validationError) {
+      toast.error(validationError)
+      return
     }
-    if (prodModal === 'nuevo') {
-      agregarProducto(datos)
-      toast.success('Producto agregado')
-    } else {
-      editarProducto(prodModal.producto.id, datos)
-      toast.success('Producto actualizado')
+
+    try {
+      if (useApiPos) {
+        if (prodModal === 'nuevo') {
+          await createProductMutation.mutateAsync(payload)
+          toast.success('Producto agregado')
+        } else {
+          await updateProductMutation.mutateAsync({
+            id: prodModal.producto.id,
+            payload,
+          })
+          toast.success('Producto actualizado')
+        }
+      } else {
+        const datos = {
+          nombre:    prodForm.nombre,
+          categoria: prodForm.categoria,
+          categoryId: productCategoryId,
+          precio:    Number(prodForm.precio) || 0,
+          stock:     Number(prodForm.stock)  || 0,
+          imagen:    null,
+          activo:    true,
+          emoji:     prodForm.emoji || categoryEmoji(prodForm.categoria),
+        }
+        if (prodModal === 'nuevo') {
+          agregarProducto(datos)
+          toast.success('Producto agregado')
+        } else {
+          editarProducto(prodModal.producto.id, datos)
+          toast.success('Producto actualizado')
+        }
+      }
+      setProdModal(null)
+      setProdForm({ nombre: '', categoria: 'Accesorios', categoryId: '', precio: '', stock: '', emoji: '' })
+    } catch (error) {
+      toast.error(error?.message ?? 'No se pudo guardar el producto')
     }
-    setProdModal(null)
-    setProdForm({ nombre: '', categoria: 'Accesorios', precio: '', stock: '', emoji: '' })
   }
 
-  function handleEliminarProducto() {
-    eliminarProducto(confirmarEliminarProd.id)
-    toast.success('Producto eliminado')
-    setConfirmarEliminarProd(null)
+  async function handleEliminarProducto() {
+    try {
+      if (useApiPos) {
+        await deleteProductMutation.mutateAsync(confirmarEliminarProd.id)
+        toast.success('Producto inactivado')
+      } else {
+        eliminarProducto(confirmarEliminarProd.id)
+        toast.success('Producto eliminado')
+      }
+      setConfirmarEliminarProd(null)
+    } catch (error) {
+      toast.error(error?.message ?? 'No se pudo inactivar el producto')
+    }
   }
 
   function handleCobrar() {
@@ -1234,6 +1346,8 @@ export default function AdminPanel() {
           {/* ── PUNTO DE VENTA ── */}
           <section className={`${styles.section}${activeSection === 'pos' ? ' ' + styles.active : ''}`}>
             <PuntoDeVentaSection
+              useApiMode={useApiPos}
+              isActive={activeSection === 'pos'}
               paquetes={useApiPackages ? packagesForClients : paquetes}
               productos={productos}
               agregarProducto={agregarProducto}
@@ -1254,6 +1368,8 @@ export default function AdminPanel() {
               cartTotal={cartTotal}
               addToCart={addToCart}
               removeFromCart={removeFromCart}
+              updateCartItemQuantity={updateCartItemQuantity}
+              updateCartItem={updateCartItem}
               clearCart={clearCart}
               handleCobrar={handleCobrar}
               handleSaveProducto={handleSaveProducto}
@@ -1278,9 +1394,9 @@ export default function AdminPanel() {
               openModal={openModal}
               onViewClient={openClientDetail}
               useApiMode={useApiClients}
-              isLoading={apiClientsLoading}
-              error={apiClientsError}
-              total={apiClientsTotal}
+              isLoading={apiClientsLoadingFromQuery}
+              error={apiClientsErrorFromQuery}
+              total={apiClientsTotalFromQuery}
               page={apiClientsPage}
               pageSize={ADMIN_CLIENTS_PAGE_SIZE}
               onPageChange={setApiClientsPage}
@@ -1779,7 +1895,7 @@ export default function AdminPanel() {
                   <option value="ninguno">Sin paquete por ahora</option>
                   {packagesForClients.map(p => (
                     <option key={p.id} value={useApiClients ? String(p.id) : getPackageDisplayName(p)}>
-                      {getPackageDisplayName(p)} — {formatPackagePriceLabel(p)} ({getPackageCredits(p)} clases)
+                      {getPackageDisplayName(p)} — {formatPackagePriceLabel(p)} ({formatPackageCreditsLabel(p)})
                     </option>
                   ))}
                 </select>
@@ -1824,7 +1940,7 @@ export default function AdminPanel() {
                       }
                       toast.success(`${usuarioForm.nombre} dado de alta`)
                       setApiClientsPage(1)
-                      setApiClientsRefreshToken((value) => value + 1)
+                      await queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
                       setUsuarioForm({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
                       closeModal()
                     } catch (error) {
@@ -1867,8 +1983,8 @@ export default function AdminPanel() {
                       metodoPago:       usuarioForm.metodoPago,
                     })
                     const labelClases = useApiPackages
-                      ? `${getPackageCredits(paqSel)} clases`
-                      : `${getPackageCredits(paqSel)} clases`
+                      ? formatPackageCreditsLabel(paqSel)
+                      : formatPackageCreditsLabel(paqSel)
                     setCart([{ name: `${getPackageDisplayName(paqSel)} — ${labelClases}`, price: paqSel.precio, emoji: '📦', cliente: usuarioForm.nombre }])
                     setPosFilter('📦 Paquetes')
                     setActiveSection('pos')
@@ -1905,10 +2021,33 @@ export default function AdminPanel() {
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Categoría</label>
-                <select className={styles.formSelect} value={prodForm.categoria}
-                  onChange={(e) => setProdForm((f) => ({ ...f, categoria: e.target.value }))}>
-                  {['Accesorios', 'Nutrición', 'Equipo', 'Ropa'].map((c) => <option key={c}>{c}</option>)}
-                </select>
+                {useApiPos ? (
+                  <select
+                    className={styles.formSelect}
+                    value={String(prodForm.categoryId ?? '')}
+                    onChange={(e) => {
+                      const selectedId = e.target.value
+                      const selectedCategory = (productCategoriesQuery.data?.items ?? []).find((category) => String(category.id) === String(selectedId))
+                      setProdForm((f) => ({
+                        ...f,
+                        categoryId: selectedId,
+                        categoria: selectedCategory?.name ?? selectedCategory?.nombre ?? '',
+                      }))
+                    }}
+                  >
+                    <option value="">Selecciona categoría</option>
+                    {(productCategoriesQuery.data?.items ?? []).map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name ?? category.nombre}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select className={styles.formSelect} value={prodForm.categoria}
+                    onChange={(e) => setProdForm((f) => ({ ...f, categoria: e.target.value }))}>
+                    {['Accesorios', 'Nutrición', 'Equipo', 'Ropa'].map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                )}
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Precio (MXN)</label>
@@ -2707,7 +2846,7 @@ export default function AdminPanel() {
       )}
       {/* ── VER USUARIO ── */}
       {modalVerUsuario && (() => {
-        const u = modalVerUsuario
+        const u = modalVerUsuarioResolved ?? modalVerUsuario
         const reservasU = useApiClients
           ? (u.recentReservations ?? [])
           : todasReservas.filter(r => String(r.userId) === String(u.id))
@@ -2974,7 +3113,7 @@ export default function AdminPanel() {
                         <option value="">Sin paquete</option>
                         {packagesForClients.map(p => (
                           <option key={p.id} value={useApiClients ? String(p.id) : getPackageDisplayName(p)}>
-                            {getPackageDisplayName(p)} — {formatPackagePriceLabel(p)} ({getPackageCredits(p)} clases)
+                            {getPackageDisplayName(p)} — {formatPackagePriceLabel(p)} ({formatPackageCreditsLabel(p)})
                           </option>
                         ))}
                       </select>
@@ -3040,7 +3179,7 @@ export default function AdminPanel() {
                           fechaVencimiento,
                           metodoPago:      asignarPaqueteForm.metodoPago,
                         })
-                        const labelClases = `${getPackageCredits(paqSel)} clases`
+                        const labelClases = formatPackageCreditsLabel(paqSel)
                         setCart([{ name: `${getPackageDisplayName(paqSel)} — ${labelClases}`, price: paqSel.precio, emoji: '📦', cliente: u.nombre }])
                         setPosFilter('📦 Paquetes')
                         setModalVerUsuario(null)

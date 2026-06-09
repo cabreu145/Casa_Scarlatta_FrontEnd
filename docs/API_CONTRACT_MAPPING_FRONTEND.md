@@ -164,3 +164,21 @@ Reglas frontend:
 - Buyer: solo alta inicial de beneficiarios; después queda solo lectura.
 - Admin: puede agregar/quitar/reemplazar mientras no haya consumo.
 - Errores backend esperados: `SHARED_CREDITS_NOT_DIVISIBLE`, `SHARED_BENEFICIARY_CHANGE_ADMIN_ONLY`, `SHARED_MEMBERSHIP_HAS_CONSUMPTION`, `BENEFICIARY_NOT_FOUND`.
+
+## MVP server state
+
+Frontend MVP uses TanStack Query for server state. Zustand queda para fallback legacy y UI local. Lecturas con `useQuery`, mutaciones con `useMutation`, refetch con invalidate tras éxito. No usar `page_size=1000`.
+
+## Mapeo POS (vigente)
+| Archivo frontend | Función actual | Endpoint backend | Request esperado | Response esperado | Transformación necesaria | Prioridad |
+|---|---|---|---|---|---|---|
+| `frontend/src/services/posApiService.js` | `getProductsApi({ page, pageSize, search, category, status })` | `GET /api/v1/productos?page=&page_size=&search=&category=&status=` | query paginada | `{ page, page_size, total, items[] }` | `posAdapter` | Alta |
+| `frontend/src/services/posApiService.js` | `createProductApi(payload)` / `updateProductApi(id,payload)` / `updateProductStatusApi(id,status)` / `deleteProductApi(id)` | `POST/PUT/PATCH/DELETE /api/v1/productos` | `{ name, category, price_mxn, stock, status, description? }` | `ProductRead` | `posApiPayload` + `posAdapter` | Alta |
+| `frontend/src/services/posApiService.js` | `createSaleApi(payload)` | `POST /api/v1/ventas` | `{ customer_id, items[], payment_method, total_mxn, notes? }` | `SaleRead` con `ticket_url`, `ticket_pdf_url`, `public_ticket_url` | `posApiPayload` + `posAdapter` | Alta |
+| `frontend/src/services/posApiService.js` | `getSalesApi({ page, pageSize, from, to, paymentMethod, status })` | `GET /api/v1/ventas?page=&page_size=&from=&to=&payment_method=&status=` | query filtrada | `{ page, page_size, total, items[] }` | `posAdapter` + `paginationAdapter` | Alta |
+| `frontend/src/services/posApiService.js` | `getSaleByIdApi(id)` / `getSaleTicketApi(id)` / `getSaleTicketPdfUrl(id)` / `getPublicTicketUrl(token)` | `GET /api/v1/ventas/{id}` / `GET /api/v1/ventas/{id}/ticket` / `GET /api/v1/ventas/{id}/ticket.pdf` / `GET /api/v1/public/tickets/{token}` | path/token | venta/ticket/ticket PDF/public ticket | `posAdapter` | Alta |
+
+Notas POS:
+- Carrito queda local de UI; server state va con TanStack Query.
+- `public_ticket_url` se usa para WhatsApp Web en MVP.
+- POS no usa Mercado Pago.

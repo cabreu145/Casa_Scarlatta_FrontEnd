@@ -1,4 +1,4 @@
-export function getPackageDisplayName(pkg = {}) {
+﻿export function getPackageDisplayName(pkg = {}) {
   const name = String(pkg?.name ?? '').trim()
   if (name) return name
   const displayName = String(pkg?.displayName ?? pkg?.display_name ?? pkg?.nombre ?? '').trim()
@@ -11,8 +11,21 @@ export function getPackageCredits(pkg = {}) {
   return Number.isFinite(credits) ? credits : 0
 }
 
-export function formatPackageValidityLabel(pkg = {}) {
-  const days = Number(pkg?.durationDays ?? pkg?.duration_days ?? pkg?.vigencia ?? 0)
+export function formatPackageCreditsLabel(value = 0) {
+  const credits = typeof value === 'object' && value !== null ? getPackageCredits(value) : Number(value)
+  if (!Number.isFinite(credits) || credits <= 0) return '0 clases'
+  return `${credits} ${credits === 1 ? 'clase' : 'clases'}`
+}
+
+function resolvePackageDurationDays(value) {
+  if (typeof value === 'object' && value !== null) {
+    return Number(value?.durationDays ?? value?.duration_days ?? value?.vigencia ?? 0)
+  }
+  return Number(value)
+}
+
+export function formatPackageValidityLabel(value = {}) {
+  const days = resolvePackageDurationDays(value)
   if (!Number.isFinite(days) || days <= 0) return 'Vigencia por definir'
   return `Válido por ${days} ${days === 1 ? 'día' : 'días'}`
 }

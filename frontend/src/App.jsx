@@ -83,24 +83,34 @@ function AnimatedRoutes() {
     <>
       <Navbar />
       <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
-          <Route path="/clases" element={<PageWrapper><Clases /></PageWrapper>} />
-          <Route path="/suet" element={<PageWrapper><Suet /></PageWrapper>} />
-          <Route path="/flow" element={<PageWrapper><Flow /></PageWrapper>} />
-          <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
-          <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
-          <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
-          <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
-          <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />
-          <Route path="/recuperar-contrasena" element={<PageWrapper><RecuperarContrasena /></PageWrapper>} />
-          <Route path="/nueva-contrasena" element={<PageWrapper><NuevaContrasena /></PageWrapper>} />
-          <Route path="/pago/success" element={<PaymentReturnPage />} />
-          <Route path="/pago/pending" element={<PaymentReturnPage />} />
-          <Route path="/pago/failure" element={<PaymentReturnPage />} />
-          {import.meta.env.DEV && <Route path="/__debug/equipment-panel" element={<EquipmentReservationDebugPage />} />}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: '100vh', fontFamily: 'var(--font-body)',
+            fontSize: 14, color: 'var(--text-muted)'
+          }}>
+            Cargando...
+          </div>
+        }>
+          <Routes location={location} key={location.pathname}>
+            <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
+            <Route path="/clases" element={<PageWrapper><Clases /></PageWrapper>} />
+            <Route path="/suet" element={<PageWrapper><Suet /></PageWrapper>} />
+            <Route path="/flow" element={<PageWrapper><Flow /></PageWrapper>} />
+            <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
+            <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
+            <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
+            <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
+            <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />
+            <Route path="/recuperar-contrasena" element={<PageWrapper><RecuperarContrasena /></PageWrapper>} />
+            <Route path="/nueva-contrasena" element={<PageWrapper><NuevaContrasena /></PageWrapper>} />
+            <Route path="/pago/success" element={<PaymentReturnPage />} />
+            <Route path="/pago/pending" element={<PaymentReturnPage />} />
+            <Route path="/pago/failure" element={<PaymentReturnPage />} />
+            {import.meta.env.DEV && <Route path="/__debug/equipment-panel" element={<EquipmentReservationDebugPage />} />}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </AnimatePresence>
       <Footer />
     </>

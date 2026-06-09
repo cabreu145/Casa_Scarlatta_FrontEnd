@@ -77,7 +77,6 @@ export default function Footer() {
             <ul className={styles.colLinks}>
               <li><Link to="/suet">Stryde X </Link></li>
               <li><Link to="/flow">Slow </Link></li>
-              <li><Link to="/clases">Clases</Link></li>
               <li><Link to="/nosotros">Nosotros</Link></li>
             </ul>
           </div>
@@ -85,9 +84,9 @@ export default function Footer() {
           <div>
             <p className={styles.colTitle}>Visítanos</p>
             <ul className={styles.colLinks}>
-              <li><Link to="/reservar">Reservar clase</Link></li>
+              <li><Link to="/clases">Reservar clase</Link></li>
               <li><Link to="/contacto">Contacto</Link></li>
-              <li><a href="#membresias">Paquetes</a></li>
+              
             </ul>
           </div>
 

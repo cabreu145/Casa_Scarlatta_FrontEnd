@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import PaginationControls from '@/components/ui/PaginationControls'
-import { getMyPaymentsApi } from '@/services/clientPaymentsApiService'
 import { getPaymentStatusApi } from '@/services/paymentsApiService'
-import { getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
+import { queryKeys } from '@/api/queryKeys'
+import { useMyPaymentsQuery } from '@/hooks/useApiQueries'
 
 const PAGE_SIZE = 10
 
@@ -129,15 +130,21 @@ function buildCardCopy(item = {}) {
 }
 
 export default function RecentPaymentsStatusPanel({ enabled, onFinancialRefreshRequested }) {
-  const [items, setItems] = useState([])
+  const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [pageSize] = useState(PAGE_SIZE)
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [refreshingRefs, setRefreshingRefs] = useState({})
   const [statusFilter, setStatusFilter] = useState('all')
-  const [refreshTick, setRefreshTick] = useState(0)
+  const paymentsQuery = useMyPaymentsQuery({
+    page,
+    pageSize,
+    status: statusFilter === 'all' ? undefined : statusFilter,
+    enabled,
+  })
+  const items = paymentsQuery.data?.items ?? []
+  const total = paymentsQuery.data?.total ?? 0
+  const loading = paymentsQuery.isLoading
+  const error = paymentsQuery.error?.message ?? ''
 
   const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize))
 
@@ -146,70 +153,27 @@ export default function RecentPaymentsStatusPanel({ enabled, onFinancialRefreshR
     [items, statusFilter]
   )
 
-  useEffect(() => {
-    if (!enabled) return
-    let active = true
-    const run = async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const result = await getMyPaymentsApi({ page, pageSize })
-        if (!active) return
-        const nextTotalPages = Math.max(1, Math.ceil((result.total ?? 0) / pageSize))
-        setItems(result.items ?? [])
-        setTotal(result.total ?? 0)
-        if ((result.page ?? page) > nextTotalPages) {
-          setPage(nextTotalPages)
-        }
-        const approvedApplied = (result.items ?? []).some((item) => item.status === 'approved' && item.applied)
-        if (approvedApplied) {
-          onFinancialRefreshRequested?.()
-        }
-      } catch (err) {
-        if (!active) return
-        setItems([])
-        setTotal(0)
-        setError(err?.message || 'No se pudo cargar historial de pagos')
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
-
-    run()
-    return () => {
-      active = false
-    }
-  }, [enabled, page, pageSize, refreshTick, onFinancialRefreshRequested])
-
-  useEffect(() => {
-    if (!enabled) return
-    setPage(1)
-  }, [enabled, statusFilter])
-
   const refreshOne = useCallback(async (item) => {
     if (!item?.externalReference) return
     setRefreshingRefs((prev) => ({ ...prev, [item.externalReference]: true }))
     try {
       const statusData = await getPaymentStatusApi({ externalReference: item.externalReference })
-      setItems((prev) => prev.map((current) => (
-        current.externalReference === item.externalReference
-          ? { ...current, ...statusData, externalReference: statusData.externalReference ?? current.externalReference }
-          : current
-      )))
-
       if (statusData.status === 'approved' && statusData.applied) {
         onFinancialRefreshRequested?.()
       }
-
-      setRefreshTick((tick) => tick + 1)
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.myPayments({ page, pageSize, status: statusFilter === 'all' ? 'all' : statusFilter }),
+      })
       return statusData
     } catch (err) {
-      setError(err?.message || 'No se pudo consultar estado de pago')
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.myPayments({ page, pageSize, status: statusFilter === 'all' ? 'all' : statusFilter }),
+      })
       return null
     } finally {
       setRefreshingRefs((prev) => ({ ...prev, [item.externalReference]: false }))
     }
-  }, [onFinancialRefreshRequested])
+  }, [onFinancialRefreshRequested, page, pageSize, queryClient, statusFilter])
 
   if (!enabled) return null
 
@@ -227,7 +191,7 @@ export default function RecentPaymentsStatusPanel({ enabled, onFinancialRefreshR
             Estado de pagos recientes
           </h2>
           <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--muted)' }}>
-            Historial real del cliente desde backend. Verifica pendientes, acreditados y no procesados.
+            Historial  del cliente. Verifica pendientes, acreditados y no procesados.
           </p>
         </div>
 
@@ -235,7 +199,10 @@ export default function RecentPaymentsStatusPanel({ enabled, onFinancialRefreshR
           Filtro
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setPage(1)
+            }}
             style={{
               borderRadius: 12,
               border: '1px solid rgba(42, 26, 31, 0.16)',

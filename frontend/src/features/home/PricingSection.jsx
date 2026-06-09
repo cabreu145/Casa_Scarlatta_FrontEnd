@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 import { getMembershipPackagesApi } from '@/services/membershipPackagesApiService'
 import {
   formatPackagePriceLabel,
+  formatPackageCreditsLabel,
   formatPackageShareabilityLabel,
   formatPackageValidityLabel,
   getPackageBenefits,
@@ -113,7 +114,7 @@ export default function PricingSection() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-[#FAF5F2] via-[#F5EDE8] to-[#EFE3DC] py-28">
+    <section id="membresias" className="relative overflow-hidden bg-gradient-to-br from-[#FAF5F2] via-[#F5EDE8] to-[#EFE3DC] py-28">
       <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[600px] w-[600px] rounded-full bg-[radial-gradient(circle,rgba(194,107,122,0.09)_0%,transparent_70%)]" />
 
       <div className="relative mx-auto max-w-5xl px-6">
@@ -170,7 +171,7 @@ function PaqueteCard({ p, onComprar }) {
   const esFeatured = Boolean(p?.destacado)
   const clases = getPackageCredits(p)
   const clasesDisplay = clases > 0 ? clases : '—'
-  const clasesLabel = clases === 1 ? 'Clase' : 'Clases'
+  const clasesLabel = formatPackageCreditsLabel(clases)
   const benefits = buildPackageBenefits(p)
   const priceLabel = formatPackagePriceLabel(p)
   const validityLabel = formatPackageValidityLabel(p)

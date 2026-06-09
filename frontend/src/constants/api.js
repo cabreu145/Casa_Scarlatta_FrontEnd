@@ -92,8 +92,31 @@ export const ENDPOINTS = {
   comprarPaquete: withPrefix('/paquetes/comprar'),
 
   productos: withPrefix('/productos'),
+  productosPaginated: ({ page, pageSize, search, category, status }) =>
+    withQuery('/productos', { page, page_size: pageSize, search, category, status }),
+  productoCategories: withPrefix('/productos/categorias'),
+  productoCategoriesPaginated: ({ page, pageSize, search, status }) =>
+    withQuery('/productos/categorias', { page, page_size: pageSize, search, status }),
+  productoCategoryById: (id) => withPrefix(`/productos/categorias/${id}`),
+  productoCategoryStatusById: (id) => withPrefix(`/productos/categorias/${id}/status`),
   productoById: (id) => withPrefix(`/productos/${id}`),
-  descontarStock: (id) => withPrefix(`/productos/${id}/descontar-stock`),
+  productoStatusById: (id) => withPrefix(`/productos/${id}/status`),
+  productoDeleteById: (id) => withPrefix(`/productos/${id}`),
+  ventas: withPrefix('/ventas'),
+  ventasPaginated: ({ page, pageSize, from, to, paymentMethod, status }) =>
+    withQuery('/ventas', {
+      page,
+      page_size: pageSize,
+      from,
+      to,
+      payment_method: paymentMethod,
+      status,
+    }),
+  ventaById: (id) => withPrefix(`/ventas/${id}`),
+  ventaTicket: (id) => withPrefix(`/ventas/${id}/ticket`),
+  ventaTicketPdf: (id) => withPrefix(`/ventas/${id}/ticket.pdf`),
+  publicTicketByToken: (token) => withPrefix(`/public/tickets/${token}`),
+  publicTicketImageByToken: (token) => withPrefix(`/public/tickets/${token}/image`),
 
   transacciones: withPrefix('/transacciones'),
   transaccionesMes: (anio, mes) => withPrefix(`/transacciones?anio=${anio}&mes=${mes}`),
