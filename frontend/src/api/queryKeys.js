@@ -27,4 +27,13 @@ export const queryKeys = {
     lowStock: (params = {}) => ['finance', 'lowStock', params],
     recentSales: (params = {}) => ['finance', 'recentSales', params],
   },
+  reports: {
+    finance: (params = {}) => ['reports', 'finance', params],
+    users: (params = {}) => ['reports', 'users', params],
+    packages: (params = {}) => ['reports', 'packages', params],
+    pos: (params = {}) => ['reports', 'pos', params],
+    coaches: (params = {}) => ['reports', 'coaches', params],
+    topClasses: (params = {}) => ['reports', 'topClasses', params],
+    occupancyByDiscipline: (params = {}) => ['reports', 'occupancyByDiscipline', params],
+  },
 }

@@ -164,6 +164,21 @@ export const ENDPOINTS = {
   finanzasExportar: ({ from, to, type } = {}) =>
     withQuery('/finanzas/exportar', { from, to, type }),
 
+  reportesFinanzas: ({ from, to } = {}) =>
+    withQuery('/reportes/finanzas', { from, to }),
+  reportesUsuarios: ({ from, to } = {}) =>
+    withQuery('/reportes/usuarios', { from, to }),
+  reportesPaquetes: ({ from, to } = {}) =>
+    withQuery('/reportes/paquetes', { from, to }),
+  reportesPos: ({ from, to } = {}) =>
+    withQuery('/reportes/pos', { from, to }),
+  reportesCoaches: ({ from, to } = {}) =>
+    withQuery('/reportes/coaches', { from, to }),
+  reportesTopClases: ({ from, to, limit } = {}) =>
+    withQuery('/reportes/top-clases', { from, to, limit }),
+  reportesOcupacionPorDisciplina: ({ from, to } = {}) =>
+    withQuery('/reportes/ocupacion-por-disciplina', { from, to }),
+
   coaches: withPrefix('/coaches'),
   coachesPaginated: ({ page, pageSize, search, status }) =>
     withQuery('/coaches', { page, page_size: pageSize, search, status }),

@@ -133,6 +133,7 @@ export function getKpisFinanzas(rango = 'mes', fechaFin = null, { fechaDesde = n
   }
 }
 
+// Legacy/demo only. Do not use as source of truth in API mode.
 // ── Serie histórica para gráfica ──────────────────────────────────────────────
 function getSerieHistorica(transacciones, rango, fechaFin = null) {
   if (fechaFin) {
@@ -153,7 +154,7 @@ function getSerieHistorica(transacciones, rango, fechaFin = null) {
       const monto = transacciones
         .filter(tx => tx.monto > 0 && tx.fecha === getHoy())
         .reduce((a, tx) => a + (tx.monto ?? 0), 0)
-      // Distribuir monto de forma visual (mock)
+      // Legacy/demo only. Visual distribution, not financial source of truth.
       return { label, ingresos: Math.round(monto / 8 * (0.5 + Math.random() * 0.8)), gastos: 0 }
     })
   }
@@ -217,6 +218,7 @@ export function getDatosCorteHoy() {
   )
 }
 
+// Legacy/demo only. Do not use as source of truth in API mode.
 // ── Reporte de coaches con tabulador ─────────────────────────────────────────
 /**
  * Calcula clases impartidas, ocupación y pago por coach.

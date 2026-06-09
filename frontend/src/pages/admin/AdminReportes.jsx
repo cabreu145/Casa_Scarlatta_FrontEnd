@@ -31,7 +31,10 @@ import { getClassDisplayTime } from '@/utils/classSchedule'
 import { mockUsers }           from '@/data/mockUsers'
 import { ingresosUltimosMeses } from '@/data/mockTransacciones'
 import { abrirReportePDF }     from '@/utils/reportePDF'
+import ReportesApiSection from '@/pages/admin/components/ReportesApiSection'
 import styles from '@/styles/dashboard.module.css'
+
+const useApiMode = import.meta.env.VITE_USE_API_AUTH === 'true'
 
 // ── Helpers de exportación ────────────────────────────────────────────────────
 function diaSemana(fecha) {
@@ -750,6 +753,10 @@ function TablaCoaches({ periodo, setPeriodo }) {
 
 // ═════════════════════════════════════════════════════════════════════════════
 export function ReportesSection({ inPanel = false }) {
+  if (useApiMode) {
+    return <ReportesApiSection inPanel={inPanel} />
+  }
+
   const { clases }           = useClasesStore()
   const { transacciones }    = useTransaccionesStore()
   const [periodoCoach, setPeriodoCoach]     = useState('mes')

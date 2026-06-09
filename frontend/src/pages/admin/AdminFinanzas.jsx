@@ -20,6 +20,9 @@ import { abrirReportePDF } from '@/utils/reportePDF'
 import { hoyLocal, mesLocal } from '@/utils/fecha'
 import DateNavigator from '@/components/ui/DateNavigator'
 import styles from '@/styles/dashboard.module.css'
+import FinanzasApiSection from './components/FinanzasApiSection'
+
+const useApiMode = import.meta.env.VITE_USE_API_AUTH === 'true'
 
 const DIAS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 function diaDesdefecha(f) { return f ? DIAS_ES[new Date(f + 'T00:00:00').getDay()] ?? '—' : '—' }
@@ -190,6 +193,10 @@ function Alerta({ tipo, mensaje }) {
 }
 
 export function FinanzasSection({ inPanel = false }) {
+  if (useApiMode) {
+    return <FinanzasApiSection inPanel={inPanel} />
+  }
+
   const { transacciones }                                            = useTransaccionesStore()
   const { cortes, ejecutarCorte }                                    = useCortesStore()
   const { usuario }                                                  = useAuthStore()

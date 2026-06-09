@@ -182,3 +182,18 @@ Notas POS:
 - Carrito queda local de UI; server state va con TanStack Query.
 - `public_ticket_url` se usa para WhatsApp Web en MVP.
 - POS no usa Mercado Pago.
+
+## Mapeo Reportes operativos (vigente)
+| Archivo frontend | Función actual | Endpoint backend | Request esperado | Response esperado | Transformación necesaria | Prioridad |
+|---|---|---|---|---|---|---|
+| `frontend/src/services/reportsApiService.js` | `getFinanceReport({from,to})` | `GET /api/v1/reportes/finanzas?from=&to=` | query `from`,`to` | reporte financiero operativo | `reportAdapter` | Alta |
+| `frontend/src/services/reportsApiService.js` | `getUsersReport({from,to})` | `GET /api/v1/reportes/usuarios?from=&to=` | query `from`,`to` | reporte usuarios | `reportAdapter` | Alta |
+| `frontend/src/services/reportsApiService.js` | `getPackagesReport({from,to})` | `GET /api/v1/reportes/paquetes?from=&to=` | query `from`,`to` | reporte paquetes | `reportAdapter` | Alta |
+| `frontend/src/services/reportsApiService.js` | `getPosReport({from,to})` | `GET /api/v1/reportes/pos?from=&to=` | query `from`,`to` | reporte POS | `reportAdapter` | Alta |
+| `frontend/src/services/reportsApiService.js` | `getCoachesReport({from,to})` | `GET /api/v1/reportes/coaches?from=&to=` | query `from`,`to` | reporte coaches | `reportAdapter` | Alta |
+| `frontend/src/services/reportsApiService.js` | `getTopClassesReport({from,to,limit})` | `GET /api/v1/reportes/top-clases?from=&to=&limit=5` | query `from`,`to`,`limit` | top clases | `reportAdapter` | Alta |
+| `frontend/src/services/reportsApiService.js` | `getOccupancyByDisciplineReport({from,to})` | `GET /api/v1/reportes/ocupacion-por-disciplina?from=&to=` | query `from`,`to` | ocupacion por disciplina | `reportAdapter` | Alta |
+
+Notas:
+- `AdminReportes` conserva shell visual original; export CSV/PDF se arma en frontend con datos ya cargados por API mode.
+- Export legacy con mocks solo sigue cuando flags API están en `false`.

@@ -8,8 +8,8 @@ Scope: frontend-only diagnÃ³stico. Sin cambios de backend, sin refactor funcio
 El panel admin sigue en estado mixto:
 
 - **API real parcial**: `Clases`.
-- **API-first ya cerrado**: `Clases`, `Coaches`, `POS`.
-- **Mock/local dominante**: Usuarios/clientes, Paquetes/membresÃ­as, POS, Transacciones/pagos, Gastos, Cortes, Reportes, ConfiguraciÃ³n.
+- **API-first ya cerrado**: `Clases`, `Coaches`, `POS`, `Reportes operativos`.
+- **Mock/local dominante**: Usuarios/clientes, Paquetes/membresias, Transacciones/pagos legacy, Gastos, Cortes, Configuracion.
 - **Legacy/dead code o auxiliar**: `AdminDashboard.jsx` sigue leyendo mocks y stores locales.
 
 La integraciÃ³n mÃ¡s madura estÃ¡ en clases. El resto depende de stores persistidos, arrays hardcoded, `localStorage` vÃ­a Zustand persist, o helpers de negocio que todavÃ­a simulan backend.
@@ -29,10 +29,10 @@ La integraciÃ³n mÃ¡s madura estÃ¡ en clases. El resto depende de stores pe
 | Usuarios/clientes | `src/pages/admin/sections/UsuariosSection.jsx`, flujo en `AdminPanel.jsx` | `usuariosStore`, `paquetesStore` | `usuariosService` | mock/local | listar, buscar, editar, eliminar, asignar paquete, ajustar datos | `GET/POST/PUT/PATCH/DELETE /api/v1/clientes`, `POST /api/v1/clientes/{id}/paquetes` | Alto: clientes falsos/locales | **Admin-2** |
 | Paquetes/membresÃ­as | `src/pages/admin/sections/PaquetesSection.jsx`, flujo en `AdminPanel.jsx` | `paquetesStore`, `transaccionesStore` | no hay servicio admin backend real; client-side usa `membershipPackagesApiService` solo para catÃ¡logo pÃºblico | mock/local | CRUD local, destacar paquete, beneficios, uso en POS | `GET/POST/PUT/PATCH/DELETE /api/v1/memberships/packages` (o equivalente admin) | Alto: catÃ¡logo admin no real | **Admin-2** |
 | POS / productos / ventas | `src/pages/admin/sections/PuntoDeVentaSection.jsx` | `productosStore`, `paquetesStore`, `transaccionesStore`, `usuariosStore` | `posApiService`, `useApiQueries` | **API-first** | catálogo real, carrito local, cobrar, venta de productos/paquetes, ticket | `GET/POST/PUT/PATCH/DELETE /api/v1/productos`, `POST /api/v1/ventas`, `GET /api/v1/ventas`, `GET /api/v1/ventas/{id}/ticket`, `GET /api/v1/ventas/{id}/ticket.pdf`, `GET /api/v1/public/tickets/{token}` | Medio: fallback legacy todavía existe | **Admin-3** |
-| Transacciones / pagos | `src/pages/admin/sections/ActividadSection.jsx`, `src/pages/admin/AdminFinanzas.jsx`, `src/pages/admin/AdminReportes.jsx` | `transaccionesStore`, `cortesStore`, `gastosStore` | `finanzasService`, `dashboardService` | mock/local | listar transacciones, KPIs, export, corte, totales | `GET /api/v1/admin/transacciones`, `GET /api/v1/admin/pagos`, `GET /api/v1/admin/finanzas/*` | Alto: reportes no auditables | **Admin-4** |
+| Transacciones / pagos | `src/pages/admin/sections/ActividadSection.jsx`, `src/pages/admin/AdminFinanzas.jsx`, `src/pages/admin/AdminReportes.jsx` | `transaccionesStore`, `cortesStore`, `gastosStore` | `finanzasService` solo fallback, `useApiQueries` en API mode | mixto | listar transacciones, KPIs, export, corte, totales | `GET /api/v1/finanzas/kpis`, `/dia`, `/categorias`, `/ventas-recientes`, `/finanzas/exportar`, `/api/v1/gastos`, `/api/v1/cortes/*` | Medio: legacy solo fallback | **Admin-4** |
 | Gastos | `src/pages/admin/AdminFinanzas.jsx` | `gastosStore` | `finanzasService` | mock/local | CRUD gasto, filtros, totales | `GET/POST/PUT/PATCH/DELETE /api/v1/gastos` | Alto | **Admin-4** |
 | Cortes | `src/pages/admin/AdminFinanzas.jsx` | `cortesStore` | `finanzasService` | mock/local | abrir/cerrar corte, listar historial | `GET/POST /api/v1/cortes` | Alto | **Admin-4** |
-| Reportes | `src/pages/admin/AdminReportes.jsx` | `clasesStore`, `coachesStore`, `transaccionesStore`, `tabuladorStore`, `paquetesStore`, `usuariosStore` | `finanzasService`, `getReporteCoaches` | mock/local | exportar, agrupar, KPIs, resÃºmenes | `GET /api/v1/admin/reportes/*`, `GET /api/v1/admin/coaches/reporte`, `GET /api/v1/admin/finanzas/resumen` | Alto | **Admin-4** |
+| Reportes | `src/pages/admin/AdminReportes.jsx` | `clasesStore`, `coachesStore`, `transaccionesStore`, `tabuladorStore`, `paquetesStore`, `usuariosStore` | `reportsApiService`, `useApiQueries` | **API-first** en modo API | reportes financieros, usuarios, paquetes, POS, coaches, top clases, ocupacion | `GET /api/v1/reportes/finanzas`, `/usuarios`, `/paquetes`, `/pos`, `/coaches`, `/top-clases`, `/ocupacion-por-disciplina` | Medio: legacy sigue solo fallback | **Admin-4** |
 | ConfiguraciÃ³n | `src/pages/admin/sections/ConfiguracionSection.jsx` | `configuracionStore` | ninguno backend real | mock/local | editar branding, imÃ¡genes, videos, textos | `GET/PUT /api/v1/configuracion`, media upload endpoints | Medio-Alto | **Admin-4** |
 
 ## DiagnÃ³stico por mÃ³dulo
@@ -116,8 +116,8 @@ Qué falta:
 Estado:
 
 - `AdminDashboard.jsx` sigue leyendo mocks y stores locales; ademÃ¡s se describe como legacy/dead code.
-- `AdminReportes.jsx` y `AdminFinanzas.jsx` usan helpers de finanzas locales.
-- `dashboardService` / `finanzasService` no son API-backed.
+- `AdminReportes.jsx` usa backend real en API mode.
+- `AdminFinanzas.jsx` ya usa backend real en API mode; `finanzasService` queda solo fallback legacy/demo.
 
 Riesgo:
 

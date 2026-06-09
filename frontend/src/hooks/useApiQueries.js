@@ -32,6 +32,15 @@ import {
   getRecentFinanceSales,
 } from '@/services/financeApiService'
 import {
+  getCoachesReport,
+  getFinanceReport,
+  getOccupancyByDisciplineReport,
+  getPackagesReport,
+  getPosReport,
+  getTopClassesReport,
+  getUsersReport,
+} from '@/services/reportsApiService'
+import {
   adjustClientCreditsApi,
   assignClientPackageApi,
   createClientApi,
@@ -300,6 +309,69 @@ export function useFinanceRecentSalesQuery({ limit = 10, enabled = false } = {})
   return useQuery({
     queryKey: queryKeys.finance.recentSales({ limit }),
     queryFn: () => getRecentFinanceSales({ limit }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useFinanceReportQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.finance({ from: from || '', to: to || '' }),
+    queryFn: () => getFinanceReport({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useUsersReportQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.users({ from: from || '', to: to || '' }),
+    queryFn: () => getUsersReport({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function usePackagesReportQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.packages({ from: from || '', to: to || '' }),
+    queryFn: () => getPackagesReport({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function usePosReportQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.pos({ from: from || '', to: to || '' }),
+    queryFn: () => getPosReport({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useCoachesReportQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.coaches({ from: from || '', to: to || '' }),
+    queryFn: () => getCoachesReport({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useTopClassesReportQuery({ from, to, limit = 5, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.topClasses({ from: from || '', to: to || '', limit }),
+    queryFn: () => getTopClassesReport({ from, to, limit }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useOccupancyByDisciplineReportQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.occupancyByDiscipline({ from: from || '', to: to || '' }),
+    queryFn: () => getOccupancyByDisciplineReport({ from, to }),
     enabled,
     ...shortDefaults,
   })

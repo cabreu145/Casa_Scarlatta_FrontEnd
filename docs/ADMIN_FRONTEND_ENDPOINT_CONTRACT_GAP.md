@@ -1,11 +1,11 @@
-# Admin Frontend Endpoint Contract Gap
+﻿# Admin Frontend Endpoint Contract Gap
 
 Fecha: 2026-06-07  
-Scope: diagnÃ³stico frontend-first. No implementaciÃ³n. No backend changes.
+Scope: diagnÃƒÂ³stico frontend-first. No implementaciÃƒÂ³n. No backend changes.
 
 ## Objetivo
 
-Convertir gap funcional del panel admin en contrato esperado por frontend, para comparar endpoint por endpoint contra backend real y cerrar integraciÃ³n por fases.
+Convertir gap funcional del panel admin en contrato esperado por frontend, para comparar endpoint por endpoint contra backend real y cerrar integraciÃƒÂ³n por fases.
 
 ## Resumen ejecutivo
 
@@ -13,25 +13,25 @@ Estado actual del admin:
 
 - **API parcial**: `Clases`.
 - **API-first ya cerrado**: `Clases`, `Coaches`.
-- **Mock/local dominante**: `Dashboard admin`, `Usuarios/clientes`, `Paquetes/membresías`, `Transacciones/pagos`, `Gastos`, `Cortes`, `Reportes`, `Configuración`.
+- **Mock/local dominante**: `Dashboard admin`, `Usuarios/clientes`, `Paquetes/membresias`, `Transacciones/pagos`, `Gastos`, `Cortes`, `Configuracion`.
 
-`AdminDashboard.jsx` sigue siendo legacy/dead code y no deberÃ­a tomarse como base de integraciÃ³n.
+`AdminDashboard.jsx` sigue siendo legacy/dead code y no deberÃƒÂ­a tomarse como base de integraciÃƒÂ³n.
 
-## Mapa rÃ¡pido por mÃ³dulo
+## Mapa rÃƒÂ¡pido por mÃƒÂ³dulo
 
-| MÃ³dulo | Fuente actual | Estado | Prioridad | Frontend puede avanzar ya | Backend requerido primero |
+| MÃƒÂ³dulo | Fuente actual | Estado | Prioridad | Frontend puede avanzar ya | Backend requerido primero |
 |---|---|---:|---:|---:|---:|
-| Dashboard admin | mock/local | faltante | P1 | no | sÃ­ |
-| Clases | API-first | listo | **P0** | sÃ­ | no |
-| Coaches | API-first | listo | **P0** | sí | no |
-| Usuarios/clientes | mock/local | faltante | **P0** | no | sÃ­ |
-| Paquetes/membresÃ­as | mock/local | faltante | **P0** | no | sÃ­ |
-| POS/productos/ventas | mock/local | faltante | **P1** | no | sÃ­ |
-| Transacciones/pagos | mock/local | faltante | P1 | no | sÃ­ |
-| Gastos | mock/local | faltante | P2 | no | sÃ­ |
-| Cortes | mock/local | faltante | P2 | no | sÃ­ |
-| Reportes | mock/local | faltante | P2 | no | sÃ­ |
-| ConfiguraciÃ³n | mock/local | faltante | P2 | no | sÃ­ |
+| Dashboard admin | mock/local | faltante | P1 | no | sÃƒÂ­ |
+| Clases | API-first | listo | **P0** | sÃƒÂ­ | no |
+| Coaches | API-first | listo | **P0** | sÃ­ | no |
+| Usuarios/clientes | mock/local | faltante | **P0** | no | sÃƒÂ­ |
+| Paquetes/membresÃƒÂ­as | mock/local | faltante | **P0** | no | sÃƒÂ­ |
+| POS/productos/ventas | mock/local | faltante | **P1** | no | sÃƒÂ­ |
+| Transacciones/pagos | mock/local | faltante | P1 | no | sÃƒÂ­ |
+| Gastos | mock/local | faltante | P2 | no | sÃƒÂ­ |
+| Cortes | mock/local | faltante | P2 | no | sÃƒÂ­ |
+| Reportes | API-first en modo API | real | P2 | si | si |
+| ConfiguraciÃƒÂ³n | mock/local | faltante | P2 | no | sÃƒÂ­ |
 
 ## 1) Clases
 
@@ -90,7 +90,7 @@ Response esperado:
 }
 ```
 
-Campos mÃ­nimos:
+Campos mÃƒÂ­nimos:
 - `id`
 - `name`
 - `discipline`
@@ -101,16 +101,16 @@ Campos mÃ­nimos:
 
 Estado actual:
 - listo para Admin > Clases en API mode
-- crear/editar bloquean `fecha especÃ­fica` y `programar publicaciÃ³n` hasta que exista contrato de ocurrencias/publicaciÃ³n
+- crear/editar bloquean `fecha especÃƒÂ­fica` y `programar publicaciÃƒÂ³n` hasta que exista contrato de ocurrencias/publicaciÃƒÂ³n
 
 Prioridad:
 - **P0**
 
 Frontend puede avanzar ya:
-- sÃ­, para lectura/ediciÃ³n base
+- sÃƒÂ­, para lectura/ediciÃƒÂ³n base
 
 Backend requerido primero:
-- no para lectura base; sÃ­ para cerrar delete, ocurrencias y consistencia total
+- no para lectura base; sÃƒÂ­ para cerrar delete, ocurrencias y consistencia total
 
 #### Clases - Crear
 
@@ -144,7 +144,7 @@ Response esperado:
 }
 ```
 
-Campos mÃ­nimos:
+Campos mÃƒÂ­nimos:
 - `name`
 - `discipline`
 - `coach_id`
@@ -159,7 +159,7 @@ Prioridad:
 - **P0**
 
 Frontend puede avanzar ya:
-- sÃ­
+- sÃƒÂ­
 
 Backend requerido primero:
 - no
@@ -173,12 +173,12 @@ Endpoint esperado:
 - `PUT /api/v1/clases/{id}`
 
 Request esperado:
-- mismo shape que create, con campos parciales o completos segÃºn backend
+- mismo shape que create, con campos parciales o completos segÃƒÂºn backend
 
 Response esperado:
 - clase actualizada
 
-Campos mÃ­nimos:
+Campos mÃƒÂ­nimos:
 - `id`
 - `name`
 - `discipline`
@@ -192,7 +192,7 @@ Prioridad:
 - **P0**
 
 Frontend puede avanzar ya:
-- sÃ­
+- sÃƒÂ­
 
 Backend requerido primero:
 - no
@@ -209,9 +209,9 @@ Request esperado:
 - `id`
 
 Response esperado:
-- soft delete o confirmaciÃ³n de desactivaciÃ³n
+- soft delete o confirmaciÃƒÂ³n de desactivaciÃƒÂ³n
 
-Campos mÃ­nimos:
+Campos mÃƒÂ­nimos:
 - `id`
 - `status`
 
@@ -225,7 +225,7 @@ Frontend puede avanzar ya:
 - no completamente
 
 Backend requerido primero:
-- sÃ­, si se quiere delete real
+- sÃƒÂ­, si se quiere delete real
 
 #### Clases - Ocurrencias / disponibilidad
 
@@ -255,7 +255,7 @@ Response esperado:
 }
 ```
 
-Campos mÃ­nimos:
+Campos mÃƒÂ­nimos:
 - `occurrence_id`
 - `start_at`
 - `end_at`
@@ -269,10 +269,10 @@ Prioridad:
 - **P0**
 
 Frontend puede avanzar ya:
-- sÃ­, si backend expone ocurrencias
+- sÃƒÂ­, si backend expone ocurrencias
 
 Backend requerido primero:
-- sÃ­, para cerrar calendario/admin
+- sÃƒÂ­, para cerrar calendario/admin
 
 ## 2) Coaches
 
@@ -325,7 +325,7 @@ Response esperado:
 }
 ```
 
-Campos mÃ­nimos:
+Campos mÃƒÂ­nimos:
 - `coach_id`
 - `name`
 - `email`
@@ -338,7 +338,7 @@ Prioridad:
 - **P0**
 
 Frontend puede avanzar ya:
-- sÃ­
+- sÃƒÂ­
 
 Backend requerido primero:
 - no
@@ -372,7 +372,7 @@ Prioridad:
 - **P0**
 
 Frontend puede avanzar ya:
-- sÃ­
+- sÃƒÂ­
 
 Backend requerido primero:
 - no
@@ -388,9 +388,9 @@ Backend requerido primero:
 5. Desactivar/eliminar
 6. Ver detalle
 7. Ver reservas
-8. Ver membresÃ­a/crÃ©ditos
+8. Ver membresÃƒÂ­a/crÃƒÂ©ditos
 9. Asignar paquete manual
-10. Ajustar crÃ©ditos si UI lo permite
+10. Ajustar crÃƒÂ©ditos si UI lo permite
 
 ### Estado frontend actual
 
@@ -398,7 +398,7 @@ Backend requerido primero:
 - Contenedor: `src/pages/admin/AdminPanel.jsx`
 - Store: `src/stores/usuariosStore.js`, `src/stores/paquetesStore.js`
 - Service: `src/services/usuariosService.js`
-- Fuente actual: **mock/local**
+- Fuente actual: **API-first en modo API; mock/local solo fallback**
 
 ### Contrato esperado
 
@@ -440,7 +440,7 @@ Frontend puede avanzar ya:
 - no
 
 Backend requerido primero:
-- sÃ­
+- sÃƒÂ­
 
 #### Clientes - Crear / Editar / Desactivar / Detalle
 
@@ -460,7 +460,7 @@ Request esperado:
 }
 ```
 
-Campos mÃ­nimos:
+Campos mÃƒÂ­nimos:
 - `id`
 - `name`
 - `email`
@@ -478,9 +478,9 @@ Frontend puede avanzar ya:
 - no
 
 Backend requerido primero:
-- sÃ­
+- sÃƒÂ­
 
-#### Clientes - Asignar paquete / ajustar crÃ©ditos
+#### Clientes - Asignar paquete / ajustar crÃƒÂ©ditos
 
 Endpoint esperado:
 - `POST /api/v1/clientes/{id}/paquetes`
@@ -504,9 +504,9 @@ Frontend puede avanzar ya:
 - no
 
 Backend requerido primero:
-- sÃ­
+- sÃƒÂ­
 
-## 4) Paquetes / membresÃ­as
+## 4) Paquetes / membresÃƒÂ­as
 
 ### Operaciones UI detectadas
 
@@ -516,7 +516,7 @@ Backend requerido primero:
 4. Activar/desactivar
 5. Destacar paquete
 6. Asignar paquete a cliente
-7. Editar precio/crÃ©ditos/duraciÃ³n
+7. Editar precio/crÃƒÂ©ditos/duraciÃƒÂ³n
 
 ### Estado frontend actual
 
@@ -524,7 +524,7 @@ Backend requerido primero:
 - Contenedor: `src/pages/admin/AdminPanel.jsx`
 - Store: `src/stores/paquetesStore.js`, `src/stores/transaccionesStore.js`
 - Service: no hay servicio admin backend real
-- Fuente actual: **mock/local**
+- Fuente actual: **API-first en modo API; mock/local solo fallback**
 
 ### Contrato esperado
 
@@ -564,7 +564,7 @@ Frontend puede avanzar ya:
 - no para admin CRUD
 
 Backend requerido primero:
-- sÃ­
+- sÃƒÂ­
 
 #### Paquetes - Crear / Editar / Activar / Destacar
 
@@ -596,7 +596,7 @@ Frontend puede avanzar ya:
 - no
 
 Backend requerido primero:
-- sÃ­
+- sÃƒÂ­
 
 #### Paquetes - Asignar a cliente
 
@@ -613,7 +613,7 @@ Frontend puede avanzar ya:
 - no
 
 Backend requerido primero:
-- sÃ­
+- sÃƒÂ­
 
 ## 5) POS / productos / ventas
 
@@ -626,9 +626,9 @@ Backend requerido primero:
 5. Vender producto
 6. Vender paquete
 7. Asociar venta a cliente
-8. Registrar mÃ©todo de pago
+8. Registrar mÃƒÂ©todo de pago
 9. Actualizar stock
-10. Crear transacciÃ³n
+10. Crear transacciÃƒÂ³n
 
 ### Estado frontend actual
 
@@ -636,7 +636,7 @@ Backend requerido primero:
 - Contenedor: `src/pages/admin/AdminPanel.jsx`
 - Store: `src/stores/productosStore.js`, `src/stores/paquetesStore.js`, `src/stores/transaccionesStore.js`, `src/stores/usuariosStore.js`
 - Service: `src/services/ventaService.js`
-- Fuente actual: **mock/local**
+- Fuente actual: **API-first en modo API; mock/local solo fallback**
 
 ### Contrato esperado
 
@@ -674,9 +674,9 @@ Frontend puede avanzar ya:
 - no
 
 Backend requerido primero:
-- sÃ­
+- sÃƒÂ­
 
-#### POS - Cobrar venta / crear transacciÃ³n
+#### POS - Cobrar venta / crear transacciÃƒÂ³n
 
 Endpoint esperado:
 - `POST /api/v1/ventas`
@@ -715,14 +715,14 @@ Frontend puede avanzar ya:
 - no
 
 Backend requerido primero:
-- sÃ­
+- sÃƒÂ­
 
 ## 6) Transacciones / pagos
 
 ### Operaciones UI detectadas
 
 1. Listar transacciones
-2. Filtrar por fecha/mÃ©todo/status
+2. Filtrar por fecha/mÃƒÂ©todo/status
 3. Ver pagos
 4. Ver cortes/resumen
 5. Exportar
@@ -731,8 +731,8 @@ Backend requerido primero:
 
 - Componente principal: `src/pages/admin/sections/ActividadSection.jsx`, `src/pages/admin/AdminFinanzas.jsx`, `src/pages/admin/AdminReportes.jsx`
 - Store: `src/stores/transaccionesStore.js`, `src/stores/cortesStore.js`
-- Service: `src/services/finanzasService.js`, `src/services/dashboardService.js`
-- Fuente actual: **mock/local**
+- Service: `src/services/reportsApiService.js` en API mode; `src/services/finanzasService.js` solo fallback legacy, `src/services/dashboardService.js`
+- Fuente actual: **API-first en modo API; mock/local solo fallback**
 
 ### Contrato esperado
 
@@ -770,7 +770,7 @@ Frontend puede avanzar ya:
 - no
 
 Backend requerido primero:
-- sÃ­
+- sÃƒÂ­
 
 ## 7) Gastos
 
@@ -780,14 +780,14 @@ Backend requerido primero:
 2. Editar gasto
 3. Eliminar gasto
 4. Listar gastos
-5. Filtrar por fecha/categorÃ­a
+5. Filtrar por fecha/categorÃƒÂ­a
 
 ### Estado frontend actual
 
 - Componente principal: `src/pages/admin/AdminFinanzas.jsx`
 - Store: `src/stores/gastosStore.js`
-- Service: `src/services/finanzasService.js`
-- Fuente actual: **mock/local**
+- Service: `src/services/reportsApiService.js` en API mode; `src/services/finanzasService.js` solo fallback legacy
+- Fuente actual: **API-first en modo API; mock/local solo fallback**
 
 ### Contrato esperado
 
@@ -796,7 +796,7 @@ Backend requerido primero:
 - `PUT/PATCH /api/v1/gastos/{id}`
 - `DELETE /api/v1/gastos/{id}`
 
-Payload mÃ­nimo:
+Payload mÃƒÂ­nimo:
 ```json
 {
   "description": "Renta",
@@ -816,21 +816,21 @@ Prioridad:
 1. Abrir corte
 2. Cerrar corte
 3. Listar historial
-4. Resumen por mÃ©todo de pago
+4. Resumen por mÃƒÂ©todo de pago
 
 ### Estado frontend actual
 
 - Componente principal: `src/pages/admin/AdminFinanzas.jsx`
 - Store: `src/stores/cortesStore.js`
-- Service: `src/services/finanzasService.js`
-- Fuente actual: **mock/local**
+- Service: `src/services/reportsApiService.js` en API mode; `src/services/finanzasService.js` solo fallback legacy
+- Fuente actual: **API-first en modo API; mock/local solo fallback**
 
 ### Contrato esperado
 
 - `GET /api/v1/cortes`
 - `POST /api/v1/cortes`
 
-Payload mÃ­nimo:
+Payload mÃƒÂ­nimo:
 ```json
 {
   "opened_at": "2026-06-07T09:00:00",
@@ -851,23 +851,23 @@ Prioridad:
 3. Clases
 4. Coaches
 5. Paquetes
-6. ExportaciÃ³n
+6. ExportaciÃƒÂ³n
 
 ### Estado frontend actual
 
 - Componente principal: `src/pages/admin/AdminReportes.jsx`
-- Store: `src/stores/clasesStore.js`, `src/stores/coachesStore.js`, `src/stores/transaccionesStore.js`, `src/stores/tabuladorStore.js`, `src/stores/paquetesStore.js`, `src/stores/usuariosStore.js`
-- Service: `src/services/finanzasService.js`
-- Fuente actual: **mock/local**
+- Store legacy: `src/stores/clasesStore.js`, `src/stores/coachesStore.js`, `src/stores/transaccionesStore.js`, `src/stores/tabuladorStore.js`, `src/stores/paquetesStore.js`, `src/stores/usuariosStore.js`
+- Service: `src/services/reportsApiService.js` en API mode; `src/services/finanzasService.js` solo fallback legacy
+- Fuente actual: **API-first en modo API; mock/local solo fallback**
 
 ### Contrato esperado
 
-- `GET /api/v1/admin/reportes/ventas`
-- `GET /api/v1/admin/reportes/ingresos`
-- `GET /api/v1/admin/reportes/clases`
-- `GET /api/v1/admin/reportes/coaches`
-- `GET /api/v1/admin/reportes/paquetes`
-- `GET /api/v1/admin/reportes/export`
+- `GET /api/v1/reportes/finanzas`
+- `GET /api/v1/reportes/usuarios`
+- `GET /api/v1/reportes/paquetes`
+- `GET /api/v1/reportes/pos`
+- `GET /api/v1/reportes/coaches`
+- `GET /api/v1/reportes/top-clases`, `GET /api/v1/reportes/ocupacion-por-disciplina`
 
 Request esperado:
 - `from`, `to`, `format`
@@ -879,18 +879,18 @@ Prioridad:
 
 ### Operaciones UI detectadas
 
-1. MÃ©tricas del mes
-2. Ãšltimas clases
-3. Ãšltimas transacciones
+1. MÃƒÂ©tricas del mes
+2. ÃƒÅ¡ltimas clases
+3. ÃƒÅ¡ltimas transacciones
 4. Ingresos
-5. Resumen de ocupaciÃ³n
+5. Resumen de ocupaciÃƒÂ³n
 
 ### Estado frontend actual
 
 - Componente principal: `src/pages/admin/AdminDashboard.jsx`, `src/pages/admin/sections/DashboardSection.jsx`
 - Store: `src/stores/clasesStore.js`, `src/stores/transaccionesStore.js`, `src/stores/usuariosStore.js`, `src/stores/reservasStore.js`, `src/stores/paquetesStore.js`
 - Service: `src/services/dashboardService.js`
-- Fuente actual: **mock/local**
+- Fuente actual: **API-first en modo API; mock/local solo fallback**
 
 ### Contrato esperado
 
@@ -910,15 +910,15 @@ Response esperado:
 Prioridad:
 - **P1**
 
-## 11) ConfiguraciÃ³n
+## 11) ConfiguraciÃƒÂ³n
 
 ### Operaciones UI detectadas
 
-1. Obtener configuraciÃ³n
-2. Guardar configuraciÃ³n
+1. Obtener configuraciÃƒÂ³n
+2. Guardar configuraciÃƒÂ³n
 3. Editar branding
 4. Editar textos
-5. Editar imÃ¡genes/videos
+5. Editar imÃƒÂ¡genes/videos
 6. Subir media si UI lo permite
 
 ### Estado frontend actual
@@ -926,7 +926,7 @@ Prioridad:
 - Componente principal: `src/pages/admin/sections/ConfiguracionSection.jsx`
 - Store: `src/stores/configuracionStore.js`
 - Service: ninguno backend real
-- Fuente actual: **mock/local**
+- Fuente actual: **API-first en modo API; mock/local solo fallback**
 
 ### Contrato esperado
 
@@ -943,10 +943,10 @@ Frontend hoy ya tiene:
 
 - lectura API parcial por `clasesApiService`
 - create/update parcialmente API
-- delete/desactivar todavÃ­a hÃ­brido
+- delete/desactivar todavÃƒÂ­a hÃƒÂ­brido
 - listado/ocurrencias/disponibilidad ya tienen shape cercano a backend
 
-Campo crÃ­tico esperado por UI:
+Campo crÃƒÂ­tico esperado por UI:
 
 - `id`
 - `name`
@@ -959,13 +959,13 @@ Campo crÃ­tico esperado por UI:
 
 ## Coaches: estado especial
 
-Frontend hoy todavÃ­a usa:
+Frontend hoy todavÃƒÂ­a usa:
 
 - IDs mock tipo `coach-*`
 - store local persistido
 - CRUD local
 
-Backend mÃ­nimo requerido:
+Backend mÃƒÂ­nimo requerido:
 
 - CRUD coaches completo
 - agenda si admin la necesita
@@ -979,28 +979,28 @@ Frontend hoy sigue completamente local:
 - cobro local
 - transacciones mock
 
-Backend mÃ­nimo requerido:
+Backend mÃƒÂ­nimo requerido:
 
-- catÃ¡logo productos
+- catÃƒÂ¡logo productos
 - venta/cobro
-- respuesta de transacciÃ³n
+- respuesta de transacciÃƒÂ³n
 
 ## Usuarios/clientes: estado especial
 
 Frontend hoy sigue local:
 
 - clientes mock
-- ediciÃ³n local
-- asignaciÃ³n de paquete local
-- crÃ©ditos local
+- ediciÃƒÂ³n local
+- asignaciÃƒÂ³n de paquete local
+- crÃƒÂ©ditos local
 
-Backend mÃ­nimo requerido:
+Backend mÃƒÂ­nimo requerido:
 
 - CRUD clientes
 - paquete a cliente
-- balance/crÃ©ditos reales
+- balance/crÃƒÂ©ditos reales
 
-## ConclusiÃ³n operativa
+## ConclusiÃƒÂ³n operativa
 
 ### Lo que frontend puede avanzar ya
 
@@ -1016,7 +1016,7 @@ Backend mÃ­nimo requerido:
 - Gastos
 - Cortes
 - Reportes
-- ConfiguraciÃ³n
+- ConfiguraciÃƒÂ³n
 
 ## Siguiente paso backend recomendado
 
@@ -1029,18 +1029,18 @@ Objetivo backend:
 - comparar endpoint por endpoint contra rutas reales existentes
 - marcar `exists / partial / missing`
 - definir payload real final
-- devolver orden de implementaciÃ³n backend
+- devolver orden de implementaciÃƒÂ³n backend
 
-## Conteo de operaciÃ³n documentadas
+## Conteo de operaciÃƒÂ³n documentadas
 
-- MÃ³dulos: 11
+- MÃƒÂ³dulos: 11
 - Operaciones UI documentadas: 56
-- MÃ³dulos P0: 4
-- MÃ³dulos que frontend puede avanzar ya: 1
-- MÃ³dulos que requieren backend primero: 10
+- MÃƒÂ³dulos P0: 4
+- MÃƒÂ³dulos que frontend puede avanzar ya: 1
+- MÃƒÂ³dulos que requieren backend primero: 10
 ## Coaches contrato actualizado
-- `GET /api/v1/coaches/public` ya es fuente pública para landing/Nosotros.
-- `POST /api/v1/coaches` requiere `password` en create; update no lo envía.
+- `GET /api/v1/coaches/public` ya es fuente pÃºblica para landing/Nosotros.
+- `POST /api/v1/coaches` requiere `password` en create; update no lo envÃ­a.
 - Admin coach payload incluye `bio`, `instagram`, `avatar_url` y `public_profile_enabled`.
 
 ## Coaches upload avatar
@@ -1060,7 +1060,7 @@ Objetivo backend:
 
 ## Update 2026-06-08 - Paquetes admin
 
-- Estado actual: `Admin > Paquetes` ya consume catÃ¡logo backend real.
+- Estado actual: `Admin > Paquetes` ya consume catÃƒÂ¡logo backend real.
 - Contrato vigente: `GET /api/v1/memberships/packages?page=&page_size=&status=&search=`, `POST/PUT/PATCH/DELETE /api/v1/memberships/packages`.
 - `type` no se persiste; frontend lo oculta o deriva visualmente.
 - No existe paquete ilimitado; `credits` siempre > 0.
@@ -1096,4 +1096,4 @@ Regla UX:
 
 ## MVP server state
 
-Frontend MVP uses TanStack Query for server state. Zustand queda para fallback legacy y UI local. Lecturas con `useQuery`, mutaciones con `useMutation`, refetch con invalidate tras Ã©xito. No usar `page_size=1000`.
+Frontend MVP uses TanStack Query for server state. Zustand queda para fallback legacy y UI local. Lecturas con `useQuery`, mutaciones con `useMutation`, refetch con invalidate tras ÃƒÂ©xito. No usar `page_size=1000`.
