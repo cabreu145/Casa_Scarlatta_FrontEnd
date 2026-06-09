@@ -142,7 +142,7 @@ export default function PuntoDeVentaSection({
   const [categorySearch, setCategorySearch] = useState('')
   const [categoryStatus, setCategoryStatus] = useState('active')
   const [categoryModal, setCategoryModal] = useState(null)
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', status: 'active' })
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', isActive: true })
 
   const posProductsQuery = usePosProductsQuery({
     page: 1,
@@ -348,12 +348,12 @@ export default function PuntoDeVentaSection({
       setCategoryForm({
         name: category.name ?? category.nombre ?? '',
         description: category.description ?? '',
-        status: category.isActive === false ? 'inactive' : 'active',
+        isActive: category.isActive !== false,
       })
       return
     }
     setCategoryModal('nuevo')
-    setCategoryForm({ name: '', description: '', status: 'active' })
+    setCategoryForm({ name: '', description: '', isActive: true })
   }
 
   function openProductModal() {
@@ -374,7 +374,7 @@ export default function PuntoDeVentaSection({
       const payload = {
         name: categoryForm.name,
         description: categoryForm.description,
-        status: categoryForm.status,
+        isActive: Boolean(categoryForm.isActive),
       }
       if (categoryModal === 'nuevo') {
         await createCategoryMutation.mutateAsync(payload)
@@ -384,7 +384,7 @@ export default function PuntoDeVentaSection({
         toast.success('Categoría actualizada')
       }
       setCategoryModal(null)
-      setCategoryForm({ name: '', description: '', status: 'active' })
+      setCategoryForm({ name: '', description: '', isActive: true })
     } catch (error) {
       toast.error(error?.message ?? 'No se pudo guardar categoría')
     }
@@ -394,7 +394,7 @@ export default function PuntoDeVentaSection({
     try {
       await updateCategoryStatusMutation.mutateAsync({
         id: category.id,
-        status: category.isActive ? 'inactive' : 'active',
+        status: !category.isActive,
       })
       toast.success(category.isActive ? 'Categoría inactivada' : 'Categoría activada')
     } catch (error) {
@@ -882,7 +882,16 @@ export default function PuntoDeVentaSection({
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Estado</label>
-                  <select className={styles.formSelect} value={categoryForm.status} onChange={(event) => setCategoryForm((current) => ({ ...current, status: event.target.value }))}>
+                  <select
+                    className={styles.formSelect}
+                    value={categoryForm.isActive ? 'active' : 'inactive'}
+                    onChange={(event) =>
+                      setCategoryForm((current) => ({
+                        ...current,
+                        isActive: event.target.value === 'active',
+                      }))
+                    }
+                  >
                     <option value="active">Activa</option>
                     <option value="inactive">Inactiva</option>
                   </select>

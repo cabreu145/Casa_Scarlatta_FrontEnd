@@ -9,35 +9,66 @@ import {
 const inFlightCategories = new Map()
 const MAX_PAGE_SIZE = 100
 
+function resolveCategoryEndpoints() {
+  const endpoints = {
+    list: ENDPOINTS.productCategoriesPaginated ?? ENDPOINTS.productoCategoriesPaginated,
+    create: ENDPOINTS.productCategories ?? ENDPOINTS.productoCategories,
+    update: ENDPOINTS.productCategoryById ?? ENDPOINTS.productoCategoryById,
+    remove: ENDPOINTS.productCategoryById ?? ENDPOINTS.productoCategoryById,
+    status: ENDPOINTS.productCategoryStatusById ?? ENDPOINTS.productoCategoryStatusById,
+  }
+
+  if (
+    typeof endpoints.list !== 'function' ||
+    !endpoints.create ||
+    typeof endpoints.update !== 'function' ||
+    typeof endpoints.remove !== 'function' ||
+    typeof endpoints.status !== 'function'
+  ) {
+    throw new Error('POS_PRODUCT_CATEGORIES_API_NOT_CONFIGURED')
+  }
+
+  return endpoints
+}
+
 function normalizePageSize(value, fallback) {
   const parsed = Number(value)
   if (!Number.isInteger(parsed) || parsed < 1) return fallback
   return Math.min(parsed, MAX_PAGE_SIZE)
 }
 
+function normalizeActiveFlag(value, fallback = true) {
+  if (typeof value === 'boolean') return value
+  const raw = String(value ?? '').trim().toLowerCase()
+  if (['active', 'activo', 'true', '1', 'si', 'sí', 'yes'].includes(raw)) return true
+  if (['inactive', 'inactivo', 'false', '0', 'no', 'off'].includes(raw)) return false
+  return fallback
+}
+
 function normalizeStatus(value) {
   const raw = String(value ?? '').trim().toLowerCase()
-  if (raw === 'inactive' || raw === 'inactivo') return 'inactive'
-  if (raw === 'all') return undefined
-  return raw || undefined
+  if (!raw || raw === 'all') return undefined
+  return normalizeActiveFlag(raw, true) ? 'active' : 'inactive'
 }
 
 function buildCategoryPayload(form = {}) {
   const name = String(form.name ?? form.nombre ?? '').trim()
   const description = String(form.description ?? form.descripcion ?? '').trim()
-  const status = normalizeStatus(form.status ?? form.estado ?? 'active') || 'active'
+  const isActive = normalizeActiveFlag(
+    form.is_active ?? form.isActive ?? form.activo ?? form.status,
+    true
+  )
+
   return {
     name,
     description: description || null,
-    status,
+    is_active: isActive,
   }
 }
 
 function validateCategoryPayload(payload = {}) {
   if (!String(payload.name ?? '').trim()) return 'El nombre de la categoría es obligatorio.'
-  if (!['active', 'inactive'].includes(String(payload.status ?? '').trim().toLowerCase())) {
-    return 'Estado de categoría inválido.'
-  }
+  if (typeof payload.is_active !== 'boolean') return 'Estado de categoría inválido.'
   return null
 }
 
@@ -47,9 +78,7 @@ export async function getProductCategoriesApi({
   search,
   status,
 } = {}) {
-  if (!ENDPOINTS.productoCategoriesPaginated || !ENDPOINTS.productoCategories) {
-    throw new Error('POS_PRODUCT_CATEGORIES_ENDPOINT_MISSING')
-  }
+  const endpoints = resolveCategoryEndpoints()
   const query = {
     page: Math.max(1, Number(page) || 1),
     pageSize: normalizePageSize(pageSize, 20),
@@ -60,7 +89,7 @@ export async function getProductCategoriesApi({
   if (inFlightCategories.has(cacheKey)) return inFlightCategories.get(cacheKey)
 
   const request = (async () => {
-    const payload = await httpGet(ENDPOINTS.productoCategoriesPaginated(query))
+    const payload = await httpGet(endpoints.list(query))
     return normalizePaginatedResponse(payload, mapBackendProductCategoryToFrontend)
   })()
 
@@ -73,32 +102,33 @@ export async function getProductCategoriesApi({
 }
 
 export async function createProductCategoryApi(form = {}) {
-  if (!ENDPOINTS.productoCategories) throw new Error('POS_PRODUCT_CATEGORIES_ENDPOINT_MISSING')
+  const endpoints = resolveCategoryEndpoints()
   const payload = buildCategoryPayload(form)
   const validationError = validateCategoryPayload(payload)
   if (validationError) throw new Error(validationError)
-  return mapBackendProductCategoryToFrontend(await httpPost(ENDPOINTS.productoCategories, payload))
+  return mapBackendProductCategoryToFrontend(await httpPost(endpoints.create, payload))
 }
 
 export async function updateProductCategoryApi(categoryId, form = {}) {
-  if (!ENDPOINTS.productCategoryById) throw new Error('POS_PRODUCT_CATEGORIES_ENDPOINT_MISSING')
+  const endpoints = resolveCategoryEndpoints()
   const payload = buildCategoryPayload(form)
   const validationError = validateCategoryPayload(payload)
   if (validationError) throw new Error(validationError)
-  return mapBackendProductCategoryToFrontend(await httpPut(ENDPOINTS.productCategoryById(categoryId), payload))
+  return mapBackendProductCategoryToFrontend(await httpPut(endpoints.update(categoryId), payload))
 }
 
-export async function updateProductCategoryStatusApi(categoryId, status) {
-  if (!ENDPOINTS.productCategoryStatusById) throw new Error('POS_PRODUCT_CATEGORIES_ENDPOINT_MISSING')
-  const normalized = normalizeStatus(status) || 'active'
+export async function updateProductCategoryStatusApi(categoryId, isActive) {
+  const endpoints = resolveCategoryEndpoints()
   return mapBackendProductCategoryToFrontend(
-    await httpPatch(ENDPOINTS.productCategoryStatusById(categoryId), { status: normalized })
+    await httpPatch(endpoints.status(categoryId), {
+      is_active: normalizeActiveFlag(isActive, true),
+    })
   )
 }
 
 export async function deleteProductCategoryApi(categoryId) {
-  if (!ENDPOINTS.productCategoryById) throw new Error('POS_PRODUCT_CATEGORIES_ENDPOINT_MISSING')
-  const response = await httpDelete(ENDPOINTS.productCategoryById(categoryId))
+  const endpoints = resolveCategoryEndpoints()
+  const response = await httpDelete(endpoints.remove(categoryId))
   return response ?? { success: true, id: categoryId }
 }
 

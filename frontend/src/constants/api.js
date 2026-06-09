@@ -94,6 +94,12 @@ export const ENDPOINTS = {
   productos: withPrefix('/productos'),
   productosPaginated: ({ page, pageSize, search, category, status }) =>
     withQuery('/productos', { page, page_size: pageSize, search, category, status }),
+  productCategories: withPrefix('/productos/categorias'),
+  productCategoriesPaginated: ({ page, pageSize, search, status }) =>
+    withQuery('/productos/categorias', { page, page_size: pageSize, search, status }),
+  productCategoryById: (id) => withPrefix(`/productos/categorias/${id}`),
+  productCategoryStatusById: (id) => withPrefix(`/productos/categorias/${id}/status`),
+  // Aliases retrocompatibles
   productoCategories: withPrefix('/productos/categorias'),
   productoCategoriesPaginated: ({ page, pageSize, search, status }) =>
     withQuery('/productos/categorias', { page, page_size: pageSize, search, status }),

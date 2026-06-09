@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@/constants/api', () => ({
   ENDPOINTS: {
-    productoCategories: '/api/v1/productos/categorias',
-    productoCategoriesPaginated: ({ page, pageSize, search, status }) => {
+    productCategories: '/api/v1/productos/categorias',
+    productCategoriesPaginated: ({ page, pageSize, search, status }) => {
       const params = new URLSearchParams()
       params.set('page', String(page))
       params.set('page_size', String(pageSize))
@@ -39,32 +39,49 @@ describe('posCategoriesApiService', () => {
     httpDelete.mockReset()
   })
 
-  test('lista categorías, crea, edita y cambia status', async () => {
+  test('lista categorias, crea, edita, activa/desactiva y elimina con endpoints reales', async () => {
     httpGet.mockResolvedValue({
       page: 1,
       page_size: 20,
       total: 1,
-      items: [{ id: 1, name: 'Bebidas', is_active: true }],
+      items: [{ id: 1, name: 'Bebidas', is_active: true, created_at: '2026-06-09T10:00:00-06:00' }],
     })
     httpPost.mockResolvedValue({ id: 2, name: 'Accesorios', is_active: true })
     httpPut.mockResolvedValue({ id: 2, name: 'Accesorios', is_active: false })
-    httpPatch.mockResolvedValue({ id: 2, name: 'Accesorios', is_active: false })
+    httpPatch
+      .mockResolvedValueOnce({ id: 2, name: 'Accesorios', is_active: false })
+      .mockResolvedValueOnce({ id: 2, name: 'Accesorios', is_active: true })
     httpDelete.mockResolvedValue({ ok: true })
 
     const service = await import('./posCategoriesApiService')
     const list = await service.getProductCategoriesApi({ page: 1, pageSize: 1000, search: 'Bebidas', status: 'active' })
-    const created = await service.createProductCategoryApi({ name: 'Accesorios', description: 'Accesorios', status: 'active' })
-    const updated = await service.updateProductCategoryApi(2, { name: 'Accesorios', description: 'Accesorios', status: 'inactive' })
-    await service.updateProductCategoryStatusApi(2, 'inactive')
+    const created = await service.createProductCategoryApi({ name: 'Accesorios', description: 'Accesorios', isActive: true })
+    const updated = await service.updateProductCategoryApi(2, { name: 'Accesorios', description: 'Accesorios', isActive: false })
+    await service.updateProductCategoryStatusApi(2, false)
+    await service.updateProductCategoryStatusApi(2, true)
     await service.deleteProductCategoryApi(2)
 
     expect(httpGet).toHaveBeenCalledWith('/api/v1/productos/categorias?page=1&page_size=100&search=Bebidas&status=active')
-    expect(httpPost).toHaveBeenCalledWith('/api/v1/productos/categorias', expect.objectContaining({ name: 'Accesorios', description: 'Accesorios', status: 'active' }))
-    expect(httpPut).toHaveBeenCalledWith('/api/v1/productos/categorias/2', expect.objectContaining({ name: 'Accesorios', status: 'inactive' }))
-    expect(httpPatch).toHaveBeenCalledWith('/api/v1/productos/categorias/2/status', { status: 'inactive' })
+    expect(httpPost).toHaveBeenCalledWith('/api/v1/productos/categorias', {
+      name: 'Accesorios',
+      description: 'Accesorios',
+      is_active: true,
+    })
+    expect(httpPut).toHaveBeenCalledWith('/api/v1/productos/categorias/2', {
+      name: 'Accesorios',
+      description: 'Accesorios',
+      is_active: false,
+    })
+    expect(httpPatch).toHaveBeenNthCalledWith(1, '/api/v1/productos/categorias/2/status', { is_active: false })
+    expect(httpPatch).toHaveBeenNthCalledWith(2, '/api/v1/productos/categorias/2/status', { is_active: true })
     expect(httpDelete).toHaveBeenCalledWith('/api/v1/productos/categorias/2')
-    expect(list.total).toBe(1)
-    expect(created).toMatchObject({ id: 2, name: 'Accesorios' })
-    expect(updated).toMatchObject({ id: 2, name: 'Accesorios' })
+    expect(list.items[0]).toMatchObject({
+      id: 1,
+      name: 'Bebidas',
+      isActive: true,
+      createdAt: '2026-06-09T10:00:00-06:00',
+    })
+    expect(created).toMatchObject({ id: 2, name: 'Accesorios', isActive: true })
+    expect(updated).toMatchObject({ id: 2, name: 'Accesorios', isActive: false })
   })
 })

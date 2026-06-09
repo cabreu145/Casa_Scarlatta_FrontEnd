@@ -7,6 +7,10 @@ import PuntoDeVentaSection from './PuntoDeVentaSection'
 const toastError = vi.fn()
 const toastSuccess = vi.fn()
 const mutateAsync = vi.fn()
+const createCategoryMutateAsync = vi.fn()
+const updateCategoryMutateAsync = vi.fn()
+const updateCategoryStatusMutateAsync = vi.fn()
+const deleteCategoryMutateAsync = vi.fn()
 const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 
 vi.mock('react-hot-toast', () => ({
@@ -30,16 +34,16 @@ vi.mock('@/hooks/useApiQueries', () => ({
     isPending: false,
   }),
   useCreateProductCategoryMutation: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ id: 3, name: 'Accesorios' }),
+    mutateAsync: createCategoryMutateAsync,
   }),
   useUpdateProductCategoryMutation: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ id: 1, name: 'Accesorios' }),
+    mutateAsync: updateCategoryMutateAsync,
   }),
   useUpdateProductCategoryStatusMutation: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ id: 1, name: 'Accesorios' }),
+    mutateAsync: updateCategoryStatusMutateAsync,
   }),
   useDeleteProductCategoryMutation: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
+    mutateAsync: deleteCategoryMutateAsync,
   }),
   useMembershipPackagesQuery: () => ({
     data: [
@@ -181,8 +185,16 @@ describe('PuntoDeVentaSection', () => {
     toastError.mockReset()
     toastSuccess.mockReset()
     mutateAsync.mockReset()
+    createCategoryMutateAsync.mockReset()
+    updateCategoryMutateAsync.mockReset()
+    updateCategoryStatusMutateAsync.mockReset()
+    deleteCategoryMutateAsync.mockReset()
     windowOpen.mockClear()
     vi.stubEnv('VITE_API_BASE_URL', 'http://api.test')
+    createCategoryMutateAsync.mockResolvedValue({ id: 3, name: 'Accesorios' })
+    updateCategoryMutateAsync.mockResolvedValue({ id: 1, name: 'Accesorios' })
+    updateCategoryStatusMutateAsync.mockResolvedValue({ id: 1, name: 'Accesorios' })
+    deleteCategoryMutateAsync.mockResolvedValue({ ok: true })
     mutateAsync.mockResolvedValue({
       id: 100,
       folio: 'POS-000100',
@@ -266,5 +278,36 @@ describe('PuntoDeVentaSection', () => {
     expect(within(dialog).getByText('Descripción')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: /Cancelar/i })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: /Guardar/i })).toBeInTheDocument()
+  })
+
+  test('editar, activar o desactivar y eliminar categoria usan las mutations correctas', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+
+    await user.click(screen.getByRole('button', { name: /Editar/i }))
+    const dialog = screen.getByRole('dialog', { name: /Editar categor/i })
+    const nameInput = within(dialog).getByPlaceholderText(/Accesorios/i)
+    await user.clear(nameInput)
+    await user.type(nameInput, 'Accesorios premium')
+    await user.selectOptions(within(dialog).getByRole('combobox'), 'inactive')
+    await user.click(within(dialog).getByRole('button', { name: /Guardar/i }))
+
+    expect(updateCategoryMutateAsync).toHaveBeenCalledWith({
+      id: 1,
+      payload: {
+        name: 'Accesorios premium',
+        description: 'Categoría general',
+        isActive: false,
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: /Inactivar/i }))
+    expect(updateCategoryStatusMutateAsync).toHaveBeenCalledWith({
+      id: 1,
+      status: false,
+    })
+
+    await user.click(screen.getByRole('button', { name: /Eliminar/i }))
+    expect(deleteCategoryMutateAsync).toHaveBeenCalledWith(1)
   })
 })

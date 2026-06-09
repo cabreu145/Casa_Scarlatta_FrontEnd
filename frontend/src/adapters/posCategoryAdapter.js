@@ -22,6 +22,7 @@ export function mapBackendProductCategoryToFrontend(item = {}) {
     isActive: toBoolean(item.is_active ?? item.isActive ?? item.activo ?? item.status === 'active'),
     active: toBoolean(item.is_active ?? item.isActive ?? item.activo ?? item.status === 'active'),
     activo: toBoolean(item.is_active ?? item.isActive ?? item.activo ?? item.status === 'active'),
+    createdAt: item.created_at ?? item.createdAt ?? null,
     raw: item,
   }
 }
