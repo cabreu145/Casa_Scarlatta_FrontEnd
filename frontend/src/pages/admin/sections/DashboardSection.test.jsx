@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const apiState = {
@@ -61,6 +61,11 @@ vi.mock('@/hooks/useApiQueries', () => ({
   useFinanceRecentSalesQuery: () => apiState.recentSales,
 }))
 
+const exportFinanceCsv = vi.fn()
+vi.mock('@/services/financeApiService', () => ({
+  exportFinanceCsv: (...args) => exportFinanceCsv(...args),
+}))
+
 vi.mock('@/stores/transaccionesStore', () => ({
   useTransaccionesStore: () => ({ transacciones: [] }),
 }))
@@ -81,6 +86,7 @@ const { default: DashboardSection } = await import('./DashboardSection')
 describe('DashboardSection', () => {
   beforeEach(() => {
     vi.stubEnv('VITE_USE_API_AUTH', 'true')
+    exportFinanceCsv.mockReset()
   })
 
   test('muestra KPIs reales, ventas recientes y stock bajo', () => {
@@ -106,5 +112,33 @@ describe('DashboardSection', () => {
     expect(screen.getByText('Cliente Demo')).toBeInTheDocument()
     expect(screen.getByText('Toalla')).toBeInTheDocument()
     expect(screen.getByText('Compra de agua')).toBeInTheDocument()
+
+    expect(screen.getByRole('button', { name: 'Exportar resumen' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exportar ventas' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exportar gastos' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exportar cortes' })).toBeInTheDocument()
+  })
+
+  test('exporta CSV por tipo con rango activo', async () => {
+    exportFinanceCsv.mockResolvedValueOnce({ filename: 'finanzas-summary-2026-06-09_2026-06-09.csv' })
+
+    render(
+      <DashboardSection
+        rangoDash="mes"
+        setRangoDash={vi.fn()}
+        showSection={vi.fn()}
+        showSectionWithFilter={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar resumen' }))
+
+    await waitFor(() => {
+      expect(exportFinanceCsv).toHaveBeenCalledWith({
+        from: '2026-06-01',
+        to: '2026-06-09',
+        type: 'summary',
+      })
+    })
   })
 })

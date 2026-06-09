@@ -72,6 +72,31 @@ async function request(method, endpoint, body, options = {}) {
   return parseResponse(res)
 }
 
+async function requestRaw(method, endpoint, body, options = {}) {
+  const token = getToken()
+  const headers = {}
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
+  if (body !== undefined && !isFormData) headers['Content-Type'] = 'application/json'
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const url = normalizeUrl(endpoint)
+
+  if (import.meta.env.DEV) {
+    console.debug('[http]', method, url, {
+      hasToken: !!token,
+      tokenLength: token?.length ?? 0,
+      proxyMode: shouldUseSameOriginProxy(),
+    })
+  }
+
+  return fetch(url, {
+    method,
+    headers,
+    body: body === undefined ? undefined : (isFormData ? body : JSON.stringify(body)),
+    signal: options.signal,
+  })
+}
+
 export function httpGet(endpoint, options) {
   return request('GET', endpoint, undefined, options)
 }
@@ -91,3 +116,5 @@ export function httpPatch(endpoint, body, options) {
 export function httpDelete(endpoint, options) {
   return request('DELETE', endpoint, undefined, options)
 }
+
+export { getToken, normalizeUrl, requestRaw as httpRequestRaw }

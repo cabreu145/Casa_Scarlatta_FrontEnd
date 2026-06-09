@@ -17,18 +17,37 @@ vi.mock('@/constants/api', () => ({
     },
     finanzasStockBajo: ({ threshold } = {}) => `/api/v1/finanzas/stock-bajo?threshold=${threshold}`,
     finanzasVentasRecientes: ({ limit } = {}) => `/api/v1/finanzas/ventas-recientes?limit=${limit}`,
+    finanzasExportar: ({ from, to, type } = {}) => {
+      const params = new URLSearchParams()
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
+      if (type) params.set('type', type)
+      return `/api/v1/finanzas/exportar${params.toString() ? `?${params.toString()}` : ''}`
+    },
   },
 }))
 
 const httpGet = vi.fn()
+const httpRequestRaw = vi.fn()
+const downloadBlob = vi.fn()
+const getFilenameFromContentDisposition = vi.fn()
 
 vi.mock('@/lib/http', () => ({
   httpGet: (...args) => httpGet(...args),
+  httpRequestRaw: (...args) => httpRequestRaw(...args),
+}))
+
+vi.mock('@/utils/downloadCsv', () => ({
+  downloadBlob: (...args) => downloadBlob(...args),
+  getFilenameFromContentDisposition: (...args) => getFilenameFromContentDisposition(...args),
 }))
 
 describe('financeApiService', () => {
   beforeEach(() => {
     httpGet.mockReset()
+    httpRequestRaw.mockReset()
+    downloadBlob.mockReset()
+    getFilenameFromContentDisposition.mockReset()
   })
 
   test('consume endpoints de KPIs, día, categorías, stock bajo y ventas recientes', async () => {
@@ -73,5 +92,52 @@ describe('financeApiService', () => {
     expect(categories.expenseCategories[0]).toMatchObject({ category: 'insumos', totalMxn: 500 })
     expect(lowStock[0]).toMatchObject({ productName: 'Toalla', stock: 2 })
     expect(recentSales[0]).toMatchObject({ customerName: 'Cliente Demo', totalMxn: 350 })
+  })
+
+  test('exporta CSV con filename del header o fallback', async () => {
+    getFilenameFromContentDisposition.mockReturnValueOnce('finanzas-summary-2026-06-09_2026-06-09.csv')
+    httpRequestRaw.mockResolvedValueOnce({
+      ok: true,
+      headers: {
+        get: (key) => (key === 'content-disposition'
+          ? 'attachment; filename="finanzas-summary-2026-06-09_2026-06-09.csv"'
+          : null),
+      },
+      blob: async () => new Blob(['col1,col2\n1,2'], { type: 'text/csv' }),
+    })
+
+    const service = await import('./financeApiService')
+    const result = await service.exportFinanceCsv({
+      from: '2026-06-09',
+      to: '2026-06-09',
+      type: 'summary',
+    })
+
+    expect(httpRequestRaw).toHaveBeenCalledWith(
+      'GET',
+      '/api/v1/finanzas/exportar?from=2026-06-09&to=2026-06-09&type=summary'
+    )
+    expect(downloadBlob).toHaveBeenCalledTimes(1)
+    expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'finanzas-summary-2026-06-09_2026-06-09.csv')
+    expect(result).toEqual({ filename: 'finanzas-summary-2026-06-09_2026-06-09.csv' })
+  })
+
+  test('exporta CSV con filename fallback si header no viene', async () => {
+    getFilenameFromContentDisposition.mockReturnValueOnce(null)
+    httpRequestRaw.mockResolvedValueOnce({
+      ok: true,
+      headers: { get: () => null },
+      blob: async () => new Blob(['col1,col2\n1,2'], { type: 'text/csv' }),
+    })
+
+    const service = await import('./financeApiService')
+    const result = await service.exportFinanceCsv({
+      from: '2026-06-01',
+      to: '2026-06-09',
+      type: 'sales',
+    })
+
+    expect(downloadBlob).toHaveBeenCalledWith(expect.any(Blob), 'finanzas-sales-2026-06-01_2026-06-09.csv')
+    expect(result).toEqual({ filename: 'finanzas-sales-2026-06-01_2026-06-09.csv' })
   })
 })

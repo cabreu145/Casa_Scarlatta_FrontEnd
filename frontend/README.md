@@ -129,11 +129,13 @@ Comportamiento:
 - `POST /api/v1/cortes/ejecutar`
 - `GET /api/v1/cortes?page=&page_size=&from=&to=`
 - `GET /api/v1/cortes/{id}`
+- `GET /api/v1/finanzas/exportar?from=&to=&type=summary|sales|expenses|cash_closings`
 
 Notas:
 - Fecha e importes se formatean en frontend.
 - Error duplicado `CASH_CLOSING_ALREADY_EXISTS` se muestra como mensaje claro.
 - Historial y detalle usan TanStack Query.
+- Exportación CSV usa filename de `Content-Disposition` y fallback `finanzas-<type>-<from>_<to>.csv`.
 - `DELETE /api/v1/lista-espera/{id}`
 
 Notas:

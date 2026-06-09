@@ -161,6 +161,8 @@ export const ENDPOINTS = {
     withQuery('/finanzas/stock-bajo', { threshold }),
   finanzasVentasRecientes: ({ limit } = {}) =>
     withQuery('/finanzas/ventas-recientes', { limit }),
+  finanzasExportar: ({ from, to, type } = {}) =>
+    withQuery('/finanzas/exportar', { from, to, type }),
 
   coaches: withPrefix('/coaches'),
   coachesPaginated: ({ page, pageSize, search, status }) =>

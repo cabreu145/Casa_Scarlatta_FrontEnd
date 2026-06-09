@@ -14,6 +14,7 @@ import {
   useFinanceLowStockQuery,
   useFinanceRecentSalesQuery,
 } from '@/hooks/useApiQueries'
+import { exportFinanceCsv } from '@/services/financeApiService'
 import DateNavigator from '@/components/ui/DateNavigator'
 import styles from '../AdminPanel.module.css'
 
@@ -336,6 +337,8 @@ function buildDashboardRange(rangoDash, fechaEspecifica) {
 
 export default function DashboardSection({ rangoDash, setRangoDash, showSection, showSectionWithFilter }) {
   const [fechaEspecifica, setFechaEspecifica] = useState(null)
+  const [exportingType, setExportingType] = useState(null)
+  const [exportMessage, setExportMessage] = useState('')
 
   const useApiMode = useApiModeDefault
   const dashboardRange = useMemo(() => buildDashboardRange(rangoDash, fechaEspecifica), [rangoDash, fechaEspecifica])
@@ -360,6 +363,32 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
     limit: 10,
     enabled: useApiMode,
   })
+  const exportTypes = [
+    { type: 'summary', label: 'Exportar resumen' },
+    { type: 'sales', label: 'Exportar ventas' },
+    { type: 'expenses', label: 'Exportar gastos' },
+    { type: 'cash_closings', label: 'Exportar cortes' },
+  ]
+
+  const handleExportFinanceCsv = async (type) => {
+    if (!useApiMode) return
+    setExportingType(type)
+    setExportMessage('Preparando descarga...')
+    try {
+      await exportFinanceCsv({
+        from: dashboardRange.from,
+        to: dashboardRange.to,
+        type,
+      })
+      setExportMessage('Archivo CSV descargado.')
+    } catch (error) {
+      setExportMessage(error?.status === 401 || error?.status === 403
+        ? 'Sin permisos para exportar.'
+        : 'No se pudo exportar el archivo. Intenta nuevamente.')
+    } finally {
+      setExportingType(null)
+    }
+  }
 
   if (useApiMode) {
     const kpis = financeKpisQuery.data ?? {
@@ -440,8 +469,26 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
               setFechaEspecifica(rango.fecha ?? null)
             }}
           />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            {exportTypes.map((item) => (
+              <button
+                key={item.type}
+                type="button"
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={() => handleExportFinanceCsv(item.type)}
+                disabled={exportingType === item.type}
+              >
+                {exportingType === item.type ? 'Preparando...' : item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
+        {exportMessage && (
+          <div className={styles.card} style={{ marginBottom: 16, color: 'rgba(255,255,255,0.75)' }}>
+            {exportMessage}
+          </div>
+        )}
         {errorMessage && (
           <div className={styles.card} style={{ marginBottom: 16, color: '#FCA5A5' }}>
             {errorMessage}
