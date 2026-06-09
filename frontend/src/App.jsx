@@ -67,6 +67,8 @@ function AnimatedRoutes() {
             <Route path="/admin/clases"   element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/paquetes" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/finanzas" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/gastos"   element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/cortes"   element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/reportes" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/pago/success" element={<PaymentReturnPage />} />
             <Route path="/pago/pending" element={<PaymentReturnPage />} />

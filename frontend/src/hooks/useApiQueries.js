@@ -11,6 +11,20 @@ import {
 import { getMyPaymentsApi } from '@/services/clientPaymentsApiService'
 import { getMembershipPackagesApi } from '@/services/membershipPackagesApiService'
 import {
+  cancelExpense,
+  createExpense,
+  deleteExpense,
+  getExpenseDetail,
+  listExpenses,
+  updateExpense,
+} from '@/services/expensesApiService'
+import {
+  executeCashClosing,
+  getCashClosingDetail,
+  getTodayCashClosingSummary,
+  listCashClosings,
+} from '@/services/cashClosingsApiService'
+import {
   adjustClientCreditsApi,
   assignClientPackageApi,
   createClientApi,
@@ -163,6 +177,91 @@ export function usePosSaleTicketQuery(saleId, { enabled = false } = {}) {
   })
 }
 
+export function useTodayCashClosingQuery({ enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.cashClosings.today,
+    queryFn: getTodayCashClosingSummary,
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useCashClosingsQuery({
+  page = 1,
+  pageSize = 20,
+  from,
+  to,
+  enabled = false,
+} = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
+  return useQuery({
+    queryKey: queryKeys.cashClosings.list({
+      page,
+      pageSize: normalizedPageSize,
+      from: from || '',
+      to: to || '',
+    }),
+    queryFn: () => listCashClosings({ page, pageSize: normalizedPageSize, from, to }),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useCashClosingDetailQuery(id, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.cashClosings.detail(id),
+    queryFn: () => getCashClosingDetail(id),
+    enabled: Boolean(enabled && id),
+    ...shortDefaults,
+  })
+}
+
+export function useExpensesQuery({
+  page = 1,
+  pageSize = 20,
+  from,
+  to,
+  category,
+  status,
+  paymentMethod,
+  enabled = false,
+} = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
+  return useQuery({
+    queryKey: queryKeys.expenses.list({
+      page,
+      pageSize: normalizedPageSize,
+      from: from || '',
+      to: to || '',
+      category: category || 'all',
+      status: status || 'all',
+      paymentMethod: paymentMethod || 'all',
+    }),
+    queryFn: () => listExpenses({
+      page,
+      pageSize: normalizedPageSize,
+      from,
+      to,
+      category,
+      status,
+      paymentMethod,
+    }),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useExpenseDetailQuery(id, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.expenses.detail(id),
+    queryFn: () => getExpenseDetail(id),
+    enabled: Boolean(enabled && id),
+    ...shortDefaults,
+  })
+}
+
 export function useAddMyMembershipBeneficiaryMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -284,6 +383,68 @@ export function useCreatePosSaleMutation() {
         variables?.customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }) : Promise.resolve(),
         queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
       ])
+    },
+  })
+}
+
+export function useExecuteCashClosingMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: executeCashClosing,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cashClosings'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'sales'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'finanzas'] }),
+      ])
+    },
+  })
+}
+
+function invalidateExpenseRelatedQueries(queryClient, expenseId) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+    queryClient.invalidateQueries({ queryKey: ['cashClosings'] }),
+    expenseId ? queryClient.invalidateQueries({ queryKey: queryKeys.expenses.detail(expenseId) }) : Promise.resolve(),
+  ])
+}
+
+export function useCreateExpenseMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createExpense,
+    onSuccess: async () => {
+      await invalidateExpenseRelatedQueries(queryClient)
+    },
+  })
+}
+
+export function useUpdateExpenseMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }) => updateExpense(id, payload),
+    onSuccess: async (_, variables) => {
+      await invalidateExpenseRelatedQueries(queryClient, variables?.id)
+    },
+  })
+}
+
+export function useCancelExpenseMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }) => cancelExpense(id, reason),
+    onSuccess: async (_, variables) => {
+      await invalidateExpenseRelatedQueries(queryClient, variables?.id)
+    },
+  })
+}
+
+export function useDeleteExpenseMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteExpense,
+    onSuccess: async (_, expenseId) => {
+      await invalidateExpenseRelatedQueries(queryClient, expenseId)
     },
   })
 }

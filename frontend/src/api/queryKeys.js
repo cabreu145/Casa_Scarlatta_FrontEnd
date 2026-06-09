@@ -1,4 +1,4 @@
-﻿export const queryKeys = {
+export const queryKeys = {
   myFinancialState: ['client', 'me', 'financialState'],
   myMemberships: ['client', 'me', 'memberships'],
   myCreditMovements: (params = {}) => ['client', 'me', 'creditMovements', params],
@@ -6,9 +6,18 @@
   adminClients: (params = {}) => ['admin', 'clients', params],
   adminClientDetail: (clientId) => ['admin', 'clients', clientId],
   adminPackages: (params = {}) => ['admin', 'packages', params],
+  expenses: {
+    list: (params = {}) => ['expenses', 'list', params],
+    detail: (id) => ['expenses', 'detail', id],
+  },
   posProducts: (params = {}) => ['admin', 'pos', 'products', params],
   posProductCategories: (params = {}) => ['admin', 'pos', 'productCategories', params],
   posSales: (params = {}) => ['admin', 'pos', 'sales', params],
   posSaleDetail: (saleId) => ['admin', 'pos', 'sales', saleId],
   posSaleTicket: (saleId) => ['admin', 'pos', 'sales', saleId, 'ticket'],
+  cashClosings: {
+    today: ['cashClosings', 'today'],
+    list: (params = {}) => ['cashClosings', 'list', params],
+    detail: (id) => ['cashClosings', 'detail', id],
+  },
 }

@@ -118,6 +118,22 @@ Comportamiento:
 Endpoints vigentes (API mode):
 - `GET /api/v1/lista-espera?occurrenceId=...`
 - `POST /api/v1/lista-espera` con `occurrence_id`
+
+## Integración Cortes de Caja (API mode)
+
+Variable:
+- `VITE_USE_API_AUTH=true` habilita vista API-first de cortes en Admin.
+
+Comportamiento:
+- `GET /api/v1/cortes/hoy`
+- `POST /api/v1/cortes/ejecutar`
+- `GET /api/v1/cortes?page=&page_size=&from=&to=`
+- `GET /api/v1/cortes/{id}`
+
+Notas:
+- Fecha e importes se formatean en frontend.
+- Error duplicado `CASH_CLOSING_ALREADY_EXISTS` se muestra como mensaje claro.
+- Historial y detalle usan TanStack Query.
 - `DELETE /api/v1/lista-espera/{id}`
 
 Notas:

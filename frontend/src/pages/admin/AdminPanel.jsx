@@ -8,6 +8,8 @@ import PaquetesSection from './sections/PaquetesSection'
 import PuntoDeVentaSection from './sections/PuntoDeVentaSection'
 import PosEntityModal from './components/PosEntityModal'
 import UsuariosSection from './sections/UsuariosSection'
+import CortesSection from './sections/CortesSection'
+import GastosSection from './sections/GastosSection'
 import ActividadSection from './sections/ActividadSection'
 import ConfiguracionSection from './sections/ConfiguracionSection'
 import ModalPago from '../../features/pagos/ModalPago'
@@ -111,6 +113,8 @@ export const adminLinks = [
   { to: '/admin/clases',    icon: CalendarDays,    label: 'Clases'    },
   { to: '/admin/usuarios',  icon: Users,           label: 'Usuarios'  },
   { to: '/admin/finanzas',  icon: DollarSign,      label: 'Finanzas'  },
+  { to: '/admin/gastos',    icon: DollarSign,      label: 'Gastos'    },
+  { to: '/admin/cortes',    icon: DollarSign,      label: 'Cortes'    },
   { to: '/admin/reportes',  icon: BarChart2,       label: 'Reportes'  },
 ]
 
@@ -123,6 +127,8 @@ const SECTIONS = {
   pos:       { title: 'Punto de Venta',   sub: 'Venta de productos en estudio'       },
   usuarios:  { title: 'Usuarios',         sub: 'Gestión de miembros activos'         },
   finanzas:  { title: 'Finanzas',         sub: 'Resumen financiero del estudio'       },
+  gastos:    { title: 'Gastos',           sub: 'Control de gastos operativos'        },
+  cortes:    { title: 'Cortes',           sub: 'Corte diario e historial de caja'     },
   reportes:  { title: 'Reportes',         sub: 'Descarga y análisis de datos'        },
   actividad:      { title: 'Actividad',      sub: 'Historial de eventos del sistema'    },
   configuracion:  { title: 'Configuración', sub: 'Ajustes del estudio'                 },
@@ -195,6 +201,7 @@ export default function AdminPanel() {
   const useApiCoaches = useApiClasses
   const useApiClients = import.meta.env.VITE_USE_API_AUTH === 'true'
   const useApiPackages = useApiClients
+  const useApiExpenses = useApiClients
   const useApiPos = useApiClasses || useApiClients
   const [apiCoaches, setApiCoaches] = useState([])
   const [apiCoachList, setApiCoachList] = useState([])
@@ -1207,6 +1214,8 @@ export default function AdminPanel() {
           <div className={styles.navLabel}>Análisis</div>
           {[
             { id: 'finanzas',      icon: '💰', label: 'Finanzas'       },
+            { id: 'gastos',        icon: '🧾', label: 'Gastos'         },
+            { id: 'cortes',        icon: '🧾', label: 'Cortes'         },
             { id: 'reportes',      icon: '📄', label: 'Reportes'       },
             { id: 'actividad',     icon: '📋', label: 'Actividad'      },
             { id: 'configuracion', icon: '⚙️', label: 'Configuración'  },
@@ -1411,6 +1420,16 @@ export default function AdminPanel() {
           {/* ── FINANZAS ── */}
           <section className={`${styles.section}${activeSection === 'finanzas' ? ' ' + styles.active : ''}`}>
             <FinanzasSection inPanel />
+          </section>
+
+          {/* ── GASTOS ── */}
+          <section className={`${styles.section}${activeSection === 'gastos' ? ' ' + styles.active : ''}`}>
+            <GastosSection inPanel isActive={activeSection === 'gastos'} useApiMode={useApiExpenses} />
+          </section>
+
+          {/* ── CORTES ── */}
+          <section className={`${styles.section}${activeSection === 'cortes' ? ' ' + styles.active : ''}`}>
+            <CortesSection inPanel isActive={activeSection === 'cortes'} />
           </section>
 
           {/* ── REPORTES ── */}

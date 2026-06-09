@@ -128,7 +128,25 @@ export const ENDPOINTS = {
   transaccionesMes: (anio, mes) => withPrefix(`/transacciones?anio=${anio}&mes=${mes}`),
 
   cortes: withPrefix('/cortes'),
+  cortesHoy: withPrefix('/cortes/hoy'),
+  cortesPaginated: ({ page, pageSize, from, to }) =>
+    withQuery('/cortes', { page, page_size: pageSize, from, to }),
+  corteById: (id) => withPrefix(`/cortes/${id}`),
   ejecutarCorte: withPrefix('/cortes/ejecutar'),
+
+  gastos: withPrefix('/gastos'),
+  gastosPaginated: ({ page, pageSize, from, to, category, status, paymentMethod }) =>
+    withQuery('/gastos', {
+      page,
+      page_size: pageSize,
+      from,
+      to,
+      category,
+      status,
+      payment_method: paymentMethod,
+    }),
+  gastoById: (id) => withPrefix(`/gastos/${id}`),
+  gastoCancelarById: (id) => withPrefix(`/gastos/${id}/cancelar`),
 
   notificaciones: withPrefix('/notificaciones'),
   marcarLeida: (id) => withPrefix(`/notificaciones/${id}/leida`),

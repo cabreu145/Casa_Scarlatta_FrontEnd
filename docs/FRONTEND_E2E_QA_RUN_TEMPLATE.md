@@ -511,3 +511,13 @@ DecisiÃ³n final:
 ## MVP server state
 
 Frontend MVP uses TanStack Query for server state. Zustand queda para fallback legacy y UI local. Lecturas con `useQuery`, mutaciones con `useMutation`, refetch con invalidate tras Ã©xito. No usar `page_size=1000`.
+
+## QA Admin Cortes de caja API-first
+
+- [ ] Login admin y abrir Admin > Cortes.
+- [ ] Validar `GET /api/v1/cortes/hoy`.
+- [ ] Validar historial con `GET /api/v1/cortes?page=&page_size=&from=&to=`.
+- [ ] Abrir detalle con `GET /api/v1/cortes/{id}`.
+- [ ] Ejecutar corte con `POST /api/v1/cortes/ejecutar`.
+- [ ] Confirmar mensaje claro para `CASH_CLOSING_ALREADY_EXISTS`.
+- [ ] Confirmar formatos legibles de fecha, moneda y m�todo de pago.

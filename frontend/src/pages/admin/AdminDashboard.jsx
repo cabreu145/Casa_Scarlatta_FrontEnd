@@ -118,6 +118,8 @@ export const adminLinks = [
   { to: '/admin/clases',    icon: CalendarDays,    label: 'Clases'    },
   { to: '/admin/usuarios',  icon: Users,           label: 'Usuarios'  },
   { to: '/admin/finanzas',  icon: DollarSign,      label: 'Finanzas'  },
+  { to: '/admin/gastos',    icon: DollarSign,      label: 'Gastos'    },
+  { to: '/admin/cortes',    icon: DollarSign,      label: 'Cortes'    },
   { to: '/admin/reportes',  icon: BarChart2,       label: 'Reportes'  },
 ]
 
