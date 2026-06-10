@@ -1,20 +1,9 @@
 import { formatHour } from '@/utils/formatters'
 import { getClassTimeToken } from '@/utils/classSchedule'
 import { normalizeDiscipline } from '@/utils/discipline'
+import CoachAvatar from '@/components/common/CoachAvatar'
 import { useConfiguracionStore } from '@/stores/configuracionStore'
 import s from './ClientPanel.module.css'
-
-const AVATAR_COLORS = [
-  { bg: 'var(--brand-wine-13)',  text: '#7B1E2B' },
-  { bg: 'rgba(194,107,122,0.18)', text: '#b05060' },
-  { bg: 'rgba(154,123,107,0.18)', text: '#7A6560' },
-  { bg: 'rgba(92,16,24,0.13)',   text: '#5C1018'  },
-]
-
-function avatarStyle(name) {
-  const idx = name.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % AVATAR_COLORS.length
-  return AVATAR_COLORS[idx]
-}
 
 function DisciplinePill({ d }) {
   const normalized = normalizeDiscipline(d)
@@ -42,8 +31,7 @@ function StatusPill({ status }) {
 }
 
 export default function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) {
-  const initials = cls.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const { bg, text } = avatarStyle(cls.coach)
+  const resolvedCoachFoto = coachFoto ?? cls?.coachAvatarUrl ?? cls?.avatarUrl ?? null
   const timeToken = getClassTimeToken({
     time: cls?.time ?? null,
     displayTime: cls?.displayTime ?? null,
@@ -53,13 +41,7 @@ export default function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) 
   return (
     <div className={s.mcCard}>
       <div className={s.mcAvatarCol}>
-        <div className={s.mcAvatar} style={{ background: coachFoto ? 'transparent' : bg, overflow: 'hidden', padding: 0 }}>
-          {coachFoto ? (
-            <img src={coachFoto} alt={cls.coach} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }} />
-          ) : (
-            <span style={{ color: text }}>{initials}</span>
-          )}
-        </div>
+        <CoachAvatar name={cls.coach} avatarUrl={resolvedCoachFoto} size={44} className={s.mcAvatar} />
       </div>
       <div className={s.mcTimeCol}>
         <div className={s.mcTimeVal}>{formatHour(timeToken ?? cls.time ?? cls.displayTime ?? cls.startTime ?? cls.classStartTime)}</div>

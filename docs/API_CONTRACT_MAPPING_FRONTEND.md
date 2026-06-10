@@ -168,6 +168,9 @@ Reglas frontend:
 ## MVP server state
 
 Frontend MVP uses TanStack Query for server state. Zustand queda para fallback legacy y UI local. Lecturas con `useQuery`, mutaciones con `useMutation`, refetch con invalidate tras éxito. No usar `page_size=1000`.
+- Admin badges de Coaches/Usuarios ya usan totales backend.
+- Avatares de coach usan `avatar_url` / `avatarUrl` con fallback visual.
+- `Admin > Actividad` queda como legacy placeholder hasta contrato backend real.
 
 ## Mapeo POS (vigente)
 | Archivo frontend | Función actual | Endpoint backend | Request esperado | Response esperado | Transformación necesaria | Prioridad |

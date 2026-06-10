@@ -1,13 +1,13 @@
 ﻿/**
  * Clases.jsx
- * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
- * PÃ¡gina pÃºblica de listado y reserva de clases.
- * Incluye navegaciÃ³n semanal, filtro por disciplina (Stride/Slow)
+ * Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+ * PÃƒÂ¡gina pÃƒÂºblica de listado y reserva de clases.
+ * Incluye navegaciÃƒÂ³n semanal, filtro por disciplina (Stride/Slow)
  * y tarjetas de clase con disponibilidad en tiempo real.
  *
  * Usado en: App.jsx (ruta "/clases")
  * Depende de: classService, classes (data), ClassTypeFilter, SeatSelector
- * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ * Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
  */
 import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -24,39 +24,28 @@ import { getPublicClassesByDate, getPublicAvailability, getReservationOccurrence
 import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { cancelarReserva as cancelarReservaService } from '@/services/reservasService'
 import { ROUTES } from '@/constants/routes'
-import { getWeekDays, isSameDay, formatHour, getInitials, DAYS_ABBR, MONTHS_ES } from '@/utils/formatters'
+import { getWeekDays, isSameDay, formatHour, DAYS_ABBR, MONTHS_ES } from '@/utils/formatters'
 import { getClassTimeToken } from '@/utils/classSchedule'
 import { normalizeDiscipline } from '@/utils/discipline'
+import CoachAvatar from '@/components/common/CoachAvatar'
+import { usePublicCoachesQuery } from '@/hooks/useApiQueries'
 import styles from './Clases.module.css'
 
-// â”€â”€â”€ Avatar helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const AVATAR_COLORS = [
-  { bg: 'rgba(123,31,46,0.14)', text: '#7B1F2E' },
-  { bg: 'rgba(194,107,122,0.18)', text: '#b05060' },
-  { bg: 'rgba(154,123,107,0.18)', text: '#7A6560' },
-  { bg: 'rgba(92,16,24,0.13)', text: '#5C1018' },
-]
-
-function avatarStyle(name) {
-  const idx = name.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % AVATAR_COLORS.length
-  return AVATAR_COLORS[idx]
-}
-
-// â”€â”€â”€ Date helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Date helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function getMonthLabel(days) {
   const a = days[0], b = days[days.length - 1]
   if (a.getMonth() === b.getMonth())
     return `${MONTHS_ES[a.getMonth()].toUpperCase()} ${b.getFullYear()}`
-  return `${MONTHS_ES[a.getMonth()].toUpperCase()} â€“ ${MONTHS_ES[b.getMonth()].toUpperCase()} ${b.getFullYear()}`
+  return `${MONTHS_ES[a.getMonth()].toUpperCase()} Ã¢â‚¬â€œ ${MONTHS_ES[b.getMonth()].toUpperCase()} ${b.getFullYear()}`
 }
 
 function canCancelClass(date, hora) {
   const [h, m] = hora.split(':').map(Number)
   const classTime = new Date(date)
   classTime.setHours(h, m, 0, 0)
-  // LÃ­mite de cancelaciÃ³n configurable desde el panel admin
-  // [BACKEND] â†’ GET /api/configuracion â†’ horasCancelacion
+  // LÃƒÂ­mite de cancelaciÃƒÂ³n configurable desde el panel admin
+  // [BACKEND] Ã¢â€ â€™ GET /api/configuracion Ã¢â€ â€™ horasCancelacion
   const horasCancelacion = useConfiguracionStore.getState().get('horasCancelacion')
   return (classTime - new Date()) > horasCancelacion * 60 * 60 * 1000
 }
@@ -67,21 +56,26 @@ export default function Clases() {
   const { coaches }            = useCoachesStore()
   const { reservas } = useReservasStore()
   const { isAuthenticated, usuario } = useAuth()
-  const cfg = useConfiguracionStore()
-
-  const coachFotoByName = useMemo(
-    () => Object.fromEntries(coaches.map((c) => [c.nombre, c.foto]).filter(([, f]) => f)),
-    [coaches]
-  )
-  const navigate = useNavigate()
-  const [searchParams]  = useSearchParams()
-  const [filter, setFilter]         = useState(searchParams.get('tipo') || 'Stryde X')
+  const [selectedDate, setSelectedDate]   = useState(new Date())
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [filter, setFilter] = useState('')
   const [selectedClass, setSelectedClass] = useState(null)
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
-  const [weekOffset, setWeekOffset] = useState(0)
-  const [selectedDate, setSelectedDate]   = useState(new Date())
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
+  const cfg = useConfiguracionStore()
+  const useApiCoachAvatars = useApiClasses || useApiReservations
+  const publicCoachesQuery = usePublicCoachesQuery({ enabled: useApiCoachAvatars })
+  const coachSource = useApiCoachAvatars ? (publicCoachesQuery.data ?? []) : coaches
+  const coachFotoById = useMemo(
+    () => Object.fromEntries(coachSource.map((c) => [String(c.coachId ?? c.id ?? c.userId ?? c.email ?? c.nombre ?? c.name), c.avatarUrl ?? c.foto ?? null]).filter(([, f]) => f)),
+    [coachSource]
+  )
+  const coachFotoByName = useMemo(
+    () => Object.fromEntries(coachSource.map((c) => [String(c.nombre ?? c.name ?? ''), c.avatarUrl ?? c.foto ?? null]).filter(([name, f]) => name && f)),
+    [coachSource]
+  )
+  const navigate = useNavigate()
   const days = useMemo(() => getWeekDays(weekOffset), [weekOffset])
   const monthLabel = useMemo(() => getMonthLabel(days), [days])
   const selectedIdx = days.findIndex((d) => isSameDay(d, selectedDate))
@@ -256,16 +250,18 @@ export default function Clases() {
         <div className={styles.classList}>
           {dayClasses.length === 0 ? (
             <div className={styles.emptyState}>
-              <span className={styles.emptyIcon}>📅</span>
-              <p>Sin clases este día</p>
+              <span className={styles.emptyIcon}>ðŸ“…</span>
+              <p>Sin clases este dÃ­a</p>
             </div>
           ) : (
             dayClasses.map((cls, i) => {
               const { available, status } = getPublicAvailability(cls)
               const isFull  = status === 'full'
               const isLow   = status === 'low'
-              const { bg, text } = avatarStyle(cls.coachNombre)
-                            const coachFoto   = coachFotoByName[cls.coachNombre] || null
+              const coachFoto = cls.coachAvatarUrl
+                ?? coachFotoById[String(cls.coachId ?? cls.coach_id ?? '')]
+                ?? coachFotoByName[String(cls.coachNombre ?? cls.coach ?? '')]
+                ?? null
               const classTime = getClassTimeToken(cls)
 
               // selectedDate is a Date object - convert to ISO string before matching reservation occurrence
@@ -291,19 +287,7 @@ export default function Clases() {
 
                   {/* AVATAR */}
                   <div className={styles.avatarWrap}>
-                    <div className={styles.avatar} style={{ background: coachFoto ? 'transparent' : bg, overflow: 'hidden', padding: 0 }}>
-                      {coachFoto ? (
-                        <img
-                          src={coachFoto}
-                          alt={cls.coachNombre}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }}
-                        />
-                      ) : (
-                        <span className={styles.avatarInitials} style={{ color: text }}>
-                          {getInitials(cls.coachNombre)}
-                        </span>
-                      )}
-                    </div>
+                    <CoachAvatar name={cls.coachNombre ?? cls.coach ?? 'Coach'} avatarUrl={coachFoto} size={54} className={styles.avatar} objectPosition="center 15%" />
                   </div>
 
                   {/* TIME */}
@@ -315,7 +299,7 @@ export default function Clases() {
                   {/* DIVIDER */}
                   <div className={styles.divider} />
 
-                  {/* CENTER â€” class info */}
+                  {/* CENTER Ã¢â‚¬â€ class info */}
                   <div className={styles.classBody}>
                     <div className={styles.classTitleRow}>
                       <span className={styles.className}>{cls.nombre}</span>
@@ -335,7 +319,7 @@ export default function Clases() {
                     </div>
                   </div>
 
-                  {/* RIGHT â€” availability + button */}
+                  {/* RIGHT Ã¢â‚¬â€ availability + button */}
                   <div className={styles.classActions}>
                     {!clasePasada && (isFull ? (
                       <span className={styles.fullTag}>LLENO</span>
@@ -361,7 +345,7 @@ export default function Clases() {
                             Cancelar
                           </button>
                         ) : (
-                          <span className={styles.cancelarVencido}>Sin cancelación disponible</span>
+                          <span className={styles.cancelarVencido}>Sin cancelaciÃ³n disponible</span>
                         )}
                       </div>
                     ) : (
@@ -389,22 +373,28 @@ export default function Clases() {
         </div>
       </div>
 
-      {/* â”€â”€ Seat selector modal â”€â”€ */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Seat selector modal Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {selectedClass && (
         useApiReservations && selectedClass.occurrenceId ? (
           <EquipmentReservationPanel
             occurrenceId={selectedClass.occurrenceId}
             classId={selectedClass.id}
             userId={usuario?.id}
+            coachAvatarUrl={selectedClass.coachAvatarUrl ?? coachFotoById[String(selectedClass.coachId ?? selectedClass.coach_id ?? '')] ?? coachFotoByName[String(selectedClass.coachNombre ?? selectedClass.coach ?? '')] ?? null}
             onClose={() => setSelectedClass(null)}
           />
         ) : (
-          <SeatSelector cls={selectedClass} onClose={() => setSelectedClass(null)} fecha={selectedDate} />
+          <SeatSelector
+            cls={{
+              ...selectedClass,
+              coachAvatarUrl: selectedClass.coachAvatarUrl ?? coachFotoById[String(selectedClass.coachId ?? selectedClass.coach_id ?? '')] ?? coachFotoByName[String(selectedClass.coachNombre ?? selectedClass.coach ?? '')] ?? null,
+            }}
+            onClose={() => setSelectedClass(null)}
+            fecha={selectedDate}
+          />
         )
       )}
 
     </main>
   )
 }
-
-

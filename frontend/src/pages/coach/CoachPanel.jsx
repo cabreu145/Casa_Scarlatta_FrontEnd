@@ -11,7 +11,8 @@ import {
 } from 'lucide-react'
 import { useReservasStore } from '@/stores/reservasStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
-import { useOccurrenceRosterQuery } from '@/hooks/useApiQueries'
+import { useOccurrenceRosterQuery, usePublicCoachesQuery } from '@/hooks/useApiQueries'
+import CoachAvatar from '@/components/common/CoachAvatar'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import s from './CoachPanel.module.css'
@@ -120,11 +121,18 @@ export default function CoachPanel() {
     import.meta.env.VITE_USE_API_RESERVATIONS === 'true' &&
     import.meta.env.VITE_USE_API_WAITLIST === 'true'
   )
+  const publicCoachesQuery = usePublicCoachesQuery({ enabled: useApiMode && usuario?.rol === 'coach' })
   const [agendaLoading, setAgendaLoading] = useState(false)
   const [agendaError, setAgendaError] = useState(null)
   const [agendaOccurrences, setAgendaOccurrences] = useState([])
-  // coachData: perfil del coach en coachesStore (id = "coach-xxx", distinto al id de usuario)
-  const coachData = coaches.find(c => c.email === usuario?.email)
+  const coachDirectory = useApiMode ? (publicCoachesQuery.data ?? []) : coaches
+  const coachData = coachDirectory.find((c) =>
+    String(c.userId ?? c.user_id ?? '') === String(usuario?.id ?? '') ||
+    c.email === usuario?.email ||
+    String(c.coachId ?? c.id ?? '') === String(usuario?.coachId ?? '') ||
+    c.nombre === usuario?.nombre ||
+    c.name === usuario?.nombre
+  )
   const misClasesFallback = clases.filter(c =>
     (coachData && (String(c.coachId) === String(coachData.id) || c.coachNombre === coachData.nombre)) ||
     c.coachNombre === usuario?.nombre
@@ -298,11 +306,13 @@ export default function CoachPanel() {
                 <div className={s.coachName}>Coach · {usuario?.nombre ?? 'Coach'}</div>
                 <div className={s.coachRole}>{usuario?.especialidad ?? ''}</div>
               </div>
-              <div className={s.coachAvatar} style={{ width:36, height:36, fontSize:15, overflow:'hidden', padding:0 }}>
-                {coachData?.foto
-                 ? <img src={coachData.foto} alt={usuario?.nombre} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top center' }} />
-                 : usuario?.nombre?.charAt(0).toUpperCase() ?? 'C'}
-              </div>
+              <CoachAvatar
+                name={usuario?.nombre}
+                avatarUrl={coachData?.avatarUrl ?? coachData?.foto}
+                size={36}
+                className={s.coachAvatar}
+                objectPosition="top center"
+              />
             </div>
           </div>
         </div>

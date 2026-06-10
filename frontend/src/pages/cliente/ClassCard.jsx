@@ -2,20 +2,8 @@ import { formatHour } from '@/utils/formatters'
 import { formatClassDate, getClassDisplayDate, getClassTimeToken } from '@/utils/classSchedule'
 
 import { normalizeDiscipline } from '@/utils/discipline'
+import CoachAvatar from '@/components/common/CoachAvatar'
 import s from './ClientPanel.module.css'
-
-const AVATAR_COLORS = [
-  { bg: 'var(--brand-wine-13)', text: '#7B1E2B' },
-  { bg: 'rgba(194,107,122,0.18)', text: '#b05060' },
-  { bg: 'rgba(154,123,107,0.18)', text: '#7A6560' },
-  { bg: 'rgba(92,16,24,0.13)', text: '#5C1018' },
-]
-
-function avatarStyle(name) {
-  const base = name ?? 'Coach'
-  const idx = base.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % AVATAR_COLORS.length
-  return AVATAR_COLORS[idx]
-}
 
 function DisciplinePill({ d }) {
   const normalized = normalizeDiscipline(d)
@@ -44,6 +32,7 @@ function StatusPill({ status }) {
 
 export default function ClassCard({ cls, showCancel, onCancel, coachFoto }) {
   const coachName = cls?.coach ?? 'Por definir'
+  const resolvedCoachFoto = coachFoto ?? cls?.coachAvatarUrl ?? cls?.avatarUrl ?? null
   const title = cls?.title ?? 'Clase'
   const dateLabel = cls?.displayDate ?? formatClassDate(getClassDisplayDate({
     classDate: cls?.classDate ?? cls?.claseFecha ?? null,
@@ -62,8 +51,6 @@ export default function ClassCard({ cls, showCancel, onCancel, coachFoto }) {
   const discipline = cls?.discipline ?? cls?.tipo ?? 'Sin tipo'
   const status = cls?.status ?? 'pendiente'
   const location = cls?.location ?? ''
-  const initials = coachName.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?'
-  const { bg, text } = avatarStyle(coachName)
 
   return (
     <div className={s.classCard}>
@@ -74,11 +61,7 @@ export default function ClassCard({ cls, showCancel, onCancel, coachFoto }) {
       <div className={s.classInfo}>
         <div className={s.classTitle}>{title}</div>
         <div className={s.classCoach} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: coachFoto ? 'transparent' : bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: text }}>
-            {coachFoto
-              ? <img src={coachFoto} alt={coachName} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%' }} />
-              : initials}
-          </div>
+          <CoachAvatar name={coachName} avatarUrl={resolvedCoachFoto} size={22} />
           {coachName}{location ? ` · ${location}` : ''}
         </div>
         <div style={{ marginTop: 5 }}><DisciplinePill d={discipline} /></div>

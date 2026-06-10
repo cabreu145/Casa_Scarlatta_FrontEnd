@@ -10,6 +10,7 @@ import { useClasesStore }   from '@/stores/clasesStore'
 import { useCoachesStore }  from '@/stores/coachesStore'
 import { getReservationOccurrenceDate } from '@/services/classService'
 import { normalizeDiscipline } from '@/utils/discipline'
+import CoachAvatar from '@/components/common/CoachAvatar'
 import styles from './SeatSelector.module.css'
 
 // ── Slow room layout (fixed) ──────────────────────────────────────────────────
@@ -248,9 +249,7 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
 
   const isSlow = normalizeDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo) === 'slow'
-  const coachFoto = cls.coachId ? getCoachById(cls.coachId)?.foto ?? null : null
-  const instructorInitials = cls.coachNombre?.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
-
+  const coachFoto = cls.coachAvatarUrl ?? (cls.coachId ? getCoachById(cls.coachId)?.foto ?? null : null)
   const COLS = 5
   const totalSeats = cls.cupoMax > 0 ? cls.cupoMax : (isSlow ? 15 : 14)
   const rows = Math.ceil(totalSeats / COLS)
@@ -428,12 +427,13 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
                   })}
                   {/* Coach cell — position 3 */}
                   <div className={styles.slowInstructorBadge}>
-                    <div className={styles.slowInstructorAvatar}>
-                      {coachFoto
-                        ? <img src={coachFoto} alt={cls.coachNombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 15%',borderRadius:'50%'}}/>
-                        : instructorInitials
-                      }
-                    </div>
+                    <CoachAvatar
+                      name={cls.coachNombre}
+                      avatarUrl={coachFoto}
+                      size={40}
+                      className={styles.slowInstructorAvatar}
+                      objectPosition="center 15%"
+                    />
                     <span className={styles.slowInstructorName}>{cls.coachNombre}</span>
                     <span className={styles.slowInstructorTitle}>COACH</span>
                   </div>
@@ -623,12 +623,13 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
                     <div className={styles.strydeInstructorZone}>
                       <div className={styles.strydeZoneLine}/>
                       <div className={styles.instructorBadge}>
-                        <div className={styles.instructorAvatar}>
-                          {coachFoto
-                            ? <img src={coachFoto} alt={cls.coachNombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 15%',borderRadius:'50%'}}/>
-                            : instructorInitials
-                          }
-                        </div>
+                        <CoachAvatar
+                          name={cls.coachNombre}
+                          avatarUrl={coachFoto}
+                          size={40}
+                          className={styles.instructorAvatar}
+                          objectPosition="center 15%"
+                        />
                         <span className={styles.instructorName}>{cls.coachNombre}</span>
                         <span className={styles.instructorTitle}>COACH</span>
                       </div>

@@ -43,6 +43,7 @@ export function mapBackendClassToFrontendClass(item = {}) {
     discipline,
     coachId: item.coach_id ?? item.coachId ?? null,
     coachNombre: item.coach_name ?? item.coachNombre ?? `Coach #${item.coach_id ?? 'N/A'}`,
+    coachAvatarUrl: item.coach_avatar_url ?? item.coachAvatarUrl ?? item.avatar_url ?? item.avatarUrl ?? item.coach_foto ?? null,
     cupoMax,
     cupoActual,
     cupoDisponible: safeNumber(item.cupo_disponible, Math.max(0, cupoMax - cupoActual)),

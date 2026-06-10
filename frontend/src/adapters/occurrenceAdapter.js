@@ -23,6 +23,7 @@ export function mapBackendOccurrenceToFrontend(item = {}) {
     cupoActual,
     cupoDisponible: safeNumber(item.cupo_disponible, Math.max(0, cupoMax - cupoActual)),
     coachId: item.coach_id ?? item.coachId ?? null,
+    coachAvatarUrl: item.coach_avatar_url ?? item.coachAvatarUrl ?? item.avatar_url ?? item.avatarUrl ?? item.coach_foto ?? null,
     estado: item.status ?? 'programada',
     claseNombre: item.class_name ?? item.claseNombre ?? null,
   }

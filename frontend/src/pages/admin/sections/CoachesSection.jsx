@@ -1,5 +1,6 @@
 import toast from 'react-hot-toast'
 import { resolveCoachAvatarUrl } from '@/adapters/coachAdapter'
+import CoachAvatar from '@/components/common/CoachAvatar'
 import styles from '../AdminPanel.module.css'
 
 function resolveCoachDisciplina(coach) {
@@ -75,16 +76,17 @@ export default function CoachesSection({
         <div className={styles.coachesGrid}>
           {coaches.map((c, index) => {
             const name = c.nombre ?? c.name ?? 'Coach'
-            const initials = name.split(' ').slice(0, 2).map((w) => w[0]).join('')
             const coachKey = c.coachId ?? c.id ?? `${c.nombre ?? c.name ?? 'coach'}-${index}`
             const isInactive = c.status === 'inactive' || c.activo === false
             return (
               <div key={coachKey} className={styles.coachCard}>
-                <div className={styles.coachPhoto} style={{ overflow: 'hidden', padding: 0 }}>
-                {resolveCoachAvatarUrl(c.foto || c.avatarUrl)
-                    ? <img src={resolveCoachAvatarUrl(c.foto || c.avatarUrl)} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', borderRadius: '50%' }} />
-                    : initials}
-                </div>
+                <CoachAvatar
+                  name={name}
+                  avatarUrl={c.foto || c.avatarUrl}
+                  size={64}
+                  className={styles.coachPhoto}
+                  objectPosition="center 15%"
+                />
                 <div className={styles.coachInfo}>
                   <div className={styles.coachName}>{name}</div>
                   <div className={styles.coachSpec}>{c.especialidad ?? c.specialty ?? resolveCoachDisciplina(c)}</div>

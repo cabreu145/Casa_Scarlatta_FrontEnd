@@ -1,4 +1,5 @@
 import { CheckCircle, X } from 'lucide-react'
+import CoachAvatar from '@/components/common/CoachAvatar'
 import {
   BenchIcon,
   BenchMini,
@@ -164,28 +165,26 @@ function StrydeSpotButton({ visualEquipment, spot, selectedSpotId, busy, onSelec
   )
 }
 
-function CoachBadge({ coachName, dark = false }) {
-  const initials = String(coachName ?? 'Coach')
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-
+function CoachBadge({ coachName, coachAvatarUrl = null, dark = false }) {
   return (
     <div className={dark ? styles.instructorBadge : styles.slowInstructorBadge}>
-      <div className={dark ? styles.instructorAvatar : styles.slowInstructorAvatar}>{initials}</div>
+      <CoachAvatar
+        name={coachName}
+        avatarUrl={coachAvatarUrl}
+        size={dark ? 38 : 34}
+        className={dark ? styles.instructorAvatar : styles.slowInstructorAvatar}
+        objectPosition="center 15%"
+      />
       <span className={dark ? styles.instructorName : styles.slowInstructorName}>{coachName ?? 'Coach'}</span>
       <span className={dark ? styles.instructorTitle : styles.slowInstructorTitle}>COACH</span>
     </div>
   )
 }
 
-function SlowCoachSlot({ coachName }) {
+function SlowCoachSlot({ coachName, coachAvatarUrl = null }) {
   return (
     <div className={styles.slowCoachSlot} data-testid="slow-coach-slot" aria-label="Coach">
-      <CoachBadge coachName={coachName} />
+      <CoachBadge coachName={coachName} coachAvatarUrl={coachAvatarUrl} />
     </div>
   )
 }
@@ -258,6 +257,7 @@ export default function EquipmentSeatSelectorView({
   spots,
   className,
   coachName,
+  coachAvatarUrl = null,
   classDateTime,
   selectedSpotId,
   activeHold,
@@ -316,7 +316,7 @@ export default function EquipmentSeatSelectorView({
               <div className={styles.machineGrid} style={{ '--cols': 5 }} role="group" aria-label="Fila frontal" data-testid="slow-grid">
                 {topLayout.map((entry, index) => {
                   if (entry === 'coach') {
-                    return <SlowCoachSlot key="slow-coach-slot" coachName={coachName} />
+                    return <SlowCoachSlot key="slow-coach-slot" coachName={coachName} coachAvatarUrl={coachAvatarUrl} />
                   }
 
                   if (!entry) {
@@ -358,12 +358,15 @@ export default function EquipmentSeatSelectorView({
                   <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
                 </div>
                 <div className={styles.sbTitle}>{className}</div>
-                <div className={styles.sbCoach}>Coach {coachName}</div>
+                  <div className={styles.sbCoach} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CoachAvatar name={coachName} avatarUrl={coachAvatarUrl} size={28} className={styles.sbCoachAvatar} />
+                    <span>Coach {coachName}</span>
+                  </div>
                 <div className={styles.sbTime}>{classDateTime}</div>
               </div>
               <div className={styles.sbDivider} />
               <div className={styles.sbSelectionBlock}>
-                {selectedSpot ? (
+                  {selectedSpot ? (
                   <>
                     <div className={styles.sbSelLabel}>Tu lugar elegido</div>
                     <div className={styles.sbSelMat}>{getEquipmentSpotLabel(selectedSpot)}</div>
@@ -426,7 +429,7 @@ export default function EquipmentSeatSelectorView({
               {benchRows[0] ? renderStrydeRow(benchRows[0], styles.strydeBenchRow) : null}
               <div className={styles.strydeInstructorZone}>
                 <div className={styles.strydeZoneLine} />
-                <CoachBadge coachName={coachName} dark />
+                <CoachBadge coachName={coachName} coachAvatarUrl={coachAvatarUrl} dark />
                 <div className={styles.strydeZoneLine} />
               </div>
               {benchRows[1] ? renderStrydeRow(benchRows[1], styles.strydeBenchRowFront) : null}

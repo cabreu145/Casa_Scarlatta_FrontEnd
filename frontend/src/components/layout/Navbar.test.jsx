@@ -23,6 +23,10 @@ vi.mock('@/context/AuthContext', () => ({
   }),
 }))
 
+vi.mock('@/hooks/useApiQueries', () => ({
+  usePublicCoachesQuery: () => ({ data: [] }),
+}))
+
 function setMobileViewport() {
   Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 375 })
   Object.defineProperty(window, 'innerHeight', { writable: true, configurable: true, value: 667 })

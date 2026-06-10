@@ -306,3 +306,7 @@ Paquetes compartidos:
 ## MVP server state
 
 Frontend MVP uses TanStack Query for server state. Zustand queda para fallback legacy y UI local. Lecturas con `useQuery`, mutaciones con `useMutation`, refetch con invalidate tras Ã©xito. No usar `page_size=1000`.
+
+- Admin badges de Coaches/Usuarios ya usan totales backend.
+- Avatares de coach priorizan `avatar_url` / `avatarUrl`.
+- `Admin > Actividad` queda en placeholder honesto hasta contrato backend real.

@@ -71,12 +71,14 @@ describe('reservationAdapter', () => {
         class_name: 'Clase Demo Reservable API',
         class_start_time: '09:00',
         class_status: 'programada',
+        coach_avatar_url: '/media/coaches/demo.png',
       },
       {}
     )
 
     expect(mapped.occurrenceId).toBe(33)
     expect(mapped.claseNombre).toBe('Clase Demo Reservable API')
+    expect(mapped.coachAvatarUrl).toContain('/media/coaches/demo.png')
     expect(mapped.classStartTime).toBe('09:00')
     expect(mapped.displayTime).toBe('09:00')
     expect(mapped.displayDate).toBe('Fecha por definir')

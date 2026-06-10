@@ -40,6 +40,7 @@ export function mapBackendOccurrenceRosterToFrontend(payload = {}) {
     endTime: payload.end_time ?? payload.endTime ?? null,
     coachId: payload.coach_id ?? payload.coachId ?? null,
     coachName: payload.coach_name ?? payload.coachName ?? null,
+    coachAvatarUrl: payload.coach_avatar_url ?? payload.coachAvatarUrl ?? payload.avatar_url ?? payload.avatarUrl ?? null,
     capacityMax: safeNumber(payload.capacity_max ?? payload.capacityMax, 0),
     capacityCurrent: safeNumber(payload.capacity_current ?? payload.capacityCurrent, 0),
     students,

@@ -12,6 +12,7 @@ describe('classAdapter', () => {
       name: 'Stryde AM',
       discipline: 'stryde',
       coach_id: 3,
+      coach_avatar_url: '/media/coaches/demo.png',
       capacity_max: 20,
       capacity_current: 8,
       duration_minutes: 50,
@@ -38,6 +39,7 @@ describe('classAdapter', () => {
       statusDisplay: 'activa',
       estadoDisplay: 'activa',
       coachNombre: 'Coach #3',
+      coachAvatarUrl: '/media/coaches/demo.png',
     })
   })
 

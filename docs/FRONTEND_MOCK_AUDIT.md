@@ -163,6 +163,9 @@ Responsable: Codex
 - CSV/PDF de reportes ya salen de datos reales, no de mocks, en modo API.
 - `finanzasService.js` marcado como legacy/demo only para calculos locales.
 - Mocks se conservan solo para fallback legacy con flags API apagadas.
+- BadgeCount de Coaches y Usuarios ya sale de totales backend en API mode.
+- Avatares de coach ya priorizan `avatar_url` / `avatarUrl` con fallback de iniciales.
+- `Admin > Actividad` queda como placeholder honesto en API mode hasta contrato backend real.
 
 
 ## Quick fix clases

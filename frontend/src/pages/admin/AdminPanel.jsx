@@ -75,6 +75,8 @@ import { queryKeys } from '@/api/queryKeys'
 import {
   useAdminClientDetailQuery,
   useAdminClientsQuery,
+  useAdminClientsActiveCountQuery,
+  useAdminCoachesActiveCountQuery,
   useCreateProductMutation,
   useDeleteProductMutation,
   useOccurrenceRosterQuery,
@@ -209,6 +211,8 @@ export default function AdminPanel() {
   const useApiExpenses = useApiClients
   const useApiPos = useApiClasses || useApiClients
   const useApiMode = useApiClasses || useApiClients || useApiPackages || useApiExpenses || useApiPos || useApiCoaches
+  const coachesBadgeQuery = useAdminCoachesActiveCountQuery({ enabled: useApiCoaches })
+  const clientsBadgeQuery = useAdminClientsActiveCountQuery({ enabled: useApiClients })
   const [apiCoaches, setApiCoaches] = useState([])
   const [apiCoachList, setApiCoachList] = useState([])
   const [apiCoachesLoading, setApiCoachesLoading] = useState(false)
@@ -755,6 +759,7 @@ export default function AdminPanel() {
         setEditCoachForm({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '', public_profile_enabled: true, estado: 'activo' })
         setModalEditCoach(null)
         closeModal()
+        await queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() })
         setCoachesRefreshToken((v) => v + 1)
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo guardar coach')
@@ -785,6 +790,7 @@ export default function AdminPanel() {
         clearAvatarSelection(setCoachAvatarPreview, setCoachAvatarFile)
         setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '', public_profile_enabled: true })
         closeModal()
+        await queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() })
       } else {
         toast.error(resultado.mensaje)
       }
@@ -818,6 +824,7 @@ export default function AdminPanel() {
     }
     toast.success(`${form.nombre} actualizado`)
     setModalEditCoach(null)
+    await queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() })
   }, [
     clearAvatarSelection,
     coachForm,
@@ -831,6 +838,7 @@ export default function AdminPanel() {
     editarUsuario,
     logCoachAgregado,
     modalEditCoach,
+    queryClient,
     usuarios,
     useApiCoaches,
   ])
@@ -1187,7 +1195,14 @@ export default function AdminPanel() {
           <div className={styles.navLabel}>Principal</div>
           {[
             { id: 'dashboard', icon: '📊', label: 'Dashboard'    },
-            { id: 'coaches',   icon: '👤', label: 'Coaches',  badge: String(coaches.length) },
+            {
+              id: 'coaches',
+              icon: '👤',
+              label: 'Coaches',
+              badge: useApiCoaches
+                ? String(coachesBadgeQuery.data ?? apiCoachList.length ?? coaches.length)
+                : String(coaches.length),
+            },
             { id: 'clases',    icon: '🗓', label: 'Clases'       },
             { id: 'paquetes',  icon: '📦', label: 'Paquetes'     },
           ].map(({ id, icon, label, badge }) => (
@@ -1207,7 +1222,14 @@ export default function AdminPanel() {
           <div className={styles.navLabel}>Operación</div>
           {[
             { id: 'pos',       icon: '🛒', label: 'Punto de Venta' },
-            { id: 'usuarios',  icon: '👥', label: 'Usuarios', badge: String(usuarios.length) },
+            {
+              id: 'usuarios',
+              icon: '👥',
+              label: 'Usuarios',
+              badge: useApiClients
+                ? String(clientsBadgeQuery.data ?? apiClientsTotal ?? usuarios.length)
+                : String(usuarios.length),
+            },
           ].map(({ id, icon, label, badge }) => (
             <button
               key={id}
@@ -1450,7 +1472,7 @@ export default function AdminPanel() {
 
           {/* ── ACTIVIDAD ── */}
           <section className={`${styles.section}${activeSection === 'actividad' ? ' ' + styles.active : ''}`}>
-            <ActividadSection />
+            <ActividadSection useApiMode={useApiMode} />
           </section>
 
           {/* ── CONFIGURACIÓN ── */}

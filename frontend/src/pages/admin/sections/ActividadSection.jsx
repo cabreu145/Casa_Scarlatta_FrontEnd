@@ -42,7 +42,7 @@ function formatTimestamp(iso) {
   })
 }
 
-export default function ActividadSection() {
+export default function ActividadSection({ useApiMode = false }) {
   const { eventos, limpiarEventos } = useActividadStore()
 
   const [filtroTipo,       setFiltroTipo]       = useState('todos')
@@ -73,6 +73,26 @@ export default function ActividadSection() {
 
   const eventosVisibles   = expandido ? eventosFiltrados : eventosFiltrados.slice(0, PAGE_SIZE)
   const hayMasEventos     = eventosFiltrados.length > PAGE_SIZE
+
+  if (useApiMode) {
+    return (
+      <div style={{
+        padding: 24,
+        borderRadius: 16,
+        border: '1px solid var(--neutral-border)',
+        background: 'rgba(255,255,255,0.03)',
+        color: 'var(--text-primary)',
+        fontFamily: 'var(--font-body)',
+      }}>
+        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
+          Actividad pendiente de contrato backend
+        </div>
+        <p style={{ color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+          Vista legacy deshabilitada en modo API. Fallback demo solo con flags API apagadas.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div>

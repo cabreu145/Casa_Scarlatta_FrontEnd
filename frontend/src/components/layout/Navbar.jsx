@@ -2,8 +2,10 @@
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import LiquidButton from '@/components/ui/LiquidButton'
+import CoachAvatar from '@/components/common/CoachAvatar'
 import { useAuth } from '@/context/AuthContext'
 import { useCoachesStore } from '@/stores/coachesStore'
+import { usePublicCoachesQuery } from '@/hooks/useApiQueries'
 import { ROUTES } from '@/constants/routes'
 import toast from 'react-hot-toast'
 import styles from './Navbar.module.css'
@@ -40,11 +42,22 @@ export default function Navbar() {
   const navigate = useNavigate()
   const { isAuthenticated, usuario, logout } = useAuth()
   const coaches = useCoachesStore((s) => s.coaches)
+  const publicCoachesQuery = usePublicCoachesQuery({ enabled: import.meta.env.VITE_USE_API_AUTH === 'true' && usuario?.rol === 'coach' })
   const dropdownRef = useRef(null)
 
-  const avatarFoto = usuario?.rol === 'coach'
-    ? coaches.find((c) => c.email === usuario.email)?.foto ?? null
+  const coachSource = import.meta.env.VITE_USE_API_AUTH === 'true'
+    ? (publicCoachesQuery.data ?? [])
+    : coaches
+  const coachMatch = usuario?.rol === 'coach'
+    ? coachSource.find((c) =>
+      c.email === usuario.email ||
+      String(c.userId ?? c.user_id ?? '') === String(usuario?.id ?? '') ||
+      String(c.coachId ?? c.id ?? '') === String(usuario?.coachId ?? '') ||
+      c.nombre === usuario?.nombre ||
+      c.name === usuario?.nombre
+    )
     : null
+  const avatarFoto = coachMatch?.avatarUrl ?? coachMatch?.foto ?? null
 
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : ''
@@ -128,12 +141,13 @@ export default function Navbar() {
                 className={styles.avatar}
                 onClick={() => setDropdownOpen((v) => !v)}
                 aria-label="Menu de usuario"
-                style={avatarFoto ? { padding: 0, overflow: 'hidden' } : {}}
               >
-                {avatarFoto
-                  ? <img src={avatarFoto} alt={usuario.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }} />
-                  : usuario.nombre.charAt(0).toUpperCase()
-                }
+                <CoachAvatar
+                  name={usuario.nombre}
+                  avatarUrl={avatarFoto}
+                  size={36}
+                  objectPosition="top center"
+                />
               </button>
 
               {dropdownOpen && (

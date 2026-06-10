@@ -13,6 +13,7 @@ describe('occurrenceRosterAdapter', () => {
       end_time: '07:50',
       coach_id: 1,
       coach_name: 'Coach Demo',
+      coach_avatar_url: '/media/coaches/demo.png',
       capacity_max: 15,
       capacity_current: 2,
       students: [
@@ -42,6 +43,7 @@ describe('occurrenceRosterAdapter', () => {
       endTime: '07:50',
       coachId: 1,
       coachName: 'Coach Demo',
+      coachAvatarUrl: '/media/coaches/demo.png',
       capacityMax: 15,
       capacityCurrent: 2,
     })

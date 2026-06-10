@@ -13,6 +13,7 @@ describe('occurrenceAdapter', () => {
       capacity_max: 20,
       capacity_current: 3,
       coach_id: 9,
+      coach_avatar_url: '/media/coaches/demo.png',
       status: 'programada',
       class_name: 'Stryde AM',
     })
@@ -26,6 +27,7 @@ describe('occurrenceAdapter', () => {
       cupoActual: 3,
       cupoDisponible: 17,
       coachId: 9,
+      coachAvatarUrl: '/media/coaches/demo.png',
       estado: 'programada',
       claseNombre: 'Stryde AM',
       hora: '09:00',

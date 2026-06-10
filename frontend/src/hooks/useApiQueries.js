@@ -52,6 +52,7 @@ import {
   getClientsPaginatedApi,
   updateClientApi,
 } from '@/services/clientsApiService'
+import { getCoachesPaginatedApi, getPublicCoachesApi } from '@/services/coachesApiService'
 import {
   createProductApi,
   createSaleApi,
@@ -126,6 +127,45 @@ export function useOccurrenceRosterQuery(occurrenceId, { includeCanceled = false
     queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, includeCanceled),
     queryFn: () => getOccurrenceRosterApi(occurrenceId, { includeCanceled }),
     enabled: Boolean(enabled && occurrenceId),
+    ...shortDefaults,
+  })
+}
+
+export function useAdminCoachesActiveCountQuery({ enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.adminBadges.coachesActive(),
+    queryFn: async () => {
+      const response = await getCoachesPaginatedApi({ page: 1, pageSize: 1, status: 'active' })
+      if (typeof response?.total === 'number') return response.total
+      if (Array.isArray(response?.items)) return response.items.length
+      if (Array.isArray(response)) return response.length
+      return 0
+    },
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useAdminClientsActiveCountQuery({ enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.adminBadges.clientsActive(),
+    queryFn: async () => {
+      const response = await getClientsPaginatedApi({ page: 1, pageSize: 1, status: 'active' })
+      if (typeof response?.total === 'number') return response.total
+      if (Array.isArray(response?.items)) return response.items.length
+      if (Array.isArray(response)) return response.length
+      return 0
+    },
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function usePublicCoachesQuery({ enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.coaches.public(),
+    queryFn: getPublicCoachesApi,
+    enabled,
     ...shortDefaults,
   })
 }

@@ -414,3 +414,9 @@ Notas:
 - Private endpoint: `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos`.
 - Manual enrollment and seat flow invalidate roster after save.
 - Hardcoded students stay only as legacy fallback when API flags are off.
+
+## Admin badges, avatars and activity
+
+- Sidebar badgeCount for Coaches and Usuarios comes from backend totals in API mode.
+- Coach avatars use `avatar_url` / `avatarUrl` when available, with initials fallback.
+- `Admin > Actividad` stays legacy/demo only until backend audit contract exists.

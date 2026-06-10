@@ -77,6 +77,7 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
     spotId: reservation.spot_id ?? reservation.spotId ?? null,
     holdId: reservation.hold_id ?? reservation.holdId ?? null,
     claseNombre: classNameSnapshot ?? classData?.nombre ?? classData?.name ?? `Clase #${claseId ?? 'N/A'}`,
+    coachId: classData?.coachId ?? reservation.coach_id ?? reservation.coachId ?? null,
     claseHora: classStartTime ?? getClassTimeToken(classData ?? {}) ?? null,
     displayTime: getClassDisplayTime({
       classStartTime,
@@ -87,6 +88,7 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
     displayDate,
     claseDia: classData?.dia ?? null,
     coachNombre: classData?.coachNombre ?? 'Sin coach',
+    coachAvatarUrl: classData?.coachAvatarUrl ?? reservation.coach_avatar_url ?? reservation.coachAvatarUrl ?? null,
     tipo: classData?.tipo ?? 'Stryde X',
     discipline: normalizeDiscipline(
       reservation.discipline ??

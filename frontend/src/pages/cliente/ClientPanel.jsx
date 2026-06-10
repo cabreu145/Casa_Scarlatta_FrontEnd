@@ -42,6 +42,7 @@ import { buildMisClasesApiFilters } from './misClasesPagination'
 import { normalizeDiscipline } from '@/utils/discipline'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
+import CoachAvatar from '@/components/common/CoachAvatar'
 import {
   formatPackagePriceLabel,
   formatPackageCreditsLabel,
@@ -58,19 +59,8 @@ import {
   useMyFinancialStateQuery,
   useMyMembershipsQuery,
   useAddMyMembershipBeneficiaryMutation,
+  usePublicCoachesQuery,
 } from '@/hooks/useApiQueries'
-
-const AVATAR_COLORS = [
-  { bg: 'var(--brand-wine-13)',  text: '#7B1E2B' },
-  { bg: 'rgba(194,107,122,0.18)', text: '#b05060' },
-  { bg: 'rgba(154,123,107,0.18)', text: '#7A6560' },
-  { bg: 'rgba(92,16,24,0.13)',   text: '#5C1018'  },
-]
-
-function avatarStyle(name) {
-  const idx = name.split('').reduce((s, c) => s + c.charCodeAt(0), 0) % AVATAR_COLORS.length
-  return AVATAR_COLORS[idx]
-}
 
 const SECTION_META = {
   inicio:   { title: 'Inicio',             sub: 'Jueves, 24 de abril · Casa Scarlatta' },
@@ -221,11 +211,16 @@ export default function ClientPanel() {
     : (usuario?.id ? getTransaccionesByUsuario(usuario.id) : [])
   const historialMovimientosCredito = useApiFinancialState ? (apiFinancialState?.creditMovements ?? []) : []
   const paquetesDisponibles = useApiFinancialState ? apiMembershipPackages : paquetes
-
-  // Mapa nombre â†’ foto para todos los componentes de esta pÃ¡gina
+  const useApiCoachAvatars = useApiClasses || useApiReservations
+  const publicCoachesQuery = usePublicCoachesQuery({ enabled: useApiCoachAvatars })
+  const coachSource = useApiCoachAvatars ? (publicCoachesQuery.data ?? []) : coaches
+  const coachFotoById = useMemo(
+    () => Object.fromEntries(coachSource.map((c) => [String(c.coachId ?? c.id ?? c.userId ?? c.email ?? c.nombre ?? c.name), c.avatarUrl ?? c.foto ?? null]).filter(([, f]) => f)),
+    [coachSource]
+  )
   const coachFotoByName = useMemo(
-    () => Object.fromEntries(coaches.map((c) => [c.nombre, c.foto]).filter(([, f]) => f)),
-    [coaches]
+    () => Object.fromEntries(coachSource.map((c) => [String(c.nombre ?? c.name ?? ''), c.avatarUrl ?? c.foto ?? null]).filter(([name, f]) => name && f)),
+    [coachSource]
   )
 
   // â”€â”€ Secciones UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -980,7 +975,7 @@ export default function ClientPanel() {
                     </div>
                   )}
                   {upcoming.length > 0 ? upcoming.map(c => (
-                    <ClassCard key={`${c.id}-${c.claseFecha ?? 'sin-fecha'}-${c.time ?? 'sin-hora'}`} cls={c} showCancel={false} coachFoto={coachFotoByName[c.coach] || null} />
+                    <ClassCard key={`${c.id}-${c.claseFecha ?? 'sin-fecha'}-${c.time ?? 'sin-hora'}`} cls={c} showCancel={false} coachFoto={coachFotoById[String(c.coachId ?? c.coach_id ?? '')] ?? coachFotoByName[c.coach] ?? null} />
                   )) : (
                     <div className={s.empty}>
                       <div className={s.emptyIcon}>📅</div>
@@ -1177,7 +1172,7 @@ export default function ClientPanel() {
               return dayClasses.length > 0 ? (
                 <div>
                   {dayClasses.map((c, index) => (
-                    <MisClasesCard key={`${c.occurrenceId ?? c.id}-${c.claseFecha ?? day.isoDate}-${c.time ?? 'sin-hora'}-${index}`} cls={c} dayIsoDate={day.isoDate} onCancel={() => handleCancelReserva(c.id)} coachFoto={coachFotoByName[c.coach] || null} />
+                    <MisClasesCard key={`${c.occurrenceId ?? c.id}-${c.claseFecha ?? day.isoDate}-${c.time ?? 'sin-hora'}-${index}`} cls={c} dayIsoDate={day.isoDate} onCancel={() => handleCancelReserva(c.id)} coachFoto={coachFotoById[String(c.coachId ?? c.coach_id ?? '')] ?? coachFotoByName[c.coach] ?? null} />
                   ))}
                   {useApiReservations && (
                     <PaginationControls
@@ -1256,19 +1251,11 @@ export default function ClientPanel() {
                     })
                     const isFull  = av.spots === 0
                     const isLow   = av.spots > 0 && av.spots <= 3
-                    const initials  = av.coach.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                    const { bg, text } = avatarStyle(av.coach)
-                    const coachFoto = coachFotoByName[av.coach] || null
+                    const coachFoto = av.coachAvatarUrl ?? av.avatarUrl ?? coachFotoById[String(av.coachId ?? av.coach_id ?? '')] ?? coachFotoByName[av.coach] ?? null
                     return (
                       <div key={`${av.occurrenceId ?? av.id}-${av.time ?? 'sin-hora'}-${index}`} className={`${s.pubCard} ${isFull ? s.pubCardFull : ''}`}>
                         <div className={s.pubAvatarWrap}>
-                          <div className={s.pubAvatar} style={{ background: coachFoto ? 'transparent' : bg, overflow: 'hidden', padding: 0 }}>
-                            {coachFoto ? (
-                              <img src={coachFoto} alt={av.coach} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center 15%', display: 'block' }} />
-                            ) : (
-                              <span className={s.pubAvatarInitials} style={{ color: text }}>{initials}</span>
-                            )}
-                          </div>
+                          <CoachAvatar name={av.coach} avatarUrl={coachFoto} size={44} className={s.pubAvatar} />
                         </div>
                         <div className={s.pubTime}>
                           <span className={s.pubTimeHour}>{formatHour(av.time ?? av.displayTime)}</span>

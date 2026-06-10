@@ -118,6 +118,7 @@ export default function EquipmentReservationPanel({
   occurrenceId,
   classId,
   userId,
+  coachAvatarUrl = null,
   financialState = null,
   onReservationCreated,
   onClose,
@@ -476,6 +477,7 @@ export default function EquipmentReservationPanel({
       spots={currentSpots}
       className={className}
       coachName={coachName}
+      coachAvatarUrl={coachAvatarUrl}
       classDateTime={classDateTime}
       selectedSpotId={selectedSpotId}
       activeHold={activeHold}

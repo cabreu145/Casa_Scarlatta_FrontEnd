@@ -6,6 +6,13 @@ export const queryKeys = {
   occurrenceRoster: {
     detail: (occurrenceId, includeCanceled = false) => ['occurrenceRoster', occurrenceId, { includeCanceled: Boolean(includeCanceled) }],
   },
+  adminBadges: {
+    coachesActive: () => ['admin', 'badges', 'coachesActive'],
+    clientsActive: () => ['admin', 'badges', 'clientsActive'],
+  },
+  coaches: {
+    public: () => ['coaches', 'public'],
+  },
   adminClients: (params = {}) => ['admin', 'clients', params],
   adminClientDetail: (clientId) => ['admin', 'clients', clientId],
   adminPackages: (params = {}) => ['admin', 'packages', params],
