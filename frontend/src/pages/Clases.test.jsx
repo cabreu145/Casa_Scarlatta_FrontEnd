@@ -6,6 +6,7 @@ const mockLoadClasesFromApi = vi.fn().mockResolvedValue(undefined)
 const mockGetOccurrencesForDateRangeApi = vi.fn()
 const mockCancelReserva = vi.fn()
 const mockUsePublicCoachesQuery = vi.fn()
+const todayIso = new Date().toISOString().slice(0, 10)
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
@@ -127,9 +128,9 @@ describe('Clases public avatar regression', () => {
     })
     mockGetOccurrencesForDateRangeApi.mockResolvedValue({
       3: [
-        {
+      {
           occurrenceId: 10,
-          fecha: '2026-06-09',
+          fecha: todayIso,
           cupoMax: 15,
           cupoActual: 0,
           estado: 'programada',

@@ -5,6 +5,10 @@ import { mockUsers } from '@/data/mockUsers'
 import { hoyLocal } from '@/utils/fecha'
 import { logUsuarioNuevo, logLoginCliente } from '@/services/actividadService'
 import { emailBienvenida, emailResetPassword } from '@/services/emailService'
+import {
+  confirmPasswordResetApi,
+  requestPasswordResetApi,
+} from '@/services/authPasswordResetApiService'
 import { ENDPOINTS } from '@/constants/api'
 import { httpGet, httpPost } from '@/lib/http'
 import { useFinancialStateStore } from '@/stores/financialStateStore'
@@ -202,7 +206,7 @@ export function AuthProvider({ children }) {
 
   const requestPasswordReset = async (email) => {
     if (!useApiAuth) return
-    await httpPost(ENDPOINTS.resetPasswordRequest, { email })
+    await requestPasswordResetApi(email)
   }
 
   const resetPassword = async (email, newPassword, token) => {
@@ -212,7 +216,7 @@ export function AuthProvider({ children }) {
       try {
         const confirmToken = token ?? null
         if (!confirmToken) throw new Error('Token de recuperación requerido para confirmar contraseña')
-        await httpPost(ENDPOINTS.resetPasswordConfirm, { token: confirmToken, password: newPassword, email })
+        await confirmPasswordResetApi({ token: confirmToken, newPassword })
         return
       } finally {
         setLocalLoading(false)

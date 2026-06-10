@@ -9,6 +9,7 @@ const createMutateAsync = vi.fn()
 const updateMutateAsync = vi.fn()
 const cancelMutateAsync = vi.fn()
 const deleteMutateAsync = vi.fn()
+const todayIso = new Date().toISOString().slice(0, 10)
 
 const apiState = {
   list: {
@@ -19,7 +20,7 @@ const apiState = {
       items: [
         {
           id: 1,
-          expenseDate: '2026-06-09',
+          expenseDate: todayIso,
           category: 'insumos',
           description: 'Compra de agua y limpieza',
           amountMxn: 350,
@@ -29,7 +30,7 @@ const apiState = {
         },
         {
           id: 2,
-          expenseDate: '2026-06-08',
+          expenseDate: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
           category: 'limpieza',
           description: 'Registro duplicado',
           amountMxn: 120,
@@ -45,7 +46,7 @@ const apiState = {
   detail: {
     data: {
       id: 1,
-      expenseDate: '2026-06-09',
+      expenseDate: todayIso,
       category: 'insumos',
       description: 'Compra de agua y limpieza',
       amountMxn: 350,
@@ -93,8 +94,8 @@ describe('GastosSection', () => {
     cancelMutateAsync.mockReset()
     deleteMutateAsync.mockReset()
 
-    createMutateAsync.mockResolvedValue({ id: 3, expenseDate: '2026-06-09' })
-    updateMutateAsync.mockResolvedValue({ id: 1, expenseDate: '2026-06-09' })
+    createMutateAsync.mockResolvedValue({ id: 3, expenseDate: todayIso })
+    updateMutateAsync.mockResolvedValue({ id: 1, expenseDate: todayIso })
     cancelMutateAsync.mockResolvedValue({ id: 1, status: 'cancelled' })
     deleteMutateAsync.mockResolvedValue({ ok: true })
   })
@@ -124,7 +125,7 @@ describe('GastosSection', () => {
     await user.type(within(createDialog).getByLabelText(/Monto/i), '350')
     await user.click(within(createDialog).getByRole('button', { name: /Guardar gasto/i }))
     expect(createMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
-      expenseDate: '2026-06-09',
+      expenseDate: todayIso,
       category: 'insumos',
       description: 'Compra de servilletas',
       amountMxn: '350',

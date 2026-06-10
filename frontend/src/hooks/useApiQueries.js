@@ -51,6 +51,10 @@ import {
   updateEmailConfigApi,
 } from '@/services/emailConfigApiService'
 import {
+  confirmPasswordResetApi,
+  requestPasswordResetApi,
+} from '@/services/authPasswordResetApiService'
+import {
   getNotificationsApi,
   getUnreadNotificationsCountApi,
   markAllNotificationsReadApi,
@@ -607,6 +611,22 @@ export function useSendTestEmailMutation() {
         queryClient.invalidateQueries({ queryKey: ['emailOutbox'] }),
         queryClient.invalidateQueries({ queryKey: ['activity'] }),
       ])
+    },
+  })
+}
+
+export function useRequestPasswordResetMutation() {
+  return useMutation({
+    mutationFn: requestPasswordResetApi,
+  })
+}
+
+export function useConfirmPasswordResetMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: confirmPasswordResetApi,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me })
     },
   })
 }

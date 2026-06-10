@@ -2,10 +2,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const apiState = {
+  today: new Date().toISOString().slice(0, 10),
   kpis: {
     data: {
-      from: '2026-06-09',
-      to: '2026-06-09',
+      from: new Date().toISOString().slice(0, 10),
+      to: new Date().toISOString().slice(0, 10),
       sales: { count: 12, subtotalMxn: 10000, taxMxn: 1600, totalMxn: 11600 },
       expenses: { count: 3, totalMxn: 1200 },
       net: { totalMxn: 10400 },
@@ -136,7 +137,7 @@ describe('DashboardSection', () => {
     await waitFor(() => {
       expect(exportFinanceCsv).toHaveBeenCalledWith({
         from: '2026-06-01',
-        to: '2026-06-09',
+        to: apiState.today,
         type: 'summary',
       })
     })
