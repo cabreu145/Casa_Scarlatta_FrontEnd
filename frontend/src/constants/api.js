@@ -1,0 +1,228 @@
+const BASE_URL = String(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000').trim()
+const API_PREFIX = String(import.meta.env.VITE_API_PREFIX ?? '/api/v1').trim()
+
+function withPrefix(path) {
+  return `${BASE_URL}${API_PREFIX}${path}`
+}
+
+function withQuery(path, query = {}) {
+  const params = new URLSearchParams()
+  Object.entries(query).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '') return
+    params.set(key, String(value))
+  })
+  const qs = params.toString()
+  return withPrefix(qs ? `${path}?${qs}` : path)
+}
+
+export { BASE_URL, API_PREFIX }
+
+export const ENDPOINTS = {
+  login: withPrefix('/auth/login'),
+  registro: withPrefix('/auth/registro'),
+  logout: withPrefix('/auth/logout'),
+  me: withPrefix('/auth/me'),
+  resetPasswordRequest: withPrefix('/auth/reset-password/request'),
+  resetPasswordConfirm: withPrefix('/auth/reset-password/confirm'),
+
+  clases: withPrefix('/clases'),
+  clasesList: withPrefix('/clases'),
+  clasesPaginated: ({ page, pageSize, search, discipline, status, coach_id }) =>
+    withQuery('/clases', { page, page_size: pageSize, search, discipline, status, coach_id }),
+  claseById: (id) => withPrefix(`/clases/${id}`),
+  claseDisponibilidad: (id) => withPrefix(`/clases/${id}/disponibilidad`),
+  claseOcurrencias: (id, { from, to } = {}) =>
+    withPrefix(`/clases/${id}/ocurrencias?from=${from ?? ''}&to=${to ?? ''}`),
+
+  reservas: withPrefix('/reservas'),
+  reservasMe: withPrefix('/reservas/me'),
+  reservasMePaginated: ({ page, pageSize, status, from, to }) =>
+    withQuery('/reservas/me', { page, page_size: pageSize, status, from, to }),
+  reservaById: (id) => withPrefix(`/reservas/${id}`),
+  crearReserva: withPrefix('/reservas'),
+  completarReserva: (id) => withPrefix(`/reservas/${id}/completar`),
+  cancelarReserva: (id) => withPrefix(`/reservas/${id}/cancelar`),
+  marcarNoAsistio: (id) => withPrefix(`/reservas/${id}/no-asistio`),
+  occurrenceAlumnos: (occurrenceId, { includeCanceled } = {}) =>
+    withQuery(`/reservas/ocurrencias/${occurrenceId}/alumnos`, {
+      includeCanceled: includeCanceled ? 'true' : undefined,
+    }),
+  occurrenceSpots: (occurrenceId) => withPrefix(`/reservas/ocurrencias/${occurrenceId}/spots`),
+  spotHolds: withPrefix('/reservas/holds'),
+  spotHoldById: (holdId) => withPrefix(`/reservas/holds/${holdId}`),
+
+  waitlist: withPrefix('/lista-espera'),
+  waitlistByClase: (claseId) => withPrefix(`/lista-espera?claseId=${claseId}`),
+  waitlistByOccurrence: (occurrenceId) => withPrefix(`/lista-espera?occurrenceId=${occurrenceId}`),
+  waitlistEntryById: (id) => withPrefix(`/lista-espera/${id}`),
+
+  usuarios: withPrefix('/usuarios'),
+  usuarioById: (id) => withPrefix(`/usuarios/${id}`),
+  miPerfil: withPrefix('/usuarios/me'),
+  miEstadoFinanciero: withPrefix('/clientes/me/estado-financiero'),
+  miCreditMovements: ({ page, pageSize }) =>
+    withQuery('/clientes/me/credit-movements', { page, page_size: pageSize }),
+  clientPayments: ({ page, pageSize, status } = {}) =>
+    withQuery('/clientes/me/pagos', { page, page_size: pageSize, status }),
+  clientMemberships: withPrefix('/clientes/me/memberships'),
+  clientMembershipBeneficiaries: (membershipId) =>
+    withPrefix(`/clientes/me/memberships/${membershipId}/beneficiaries`),
+  clientMembershipBeneficiaryById: (membershipId, beneficiaryId) =>
+    withPrefix(`/clientes/me/memberships/${membershipId}/beneficiaries/${beneficiaryId}`),
+  adminClients: withPrefix('/clientes'),
+  adminClientsPaginated: ({ page, pageSize, search, status, membershipStatus }) =>
+    withQuery('/clientes', {
+      page,
+      page_size: pageSize,
+      search,
+      status,
+      membership_status: membershipStatus,
+    }),
+  adminClientById: (id) => withPrefix(`/clientes/${id}`),
+  adminClientPackages: (id) => withPrefix(`/clientes/${id}/paquetes`),
+  adminClientCredits: (id) => withPrefix(`/clientes/${id}/credits`),
+  adminClientMembershipBeneficiaries: (clientId, membershipId) =>
+    withPrefix(`/clientes/${clientId}/memberships/${membershipId}/beneficiaries`),
+  adminClientMembershipBeneficiaryById: (clientId, membershipId, beneficiaryId) =>
+    withPrefix(`/clientes/${clientId}/memberships/${membershipId}/beneficiaries/${beneficiaryId}`),
+
+  membershipsPackages: withPrefix('/memberships/packages'),
+  adminMembershipPackagesPaginated: ({ page, pageSize, search, status }) =>
+    withQuery('/memberships/packages', { page, page_size: pageSize, search, status }),
+  adminMembershipPackageById: (id) => withPrefix(`/memberships/packages/${id}`),
+  adminMembershipPackageStatusById: (id) => withPrefix(`/memberships/packages/${id}/status`),
+  adminMembershipPackageFeaturedById: (id) => withPrefix(`/memberships/packages/${id}/featured`),
+  paquetes: withPrefix('/paquetes'),
+  comprarPaquete: withPrefix('/paquetes/comprar'),
+
+  productos: withPrefix('/productos'),
+  productosPaginated: ({ page, pageSize, search, category, status }) =>
+    withQuery('/productos', { page, page_size: pageSize, search, category, status }),
+  productCategories: withPrefix('/productos/categorias'),
+  productCategoriesPaginated: ({ page, pageSize, search, status }) =>
+    withQuery('/productos/categorias', { page, page_size: pageSize, search, status }),
+  productCategoryById: (id) => withPrefix(`/productos/categorias/${id}`),
+  productCategoryStatusById: (id) => withPrefix(`/productos/categorias/${id}/status`),
+  // Aliases retrocompatibles
+  productoCategories: withPrefix('/productos/categorias'),
+  productoCategoriesPaginated: ({ page, pageSize, search, status }) =>
+    withQuery('/productos/categorias', { page, page_size: pageSize, search, status }),
+  productoCategoryById: (id) => withPrefix(`/productos/categorias/${id}`),
+  productoCategoryStatusById: (id) => withPrefix(`/productos/categorias/${id}/status`),
+  productoById: (id) => withPrefix(`/productos/${id}`),
+  productoStatusById: (id) => withPrefix(`/productos/${id}/status`),
+  productoDeleteById: (id) => withPrefix(`/productos/${id}`),
+  ventas: withPrefix('/ventas'),
+  ventasPaginated: ({ page, pageSize, from, to, paymentMethod, status }) =>
+    withQuery('/ventas', {
+      page,
+      page_size: pageSize,
+      from,
+      to,
+      payment_method: paymentMethod,
+      status,
+    }),
+  ventaById: (id) => withPrefix(`/ventas/${id}`),
+  ventaTicket: (id) => withPrefix(`/ventas/${id}/ticket`),
+  ventaTicketPdf: (id) => withPrefix(`/ventas/${id}/ticket.pdf`),
+  publicTicketByToken: (token) => withPrefix(`/public/tickets/${token}`),
+  publicTicketImageByToken: (token) => withPrefix(`/public/tickets/${token}/image`),
+
+  transacciones: withPrefix('/transacciones'),
+  transaccionesMes: (anio, mes) => withPrefix(`/transacciones?anio=${anio}&mes=${mes}`),
+
+  cortes: withPrefix('/cortes'),
+  cortesHoy: withPrefix('/cortes/hoy'),
+  cortesPaginated: ({ page, pageSize, from, to }) =>
+    withQuery('/cortes', { page, page_size: pageSize, from, to }),
+  corteById: (id) => withPrefix(`/cortes/${id}`),
+  ejecutarCorte: withPrefix('/cortes/ejecutar'),
+
+  gastos: withPrefix('/gastos'),
+  gastosPaginated: ({ page, pageSize, from, to, category, status, paymentMethod }) =>
+    withQuery('/gastos', {
+      page,
+      page_size: pageSize,
+      from,
+      to,
+      category,
+      status,
+      payment_method: paymentMethod,
+    }),
+  gastoById: (id) => withPrefix(`/gastos/${id}`),
+  gastoCancelarById: (id) => withPrefix(`/gastos/${id}/cancelar`),
+
+  notificaciones: withPrefix('/notificaciones'),
+  notificacionesUnreadCount: withPrefix('/notificaciones/unread-count'),
+  notificacionReadById: (id) => withPrefix(`/notificaciones/${id}/read`),
+  notificacionesReadAll: withPrefix('/notificaciones/read-all'),
+  marcarLeida: (id) => withPrefix(`/notificaciones/${id}/read`),
+  marcarTodasLeidas: withPrefix('/notificaciones/read-all'),
+
+  configuracionEmail: withPrefix('/configuracion/email'),
+  emailTest: withPrefix('/email/test'),
+  emailOutbox: withPrefix('/email/outbox'),
+  emailOutboxRetryById: (id) => withPrefix(`/email/outbox/${id}/retry`),
+
+  actividad: ({ page, pageSize, category, from, to, actorId, entityType, entityId } = {}) =>
+    withQuery('/actividad', {
+      page,
+      page_size: pageSize,
+      category,
+      from,
+      to,
+      actor_id: actorId,
+      entity_type: entityType,
+      entity_id: entityId,
+    }),
+
+  finanzasKpis: ({ from, to } = {}) =>
+    withQuery('/finanzas/kpis', { from, to }),
+  finanzasDia: ({ date } = {}) =>
+    withQuery('/finanzas/dia', { date }),
+  finanzasHistorico: ({ from, to, groupBy } = {}) =>
+    withQuery('/finanzas/historico', { from, to, group_by: groupBy }),
+  finanzasCategorias: ({ from, to } = {}) =>
+    withQuery('/finanzas/categorias', { from, to }),
+  finanzasStockBajo: ({ threshold } = {}) =>
+    withQuery('/finanzas/stock-bajo', { threshold }),
+  finanzasVentasRecientes: ({ limit } = {}) =>
+    withQuery('/finanzas/ventas-recientes', { limit }),
+  finanzasExportar: ({ from, to, type } = {}) =>
+    withQuery('/finanzas/exportar', { from, to, type }),
+
+  reportesFinanzas: ({ from, to } = {}) =>
+    withQuery('/reportes/finanzas', { from, to }),
+  reportesUsuarios: ({ from, to } = {}) =>
+    withQuery('/reportes/usuarios', { from, to }),
+  reportesPaquetes: ({ from, to } = {}) =>
+    withQuery('/reportes/paquetes', { from, to }),
+  reportesPos: ({ from, to } = {}) =>
+    withQuery('/reportes/pos', { from, to }),
+  reportesCoaches: ({ from, to } = {}) =>
+    withQuery('/reportes/coaches', { from, to }),
+  reportesCoachesPagos: ({ from, to } = {}) =>
+    withQuery('/reportes/coaches/pagos', { from, to }),
+  reportesTopClases: ({ from, to, limit } = {}) =>
+    withQuery('/reportes/top-clases', { from, to, limit }),
+  reportesOcupacionPorDisciplina: ({ from, to } = {}) =>
+    withQuery('/reportes/ocupacion-por-disciplina', { from, to }),
+
+  coaches: withPrefix('/coaches'),
+  coachesPaginated: ({ page, pageSize, search, status }) =>
+    withQuery('/coaches', { page, page_size: pageSize, search, status }),
+  publicCoaches: withPrefix('/coaches/public'),
+  uploadCoachAvatar: (id) => withPrefix(`/coaches/${id}/avatar`),
+  coachById: (id) => withPrefix(`/coaches/${id}`),
+  coachStatusById: (id) => withPrefix(`/coaches/${id}/status`),
+  coachAgendaMe: ({ from, to }) => withPrefix(`/coaches/me/agenda?from=${from ?? ''}&to=${to ?? ''}`),
+
+  createPaymentCheckoutPreference: withPrefix('/pagos/checkout-preference'),
+  getPaymentStatus: ({ externalReference }) =>
+    withPrefix(`/pagos/estado?external_reference=${externalReference ?? ''}`),
+
+  reportes: withPrefix('/admin/reportes'),
+  finanzas: withPrefix('/admin/finanzas'),
+  tabulador: withPrefix('/tabulador'),
+  tabuladorById: (id) => withPrefix(`/tabulador/${id}`),
+}

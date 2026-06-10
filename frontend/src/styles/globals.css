@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ── DESIGN SYSTEM — Casa Scarlatta Wellness Studio ── */
 
 :root {
@@ -17,6 +21,9 @@
   --neutral-warm:      #6B4F3E;
   --neutral-dark:      #2C1810;
   --neutral-border:    rgba(123, 31, 46, 0.18);
+  --brand-wine-08:     rgba(123, 31, 46, 0.08);
+  --brand-wine-13:     rgba(123, 31, 46, 0.13);
+  --brand-wine-22:     rgba(123, 31, 46, 0.22);
 
   /* TEXTO */
   --text-primary:      #2C1810;

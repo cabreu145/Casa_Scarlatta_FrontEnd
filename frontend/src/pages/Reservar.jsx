@@ -1,214 +1,358 @@
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { CheckCircle, ChevronLeft } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import BrandBlob from '@/components/ui/BrandBlob'
 import SectionHeader from '@/components/ui/SectionHeader'
-import Button from '@/components/ui/Button'
-import { classes } from '@/data/classes'
+import WeeklyCalendar from '@/features/clases/WeeklyCalendar'
+import SeatSelector from '@/features/clases/SeatSelector'
+import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationPanel'
+import { useAuth } from '@/context/AuthContext'
+import { useClasesStore } from '@/stores/clasesStore'
+import { normalizeDiscipline } from '@/utils/discipline'
+import { formatOccurrenceDateTime } from '@/features/reservas/equipmentLayoutConfig'
+import { formatHour } from '@/utils/formatters'
+import { getClassTimeToken } from '@/utils/classSchedule'
 import styles from './Reservar.module.css'
 
-const schema = z.object({
-  nombre: z.string().min(2, 'Ingresa tu nombre'),
-  email: z.string().email('Correo inválido'),
-  telefono: z.string().min(8, 'Ingresa tu teléfono'),
-  notas: z.string().optional(),
-})
+const SALAS = [
+  {
+    key: 'stryde',
+    label: 'STRYDE X',
+    logo: '/brand/STRYDE_X_T.png',
+    subtexto: 'Alta intensidad',
+    img: '/fotos/stride-hero.jpg',
+    alt: 'Sala STRYDE — alta intensidad',
+  },
+  {
+    key: 'slow',
+    label: 'SLOW',
+    logo: '/brand/LOGO_SLOW.png',
+    subtexto: 'Movimiento consciente',
+    img: '/fotos/slow-hero.jpg',
+    alt: 'Sala Slow — movimiento consciente',
+  },
+]
 
-const stepLabels = ['Sala', 'Clase', 'Datos']
+function resolveSalaKey(value) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized.includes('slow')) return 'slow'
+  if (normalized.includes('stryde') || normalized.includes('stride')) return 'stryde'
+  return null
+}
+
+function resolveClassSalaKey(cls = {}) {
+  const discipline = normalizeDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo)
+  if (discipline) return discipline
+  const legacy = String(cls.tipo ?? '').trim().toLowerCase()
+  if (legacy.includes('slow')) return 'slow'
+  if (legacy.includes('stryde') || legacy.includes('stride')) return 'stryde'
+  return null
+}
+
+function buildReservationRedirect({ salaKey, classId }) {
+  const params = new URLSearchParams()
+  if (salaKey) params.set('tipo', salaKey)
+  if (classId !== null && classId !== undefined && classId !== '') {
+    params.set('classId', String(classId))
+  }
+  const qs = params.toString()
+  return `/reservar${qs ? `?${qs}` : ''}`
+}
 
 export default function Reservar() {
-  const [step, setStep] = useState(0)
-  const [selectedType, setSelectedType] = useState(null)
+  const { usuario, isAuthenticated } = useAuth()
+  const { clases, loadClasesFromApi } = useClasesStore()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+
+  const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
+  const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
+  const isClient = isAuthenticated && usuario?.rol === 'cliente'
+
+  const [selectedSalaKey, setSelectedSalaKey] = useState(resolveSalaKey(searchParams.get('tipo')))
   const [selectedClass, setSelectedClass] = useState(null)
-  const [done, setDone] = useState(false)
+  const [showReservationPanel, setShowReservationPanel] = useState(false)
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false)
+  const [classesError, setClassesError] = useState('')
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
-    resolver: zodResolver(schema),
-  })
+  useEffect(() => {
+    if (!useApiClasses) return
 
-  const filteredClasses = selectedType ? classes.filter(c => c.type === selectedType) : []
+    let active = true
+    setIsLoadingClasses(true)
+    setClassesError('')
 
-  const onSubmit = async (data) => {
-    await new Promise(r => setTimeout(r, 1200))
-    toast.success('¡Reserva confirmada! Revisa tu correo.')
-    setDone(true)
+    loadClasesFromApi()
+      .catch((err) => {
+        if (!active) return
+        setClassesError(err?.message ?? 'No pudimos cargar clases.')
+      })
+      .finally(() => {
+        if (active) setIsLoadingClasses(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [loadClasesFromApi, useApiClasses])
+
+  const filteredClasses = useMemo(() => {
+    if (!selectedSalaKey) return clases
+    return clases.filter((cls) => resolveClassSalaKey(cls) === selectedSalaKey)
+  }, [clases, selectedSalaKey])
+
+  const selectedClassFromQuery = searchParams.get('classId')
+
+  useEffect(() => {
+    if (!selectedClassFromQuery || !filteredClasses.length) return
+    const found = filteredClasses.find((cls) => String(cls.id) === String(selectedClassFromQuery))
+    if (found) {
+      setSelectedClass(found)
+      const salaKey = resolveClassSalaKey(found)
+      if (salaKey) setSelectedSalaKey(salaKey)
+    }
+  }, [filteredClasses, selectedClassFromQuery])
+
+  const selectedSala = SALAS.find((sala) => sala.key === selectedSalaKey) ?? null
+  const selectedClassTimeToken = getClassTimeToken(selectedClass)
+  const selectedClassDateTime = useMemo(() => formatOccurrenceDateTime({
+    occurrenceDate: selectedClass?.occurrenceDate ?? selectedClass?.fecha ?? selectedClass?.classDate,
+    classDate: selectedClass?.fecha ?? selectedClass?.classDate,
+    startTime: selectedClassTimeToken,
+    startAt: selectedClass?.startAt ?? selectedClass?.classStartAt,
+    classStartAt: selectedClass?.classStartAt,
+  }), [selectedClass])
+
+  const selectedClassDisplayDate = selectedClassDateTime.fullLabel === 'Sin fecha'
+    ? (selectedClass?.dia && selectedClassTimeToken
+      ? `${selectedClass.dia} · ${formatHour(selectedClassTimeToken)}`
+      : selectedClassTimeToken
+        ? formatHour(selectedClassTimeToken)
+        : 'Sin fecha')
+    : selectedClassDateTime.fullLabel
+
+  const handleSelectSala = (salaKey) => {
+    setSelectedSalaKey(salaKey)
+    setSelectedClass(null)
+    setShowReservationPanel(false)
+    const next = buildReservationRedirect({ salaKey })
+    if (location.pathname !== '/reservar' || searchParams.get('tipo') !== salaKey) {
+      navigate(next, { replace: true })
+    }
   }
 
-  if (done) {
-    return (
-      <main className={styles.page}>
-        <div className={styles.inner}>
-          <div className={styles.success}>
-            <div className={styles.successIcon}>
-              <CheckCircle size={40} />
-            </div>
-            <h2 className={styles.successTitle}>¡Reserva confirmada!</h2>
-            <p className={styles.successText}>
-              Hemos enviado los detalles a tu correo. Te esperamos en{' '}
-              <strong>{selectedClass?.name}</strong> el{' '}
-              <strong>{selectedClass?.day} a las {selectedClass?.time}</strong>.
-            </p>
-            <Button to="/clases">Ver más clases</Button>
-          </div>
-        </div>
-      </main>
-    )
+  const handleSelectClass = (cls) => {
+    setSelectedClass(cls)
+    setShowReservationPanel(false)
+    const salaKey = resolveClassSalaKey(cls)
+    if (salaKey && salaKey !== selectedSalaKey) {
+      setSelectedSalaKey(salaKey)
+    }
+  }
+
+  const handleContinue = () => {
+    if (!selectedClass) return
+
+    if (!isAuthenticated) {
+      const redirect = buildReservationRedirect({
+        salaKey: selectedSalaKey,
+        classId: selectedClass.id,
+      })
+      navigate(`/login?redirect=${encodeURIComponent(redirect)}`)
+      return
+    }
+
+    if (!isClient) {
+      toast.error('Inicia sesiÃ³n con una cuenta de cliente para reservar.')
+      return
+    }
+
+    setShowReservationPanel(true)
+  }
+
+  const handleBackToSala = () => {
+    setSelectedClass(null)
+    setShowReservationPanel(false)
   }
 
   return (
     <main className={styles.page}>
       <BrandBlob className={styles.blob} width={500} height={500} />
+
       <div className={styles.inner}>
         <SectionHeader
           label="Reservar"
           title="Asegura tu lugar"
-          subtitle="Cupos limitados. Cancela hasta 2 horas antes sin cargo."
+          subtitle="Cupos limitados. Cancelación gratuita hasta 6 horas antes."
           size="lg"
+          titleStyle={{
+            fontFamily: 'var(--font-body)',
+            fontStyle: 'normal',
+            fontWeight: 400,
+            textTransform: 'uppercase',
+            letterSpacing: '0.3em',
+          }}
         />
 
-        {/* Steps indicator */}
-        <div className={styles.steps}>
-          {stepLabels.map((label, i) => (
-            <>
-              <div key={label} className={`${styles.step} ${i === step ? styles.active : ''} ${i < step ? styles.done : ''}`}>
-                <div className={styles.stepNum}>{i < step ? '✓' : i + 1}</div>
-                {label}
-              </div>
-              {i < stepLabels.length - 1 && <div key={`line-${i}`} className={styles.stepLine} />}
-            </>
-          ))}
+        <div className={styles.steps} aria-label="Progreso de reserva">
+          <div className={`${styles.step} ${!selectedSalaKey ? styles.active : styles.done}`}>
+            <span className={styles.stepNum}>1</span>
+            <span>Sala</span>
+          </div>
+          <div className={styles.stepLine} />
+          <div className={`${styles.step} ${selectedSalaKey && !selectedClass ? styles.active : selectedClass ? styles.done : ''}`}>
+            <span className={styles.stepNum}>2</span>
+            <span>Clase</span>
+          </div>
+          <div className={styles.stepLine} />
+          <div className={`${styles.step} ${selectedClass && !showReservationPanel ? styles.active : showReservationPanel ? styles.done : ''}`}>
+            <span className={styles.stepNum}>3</span>
+            <span>Spot</span>
+          </div>
+          <div className={styles.stepLine} />
+          <div className={`${styles.step} ${showReservationPanel ? styles.active : ''}`}>
+            <span className={styles.stepNum}>4</span>
+            <span>Confirmación</span>
+          </div>
         </div>
 
-        <div className={styles.card}>
-          {/* Step 0: Tipo */}
-          {step === 0 && (
-            <>
-              <h3 className={styles.cardTitle}>¿Qué sala quieres?</h3>
-              <div className={styles.typeGrid}>
-                {['Suet', 'Flow'].map(type => (
-                  <div
-                    key={type}
-                    className={`${styles.typeOption} ${styles[type.toLowerCase()]} ${selectedType === type ? styles.selected : ''}`}
-                    onClick={() => setSelectedType(type)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => e.key === 'Enter' && setSelectedType(type)}
-                  >
-                    <span className={styles.typeName}>{type}</span>
-                    <span className={styles.typeDesc}>
-                      {type === 'Suet'
-                        ? 'Cardio + fuerza, alta intensidad, DJ en sala'
-                        : 'Movimiento consciente, pilates, meditación'}
-                    </span>
-                  </div>
-                ))}
+        {!selectedSalaKey && (
+          <div className={styles.salaGrid}>
+            {SALAS.map(({ key, label, logo, subtexto, img, alt }) => (
+              <div
+                key={key}
+                className={styles.salaCard}
+                onClick={() => handleSelectSala(key)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && handleSelectSala(key)}
+                aria-label={`Reservar clase de ${label}`}
+              >
+                <img src={img} alt={alt} className={styles.salaImg} loading="lazy" />
+                <div className={styles.salaOverlay} aria-hidden="true" />
+                <div className={styles.salaContent}>
+                  <span className={styles.salaSub}>{subtexto}</span>
+                  <img src={logo} alt={label} className={styles.salaLogo} draggable="false" />
+                </div>
               </div>
-              <div className={styles.navBtns}>
-                <span />
-                <button
-                  className={styles.nextBtn}
-                  onClick={() => setStep(1)}
-                  disabled={!selectedType}
-                >
-                  Continuar
-                </button>
-              </div>
-            </>
-          )}
+            ))}
+          </div>
+        )}
 
-          {/* Step 1: Clase */}
-          {step === 1 && (
-            <>
-              <h3 className={styles.cardTitle}>Elige tu clase</h3>
-              <div className={styles.classesList}>
-                {filteredClasses.map((c, i) => (
-                  <div
-                    key={i}
-                    className={`${styles.classOption} ${selectedClass === c ? styles.selected : ''}`}
-                    onClick={() => setSelectedClass(c)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => e.key === 'Enter' && setSelectedClass(c)}
-                  >
-                    <div>
-                      <div className={styles.classOptionName}>{c.name}</div>
-                      <div className={styles.classOptionMeta}>{c.day} · {c.time} · {c.duration} min · {c.instructor}</div>
-                    </div>
-                    <span className={`${styles.spotsLeft} ${c.spots <= 4 ? styles.low : ''}`}>
-                      {c.spots} lugares
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className={styles.navBtns}>
-                <button className={styles.backBtn} onClick={() => setStep(0)}>
-                  <ChevronLeft size={16} /> Atrás
-                </button>
-                <button
-                  className={styles.nextBtn}
-                  onClick={() => setStep(2)}
-                  disabled={!selectedClass}
-                >
-                  Continuar
-                </button>
-              </div>
-            </>
-          )}
+        {selectedSalaKey && !selectedClass && (
+          <div className={styles.calendarStep}>
+            <div className={styles.calendarHeader}>
+              <button
+                className={styles.backBtn}
+                onClick={handleBackToSala}
+                type="button"
+              >
+                ← Cambiar sala
+              </button>
+              <span className={styles.calendarType}>
+                {selectedSala?.label ?? (selectedSalaKey === 'slow' ? 'SLOW' : 'STRYDE X')}
+              </span>
+            </div>
 
-          {/* Step 2: Datos */}
-          {step === 2 && (
-            <>
-              <h3 className={styles.cardTitle}>Tus datos</h3>
-              {selectedClass && (
-                <div className={styles.summary}>
-                  <div className={styles.summaryRow}>
-                    <span className={styles.summaryLabel}>Clase</span>
-                    <span className={styles.summaryValue}>{selectedClass.name}</span>
-                  </div>
-                  <div className={styles.summaryRow}>
-                    <span className={styles.summaryLabel}>Día y hora</span>
-                    <span className={styles.summaryValue}>{selectedClass.day} · {selectedClass.time}</span>
-                  </div>
-                  <div className={styles.summaryRow}>
-                    <span className={styles.summaryLabel}>Instructor/a</span>
-                    <span className={styles.summaryValue}>{selectedClass.instructor}</span>
-                  </div>
+            {isLoadingClasses && (
+              <div className={styles.card}>
+                <div className={styles.cardTitle}>Cargando clases...</div>
+                <p className={styles.successText}>Estamos trayendo horarios y disponibilidad reales.</p>
+              </div>
+            )}
+
+            {classesError && (
+              <div className={styles.card}>
+                <div className={styles.cardTitle}>No pudimos cargar clases</div>
+                <p className={styles.successText}>{classesError}</p>
+              </div>
+            )}
+
+            {!isLoadingClasses && !classesError && (
+              <>
+                <div className={styles.card}>
+                  <div className={styles.cardTitle}>Elige tu clase</div>
+                  <WeeklyCalendar classes={filteredClasses} onSelectClass={handleSelectClass} />
                 </div>
-              )}
-              <form className={styles.form} onSubmit={handleSubmit(onSubmit)}>
-                <div className={styles.formRow}>
-                  <div className={styles.field}>
-                    <label htmlFor="nombre">Nombre completo *</label>
-                    <input id="nombre" placeholder="Tu nombre" {...register('nombre')} />
-                    {errors.nombre && <span className={styles.error}>{errors.nombre.message}</span>}
+
+                {filteredClasses.length === 0 && (
+                  <div className={styles.card}>
+                    <div className={styles.cardTitle}>Sin clases para esta sala</div>
+                    <p className={styles.successText}>
+                      Vuelve luego o cambia de sala para ver otros horarios disponibles.
+                    </p>
                   </div>
-                  <div className={styles.field}>
-                    <label htmlFor="email">Correo electrónico *</label>
-                    <input id="email" type="email" placeholder="tu@correo.com" {...register('email')} />
-                    {errors.email && <span className={styles.error}>{errors.email.message}</span>}
-                  </div>
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor="telefono">Teléfono *</label>
-                  <input id="telefono" placeholder="+52 55 0000 0000" {...register('telefono')} />
-                  {errors.telefono && <span className={styles.error}>{errors.telefono.message}</span>}
-                </div>
-                <div className={styles.navBtns}>
-                  <button type="button" className={styles.backBtn} onClick={() => setStep(1)}>
-                    <ChevronLeft size={16} /> Atrás
-                  </button>
-                  <button type="submit" className={styles.nextBtn} disabled={isSubmitting}>
-                    {isSubmitting ? 'Confirmando...' : 'Confirmar reserva'}
-                  </button>
-                </div>
-              </form>
-            </>
-          )}
-        </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {selectedClass && !showReservationPanel && (
+          <div className={styles.card}>
+            <div className={styles.cardTitle}>Clase seleccionada</div>
+            <div className={styles.summary}>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Sala</span>
+                <span className={styles.summaryValue}>{selectedSala?.label ?? 'Sala'}</span>
+              </div>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Clase</span>
+                <span className={styles.summaryValue}>{selectedClass.nombre ?? selectedClass.name ?? 'Clase'}</span>
+              </div>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Fecha</span>
+                <span className={styles.summaryValue}>{selectedClassDisplayDate}</span>
+              </div>
+              <div className={styles.summaryRow}>
+                <span className={styles.summaryLabel}>Coach</span>
+                <span className={styles.summaryValue}>{selectedClass.coachNombre ?? selectedClass.coach_name ?? 'Coach'}</span>
+              </div>
+            </div>
+
+            <p className={styles.successText} style={{ marginBottom: 0 }}>
+              {isAuthenticated
+                ? 'Continúa para elegir spot y confirmar tu reserva.'
+                : 'Inicia sesión para continuar con la reserva segura de tu lugar.'}
+            </p>
+
+            <div className={styles.navBtns}>
+              <button className={styles.backBtn} type="button" onClick={() => setSelectedClass(null)}>
+                ← Volver a clases
+              </button>
+              <button className={styles.nextBtn} type="button" onClick={handleContinue}>
+                {isAuthenticated ? 'Elegir lugar →' : 'Iniciar sesión para reservar'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {showReservationPanel && selectedClass && (
+        useApiReservations && selectedClass.occurrenceId && isClient ? (
+          <EquipmentReservationPanel
+            occurrenceId={selectedClass.occurrenceId}
+            classId={selectedClass.id}
+            userId={usuario?.id}
+            onReservationCreated={() => {
+              setShowReservationPanel(false)
+              setSelectedClass(null)
+            }}
+            onClose={() => setShowReservationPanel(false)}
+          />
+        ) : (
+          <SeatSelector
+            cls={selectedClass}
+            onClose={() => setShowReservationPanel(false)}
+            onSuccess={() => {
+              setShowReservationPanel(false)
+              setSelectedClass(null)
+            }}
+          />
+        )
+      )}
     </main>
   )
 }

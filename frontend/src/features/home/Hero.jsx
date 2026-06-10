@@ -32,12 +32,12 @@ export default function Hero() {
           <div className={styles.services}>
             <div className={styles.serviceItem}>
               <span className={styles.serviceLabel}>Alta intensidad</span>
-              <span className={styles.serviceName}>Suet</span>
+              <span className={styles.serviceName}>STRIDE </span>
             </div>
             <div className={styles.dividerV} />
             <div className={styles.serviceItem}>
               <span className={styles.serviceLabel}>Movimiento consciente</span>
-              <span className={styles.serviceName}>Flow</span>
+              <span className={styles.serviceName}>Slow</span>
             </div>
           </div>
         </div>

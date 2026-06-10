@@ -1,0 +1,383 @@
+/* ── Overlay ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 10, 14, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+/* ── Modal shell ── */
+.modal {
+  position: relative;
+  background: var(--bg-surface);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(30, 10, 14, 0.28);
+  animation: popIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Close button ── */
+.closeBtn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(123, 31, 46, 0.08);
+  border: none;
+  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s;
+  z-index: 2;
+}
+.closeBtn:hover { background: rgba(123, 31, 46, 0.15); }
+
+/* ── Count block (top section) ── */
+.countBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 32px 24px;
+  gap: 3px;
+  background: #EDE0D9;
+}
+
+.countNum {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(60px, 12vw, 84px);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--brand-wine);
+}
+
+.countLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(123, 31, 46, 0.45);
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: rgba(123, 31, 46, 0.1);
+  margin: 0;
+}
+
+/* ── Body ── */
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 24px 24px;
+}
+
+.nombre {
+  font-family: var(--font-heading);
+  font-size: 22px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.price {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--brand-wine);
+  line-height: 1;
+}
+
+.priceSuffix {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ── Benefits ── */
+.beneficios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.beneficio {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.check {
+  color: var(--brand-wine);
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+/* ── Shared note ── */
+.sharedNote {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--brand-wine);
+  background: rgba(123, 31, 46, 0.06);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0;
+}
+
+/* ── Saved card chip ── */
+.savedCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--neutral-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.savedCardIcon { font-size: 18px; }
+
+.savedCardText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── CTA buttons ── */
+.ctaPrimary {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 13px 24px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: var(--brand-wine);
+  color: #F5EDE8;
+  text-align: center;
+  letter-spacing: 0.03em;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  width: 100%;
+}
+
+.ctaPrimary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(123, 31, 46, 0.3);
+}
+
+.ctaBack {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  width: 100%;
+  padding: 4px;
+  transition: color 0.15s;
+}
+.ctaBack:hover { color: var(--brand-wine); }
+
+/* ── Payment method step ── */
+.mpHeader { display: flex; flex-direction: column; gap: 4px; }
+
+.methodTitle {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.methodSub {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.mpBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #009EE3;
+  border-radius: 10px;
+  padding: 8px 14px;
+  align-self: flex-start;
+}
+
+.mpPowered {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: rgba(255,255,255,0.8);
+}
+
+.mpLogo {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+/* ── Card form ── */
+.cardForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fieldRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fieldLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+}
+
+.fieldInput {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 1.5px solid var(--neutral-border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.fieldInput:focus { border-color: var(--brand-wine); }
+.fieldInput::placeholder { color: var(--text-muted); }
+
+/* ── Payment summary line ── */
+.pagoSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(123, 31, 46, 0.05);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.summaryNombre {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.summaryPrecio {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-wine);
+}
+
+/* ── Success step ── */
+.exitoContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 32px 36px;
+  gap: 10px;
+}
+
+.exitoIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(34, 139, 34, 0.12);
+  color: #228B22;
+  font-size: 28px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.exitoTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--brand-wine);
+  margin: 0;
+}
+
+.exitoSub {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.exitoClases {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: #228B22;
+  font-weight: 600;
+  background: rgba(34, 139, 34, 0.08);
+  border-radius: 999px;
+  padding: 5px 16px;
+  margin: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .modal { border-radius: 16px; }
+  .countBlock { padding: 28px 20px 18px; }
+  .body { padding: 16px 18px 20px; }
+  .exitoContainer { padding: 32px 20px 28px; }
+}

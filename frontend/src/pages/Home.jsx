@@ -1,17 +1,25 @@
-import Hero from '@/features/home/Hero'
-import SuetPreview from '@/features/home/SuetPreview'
-import FlowPreview from '@/features/home/FlowPreview'
-import MoodGallery from '@/features/home/MoodGallery'
-import PropositeSection from '@/features/home/PropositoSection'
+/**
+ * Home.jsx
+ * ─────────────────────────────────────────────────────
+ * Página principal pública. Compone las secciones del landing:
+ * carrusel hero, disciplinas, precios y call-to-action de coaches.
+ *
+ * Usado en: App.jsx (ruta "/")
+ * Depende de: HeroCarousel, DisciplinasSection, PricingSection, CoachesCtaSection
+ * ─────────────────────────────────────────────────────
+ */
+import HeroCarousel from '@/features/home/HeroCarousel'
+import DisciplinasSection from '@/features/home/DisciplinasSection'
+import PricingSection from '@/features/home/PricingSection'
+import CoachesCtaSection from '@/features/home/CoachesCtaSection'
 
 export default function Home() {
   return (
     <main>
-      <Hero />
-      <SuetPreview />
-      <FlowPreview />
-      <MoodGallery />
-      <PropositeSection />
+      <HeroCarousel />
+      <DisciplinasSection />
+      <PricingSection />
+      <CoachesCtaSection />
     </main>
   )
 }

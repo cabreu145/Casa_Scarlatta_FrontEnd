@@ -15,9 +15,126 @@
 .inner {
   position: relative;
   z-index: 1;
-  max-width: 820px;
+  max-width: 960px;
   margin: 0 auto;
   padding: var(--space-4xl) var(--space-lg);
+}
+
+/* ── Sala cards (step 0) ── */
+.salaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.salaCard {
+  position: relative;
+  min-height: 420px;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.salaCard:hover {
+  transform: scale(1.02);
+}
+
+.salaCard:focus-visible {
+  outline: 3px solid var(--brand-wine);
+  outline-offset: 3px;
+}
+
+.salaImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+.salaCard:hover .salaImg {
+  transform: scale(1.04);
+}
+
+.salaOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(44, 24, 16, 0.85) 0%,
+    rgba(44, 24, 16, 0.15) 55%,
+    transparent 100%
+  );
+}
+
+.salaContent {
+  position: absolute;
+  bottom: var(--space-2xl);
+  left: var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.salaSub {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: rgba(245, 237, 232, 0.70);
+}
+
+.salaLogo {
+  height: 120px;
+  width: auto;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  filter: brightness(1.2);
+}
+
+/* ── Calendar step (step 1) ── */
+.calendarStep {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calendarType {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 28px;
+  color: var(--brand-wine);
+}
+
+.backBtn {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--duration-fast);
+}
+
+.backBtn:hover { color: var(--brand-wine); }
+
+@media (max-width: 640px) {
+  .salaGrid { grid-template-columns: 1fr; }
+  .salaCard { min-height: 300px; }
 }
 
 .steps {
@@ -335,6 +452,122 @@
   color: var(--text-secondary);
   max-width: 400px;
   line-height: 1.7;
+}
+
+/* ── Seat step ── */
+.seatInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-lg);
+}
+
+.seatInfoName {
+  font-family: var(--font-heading);
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.seatInfoMeta {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.seatStage {
+  background: var(--bg-elevated);
+  border: 1px solid var(--neutral-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-label);
+  margin-bottom: var(--space-lg);
+}
+
+.seatGrid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 10px;
+  justify-items: center;
+  margin-bottom: var(--space-lg);
+}
+
+.seat {
+  width: 100%;
+  aspect-ratio: 1;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(123, 31, 46, 0.35);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              border-color var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.seat:hover:not(:disabled) {
+  background: rgba(123, 31, 46, 0.12);
+  border-color: var(--brand-wine);
+  transform: scale(1.08);
+}
+
+.seat:focus-visible {
+  outline: 2px solid var(--brand-wine);
+  outline-offset: 2px;
+}
+
+.seatOccupied {
+  background: #CCCCCC;
+  border-color: #CCCCCC;
+  cursor: not-allowed;
+}
+
+.seatSelected {
+  background: var(--brand-wine);
+  border-color: var(--brand-wine);
+  box-shadow: 0 0 0 3px rgba(123, 31, 46, 0.20);
+}
+
+.seatLegend {
+  display: flex;
+  gap: var(--space-xl);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md);
+}
+
+.seatLegendItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.seatDot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotAvail   { border: 2px solid rgba(123, 31, 46, 0.35); background: transparent; }
+.dotOccupied { background: #CCCCCC; }
+.dotSelected { background: var(--brand-wine); }
+
+.seatConfirmText {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.seatConfirmText strong {
+  color: var(--text-primary);
 }
 
 @media (max-width: 640px) {

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { getClassDisplayTime } from '@/utils/classSchedule'
 import styles from './ScheduleGrid.module.css'
 
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -29,7 +30,7 @@ export default function ScheduleGrid({ classes }) {
                 </span>
               </td>
               <td>{c.day}</td>
-              <td>{c.time}</td>
+              <td>{getClassDisplayTime(c)}</td>
               <td>{c.duration} min</td>
               <td>{c.instructor}</td>
               <td>

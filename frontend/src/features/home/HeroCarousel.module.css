@@ -1,0 +1,161 @@
+.carousel {
+  position: relative;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--neutral-dark);
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1s var(--ease-gentle);
+}
+
+.slide.active {
+  opacity: 1;
+}
+
+.bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.videoBlock {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: transparent;
+  pointer-events: all;
+}
+
+.videoBg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100vw;
+  height: 56.25vw; /* 16:9 */
+  min-height: 100vh;
+  min-width: 177.78vh; /* 16:9 inverted */
+  border: none;
+  pointer-events: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(44, 24, 16, 0.35) 0%,
+    rgba(44, 24, 16, 0.55) 60%,
+    rgba(44, 24, 16, 0.70) 100%
+  );
+  z-index: 1;
+}
+
+.content {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  text-align: center;
+  padding: 0 var(--space-lg);
+}
+
+.logoWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+
+.logoCasa {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: normal;
+  font-size: clamp(28px, 5vw, 52px);
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.45em;
+  line-height: 1.1;
+}
+
+.logoScarlatta {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-style: normal;
+  font-size: clamp(28px, 5vw, 52px);
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.45em;
+  line-height: 1.1;
+}
+
+.tagline {
+  font-family: var(--font-body);
+  font-size: clamp(11px, 1.2vw, 13px);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: rgba(245, 237, 232, 0.75);
+}
+
+.cta {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-on-dark);
+  background: var(--brand-wine);
+  padding: 14px 40px;
+  border-radius: var(--radius-pill);
+  text-decoration: none;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+  margin-top: var(--space-sm);
+}
+
+.cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(123, 31, 46, 0.45);
+}
+
+.dots {
+  position: absolute;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(245, 237, 232, 0.40);
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+  padding: 0;
+}
+
+.dot:hover {
+  background: rgba(245, 237, 232, 0.70);
+}
+
+.dotActive {
+  background: var(--bg-base);
+  transform: scale(1.25);
+}
