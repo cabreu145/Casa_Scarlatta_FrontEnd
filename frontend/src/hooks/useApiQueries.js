@@ -45,6 +45,18 @@ import {
   getUsersReport,
 } from '@/services/reportsApiService'
 import { getActivityApi } from '@/services/activityApiService'
+import {
+  getEmailConfigApi,
+  sendTestEmailApi,
+  updateEmailConfigApi,
+} from '@/services/emailConfigApiService'
+import {
+  getNotificationsApi,
+  getUnreadNotificationsCountApi,
+  markAllNotificationsReadApi,
+  markNotificationReadApi,
+} from '@/services/notificationsApiService'
+import { getEmailOutboxApi, retryEmailOutboxApi } from '@/services/emailOutboxApiService'
 import { getOccurrenceRosterApi } from '@/services/reservasApiService'
 import {
   adjustClientCreditsApi,
@@ -564,6 +576,129 @@ export function useActivityQuery({
     enabled,
     placeholderData: (previousData) => previousData,
     ...shortDefaults,
+  })
+}
+
+export function useEmailConfigQuery({ enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.emailConfig.detail(),
+    queryFn: getEmailConfigApi,
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useUpdateEmailConfigMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateEmailConfigApi,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.emailConfig.detail() })
+    },
+  })
+}
+
+export function useSendTestEmailMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: sendTestEmailApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['emailOutbox'] }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useNotificationsQuery({
+  page = 1,
+  pageSize = 10,
+  unreadOnly = false,
+  category,
+  enabled = false,
+} = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 10), 100)
+  return useQuery({
+    queryKey: queryKeys.notifications.list({
+      page,
+      pageSize: normalizedPageSize,
+      unreadOnly: Boolean(unreadOnly),
+      category: category || '',
+    }),
+    queryFn: () => getNotificationsApi({
+      page,
+      pageSize: normalizedPageSize,
+      unreadOnly,
+      category,
+    }),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useUnreadNotificationsCountQuery({ enabled = false, refetchInterval = 60_000 } = {}) {
+  return useQuery({
+    queryKey: queryKeys.notifications.unreadCount(),
+    queryFn: getUnreadNotificationsCountApi,
+    enabled,
+    refetchInterval,
+    ...shortDefaults,
+  })
+}
+
+export function useMarkNotificationReadMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: markNotificationReadApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+      ])
+    },
+  })
+}
+
+export function useMarkAllNotificationsReadMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: markAllNotificationsReadApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+      ])
+    },
+  })
+}
+
+export function useEmailOutboxQuery({
+  page = 1,
+  pageSize = 20,
+  status,
+  enabled = false,
+} = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
+  return useQuery({
+    queryKey: queryKeys.emailOutbox.list({
+      page,
+      pageSize: normalizedPageSize,
+      status: status || 'all',
+    }),
+    queryFn: () => getEmailOutboxApi({ page, pageSize: normalizedPageSize, status }),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useRetryEmailOutboxMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: retryEmailOutboxApi,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['emailOutbox'] })
+    },
   })
 }
 

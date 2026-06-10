@@ -174,6 +174,20 @@ const mutation = useMutation({
 })
 ```
 
+## Nuevos dominios Query
+
+- `notifications.list(params)`
+- `notifications.unreadCount()`
+- `emailConfig.detail()`
+- `emailOutbox.list(params)`
+
+## Mutaciones y invalidacion
+
+- `markNotificationRead`, `markAllNotificationsRead`
+- `updateEmailConfig`, `sendTestEmail`
+- `retryEmailOutbox`
+- Cada mutación invalida keys del dominio afectado; store legacy no participa en API mode.
+
 ## Roadmap de migracion
 
 1. Admin clases / roster / seat flow

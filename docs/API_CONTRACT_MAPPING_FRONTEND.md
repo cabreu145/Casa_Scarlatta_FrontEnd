@@ -171,6 +171,9 @@ Frontend MVP uses TanStack Query for server state. Zustand queda para fallback l
 - Admin badges de Coaches/Usuarios ya usan totales backend.
 - Avatares de coach usan `avatar_url` / `avatarUrl` con fallback visual.
 - `Admin > Actividad` usa `GET /api/v1/actividad` como source of truth en API mode; `GET /api/v1/audit` queda legacy básico.
+- Configuración > Correo usa `GET/PUT /api/v1/configuracion/email`.
+- Notificaciones usan `GET /api/v1/notificaciones`, `unread-count`, `read` y `read-all`.
+- Outbox correo usa `GET /api/v1/email/outbox` y `POST /api/v1/email/outbox/{id}/retry`.
 
 ## Mapeo POS (vigente)
 | Archivo frontend | Función actual | Endpoint backend | Request esperado | Response esperado | Transformación necesaria | Prioridad |

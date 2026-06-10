@@ -40,6 +40,22 @@ const mockGetMembershipPackagesApi = vi.fn().mockResolvedValue([])
 const mockGetMyMembershipsApi = vi.fn().mockResolvedValue([])
 const mockGetMyFinancialStateApi = vi.fn().mockResolvedValue({})
 const mockGetMisReservasPaginatedApi = vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10 })
+const mockNotificationsQueryData = {
+  page: 1,
+  pageSize: 5,
+  total: 1,
+  items: [
+    {
+      id: 18,
+      title: 'Reserva confirmada',
+      message: 'Tu reserva fue confirmada correctamente.',
+      category: 'reservas',
+      createdAt: '2026-06-09T22:24:48.185573',
+      read: false,
+      metadata: { class_name: 'Clase Demo STRYDE API', spot_label: '08' },
+    },
+  ],
+}
 const testQueryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: false, refetchOnWindowFocus: false },
@@ -181,6 +197,19 @@ vi.mock('@/services/reservasApiService', () => ({
   getMisReservasPaginatedApi: mockGetMisReservasPaginatedApi,
 }))
 
+vi.mock('@/hooks/useApiQueries', async () => {
+  const actual = await vi.importActual('@/hooks/useApiQueries')
+  return {
+    ...actual,
+    useNotificationsQuery: () => ({
+      data: mockNotificationsQueryData,
+      isLoading: false,
+      isFetching: false,
+      error: null,
+    }),
+  }
+})
+
 describe('ClientPanel payments section', () => {
   beforeEach(() => {
     testQueryClient.clear()
@@ -269,6 +298,26 @@ describe('ClientPanel payments section', () => {
     expect(await screen.findByText('Mis membresías')).toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: /compartir paquete/i }))
     expect(await screen.findByPlaceholderText('cliente@correo.com')).toBeInTheDocument()
+  })
+
+  test('muestra notificaciones recientes y abre panel', async () => {
+    const { default: ClientPanel } = await import('./ClientPanel')
+    const user = userEvent.setup()
+
+    render(
+      <QueryClientProvider client={testQueryClient}>
+        <MemoryRouter initialEntries={['/cliente/dashboard?section=inicio']}>
+          <ClientPanel />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    expect(await screen.findByText(/Notificaciones recientes/i)).toBeInTheDocument()
+    expect(await screen.findByText('Reserva confirmada')).toBeInTheDocument()
+
+    await user.click(screen.getAllByRole('button', { name: /ver todas/i })[0])
+
+    expect(await screen.findByRole('dialog', { name: /notificaciones/i })).toBeInTheDocument()
   })
 
   test('no emite warning de keys duplicadas al renderizar ocurrencias duplicadas', async () => {

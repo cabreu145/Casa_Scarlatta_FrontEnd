@@ -153,7 +153,16 @@ export const ENDPOINTS = {
   gastoCancelarById: (id) => withPrefix(`/gastos/${id}/cancelar`),
 
   notificaciones: withPrefix('/notificaciones'),
-  marcarLeida: (id) => withPrefix(`/notificaciones/${id}/leida`),
+  notificacionesUnreadCount: withPrefix('/notificaciones/unread-count'),
+  notificacionReadById: (id) => withPrefix(`/notificaciones/${id}/read`),
+  notificacionesReadAll: withPrefix('/notificaciones/read-all'),
+  marcarLeida: (id) => withPrefix(`/notificaciones/${id}/read`),
+  marcarTodasLeidas: withPrefix('/notificaciones/read-all'),
+
+  configuracionEmail: withPrefix('/configuracion/email'),
+  emailTest: withPrefix('/email/test'),
+  emailOutbox: withPrefix('/email/outbox'),
+  emailOutboxRetryById: (id) => withPrefix(`/email/outbox/${id}/retry`),
 
   actividad: ({ page, pageSize, category, from, to, actorId, entityType, entityId } = {}) =>
     withQuery('/actividad', {

@@ -1,11 +1,15 @@
 ﻿import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, X } from 'lucide-react'
+import { Bell, Menu, X } from 'lucide-react'
 import LiquidButton from '@/components/ui/LiquidButton'
 import CoachAvatar from '@/components/common/CoachAvatar'
 import { useAuth } from '@/context/AuthContext'
 import { useCoachesStore } from '@/stores/coachesStore'
-import { usePublicCoachesQuery } from '@/hooks/useApiQueries'
+import {
+  usePublicCoachesQuery,
+  useUnreadNotificationsCountQuery,
+} from '@/hooks/useApiQueries'
+import NotificationsPanel from './NotificationsPanel'
 import { ROUTES } from '@/constants/routes'
 import toast from 'react-hot-toast'
 import styles from './Navbar.module.css'
@@ -38,11 +42,16 @@ const rolLabel = {
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const { isAuthenticated, usuario, logout } = useAuth()
   const coaches = useCoachesStore((s) => s.coaches)
   const publicCoachesQuery = usePublicCoachesQuery({ enabled: import.meta.env.VITE_USE_API_AUTH === 'true' && usuario?.rol === 'coach' })
+  const unreadNotificationsQuery = useUnreadNotificationsCountQuery({
+    enabled: Boolean(isAuthenticated),
+    refetchInterval: 60_000,
+  })
   const dropdownRef = useRef(null)
 
   const coachSource = import.meta.env.VITE_USE_API_AUTH === 'true'
@@ -67,6 +76,7 @@ export default function Navbar() {
   useEffect(() => {
     setOpen(false)
     setDropdownOpen(false)
+    setNotificationsOpen(false)
   }, [location.pathname])
 
   useEffect(() => {
@@ -136,7 +146,24 @@ export default function Navbar() {
           </ul>
 
           {isAuthenticated && usuario ? (
-            <div className={styles.avatarWrapper} ref={dropdownRef}>
+            <>
+              <div className={styles.notifWrapper}>
+                <button
+                  type="button"
+                  className={styles.notifButton}
+                  onClick={() => setNotificationsOpen((value) => !value)}
+                  aria-label="Notificaciones"
+                  aria-expanded={notificationsOpen}
+                >
+                  <Bell size={18} />
+                  {(unreadNotificationsQuery.data?.unreadCount ?? 0) > 0 && (
+                    <span className={styles.notifBadge}>
+                      {unreadNotificationsQuery.data.unreadCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+              <div className={styles.avatarWrapper} ref={dropdownRef}>
               <button
                 className={styles.avatar}
                 onClick={() => setDropdownOpen((v) => !v)}
@@ -173,6 +200,7 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+            </>
           ) : (
             <LiquidButton onClick={() => navigate(ROUTES.login)}>Iniciar sesion</LiquidButton>
           )}
@@ -188,6 +216,12 @@ export default function Navbar() {
           </button>
         </div>
       </nav>
+
+      <NotificationsPanel
+        open={notificationsOpen && isAuthenticated}
+        onClose={() => setNotificationsOpen(false)}
+        enabled={Boolean(isAuthenticated)}
+      />
 
       <div
         id="mobile-navigation"

@@ -429,3 +429,11 @@ Notas:
 - `queryKeys.js` es catalogo unico de keys.
 - Zustand/localStorage quedan solo para fallback legacy o UI local.
 - No usar mocks como verdad cuando flags API estan activas.
+
+## Notificaciones y correo
+
+- `Configuración > Correo` consume `GET/PUT /api/v1/configuracion/email`.
+- Prueba de correo usa `POST /api/v1/email/test`.
+- Notificaciones usan `GET /api/v1/notificaciones`, `unread-count`, `read` y `read-all`.
+- Outbox usa `GET /api/v1/email/outbox` y `POST /api/v1/email/outbox/{id}/retry`.
+- Passwords nunca se muestran completos; solo `*_password_set`.

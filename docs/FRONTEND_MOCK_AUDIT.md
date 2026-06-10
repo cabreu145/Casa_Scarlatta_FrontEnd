@@ -166,6 +166,7 @@ Responsable: Codex
 - BadgeCount de Coaches y Usuarios ya sale de totales backend en API mode.
 - Avatares de coach ya priorizan `avatar_url` / `avatarUrl` con fallback de iniciales.
 - `Admin > Actividad` ya consume `GET /api/v1/actividad` en API mode; `GET /api/v1/audit` queda legacy basico.
+- Notificaciones, correo y outbox ya tienen hooks Query; badge unread y panel no dependen de store legacy en API mode.
 
 
 ## Quick fix clases

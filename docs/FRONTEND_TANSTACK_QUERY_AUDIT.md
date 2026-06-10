@@ -71,3 +71,5 @@ Responsable: Codex
 - `finanzasService.js` sigue siendo demo/legacy; no debe alimentar API mode.
 - `tabuladorStore` sigue siendo source demo para pago coach cuando backend no aplica.
 - `localStorage` sigue siendo state UI/fallback, no verdad backend.
+- Notificaciones, configuración de correo y outbox ya tienen hooks Query; badge unread y panel deben invalidar/refetch con Query, no con store.
+- `ConfiguracionCorreoSection` es API-only; passwords solo viajan si usuario los escribe.

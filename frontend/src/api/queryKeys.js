@@ -47,6 +47,16 @@ export const queryKeys = {
   activity: {
     list: (params = {}) => ['activity', 'list', params],
   },
+  emailConfig: {
+    detail: () => ['emailConfig', 'detail'],
+  },
+  notifications: {
+    list: (params = {}) => ['notifications', 'list', params],
+    unreadCount: () => ['notifications', 'unreadCount'],
+  },
+  emailOutbox: {
+    list: (params = {}) => ['emailOutbox', 'list', params],
+  },
   expenses: {
     list: (params = {}) => ['expenses', 'list', params],
     detail: (id) => ['expenses', 'detail', id],

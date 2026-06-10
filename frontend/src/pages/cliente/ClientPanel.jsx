@@ -43,6 +43,7 @@ import { normalizeDiscipline } from '@/utils/discipline'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
 import CoachAvatar from '@/components/common/CoachAvatar'
+import NotificationsPanel from '@/components/layout/NotificationsPanel'
 import {
   formatPackagePriceLabel,
   formatPackageCreditsLabel,
@@ -60,6 +61,7 @@ import {
   useMyMembershipsQuery,
   useAddMyMembershipBeneficiaryMutation,
   usePublicCoachesQuery,
+  useNotificationsQuery,
 } from '@/hooks/useApiQueries'
 
 const SECTION_META = {
@@ -183,10 +185,16 @@ export default function ClientPanel() {
   const packageIdQuery = new URLSearchParams(location.search).get('packageId')
   const [activeSection, setActiveSection] = useState(sectionQuery === 'pagos' ? 'pagos' : 'inicio')
   const [financialHistoryPage, setFinancialHistoryPage] = useState(1)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const membershipPackagesQuery = useMembershipPackagesQuery({ enabled: useApiFinancialState && activeSection === 'pagos' })
   const financialStateQuery = useMyFinancialStateQuery({ enabled: useApiFinancialState && usuario?.rol === 'cliente' })
   const membershipsQuery = useMyMembershipsQuery({ enabled: useApiFinancialState && activeSection === 'pagos' && usuario?.rol === 'cliente' })
   const creditMovementsQuery = useMyCreditMovementsQuery({ page: financialHistoryPage, pageSize: 8, enabled: useApiFinancialState && usuario?.rol === 'cliente' })
+  const notificationsQuery = useNotificationsQuery({
+    page: 1,
+    pageSize: 5,
+    enabled: useApiAuth && usuario?.rol === 'cliente',
+  })
   const [shareMembershipModal, setShareMembershipModal] = useState(null)
   const [shareMembershipEmail, setShareMembershipEmail] = useState('')
   const [shareMembershipSubmitting, setShareMembershipSubmitting] = useState(false)
@@ -956,6 +964,59 @@ export default function ClientPanel() {
                 <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
                 Renovar paquete
               </button>
+            </div>
+
+            <div className={s.card} style={{ marginTop: 18 }}>
+              <div className={s.cardHeader}>
+                <div>
+                  <div className={s.cardTitle}>Notificaciones recientes</div>
+                  <div className={s.cardSubtitle}>Actividad de tu cuenta</div>
+                </div>
+                <button type="button" className={`${s.btn} ${s.btnSm} ${s.btnOutline}`} onClick={() => setNotificationsOpen(true)}>
+                  Ver todas
+                </button>
+              </div>
+              <div className={s.cardBody}>
+                {notificationsQuery.isLoading ? (
+                  <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, padding: '12px 0' }}>
+                    Cargando notificaciones...
+                  </div>
+                ) : notificationsQuery.error ? (
+                  <div style={{ textAlign: 'center', color: '#b42318', fontSize: 13, padding: '12px 0' }}>
+                    No se pudieron cargar tus notificaciones.
+                  </div>
+                ) : (notificationsQuery.data?.items ?? []).length === 0 ? (
+                  <div style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, padding: '12px 0' }}>
+                    No tienes notificaciones recientes.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {(notificationsQuery.data?.items ?? []).map((item) => (
+                      <div
+                        key={item.id}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          border: '1px solid rgba(123,31,46,0.12)',
+                          background: item.read ? 'rgba(123,31,46,0.03)' : 'rgba(123,31,46,0.07)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{item.title}</div>
+                            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, lineHeight: 1.45 }}>
+                              {item.message}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                            {item.category ?? 'sistema'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Bottom 2-col */}
@@ -1896,8 +1957,13 @@ export default function ClientPanel() {
             </div>
           </div>
         )}
-        </div>{/* /content */}
-      </main>
+        <NotificationsPanel
+          open={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+          enabled={useApiAuth && usuario?.rol === 'cliente'}
+        />
+      </div>{/* /content */}
+    </main>
 
       {seatSelectorClass && (
         useApiReservations && seatSelectorClass?.occurrenceId ? (
@@ -1918,6 +1984,3 @@ export default function ClientPanel() {
     </div>
   )
 }
-
-
-

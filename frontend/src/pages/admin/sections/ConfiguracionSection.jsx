@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { useConfiguracionStore, CONFIG_DEFAULTS } from '@/stores/configuracionStore'
 import toast from 'react-hot-toast'
 import styles from '../AdminPanel.module.css'
+import ConfiguracionCorreoSection from './ConfiguracionCorreoSection'
 
 // ── Compresión de imagen vía canvas (max 1920px, JPEG 0.82) ──────────────────
 function compressImage(file, maxWidth = 1920, quality = 0.82) {
@@ -35,6 +36,7 @@ const TABS = [
   { id: 'imagenes',  label: '🖼️ Imágenes'   },
   { id: 'reservas',  label: '🗓️ Reservas'   },
   { id: 'estudio',   label: '🏢 Estudio'     },
+  { id: 'correo',    label: '✉️ Correo'      },
 ]
 
 // ── Estilos compartidos ───────────────────────────────────────────────────────
@@ -686,6 +688,7 @@ export default function ConfiguracionSection() {
       {tabActivo === 'imagenes' && <TabImagenes  cfg={store} actualizar={store.actualizar} />}
       {tabActivo === 'reservas' && <TabReservas  cfg={store} actualizar={store.actualizar} />}
       {tabActivo === 'estudio'  && <TabEstudio   cfg={store} actualizar={store.actualizar} />}
+      {tabActivo === 'correo'   && <ConfiguracionCorreoSection />}
     </div>
   )
 }
