@@ -200,3 +200,10 @@ const mutation = useMutation({
 8. Admin finanzas
 9. Admin reportes
 10. Admin actividad
+
+## Addendum 2026-06-10
+
+- `PaymentReturnPage` ya invalida `myFinancialState`, `myMemberships`, `myCreditMovements`, `myPayments`, `notifications.list`, `notifications.unreadCount` y `activity.list` cuando pago queda `approved + applied`.
+- `spotHolds.byOccurrence` queda como key canonica de invalidacion por occurrence.
+- `occurrenceRoster.detail(occurrenceId, includeCanceled)` es key canonica para roster privado.
+- Refresh manual no es estrategia de server state en API mode.

@@ -250,8 +250,8 @@ export default function Clases() {
         <div className={styles.classList}>
           {dayClasses.length === 0 ? (
             <div className={styles.emptyState}>
-              <span className={styles.emptyIcon}>ðŸ“…</span>
-              <p>Sin clases este dÃ­a</p>
+              <span className={styles.emptyIcon}>📅</span>
+              <p>Sin clases este día</p>
             </div>
           ) : (
             dayClasses.map((cls, i) => {

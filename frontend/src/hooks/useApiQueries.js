@@ -1,7 +1,8 @@
-﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/queryKeys'
 import { getMyFinancialStateApi, getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
 import { getClasesApi, getClasesPaginatedApi, getClaseByIdApi } from '@/services/clasesApiService'
+import { useClasesStore } from '@/stores/clasesStore'
 import { getOccurrencesByClassApi } from '@/services/occurrencesApiService'
 import {
   addClientMembershipBeneficiaryApi,
@@ -61,7 +62,12 @@ import {
   markNotificationReadApi,
 } from '@/services/notificationsApiService'
 import { getEmailOutboxApi, retryEmailOutboxApi } from '@/services/emailOutboxApiService'
-import { getOccurrenceRosterApi } from '@/services/reservasApiService'
+import {
+  cancelarReservaApi,
+  crearReservaApi,
+  getMisReservasPaginatedApi,
+  getOccurrenceRosterApi,
+} from '@/services/reservasApiService'
 import {
   adjustClientCreditsApi,
   assignClientPackageApi,
@@ -72,7 +78,11 @@ import {
   updateClientApi,
 } from '@/services/clientsApiService'
 import { getCoachesPaginatedApi, getPublicCoachesApi } from '@/services/coachesApiService'
-import { getOccurrenceSpotsApi } from '@/services/equipmentReservationApiService'
+import {
+  createSpotHoldApi,
+  getOccurrenceSpotsApi,
+  releaseSpotHoldApi,
+} from '@/services/equipmentReservationApiService'
 import {
   createProductApi,
   createSaleApi,
@@ -885,20 +895,75 @@ export function useDeleteProductCategoryMutation() {
   })
 }
 
+export function invalidatePosSaleSideEffects(queryClient, { customerId } = {}) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['admin', 'pos'] }),
+    queryClient.invalidateQueries({ queryKey: ['finance'] }),
+    queryClient.invalidateQueries({ queryKey: ['cashClosings'] }),
+    queryClient.invalidateQueries({ queryKey: ['reports'] }),
+    queryClient.invalidateQueries({ queryKey: ['activity'] }),
+    queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    queryClient.invalidateQueries({ queryKey: ['packages'] }),
+    queryClient.invalidateQueries({ queryKey: ['clients'] }),
+    queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.clients.detail(customerId) }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(customerId) }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.packages() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.users() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.pos() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.finance() }),
+  ])
+}
+
+export function invalidateClassSideEffects(queryClient, { classId, occurrenceId, coachId } = {}) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['classes'] }),
+    queryClient.invalidateQueries({ queryKey: ['coaches'] }),
+    queryClient.invalidateQueries({ queryKey: ['coachAgenda'] }),
+    queryClient.invalidateQueries({ queryKey: ['reservations'] }),
+    queryClient.invalidateQueries({ queryKey: ['spots'] }),
+    queryClient.invalidateQueries({ queryKey: ['spotHolds'] }),
+    queryClient.invalidateQueries({ queryKey: ['waitlist'] }),
+    queryClient.invalidateQueries({ queryKey: ['reports'] }),
+    queryClient.invalidateQueries({ queryKey: ['activity'] }),
+    queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    classId ? queryClient.invalidateQueries({ queryKey: queryKeys.classes.detail(classId) }) : Promise.resolve(),
+    classId ? queryClient.invalidateQueries({ queryKey: queryKeys.classes.list({}) }) : Promise.resolve(),
+    classId ? queryClient.invalidateQueries({ queryKey: queryKeys.classes.occurrences(classId) }) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId) }) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.waitlist.byOccurrence(occurrenceId) }) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.spots.byOccurrence(occurrenceId) }) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.spotHolds.byOccurrence(occurrenceId) }) : Promise.resolve(),
+    coachId ? queryClient.invalidateQueries({ queryKey: queryKeys.coaches.detail(coachId) }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.coachAgenda.me() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.topClasses() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.occupancyByDiscipline() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.coaches() }),
+    Promise.resolve(useClasesStore.getState().loadClasesFromApi({ force: true }).catch(() => {})),
+  ])
+}
+
 export function useCreatePosSaleMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createSaleApi,
-    onSuccess: async (_, variables, context) => {
+    onSuccess: async (_, variables) => {
       await Promise.all([
+        invalidatePosSaleSideEffects(queryClient, { customerId: variables?.customerId }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'sales'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'products'] }),
-        variables?.customerId
-          ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(variables.customerId) })
-          : Promise.resolve(),
-        variables?.customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }) : Promise.resolve(),
-        variables?.customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }) : Promise.resolve(),
-        queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
       ])
     },
   })
@@ -1058,6 +1123,76 @@ export function useRemoveClientMembershipBeneficiaryMutation() {
     mutationFn: ({ clientId, membershipId, beneficiaryId }) => removeClientMembershipBeneficiaryApi(clientId, membershipId, beneficiaryId),
     onSuccess: async (_, variables) => {
       await invalidateAdminClients(queryClient, variables?.clientId)
+    },
+  })
+}
+
+// -- Asientos / holds / reservas --------------------------------------------
+
+function invalidateSpotsAndHolds(queryClient, occurrenceId) {
+  if (!occurrenceId) return Promise.resolve()
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.spots.byOccurrence(occurrenceId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.spotHolds.byOccurrence(occurrenceId) }),
+  ])
+}
+
+export function invalidateReservationSideEffects(queryClient, { occurrenceId, classId } = {}) {
+  return Promise.all([
+    invalidateSpotsAndHolds(queryClient, occurrenceId),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reservations.me() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reservations.list() }),
+    classId ? queryClient.invalidateQueries({ queryKey: queryKeys.classes.occurrences(classId) }) : Promise.resolve(),
+    occurrenceId ? Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['occurrenceRoster', occurrenceId] }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId) }),
+    ]) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.waitlist.byOccurrence(occurrenceId) }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
+  ])
+}
+
+export function useCreateSpotHoldMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ occurrenceId, spotId }) => createSpotHoldApi({ occurrenceId, spotId }),
+    onSuccess: async (_data, variables) => {
+      await invalidateSpotsAndHolds(queryClient, variables?.occurrenceId)
+    },
+  })
+}
+
+export function useDeleteSpotHoldMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ holdId }) => releaseSpotHoldApi({ holdId }),
+    onSuccess: async (_data, variables) => {
+      await invalidateSpotsAndHolds(queryClient, variables?.occurrenceId)
+    },
+  })
+}
+
+export function useCreateReservationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ claseId, userId, asiento, occurrenceId, spotId, holdId }) =>
+      crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId }),
+    onSuccess: async (_data, variables) => {
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.claseId })
+    },
+  })
+}
+
+export function useCancelReservationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ reservationId }) => cancelarReservaApi(reservationId),
+    onSuccess: async (_data, variables) => {
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId })
     },
   })
 }

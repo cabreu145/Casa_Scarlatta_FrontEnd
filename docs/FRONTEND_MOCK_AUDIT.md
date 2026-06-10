@@ -180,3 +180,10 @@ Responsable: Codex
 - Zustand/localStorage quedan solo para fallback legacy y UI local.
 - No usar mocks como verdad en API mode.
 - `AdminDashboard.jsx` sigue siendo legacy/dead code; `DashboardSection.jsx` es shell vivo.
+
+## Addendum 2026-06-10
+
+- `PaymentReturnPage` ya invalida finanzas, membresias, movimientos, pagos, notificaciones y actividad tras pago `approved + applied`.
+- `spotHolds.byOccurrence` ya existe y se invalida desde mutation hooks.
+- `occurrenceRoster.detail(occurrenceId, includeCanceled)` ya es key canonica para roster privado.
+- Refresh manual queda como fallback legacy solamente.

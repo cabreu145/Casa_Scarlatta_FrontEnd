@@ -77,6 +77,7 @@ import {
   useAdminClientsQuery,
   useAdminClientsActiveCountQuery,
   useAdminCoachesActiveCountQuery,
+  invalidateClassSideEffects,
   useCreateProductMutation,
   useDeleteProductMutation,
   useOccurrenceRosterQuery,
@@ -555,7 +556,13 @@ export default function AdminPanel() {
           await createMembershipPackageApi(payload)
           setApiPackagesPage(1)
         }
-        setApiPackagesRefreshToken((value) => value + 1)
+        await Promise.all([
+          loadApiPackages(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminPackages() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+        ])
         if (isEdit) {
           setModalEditPaquete(null)
           setNuevoBeneficio('')
@@ -628,19 +635,26 @@ export default function AdminPanel() {
     modalEditPaquete,
     paqueteForm,
     setApiPackagesPage,
-    setApiPackagesRefreshToken,
+    loadApiPackages,
     setModalEditPaquete,
     setNuevoBeneficio,
     updateMembershipPackageApi,
     useApiPackages,
     validatePackageApiPayload,
+    queryClient,
   ])
 
   const handleDeletePackage = useCallback(async (packageId) => {
     if (useApiPackages) {
       try {
         await deleteMembershipPackageApi(packageId)
-        setApiPackagesRefreshToken((value) => value + 1)
+        await Promise.all([
+          loadApiPackages(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminPackages() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+        ])
         toast.success('Paquete inactivado')
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo eliminar el paquete')
@@ -649,13 +663,18 @@ export default function AdminPanel() {
     }
     eliminarPaquete(packageId)
     toast.success('Paquete eliminado')
-  }, [deleteMembershipPackageApi, eliminarPaquete, setApiPackagesRefreshToken, useApiPackages])
+  }, [deleteMembershipPackageApi, eliminarPaquete, loadApiPackages, queryClient, useApiPackages])
 
   const handleTogglePackageStatus = useCallback(async (packageId, isActive) => {
     if (useApiPackages) {
       try {
         await updateMembershipPackageStatusApi(packageId, isActive)
-        setApiPackagesRefreshToken((value) => value + 1)
+        await Promise.all([
+          loadApiPackages(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminPackages() }),
+        ])
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo actualizar el paquete')
       }
@@ -665,20 +684,25 @@ export default function AdminPanel() {
     if (current) {
       editarPaquete(packageId, { ...current, activo: isActive })
     }
-  }, [editarPaquete, paquetes, setApiPackagesRefreshToken, updateMembershipPackageStatusApi, useApiPackages])
+  }, [editarPaquete, loadApiPackages, paquetes, queryClient, updateMembershipPackageStatusApi, useApiPackages])
 
   const handleTogglePackageFeatured = useCallback(async (packageId, isFeatured) => {
     if (useApiPackages) {
       try {
         await updateMembershipPackageFeaturedApi(packageId, isFeatured)
-        setApiPackagesRefreshToken((value) => value + 1)
+        await Promise.all([
+          loadApiPackages(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminPackages() }),
+        ])
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo actualizar el paquete destacado')
       }
       return
     }
     marcarDestacado(packageId)
-  }, [marcarDestacado, setApiPackagesRefreshToken, updateMembershipPackageFeaturedApi, useApiPackages])
+  }, [loadApiPackages, marcarDestacado, queryClient, updateMembershipPackageFeaturedApi, useApiPackages])
 
   useEffect(() => {
     setReservasModalPage(1)
@@ -759,8 +783,13 @@ export default function AdminPanel() {
         setEditCoachForm({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '', public_profile_enabled: true, estado: 'activo' })
         setModalEditCoach(null)
         closeModal()
-        await queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() })
-        setCoachesRefreshToken((v) => v + 1)
+        await Promise.all([
+          loadApiCoaches(),
+          loadApiCoachList(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+        ])
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo guardar coach')
       }
@@ -790,7 +819,13 @@ export default function AdminPanel() {
         clearAvatarSelection(setCoachAvatarPreview, setCoachAvatarFile)
         setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '', public_profile_enabled: true })
         closeModal()
-        await queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() })
+        await Promise.all([
+          loadApiCoaches(),
+          loadApiCoachList(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+        ])
       } else {
         toast.error(resultado.mensaje)
       }
@@ -824,7 +859,13 @@ export default function AdminPanel() {
     }
     toast.success(`${form.nombre} actualizado`)
     setModalEditCoach(null)
-    await queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() })
+    await Promise.all([
+      loadApiCoaches(),
+      loadApiCoachList(),
+      queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+    ])
   }, [
     clearAvatarSelection,
     coachForm,
@@ -837,6 +878,8 @@ export default function AdminPanel() {
     editarCoach,
     editarUsuario,
     logCoachAgregado,
+    loadApiCoachList,
+    loadApiCoaches,
     modalEditCoach,
     queryClient,
     usuarios,
@@ -850,7 +893,13 @@ export default function AdminPanel() {
         const nextStatus = coach.status === 'active' ? 'inactive' : 'active'
         await updateCoachStatusApi(coach.coachId ?? coach.id, nextStatus)
         toast.success(`${coach.nombre ?? coach.name} ${nextStatus === 'active' ? 'reactivado' : 'dado de baja'}`)
-        setCoachesRefreshToken((v) => v + 1)
+        await Promise.all([
+          loadApiCoaches(),
+          loadApiCoachList(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+        ])
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo actualizar coach')
       }
@@ -863,7 +912,7 @@ export default function AdminPanel() {
       eliminarCoach(coach.id)
       toast.success(`${coach.nombre} dado de baja`)
     }
-  }, [editarCoach, eliminarCoach, useApiCoaches])
+  }, [editarCoach, eliminarCoach, loadApiCoaches, loadApiCoachList, queryClient, useApiCoaches])
 
   const handleDeleteCoach = useCallback(async (coach) => {
     if (!coach) return
@@ -872,7 +921,13 @@ export default function AdminPanel() {
         const result = await deleteCoachApi(coach.coachId ?? coach.id)
         if (result) {
           toast.success(`${coach.nombre ?? coach.name} eliminado`)
-          setCoachesRefreshToken((v) => v + 1)
+          await Promise.all([
+            loadApiCoaches(),
+            loadApiCoachList(),
+            queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+          ])
         }
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo eliminar coach')
@@ -886,7 +941,7 @@ export default function AdminPanel() {
     } else {
       toast.error(resultado.mensaje)
     }
-  }, [useApiCoaches])
+  }, [loadApiCoaches, loadApiCoachList, queryClient, useApiCoaches])
 
   function closeModal() {
     clearAvatarSelection(setCoachAvatarPreview, setCoachAvatarFile)
@@ -1745,9 +1800,12 @@ export default function AdminPanel() {
                       toast.error('Programar publicación no está soportado todavía por backend')
                       return
                     }
-                    await createClaseApi(payload)
+                    const createdClase = await createClaseApi(payload)
+                    await invalidateClassSideEffects(queryClient, {
+                      classId: createdClase?.id,
+                      coachId: createdClase?.coachId ?? createdClase?.coach_id ?? payload.coach_id,
+                    })
                     await loadClasesFromApi({ force: true })
-                    setClasesRefreshToken((v) => v + 1)
                   } else {
                     const coachObj = coaches.find(c => c.nombre === claseForm.coach)
                     agregarClase({
@@ -2430,9 +2488,12 @@ export default function AdminPanel() {
                       toast.error('Programar publicación no está soportado todavía por backend')
                       return
                     }
-                    await updateClaseApi(modalEditClase.id, payload)
+                    const updatedClase = await updateClaseApi(modalEditClase.id, payload)
+                    await invalidateClassSideEffects(queryClient, {
+                      classId: updatedClase?.id ?? modalEditClase.id,
+                      coachId: updatedClase?.coachId ?? updatedClase?.coach_id ?? payload.coach_id,
+                    })
                     await loadClasesFromApi({ force: true })
-                    setClasesRefreshToken((v) => v + 1)
                   } else {
                     const coachObj = coaches.find(c => c.nombre === editClaseForm.coach)
                     editarClase(modalEditClase.id, {

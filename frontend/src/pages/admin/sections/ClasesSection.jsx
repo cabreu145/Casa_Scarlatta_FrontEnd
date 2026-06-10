@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import { eliminarClaseConReservas } from '@/services/reservasService'
@@ -16,6 +17,7 @@ import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
 import { createClaseApi, deleteClaseApi, getClasesPaginatedApi } from '@/services/clasesApiService'
 import { getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
+import { invalidateClassSideEffects } from '@/hooks/useApiQueries'
 import { buildClaseApiPayload } from '../classApiPayload'
 import { buildAdminClasesApiQuery } from '../adminClassesApiUtils'
 import {
@@ -479,6 +481,7 @@ export default function ClasesSection({
   const { getPorClase }  = useListaEsperaStore()
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useBackendPaginationInList = useApiClasses
+  const queryClient = useQueryClient()
   const selectedDiscipline = useMemo(() => {
     if (clasesFilter === 'Slow') return 'slow'
     if (clasesFilter === 'Stryde X') return 'stryde'
@@ -527,6 +530,7 @@ export default function ClasesSection({
     if (useApiClasses) {
       await deleteClaseApi(claseId)
       useListaEsperaStore.getState().limpiarClase(claseId)
+      await invalidateClassSideEffects(queryClient, { classId: claseId })
       if (refetch) {
         await useClasesStore.getState().loadClasesFromApi({ force: true })
         await fetchApiClasesPage(clasesListPage)
@@ -548,7 +552,11 @@ export default function ClasesSection({
             coaches,
             fallbackCoachId: clase.coachId ?? null,
           })
-          await createClaseApi(payload)
+          const createdClase = await createClaseApi(payload)
+          await invalidateClassSideEffects(queryClient, {
+            classId: createdClase?.id,
+            coachId: createdClase?.coachId ?? createdClase?.coach_id ?? payload.coach_id,
+          })
         }
         await useClasesStore.getState().loadClasesFromApi({ force: true })
         await fetchApiClasesPage(clasesListPage)

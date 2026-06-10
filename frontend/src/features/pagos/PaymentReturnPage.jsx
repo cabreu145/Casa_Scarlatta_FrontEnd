@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/api/queryKeys'
 import { getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
 import { getPaymentStatusApi } from '@/services/paymentsApiService'
 import { useFinancialStateStore } from '@/stores/financialStateStore'
@@ -48,6 +50,14 @@ function formatCurrency(value) {
   return `$${numberValue.toLocaleString()} MXN`
 }
 
+function useOptionalQueryClient() {
+  try {
+    return useQueryClient()
+  } catch {
+    return null
+  }
+}
+
 export default function PaymentReturnPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -62,6 +72,7 @@ export default function PaymentReturnPage() {
   const attemptsRef = useRef(0)
   const timeoutRef = useRef(null)
   const redirectRef = useRef(null)
+  const queryClient = useOptionalQueryClient()
   const loadFinancialState = useFinancialStateStore((s) => s.loadFinancialState)
 
   const recentReference = useMemo(() => {
@@ -122,6 +133,17 @@ export default function PaymentReturnPage() {
     let active = true
 
     const refreshFinancial = async () => {
+      if (queryClient) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
+        ])
+      }
       await loadFinancialState({ force: true, enabled: true }).catch(() => {})
       await getMyCreditMovementsPaginatedApi({ page: 1, pageSize: 8 }).catch(() => {})
     }
@@ -267,7 +289,7 @@ export default function PaymentReturnPage() {
             {(uiState.allowManualRefresh || isRefreshing) && (
               <button
                 type="button"
-                onClick={() => {
+        onClick={() => {
                   attemptsRef.current = 0
                   stopTimers()
                   setError('')
@@ -297,6 +319,15 @@ export default function PaymentReturnPage() {
                       })
 
                       if (data.status === 'approved' && data.applied) {
+                        await Promise.all([
+                          queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+                          queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+                          queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+                          queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
+                          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
+                          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
+                          queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
+                        ])
                         await loadFinancialState({ force: true, enabled: true }).catch(() => {})
                         await getMyCreditMovementsPaginatedApi({ page: 1, pageSize: 8 }).catch(() => {})
                         scheduleRedirectToPagos()

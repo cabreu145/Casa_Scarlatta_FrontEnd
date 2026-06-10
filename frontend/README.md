@@ -437,3 +437,9 @@ Notas:
 - Notificaciones usan `GET /api/v1/notificaciones`, `unread-count`, `read` y `read-all`.
 - Outbox usa `GET /api/v1/email/outbox` y `POST /api/v1/email/outbox/{id}/retry`.
 - Passwords nunca se muestran completos; solo `*_password_set`.
+
+## Addendum 2026-06-10
+
+- `PaymentReturnPage` ya invalida finanzas, membresias, movimientos, pagos, notificaciones y actividad tras pago `approved + applied`.
+- `spotHolds.byOccurrence` y `occurrenceRoster.detail(occurrenceId, includeCanceled)` ya son keys canonicas.
+- Refresh manual no sustituye TanStack Query en API mode.

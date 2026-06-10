@@ -17,10 +17,20 @@ export const queryKeys = {
   spots: {
     byOccurrence: (occurrenceId) => ['spots', 'byOccurrence', occurrenceId],
   },
+  // No existe un GET de holds por ocurrencia en el backend (los holds son
+  // por sesion/usuario y se reflejan en spots.byOccurrence vía held_by_me).
+  // La key se mantiene para invalidacion-only por compatibilidad con el
+  // estandar de queries y por si se agrega un endpoint de listado a futuro.
+  spotHolds: {
+    byOccurrence: (occurrenceId) => ['spotHolds', 'byOccurrence', occurrenceId],
+  },
   myFinancialState: ['client', 'me', 'financialState'],
   myMemberships: ['client', 'me', 'memberships'],
   myCreditMovements: (params = {}) => ['client', 'me', 'creditMovements', params],
   myPayments: (params = {}) => ['client', 'me', 'payments', params],
+  coachAgenda: {
+    me: (params = {}) => ['coachAgenda', 'me', params],
+  },
   occurrenceRoster: {
     detail: (occurrenceId, includeCanceled = false) => ['occurrenceRoster', occurrenceId, { includeCanceled: Boolean(includeCanceled) }],
   },
@@ -77,6 +87,7 @@ export const queryKeys = {
     historical: (params = {}) => ['finance', 'historical', params],
     categories: (params = {}) => ['finance', 'categories', params],
     lowStock: (params = {}) => ['finance', 'lowStock', params],
+    stockLow: (params = {}) => ['finance', 'lowStock', params],
     recentSales: (params = {}) => ['finance', 'recentSales', params],
   },
   payTable: {
@@ -90,6 +101,7 @@ export const queryKeys = {
     pos: (params = {}) => ['reports', 'pos', params],
     coaches: (params = {}) => ['reports', 'coaches', params],
     coachesPayments: (params = {}) => ['reports', 'coachesPayments', params],
+    coachPayments: (params = {}) => ['reports', 'coachesPayments', params],
     topClasses: (params = {}) => ['reports', 'topClasses', params],
     occupancyByDiscipline: (params = {}) => ['reports', 'occupancyByDiscipline', params],
   },

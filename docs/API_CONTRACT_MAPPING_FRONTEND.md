@@ -238,3 +238,9 @@ Reglas frontend:
 - Toda lectura/mutacion contra backend real en API mode va por TanStack Query.
 - Zustand/localStorage no son source of truth de datos backend.
 - Mocks/demo solo fallback cuando flags API estan apagadas.
+
+## Addendum 2026-06-10
+
+- `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos` y `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos?includeCanceled=true` quedan como roster privado canonico.
+- Notificaciones, configuracion de correo y outbox ya usan hooks Query para lectura/mutacion.
+- `PaymentReturnPage` invalida estado financiero, membresias, movimientos, pagos, notificaciones y actividad tras pago aplicado.
