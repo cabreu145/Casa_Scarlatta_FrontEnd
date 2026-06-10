@@ -155,6 +155,18 @@ export const ENDPOINTS = {
   notificaciones: withPrefix('/notificaciones'),
   marcarLeida: (id) => withPrefix(`/notificaciones/${id}/leida`),
 
+  actividad: ({ page, pageSize, category, from, to, actorId, entityType, entityId } = {}) =>
+    withQuery('/actividad', {
+      page,
+      page_size: pageSize,
+      category,
+      from,
+      to,
+      actor_id: actorId,
+      entity_type: entityType,
+      entity_id: entityId,
+    }),
+
   finanzasKpis: ({ from, to } = {}) =>
     withQuery('/finanzas/kpis', { from, to }),
   finanzasDia: ({ date } = {}) =>

@@ -1,6 +1,8 @@
 ﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/queryKeys'
 import { getMyFinancialStateApi, getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
+import { getClasesApi, getClasesPaginatedApi, getClaseByIdApi } from '@/services/clasesApiService'
+import { getOccurrencesByClassApi } from '@/services/occurrencesApiService'
 import {
   addClientMembershipBeneficiaryApi,
   addMyMembershipBeneficiaryApi,
@@ -42,6 +44,7 @@ import {
   getTopClassesReport,
   getUsersReport,
 } from '@/services/reportsApiService'
+import { getActivityApi } from '@/services/activityApiService'
 import { getOccurrenceRosterApi } from '@/services/reservasApiService'
 import {
   adjustClientCreditsApi,
@@ -53,6 +56,7 @@ import {
   updateClientApi,
 } from '@/services/clientsApiService'
 import { getCoachesPaginatedApi, getPublicCoachesApi } from '@/services/coachesApiService'
+import { getOccurrenceSpotsApi } from '@/services/equipmentReservationApiService'
 import {
   createProductApi,
   createSaleApi,
@@ -77,6 +81,7 @@ import {
   getPayTableApi,
   updatePayTableApi,
 } from '@/services/payTableApiService'
+import { getWaitlistByOccurrenceApi } from '@/services/waitlistApiService'
 
 const shortDefaults = {
   staleTime: 30_000,
@@ -118,6 +123,48 @@ export function useMyPaymentsQuery({ page = 1, pageSize = 10, status, enabled = 
     queryFn: () => getMyPaymentsApi({ page, pageSize, status }),
     enabled,
     placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useClassesQuery({
+  page = 1,
+  pageSize = 20,
+  search,
+  discipline,
+  status,
+  coachId,
+  enabled = false,
+  paginated = true,
+} = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
+  return useQuery({
+    queryKey: paginated
+      ? queryKeys.classes.list({ page, pageSize: normalizedPageSize, search: search || '', discipline: discipline || 'all', status: status || 'all', coachId: coachId || 'all' })
+      : queryKeys.classes.list({ scope: 'all' }),
+    queryFn: () => (paginated
+      ? getClasesPaginatedApi({ page, pageSize: normalizedPageSize, search, discipline, status, coachId })
+      : getClasesApi()),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useClassDetailQuery(id, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.classes.detail(id),
+    queryFn: () => getClaseByIdApi(id),
+    enabled: Boolean(enabled && id),
+    ...shortDefaults,
+  })
+}
+
+export function useClassOccurrencesQuery(classId, { from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.classes.occurrences(classId, { from: from || '', to: to || '' }),
+    queryFn: () => getOccurrencesByClassApi(classId, { from, to }),
+    enabled: Boolean(enabled && classId),
     ...shortDefaults,
   })
 }
@@ -256,6 +303,16 @@ export function useTodayCashClosingQuery({ enabled = false } = {}) {
     queryKey: queryKeys.cashClosings.today,
     queryFn: getTodayCashClosingSummary,
     enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useReservationsMeQuery({ page = 1, pageSize = 20, status, from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reservations.me({ page, pageSize, status: status || 'all', from: from || '', to: to || '' }),
+    queryFn: () => getMisReservasPaginatedApi({ page, pageSize, status, from, to }),
+    enabled,
+    placeholderData: (previousData) => previousData,
     ...shortDefaults,
   })
 }
@@ -467,6 +524,63 @@ export function useExpenseDetailQuery(id, { enabled = false } = {}) {
     queryKey: queryKeys.expenses.detail(id),
     queryFn: () => getExpenseDetail(id),
     enabled: Boolean(enabled && id),
+    ...shortDefaults,
+  })
+}
+
+export function useActivityQuery({
+  page = 1,
+  pageSize = 20,
+  category,
+  from,
+  to,
+  actorId,
+  entityType,
+  entityId,
+  enabled = false,
+} = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
+  return useQuery({
+    queryKey: queryKeys.activity.list({
+      page,
+      pageSize: normalizedPageSize,
+      category: category || '',
+      from: from || '',
+      to: to || '',
+      actorId: actorId || '',
+      entityType: entityType || '',
+      entityId: entityId || '',
+    }),
+    queryFn: () => getActivityApi({
+      page,
+      pageSize: normalizedPageSize,
+      category,
+      from,
+      to,
+      actorId,
+      entityType,
+      entityId,
+    }),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useWaitlistByOccurrenceQuery(occurrenceId, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.waitlist.byOccurrence(occurrenceId),
+    queryFn: () => getWaitlistByOccurrenceApi(occurrenceId),
+    enabled: Boolean(enabled && occurrenceId),
+    ...shortDefaults,
+  })
+}
+
+export function useOccurrenceSpotsQuery(occurrenceId, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.spots.byOccurrence(occurrenceId),
+    queryFn: () => getOccurrenceSpotsApi({ occurrenceId }),
+    enabled: Boolean(enabled && occurrenceId),
     ...shortDefaults,
   })
 }

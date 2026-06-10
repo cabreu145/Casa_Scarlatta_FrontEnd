@@ -8,19 +8,19 @@ Responsable: Frontend
 ## Resumen ejecutivo
 
 - Seccion revisada: `Admin > Actividad`
-- Estado actual: legacy/mock
-- Backend real detectado: ninguno en repo para `GET /api/v1/audit`
-- Riesgo: medio, porque UI muestra historial como si fuera source of truth en fallback
-- Recomendacion: bloquear vista en API mode hasta existir contrato backend real
+- Estado actual: API-first en modo API, legacy demo solo con flags apagadas
+- Fuente real: `GET /api/v1/actividad`
+- Fuente legacy básica: `GET /api/v1/audit`
+- Riesgo residual: bajo, pendiente solo invalidaciones futuras cuando mutaciones toquen actividad
 
 ## Hallazgos
 
 ### UI actual
 
 - `src/pages/admin/sections/ActividadSection.jsx`
-- Usa `useActividadStore`
-- Filtra eventos locales por tipo, fecha y usuario
-- Lista categorias:
+- En API mode consume TanStack Query con filtros y paginacion
+- En fallback legacy conserva store local
+- Categorias UI:
   - reservas
   - cancelaciones
   - usuarios
@@ -32,57 +32,51 @@ Responsable: Frontend
   - sesiones cliente
   - lista espera
 
-### Lógica legacy
+### Fuente real
 
-- Fuente: store local
-- Orden: filtro -> slice page size -> render
-- Estado vacio: muestra "No hay eventos registrados aun"
-- Limpieza: borra historial local
-- No hay paginacion real de backend
-- No hay permisos reales de admin/coach/cliente
+- Endpoint validado:
+  - `GET /api/v1/actividad?page=&page_size=&category=&from=&to=&actor_id=&entity_type=&entity_id=`
+- Respuesta paginada con `items`, `total`, `page`, `page_size`
+- Campos utiles:
+  - `category`
+  - `action`
+  - `title`
+  - `description`
+  - `actor_name`
+  - `actor_role`
+  - `entity_type`
+  - `entity_id`
+  - `metadata`
+  - `created_at`
 
-### Backend
+### Estado recomendado
 
-- No se encontro endpoint real de audit en repo
-- No se encontro contrato confiable para eventos de sistema
-- No se debe inventar data en API mode
+- API mode: lista real, error controlado, empty real
+- Fallback legacy: store demo solo si flags API apagadas
+- No usar `GET /api/v1/audit` como fuente principal
 
-## Gap backend sugerido
+## Contrato usado por frontend
 
 ```http
-GET /api/v1/actividad?page=&page_size=&category=&from=&to=&actor_id=
+GET /api/v1/actividad?page=&page_size=&category=&from=&to=&actor_id=&entity_type=&entity_id=
 ```
 
-### Response sugerido
+### Mapeo UI
 
-```json
-{
-  "page": 1,
-  "page_size": 20,
-  "total": 0,
-  "items": [
-    {
-      "id": 1,
-      "category": "reservas",
-      "action": "reserva_creada",
-      "description": "Cliente Demo reservo Clase Demo",
-      "actor_name": "Admin Demo",
-      "actor_id": 1,
-      "created_at": "2026-06-09T10:00:00-06:00",
-      "meta": {}
-    }
-  ]
-}
-```
+- `Todos` -> sin `category`
+- `Reservas` -> `reservas`
+- `Cancelaciones` -> `cancelaciones`
+- `Usuarios` -> `usuarios`
+- `Paquetes` -> `paquetes`
+- `Ventas POS` -> `ventas_pos`
+- `Cortes` -> `cortes`
+- `Clases` -> `clases`
+- `Coaches` -> `coaches`
+- `Sesiones cliente` -> `sesiones_cliente`
+- `Lista espera` -> `lista_espera`
 
-## Estado actual recomendado
+## Nota
 
-- API mode: mostrar placeholder honesto
-- Fallback legacy: mantener store local
-- No mostrar mock como verdad
-
-## Pendientes
-
-- Contrato backend de audit
-- Filtros reales por actor, categoria, rango
-- Invalidacion TanStack al mutar eventos si backend llega
+- `GET /api/v1/audit` queda legacy compatible y basico.
+- `actividadStore` queda solo fallback demo cuando API mode esta apagado.
+- Backend ya valido en local con `total=36` eventos en respuesta real.

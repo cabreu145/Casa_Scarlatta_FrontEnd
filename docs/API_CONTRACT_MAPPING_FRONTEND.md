@@ -170,7 +170,7 @@ Reglas frontend:
 Frontend MVP uses TanStack Query for server state. Zustand queda para fallback legacy y UI local. Lecturas con `useQuery`, mutaciones con `useMutation`, refetch con invalidate tras éxito. No usar `page_size=1000`.
 - Admin badges de Coaches/Usuarios ya usan totales backend.
 - Avatares de coach usan `avatar_url` / `avatarUrl` con fallback visual.
-- `Admin > Actividad` queda como legacy placeholder hasta contrato backend real.
+- `Admin > Actividad` usa `GET /api/v1/actividad` como source of truth en API mode; `GET /api/v1/audit` queda legacy básico.
 
 ## Mapeo POS (vigente)
 | Archivo frontend | Función actual | Endpoint backend | Request esperado | Response esperado | Transformación necesaria | Prioridad |
@@ -229,3 +229,9 @@ Reglas frontend:
 - Cliente recibe 403.
 - Roster detallado sustituye placeholder cuando respuesta llega bien.
 - Manual enrollment y seat flow invalidan roster tras éxito.
+
+## Regla permanente
+
+- Toda lectura/mutacion contra backend real en API mode va por TanStack Query.
+- Zustand/localStorage no son source of truth de datos backend.
+- Mocks/demo solo fallback cuando flags API estan apagadas.

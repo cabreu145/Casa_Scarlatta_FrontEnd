@@ -419,4 +419,13 @@ Notas:
 
 - Sidebar badgeCount for Coaches and Usuarios comes from backend totals in API mode.
 - Coach avatars use `avatar_url` / `avatarUrl` when available, with initials fallback.
-- `Admin > Actividad` stays legacy/demo only until backend audit contract exists.
+- `Admin > Actividad` uses `GET /api/v1/actividad` in API mode; `GET /api/v1/audit` stays legacy basic.
+
+## TanStack Query
+
+- Server state en API mode usa TanStack Query.
+- `useQuery` para lecturas.
+- `useMutation` para escrituras.
+- `queryKeys.js` es catalogo unico de keys.
+- Zustand/localStorage quedan solo para fallback legacy o UI local.
+- No usar mocks como verdad cuando flags API estan activas.

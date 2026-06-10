@@ -165,10 +165,17 @@ Responsable: Codex
 - Mocks se conservan solo para fallback legacy con flags API apagadas.
 - BadgeCount de Coaches y Usuarios ya sale de totales backend en API mode.
 - Avatares de coach ya priorizan `avatar_url` / `avatarUrl` con fallback de iniciales.
-- `Admin > Actividad` queda como placeholder honesto en API mode hasta contrato backend real.
+- `Admin > Actividad` ya consume `GET /api/v1/actividad` en API mode; `GET /api/v1/audit` queda legacy basico.
 
 
 ## Quick fix clases
 - Admin > Clases usa occurrences para fecha en API mode.
 - Roster detallado por occurrence ya usa backend real.
 - `AdminPanel` y `CoachPanel` invalidan roster tras inscripción manual o seat flow.
+
+## Estado TanStack Query
+
+- API mode debe usar `useQuery`/`useMutation` para server state.
+- Zustand/localStorage quedan solo para fallback legacy y UI local.
+- No usar mocks como verdad en API mode.
+- `AdminDashboard.jsx` sigue siendo legacy/dead code; `DashboardSection.jsx` es shell vivo.

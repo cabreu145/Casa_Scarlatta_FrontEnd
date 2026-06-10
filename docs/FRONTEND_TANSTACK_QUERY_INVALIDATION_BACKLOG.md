@@ -25,7 +25,7 @@ Este bloque va despues del backlog de email/notificaciones en el roadmap.
 | Admin POS | productos/ventas/categorias | `posProducts`, `posSales`, `adminClients` | parcial | P0 |
 | Admin finanzas | gastos/cortes/export | `finance/*`, `expenses/*`, `cashClosings/*` | parcial | P0 |
 | Admin reportes | filtros/exports | `reports/*` | parcial | P2 |
-| Admin actividad | eventos | `activity/*` | pendiente backend | P3 |
+| Admin actividad | eventos | `activity.list` | parcial | P2 |
 | Coach agenda | reservas propias | `coachAgenda`, `occurrenceRoster` | parcial | P1 |
 | Coach roster | marcar asistencia/no-show | `occurrenceRoster`, `coachAgenda` | parcial | P1 |
 | Waitlist | unirse/salir | `waitlist`, `occurrenceRoster` | parcial | P1 |
@@ -42,3 +42,9 @@ Este bloque va despues del backlog de email/notificaciones en el roadmap.
 1. Cerrar invalidaciones por modulo
 2. Extraer helpers comunes de query keys
 3. Añadir tests de refetch por mutacion critica
+
+## Nota TanStack Query
+
+- Query keys nuevas ya cubren classes, reservations, waitlist, spots y activity.
+- Activity ya usa backend real en API mode; backlog solo cubre invalidacion futura por mutaciones.
+- Siguiente paso de backlog: migrar mutations criticas por modulo usando invalidacion por prefijo.

@@ -309,4 +309,12 @@ Frontend MVP uses TanStack Query for server state. Zustand queda para fallback l
 
 - Admin badges de Coaches/Usuarios ya usan totales backend.
 - Avatares de coach priorizan `avatar_url` / `avatarUrl`.
-- `Admin > Actividad` queda en placeholder honesto hasta contrato backend real.
+- `Admin > Actividad` usa `GET /api/v1/actividad` en API mode; `GET /api/v1/audit` queda legacy basico.
+
+## Regla permanente
+
+- API mode: backend es source of truth.
+- `useQuery` para lecturas.
+- `useMutation` para escrituras.
+- `queryClient.invalidateQueries()` despues de mutaciones.
+- `localStorage` y stores legacy solo fallback/UI local.

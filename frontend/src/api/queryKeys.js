@@ -1,4 +1,22 @@
 export const queryKeys = {
+  auth: {
+    me: ['auth', 'me'],
+  },
+  classes: {
+    list: (params = {}) => ['classes', 'list', params],
+    detail: (id) => ['classes', 'detail', id],
+    occurrences: (classId, params = {}) => ['classes', 'occurrences', classId, params],
+  },
+  reservations: {
+    me: (params = {}) => ['reservations', 'me', params],
+    list: (params = {}) => ['reservations', 'list', params],
+  },
+  waitlist: {
+    byOccurrence: (occurrenceId) => ['waitlist', 'byOccurrence', occurrenceId],
+  },
+  spots: {
+    byOccurrence: (occurrenceId) => ['spots', 'byOccurrence', occurrenceId],
+  },
   myFinancialState: ['client', 'me', 'financialState'],
   myMemberships: ['client', 'me', 'memberships'],
   myCreditMovements: (params = {}) => ['client', 'me', 'creditMovements', params],
@@ -11,11 +29,24 @@ export const queryKeys = {
     clientsActive: () => ['admin', 'badges', 'clientsActive'],
   },
   coaches: {
+    list: (params = {}) => ['coaches', 'list', params],
+    detail: (id) => ['coaches', 'detail', id],
     public: () => ['coaches', 'public'],
+  },
+  clients: {
+    list: (params = {}) => ['clients', 'list', params],
+    detail: (id) => ['clients', 'detail', id],
+  },
+  packages: {
+    list: (params = {}) => ['packages', 'list', params],
+    public: (params = {}) => ['packages', 'public', params],
   },
   adminClients: (params = {}) => ['admin', 'clients', params],
   adminClientDetail: (clientId) => ['admin', 'clients', clientId],
   adminPackages: (params = {}) => ['admin', 'packages', params],
+  activity: {
+    list: (params = {}) => ['activity', 'list', params],
+  },
   expenses: {
     list: (params = {}) => ['expenses', 'list', params],
     detail: (id) => ['expenses', 'detail', id],
