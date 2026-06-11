@@ -28,7 +28,7 @@ const AdminPanel  = lazy(() => import('@/pages/admin/AdminPanel'))
 const PaymentReturnPage = lazy(() => import('@/features/pagos/PaymentReturnPage'))
 const EquipmentReservationDebugPage = lazy(() => import('@/features/reservas/EquipmentReservationDebugPage'))
 
-const DASHBOARD_PREFIXES = ['/cliente/', '/coach/', '/admin/']
+const DASHBOARD_PREFIXES = ['/cliente/', '/coach/', '/admin/', '/cajero/']
 
 function isDashboardRoute(pathname) {
   return DASHBOARD_PREFIXES.some((p) => pathname.startsWith(p))
@@ -62,6 +62,7 @@ function AnimatedRoutes() {
             <Route path="/coach/mis-clases" element={<Navigate to="/coach/dashboard" replace />} />
 
             <Route path="/admin/dashboard" element={<ProtectedRoute rolRequerido="admin"><AdminPanel /></ProtectedRoute>} />
+            <Route path="/cajero/dashboard" element={<ProtectedRoute rolRequerido="cajero_pos"><AdminPanel initialSection="pos" /></ProtectedRoute>} />
             <Route path="/admin/coaches"  element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/usuarios" element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="/admin/clases"   element={<Navigate to="/admin/dashboard" replace />} />

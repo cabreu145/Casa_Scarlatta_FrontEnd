@@ -1,8 +1,10 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useConfiguracionStore, CONFIG_DEFAULTS } from '@/stores/configuracionStore'
 import toast from 'react-hot-toast'
 import styles from '../AdminPanel.module.css'
 import ConfiguracionCorreoSection from './ConfiguracionCorreoSection'
+import RolesPermissionsSection from '../components/rbac/RolesPermissionsSection'
+import { hasAnyPermission, hasPermission } from '@/auth/permissions'
 
 // ── Compresión de imagen vía canvas (max 1920px, JPEG 0.82) ──────────────────
 function compressImage(file, maxWidth = 1920, quality = 0.82) {
@@ -31,12 +33,13 @@ function compressImage(file, maxWidth = 1920, quality = 0.82) {
 }
 
 const TABS = [
-  { id: 'contacto',  label: '📞 Contacto'   },
-  { id: 'textos',    label: '📝 Textos'      },
-  { id: 'imagenes',  label: '🖼️ Imágenes'   },
-  { id: 'reservas',  label: '🗓️ Reservas'   },
-  { id: 'estudio',   label: '🏢 Estudio'     },
-  { id: 'correo',    label: '✉️ Correo'      },
+  { id: 'contacto', label: 'Contacto' },
+  { id: 'textos', label: 'Textos' },
+  { id: 'imagenes', label: 'Imagenes' },
+  { id: 'reservas', label: 'Reservas' },
+  { id: 'estudio', label: 'Estudio' },
+  { id: 'correo', label: 'Correo' },
+  { id: 'roles', label: 'Roles y permisos' },
 ]
 
 // ── Estilos compartidos ───────────────────────────────────────────────────────
@@ -654,9 +657,22 @@ function TabEstudio({ cfg, actualizar }) {
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
-export default function ConfiguracionSection() {
+export default function ConfiguracionSection({ currentUser = null }) {
   const store = useConfiguracionStore()
   const [tabActivo, setTabActivo] = useState('contacto')
+  const canReadSettings = hasPermission(currentUser, 'settings.read') || !currentUser
+  const canReadEmailConfig = hasAnyPermission(currentUser, ['email_config.read', 'email_outbox.read']) || !currentUser
+  const canReadRoles = hasPermission(currentUser, 'roles.read') || !currentUser
+  const visibleTabs = useMemo(() => TABS.filter((tab) => {
+    if (tab.id === 'correo') return canReadEmailConfig
+    if (tab.id === 'roles') return canReadRoles
+    return canReadSettings
+  }), [canReadEmailConfig, canReadRoles, canReadSettings])
+
+  useEffect(() => {
+    if (visibleTabs.some((tab) => tab.id === tabActivo)) return
+    setTabActivo(visibleTabs[0]?.id ?? '')
+  }, [tabActivo, visibleTabs])
 
   const tabStyle = (id) => ({
     padding:      '8px 16px',
@@ -675,7 +691,7 @@ export default function ConfiguracionSection() {
     <div>
       {/* Pestañas */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
-        {TABS.map(t => (
+        {visibleTabs.map(t => (
           <button key={t.id} style={tabStyle(t.id)} onClick={() => setTabActivo(t.id)}>
             {t.label}
           </button>
@@ -689,6 +705,7 @@ export default function ConfiguracionSection() {
       {tabActivo === 'reservas' && <TabReservas  cfg={store} actualizar={store.actualizar} />}
       {tabActivo === 'estudio'  && <TabEstudio   cfg={store} actualizar={store.actualizar} />}
       {tabActivo === 'correo'   && <ConfiguracionCorreoSection />}
+      {tabActivo === 'roles'    && <RolesPermissionsSection currentUser={currentUser} />}
     </div>
   )
 }

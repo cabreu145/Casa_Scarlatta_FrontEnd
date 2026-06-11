@@ -15,6 +15,8 @@ import {
   useTopClassesReportQuery,
   useUsersReportQuery,
 } from '@/hooks/useApiQueries'
+import { useAuth } from '@/context/AuthContext'
+import { hasPermission } from '@/auth/permissions'
 import { abrirReportePDF } from '@/utils/reportePDF'
 import { buildReportFilename, downloadCsvFromRows } from '@/utils/reportExport'
 import styles from '@/styles/dashboard.module.css'
@@ -334,6 +336,9 @@ function payTableRowsFromReport(payTableItems = []) {
 }
 
 export default function ReportesApiSection({ inPanel = false }) {
+  const { usuario } = useAuth()
+  const canReadPayTable = hasPermission(usuario, 'pay_table.read')
+  const canManagePayTable = hasPermission(usuario, 'pay_table.manage')
   const [periodoReporte, setPeriodoReporte] = useState({ tipo: 'todos' })
   const [navKey, setNavKey] = useState(0)
   const { from, to, label } = useMemo(() => buildReportRange(periodoReporte), [periodoReporte])
@@ -346,7 +351,7 @@ export default function ReportesApiSection({ inPanel = false }) {
   const topClassesQuery = useTopClassesReportQuery({ from, to, limit: 5, enabled: true })
   const occupancyQuery = useOccupancyByDisciplineReportQuery({ from, to, enabled: true })
   const coachPaymentsQuery = useCoachPaymentsReportQuery({ from, to, enabled: true })
-  const payTableQuery = usePayTableQuery({ enabled: true })
+  const payTableQuery = usePayTableQuery({ enabled: canReadPayTable })
   const createPayTableMutation = useCreatePayTableMutation()
   const updatePayTableMutation = useUpdatePayTableMutation()
   const deletePayTableMutation = useDeletePayTableMutation()
@@ -441,6 +446,10 @@ export default function ReportesApiSection({ inPanel = false }) {
   }
 
   const openPayTableEditor = (item = null) => {
+    if (!canManagePayTable) {
+      toast.error('No tienes permisos para esta acción.')
+      return
+    }
     if (item) {
       setPayTableEditingId(item.id ?? null)
       setPayTableForm({
@@ -476,6 +485,10 @@ export default function ReportesApiSection({ inPanel = false }) {
   }
 
   const savePayTable = async () => {
+    if (!canManagePayTable) {
+      toast.error('No tienes permisos para esta acción.')
+      return
+    }
     const payload = {
       discipline: payTableForm.discipline,
       minAttendees: payTableForm.minAttendees,
@@ -507,6 +520,10 @@ export default function ReportesApiSection({ inPanel = false }) {
   }
 
   const togglePayTableActive = async (item) => {
+    if (!canManagePayTable) {
+      toast.error('No tienes permisos para esta acción.')
+      return
+    }
     try {
       await updatePayTableMutation.mutateAsync({
         id: item.id,
@@ -531,6 +548,10 @@ export default function ReportesApiSection({ inPanel = false }) {
   }
 
   const deletePayTable = async (item) => {
+    if (!canManagePayTable) {
+      toast.error('No tienes permisos para esta acción.')
+      return
+    }
     const ok = window.confirm('Eliminar rango. Baja lógica, historial se conserva.')
     if (!ok) return
     try {
@@ -893,6 +914,7 @@ export default function ReportesApiSection({ inPanel = false }) {
         )}
       </SectionCard>
 
+      {canReadPayTable && (
       <SectionCard title="Tabulador de pagos por clase" subtitle="Disciplina, Rango y Pago">
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
           <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
@@ -916,6 +938,7 @@ export default function ReportesApiSection({ inPanel = false }) {
             >
               CSV
             </button>
+            {canManagePayTable && (
             <button
               type="button"
               onClick={() => openPayTableEditor()}
@@ -933,6 +956,7 @@ export default function ReportesApiSection({ inPanel = false }) {
             >
               Nuevo rango
             </button>
+            )}
           </div>
         </div>
 
@@ -1046,6 +1070,7 @@ export default function ReportesApiSection({ inPanel = false }) {
                   </td>
                   <td style={{ padding: '10px' }}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {canManagePayTable && (
                       <button
                         type="button"
                         onClick={() => openPayTableEditor(item)}
@@ -1062,6 +1087,8 @@ export default function ReportesApiSection({ inPanel = false }) {
                       >
                         Editar
                       </button>
+                      )}
+                      {canManagePayTable && (
                       <button
                         type="button"
                         onClick={() => togglePayTableActive(item)}
@@ -1078,6 +1105,8 @@ export default function ReportesApiSection({ inPanel = false }) {
                       >
                         {item.isActive ? 'Desactivar' : 'Activar'}
                       </button>
+                      )}
+                      {canManagePayTable && (
                       <button
                         type="button"
                         onClick={() => deletePayTable(item)}
@@ -1094,6 +1123,7 @@ export default function ReportesApiSection({ inPanel = false }) {
                       >
                         Eliminar
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1104,6 +1134,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           <EmptyState>Sin rangos de tabulador para este rango.</EmptyState>
         )}
       </SectionCard>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 16 }}>
         <SectionCard title="Top clases" subtitle="Clases más llenas">

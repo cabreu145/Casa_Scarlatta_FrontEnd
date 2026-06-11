@@ -187,3 +187,5 @@ Responsable: Codex
 - `spotHolds.byOccurrence` ya existe y se invalida desde mutation hooks.
 - `occurrenceRoster.detail(occurrenceId, includeCanceled)` ya es key canonica para roster privado.
 - Refresh manual queda como fallback legacy solamente.
+- `Configuracion > Roles y permisos` ya consume backend real RBAC (`/api/v1/rbac/*`) en API mode.
+- `/auth/me` ya hidrata `roleCode`, `roleName` y `permissions`; frontend usa esos permisos para ocultar modulos sensibles por UX.

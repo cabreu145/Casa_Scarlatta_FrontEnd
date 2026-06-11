@@ -63,6 +63,19 @@ import {
 } from '@/services/notificationsApiService'
 import { getEmailOutboxApi, retryEmailOutboxApi } from '@/services/emailOutboxApiService'
 import {
+  createRoleApi,
+  deleteRoleApi,
+  getPermissionsApi,
+  getRbacUsersApi,
+  getRoleByIdApi,
+  getRolesApi,
+  getUserEffectivePermissionsApi,
+  updateRoleApi,
+  updateRolePermissionsApi,
+  updateUserPermissionOverridesApi,
+  updateUserRoleApi,
+} from '@/services/rbacApiService'
+import {
   cancelarReservaApi,
   crearReservaApi,
   getMisReservasPaginatedApi,
@@ -728,6 +741,149 @@ export function useRetryEmailOutboxMutation() {
     mutationFn: retryEmailOutboxApi,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['emailOutbox'] })
+    },
+  })
+}
+
+export function useRbacPermissionsQuery({ enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.rbac.permissions(),
+    queryFn: getPermissionsApi,
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useRbacRolesQuery({ page = 1, pageSize = 20, search, status, enabled = false } = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
+  return useQuery({
+    queryKey: queryKeys.rbac.roles({ page, pageSize: normalizedPageSize, search: search || '', status: status || 'all' }),
+    queryFn: () => getRolesApi({ page, pageSize: normalizedPageSize, search, status }),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useRbacRoleDetailQuery(roleId, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.rbac.roleDetail(roleId),
+    queryFn: () => getRoleByIdApi(roleId),
+    enabled: Boolean(enabled && roleId),
+    ...shortDefaults,
+  })
+}
+
+export function useRbacUsersQuery({ page = 1, pageSize = 20, search, role, status, enabled = false } = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
+  return useQuery({
+    queryKey: queryKeys.rbac.users({ page, pageSize: normalizedPageSize, search: search || '', role: role || 'all', status: status || 'all' }),
+    queryFn: () => getRbacUsersApi({ page, pageSize: normalizedPageSize, search, role, status }),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useRbacUserPermissionsQuery(userId, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.rbac.userPermissions(userId),
+    queryFn: () => getUserEffectivePermissionsApi(userId),
+    enabled: Boolean(enabled && userId),
+    ...shortDefaults,
+  })
+}
+
+export function useCreateRbacRoleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createRoleApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUpdateRbacRoleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roleId, payload }) => updateRoleApi(roleId, payload),
+    onSuccess: async (_result, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
+        variables?.roleId ? queryClient.invalidateQueries({ queryKey: queryKeys.rbac.roleDetail(variables.roleId) }) : Promise.resolve(),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users', 'permissions'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUpdateRbacRolePermissionsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roleId, permissionKeys }) => updateRolePermissionsApi(roleId, permissionKeys),
+    onSuccess: async (_result, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
+        variables?.roleId ? queryClient.invalidateQueries({ queryKey: queryKeys.rbac.roleDetail(variables.roleId) }) : Promise.resolve(),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users', 'permissions'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useDeleteRbacRoleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteRoleApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUpdateRbacUserRoleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, payload }) => updateUserRoleApi(userId, payload),
+    onSuccess: async (_result, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        variables?.userId ? queryClient.invalidateQueries({ queryKey: queryKeys.rbac.userPermissions(variables.userId) }) : Promise.resolve(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['clients'] }),
+        queryClient.invalidateQueries({ queryKey: ['coaches'] }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUpdateRbacUserPermissionOverridesMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, overrides }) => updateUserPermissionOverridesApi(userId, overrides),
+    onSuccess: async (_result, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        variables?.userId ? queryClient.invalidateQueries({ queryKey: queryKeys.rbac.userPermissions(variables.userId) }) : Promise.resolve(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
     },
   })
 }

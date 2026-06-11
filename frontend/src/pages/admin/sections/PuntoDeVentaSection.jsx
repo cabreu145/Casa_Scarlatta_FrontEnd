@@ -23,6 +23,8 @@ import {
   useUpdateProductCategoryStatusMutation,
   useDeleteProductCategoryMutation,
 } from '@/hooks/useApiQueries'
+import { useAuthStore } from '@/stores/authStore'
+import { hasAnyPermission, hasPermission } from '@/auth/permissions'
 
 function FilterChips({ options, active, onChange }) {
   return (
@@ -130,6 +132,7 @@ export default function PuntoDeVentaSection({
   useApiMode = false,
   isActive = false,
 }) {
+  const { usuario } = useAuthStore()
   const [buyerSearch, setBuyerSearch] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash')
@@ -143,35 +146,41 @@ export default function PuntoDeVentaSection({
   const [categoryStatus, setCategoryStatus] = useState('active')
   const [categoryModal, setCategoryModal] = useState(null)
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', isActive: true })
+  const canViewPos = hasAnyPermission(usuario, ['pos.read', 'pos.sell', 'pos.products.read', 'pos.categories.read', 'pos.products.manage', 'pos.categories.manage'])
+  const canSellPos = hasPermission(usuario, 'pos.sell')
+  const canReadProducts = hasAnyPermission(usuario, ['pos.products.read', 'pos.sell', 'pos.products.manage'])
+  const canReadCategories = hasAnyPermission(usuario, ['pos.categories.read', 'pos.sell', 'pos.categories.manage'])
+  const canManagePosProducts = hasPermission(usuario, 'pos.products.manage')
+  const canManagePosCategories = hasPermission(usuario, 'pos.categories.manage')
 
   const posProductsQuery = usePosProductsQuery({
     page: 1,
     pageSize: 100,
     search: productSearch,
     status: productStatus === 'all' ? undefined : productStatus,
-    enabled: useApiMode && isActive,
+    enabled: useApiMode && isActive && canReadProducts,
   })
   const productCategoriesQuery = useProductCategoriesQuery({
     page: 1,
     pageSize: 100,
     search: categorySearch,
     status: categoryStatus === 'all' ? undefined : categoryStatus,
-    enabled: useApiMode && isActive,
+    enabled: useApiMode && isActive && canReadCategories,
   })
   const membershipPackagesQuery = useMembershipPackagesQuery({
-    enabled: useApiMode && isActive,
+    enabled: useApiMode && isActive && canSellPos,
   })
   const buyerClientsQuery = useAdminClientsQuery({
     page: 1,
     pageSize: 20,
     search: buyerSearch,
     status: 'active',
-    enabled: useApiMode && isActive,
+    enabled: useApiMode && isActive && canSellPos,
   })
   const posSalesQuery = usePosSalesQuery({
     page: 1,
     pageSize: 8,
-    enabled: useApiMode && isActive,
+    enabled: useApiMode && isActive && canViewPos,
   })
   const createSaleMutation = useCreatePosSaleMutation()
   const createCategoryMutation = useCreateProductCategoryMutation()
@@ -202,11 +211,15 @@ export default function PuntoDeVentaSection({
     if (!useApiMode) {
       return ['Todos', '📦 Paquetes', 'Accesorios', 'Nutrici?n', 'Equipo', 'Ropa']
     }
+    if (!canReadCategories) {
+      return ['Todos', '📦 Paquetes']
+    }
     const categories = apiCategories.map((item) => item.name ?? item.nombre).filter(Boolean)
     return ['Todos', '📦 Paquetes', ...categories]
-  }, [apiCategories, useApiMode])
+  }, [apiCategories, canReadCategories, useApiMode])
   const visibleItems = useMemo(() => {
     if (!useApiMode) return []
+    if (!canReadProducts) return []
     const search = String(productSearch ?? '').trim().toLowerCase()
     const productsFiltered = apiProducts.filter((item) => {
       if (posFilter !== 'Todos' && posFilter !== '📦 Paquetes' && item.category !== posFilter) return false
@@ -234,11 +247,15 @@ export default function PuntoDeVentaSection({
       ]
     }
     return productsFiltered.map((item) => ({ kind: 'product', item }))
-  }, [apiPackages, apiProducts, posFilter, productSearch, useApiMode])
+  }, [apiPackages, apiProducts, canReadProducts, posFilter, productSearch, useApiMode])
 
   function addProductToCart(item) {
     if (!useApiMode) {
       addToCart?.(item)
+      return
+    }
+    if (!canSellPos) {
+      toast.error('No tienes permisos para vender en POS.')
       return
     }
 
@@ -279,6 +296,10 @@ export default function PuntoDeVentaSection({
   }
 
   async function submitSale() {
+    if (useApiMode && !canSellPos) {
+      toast.error('No tienes permisos para vender en POS.')
+      return
+    }
     if (!cart.length) {
       toast.error('Agrega items a la orden primero')
       return
@@ -357,6 +378,10 @@ export default function PuntoDeVentaSection({
   }
 
   function openProductModal() {
+    if (!canManagePosProducts) {
+      toast.error('No tienes permisos para gestionar productos.')
+      return
+    }
     const firstCategory = apiCategories[0] ?? null
     setProdModal('nuevo')
     setProdForm({
@@ -370,6 +395,10 @@ export default function PuntoDeVentaSection({
   }
 
   async function saveCategory() {
+    if (!canManagePosCategories) {
+      toast.error('No tienes permisos para gestionar categorías.')
+      return
+    }
     try {
       const payload = {
         name: categoryForm.name,
@@ -391,6 +420,10 @@ export default function PuntoDeVentaSection({
   }
 
   async function toggleCategoryStatus(category) {
+    if (!canManagePosCategories) {
+      toast.error('No tienes permisos para gestionar categorías.')
+      return
+    }
     try {
       await updateCategoryStatusMutation.mutateAsync({
         id: category.id,
@@ -403,6 +436,10 @@ export default function PuntoDeVentaSection({
   }
 
   async function removeCategory(category) {
+    if (!canManagePosCategories) {
+      toast.error('No tienes permisos para gestionar categorías.')
+      return
+    }
     try {
       await deleteCategoryMutation.mutateAsync(category.id)
       toast.success('Categoría eliminada')
@@ -445,23 +482,32 @@ export default function PuntoDeVentaSection({
             {membershipPackagesQuery.error && <div style={{ color: '#f87171', marginBottom: 10 }}>{membershipPackagesQuery.error?.message ?? 'No pudimos cargar paquetes.'}</div>}
 
             <div className={styles.card} style={{ marginBottom: 20 }}>
-              <div className={styles.cardHeader}>
-                <div className={styles.cardTitle}>Categorías POS</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <button
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    type="button"
-                    onClick={openProductModal}
-                    disabled={!apiCategories.length}
-                  >
-                    Nuevo producto
-                  </button>
-                  <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => openCategoryModal()}>
-                    Nueva categoría
-                  </button>
+                <div className={styles.cardHeader}>
+                  <div className={styles.cardTitle}>Categorías POS</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  {canManagePosProducts && (
+                    <button
+                      className={`${styles.btn} ${styles.btnGhost}`}
+                      type="button"
+                      onClick={openProductModal}
+                      disabled={!apiCategories.length}
+                    >
+                      Nuevo producto
+                    </button>
+                  )}
+                  {canManagePosCategories && (
+                    <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={() => openCategoryModal()}>
+                      Nueva categoría
+                    </button>
+                  )}
+                  </div>
                 </div>
-              </div>
-              {!apiCategories.length && (
+              {!canReadCategories && !canManagePosCategories && (
+                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
+                  No tienes permisos para ver categorías POS.
+                </div>
+              )}
+              {canReadCategories && !apiCategories.length && (
                 <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
                   Crea una categoría antes de registrar productos.
                 </div>
@@ -486,7 +532,7 @@ export default function PuntoDeVentaSection({
               {productCategoriesQuery.isLoading && <div style={{ color: 'var(--muted)' }}>Cargando categorías...</div>}
               {productCategoriesQuery.error && <div style={{ color: '#f87171' }}>{productCategoriesQuery.error?.message ?? 'No pudimos cargar categorías.'}</div>}
               <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-                {apiCategories.map((category) => (
+                {canReadCategories && apiCategories.map((category) => (
                   <div
                     key={category.id}
                     style={{
@@ -505,17 +551,24 @@ export default function PuntoDeVentaSection({
                       <div style={{ fontSize: 11, color: 'var(--muted)' }}>{category.isActive ? 'Activa' : 'Inactiva'}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <button type="button" className={styles.btn} onClick={() => openCategoryModal(category)}>Editar</button>
-                      <button type="button" className={styles.btn} onClick={() => toggleCategoryStatus(category)}>
-                        {category.isActive ? 'Inactivar' : 'Activar'}
-                      </button>
-                      <button type="button" className={styles.btn} onClick={() => removeCategory(category)}>
-                        Eliminar
-                      </button>
+                      {canManagePosCategories && (
+                        <>
+                          <button type="button" className={styles.btn} onClick={() => openCategoryModal(category)}>Editar</button>
+                          <button type="button" className={styles.btn} onClick={() => toggleCategoryStatus(category)}>
+                            {category.isActive ? 'Inactivar' : 'Activar'}
+                          </button>
+                          <button type="button" className={styles.btn} onClick={() => removeCategory(category)}>
+                            Eliminar
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
-                {!apiCategories.length && !productCategoriesQuery.isLoading && (
+                {!canReadCategories && !canManagePosCategories && !productCategoriesQuery.isLoading && (
+                  <div style={{ color: 'var(--muted)' }}>Permiso insuficiente para mostrar categorías.</div>
+                )}
+                {canReadCategories && !apiCategories.length && !productCategoriesQuery.isLoading && (
                   <div style={{ color: 'var(--muted)' }}>Sin categorías para mostrar.</div>
                 )}
               </div>
@@ -535,7 +588,7 @@ export default function PuntoDeVentaSection({
                     <button
                       className={styles.productCard}
                       onClick={() => addProductToCart({ kind, item, isActive: item.isActive, stock: item.stock })}
-                      disabled={isInactive || isOutOfStock}
+                      disabled={isInactive || isOutOfStock || (useApiMode && !canSellPos)}
                       type="button"
                     >
                       <div className={styles.productEmoji}>{emoji}</div>
@@ -554,8 +607,8 @@ export default function PuntoDeVentaSection({
                           <div>{item.description || 'Sin descripción'}</div>
                         </div>
                       )}
-                    </button>
-                    {!isPackage && (
+                      </button>
+                    {!isPackage && canManagePosProducts && (
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button
                           type="button"
@@ -588,7 +641,7 @@ export default function PuntoDeVentaSection({
               })}
               {!visibleItems.length && !posProductsQuery.isLoading && !membershipPackagesQuery.isLoading && (
                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '24px 0', color: 'var(--muted)' }}>
-                  No hay items para estos filtros.
+                  {!canReadProducts ? 'No tienes permisos para ver productos en POS.' : 'No hay items para estos filtros.'}
                 </div>
               )}
             </div>
@@ -782,8 +835,9 @@ export default function PuntoDeVentaSection({
               className={`${styles.btn} ${styles.btnPrimary}`}
               style={{ width: '100%', justifyContent: 'center', padding: 12 }}
               onClick={useApiMode ? submitSale : handleCobrar}
-              disabled={useApiMode && createSaleMutation.isPending}
+              disabled={(useApiMode && createSaleMutation.isPending) || (useApiMode && !canSellPos)}
               type="button"
+              title={useApiMode && !canSellPos ? 'No tienes permisos para vender en POS' : undefined}
             >
               {useApiMode && createSaleMutation.isPending ? 'Procesando...' : '💳 Cobrar'}
             </button>

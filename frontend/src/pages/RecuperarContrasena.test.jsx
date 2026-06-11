@@ -124,7 +124,7 @@ describe('RecuperarContrasena', () => {
 
     expect(confirmMutateAsync).toHaveBeenCalledWith({ token: 'abc123', newPassword: 'NuevaPassword123' })
     expect(await screen.findByText(/contraseña actualizada/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /ir a iniciar sesión/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ir a Iniciar Sesión/i })).toBeInTheDocument()
   })
 
   test('token expirado muestra mensaje amigable', async () => {

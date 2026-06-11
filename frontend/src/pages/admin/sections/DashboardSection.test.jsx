@@ -1,12 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { fechaLocal } from '@/utils/fecha'
 
+const todayIso = fechaLocal(new Date())
 const apiState = {
-  today: new Date().toISOString().slice(0, 10),
+  today: todayIso,
   kpis: {
     data: {
-      from: new Date().toISOString().slice(0, 10),
-      to: new Date().toISOString().slice(0, 10),
+      from: todayIso,
+      to: todayIso,
       sales: { count: 12, subtotalMxn: 10000, taxMxn: 1600, totalMxn: 11600 },
       expenses: { count: 3, totalMxn: 1200 },
       net: { totalMxn: 10400 },
@@ -141,5 +143,9 @@ describe('DashboardSection', () => {
         type: 'summary',
       })
     })
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 })

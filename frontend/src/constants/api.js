@@ -164,6 +164,18 @@ export const ENDPOINTS = {
   emailOutbox: withPrefix('/email/outbox'),
   emailOutboxRetryById: (id) => withPrefix(`/email/outbox/${id}/retry`),
 
+  rbacPermissions: withPrefix('/rbac/permissions'),
+  rbacRoles: withPrefix('/rbac/roles'),
+  rbacRolesPaginated: ({ page, pageSize, search, status } = {}) =>
+    withQuery('/rbac/roles', { page, page_size: pageSize, search, status }),
+  rbacRoleById: (roleId) => withPrefix(`/rbac/roles/${roleId}`),
+  rbacRolePermissionsById: (roleId) => withPrefix(`/rbac/roles/${roleId}/permissions`),
+  rbacUsers: withPrefix('/rbac/users'),
+  rbacUsersPaginated: ({ page, pageSize, search, role, status } = {}) =>
+    withQuery('/rbac/users', { page, page_size: pageSize, search, role, status }),
+  rbacUserRoleById: (userId) => withPrefix(`/rbac/users/${userId}/role`),
+  rbacUserPermissionsById: (userId) => withPrefix(`/rbac/users/${userId}/permissions`),
+
   actividad: ({ page, pageSize, category, from, to, actorId, entityType, entityId } = {}) =>
     withQuery('/actividad', {
       page,

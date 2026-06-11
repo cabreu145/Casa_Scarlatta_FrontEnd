@@ -67,6 +67,13 @@ export const queryKeys = {
   emailOutbox: {
     list: (params = {}) => ['emailOutbox', 'list', params],
   },
+  rbac: {
+    permissions: () => ['rbac', 'permissions'],
+    roles: (params = {}) => ['rbac', 'roles', params],
+    roleDetail: (roleId) => ['rbac', 'roles', 'detail', roleId],
+    users: (params = {}) => ['rbac', 'users', params],
+    userPermissions: (userId) => ['rbac', 'users', 'permissions', userId],
+  },
   expenses: {
     list: (params = {}) => ['expenses', 'list', params],
     detail: (id) => ['expenses', 'detail', id],

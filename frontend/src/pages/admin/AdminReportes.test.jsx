@@ -1,6 +1,18 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({
+    usuario: {
+      id: 1,
+      rol: 'admin',
+      role: 'admin',
+      roleCode: 'admin',
+      permissions: ['pay_table.read', 'pay_table.manage'],
+    },
+  }),
+}))
+
 const apiState = {
   finance: {
     data: {

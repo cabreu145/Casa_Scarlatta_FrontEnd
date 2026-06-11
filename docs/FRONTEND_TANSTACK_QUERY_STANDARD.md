@@ -38,6 +38,11 @@ queryKeys.occurrenceRoster.detail(occurrenceId, includeCanceled)
 queryKeys.spots.byOccurrence(occurrenceId)
 queryKeys.finances.kpis(params)
 queryKeys.activity.list(params)
+queryKeys.rbac.permissions()
+queryKeys.rbac.roles(params)
+queryKeys.rbac.roleDetail(roleId)
+queryKeys.rbac.users(params)
+queryKeys.rbac.userPermissions(userId)
 ```
 
 ## Lecturas
@@ -78,6 +83,25 @@ Despues de `POST /reservas` o cancelacion:
 - `classes.occurrences`
 - `occurrenceRoster.detail`
 - `spots.byOccurrence`
+
+### RBAC
+
+Despues de crear/editar/desactivar rol o editar permisos:
+
+- `rbac.roles`
+- `rbac.roleDetail(roleId)`
+- `rbac.users`
+- `rbac.userPermissions(userId)` cuando aplique
+- `auth.me`
+- `activity.list`
+
+Despues de cambiar rol de usuario u overrides:
+
+- `rbac.users`
+- `rbac.userPermissions(userId)`
+- `auth.me` si afecta usuario actual
+- `clients.list` / `coaches.list` si tablas visibles dependen de rol
+- `activity.list`
 - `financialState.me`
 - `waitlist.byOccurrence`
 

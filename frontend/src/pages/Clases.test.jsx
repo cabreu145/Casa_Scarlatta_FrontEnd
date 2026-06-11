@@ -1,12 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { fechaLocal } from '@/utils/fecha'
 
 const mockLoadClasesFromApi = vi.fn().mockResolvedValue(undefined)
 const mockGetOccurrencesForDateRangeApi = vi.fn()
 const mockCancelReserva = vi.fn()
 const mockUsePublicCoachesQuery = vi.fn()
-const todayIso = new Date().toISOString().slice(0, 10)
+const todayIso = fechaLocal(new Date())
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({

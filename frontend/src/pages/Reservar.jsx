@@ -323,7 +323,7 @@ export default function Reservar() {
                 ← Volver a clases
               </button>
               <button className={styles.nextBtn} type="button" onClick={handleContinue}>
-                {isAuthenticated ? 'Elegir lugar →' : 'Iniciar sesión para reservar'}
+                {isAuthenticated ? 'Elegir lugar →' : 'Iniciar Sesión para reservar'}
               </button>
             </div>
           </div>

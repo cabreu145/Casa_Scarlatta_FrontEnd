@@ -80,3 +80,5 @@ Responsable: Codex
 - `spotHolds.byOccurrence` ya existe como key de invalidacion para mapa de asientos/holds.
 - `occurrenceRoster.detail(occurrenceId, includeCanceled)` ya es key canonica para roster por occurrence.
 - CRUD de paquetes y coaches sigue usando hooks Query para mutaciones; refresh manual queda fuera del flujo principal.
+- RBAC frontend ya consume `GET /api/v1/auth/me` enriquecido y `GET/POST/PUT/PATCH/DELETE /api/v1/rbac/*` via TanStack Query.
+- `Roles y permisos` en Configuracion ya no usa mocks/localStorage como source of truth en API mode.

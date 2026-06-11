@@ -1,7 +1,8 @@
-﻿import { render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import GastosSection from './GastosSection'
+import { fechaLocal } from '@/utils/fecha'
 
 const toastSuccess = vi.fn()
 const toastError = vi.fn()
@@ -9,7 +10,7 @@ const createMutateAsync = vi.fn()
 const updateMutateAsync = vi.fn()
 const cancelMutateAsync = vi.fn()
 const deleteMutateAsync = vi.fn()
-const todayIso = new Date().toISOString().slice(0, 10)
+const todayIso = fechaLocal(new Date())
 
 const apiState = {
   list: {
@@ -98,6 +99,9 @@ describe('GastosSection', () => {
     updateMutateAsync.mockResolvedValue({ id: 1, expenseDate: todayIso })
     cancelMutateAsync.mockResolvedValue({ id: 1, status: 'cancelled' })
     deleteMutateAsync.mockResolvedValue({ ok: true })
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   test('renderiza tabla, crea, edita, cancela y elimina gasto', async () => {

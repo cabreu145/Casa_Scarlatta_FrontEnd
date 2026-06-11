@@ -31,12 +31,14 @@ const rolDashboard = {
   cliente: ROUTES.cliente.dashboard,
   coach: ROUTES.coach.dashboard,
   admin: ROUTES.admin.dashboard,
+  cajero_pos: ROUTES.cajero.dashboard,
 }
 
 const rolLabel = {
   cliente: 'Cliente',
   coach: 'Coach',
   admin: 'Admin',
+  cajero_pos: 'Cajero POS',
 }
 
 export default function Navbar() {
@@ -195,14 +197,14 @@ export default function Navbar() {
                     className={`${styles.dropdownItem} ${styles.dropdownItemDanger}`}
                     onClick={handleLogout}
                   >
-                    Cerrar sesion
+                    Cerrar sesión
                   </button>
                 </div>
               )}
             </div>
             </>
           ) : (
-            <LiquidButton onClick={() => navigate(ROUTES.login)}>Iniciar sesion</LiquidButton>
+            <LiquidButton onClick={() => navigate(ROUTES.login)}>Iniciar Sesión</LiquidButton>
           )}
 
           <button
@@ -267,7 +269,7 @@ export default function Navbar() {
                   style={{ fontSize: 18, color: 'var(--text-muted)' }}
                   onClick={() => { setOpen(false); handleLogout() }}
                 >
-                  Cerrar sesion
+                  Cerrar Sesión
                 </button>
               </li>
             </>

@@ -148,13 +148,13 @@ export default function RecuperarContrasena() {
             <p className={styles.spamNote}>Revisa también tu carpeta de spam.</p>
 
             <button type="button" className={styles.submitBtn} onClick={() => navigate('/login')}>
-              Ir a iniciar sesión
+              Ir a Iniciar Sesión
             </button>
 
             <div className={styles.divider} />
 
             <p className={styles.backLink}>
-              <Link to="/login">Volver a iniciar sesión</Link>
+              <Link to="/login">Volver a Iniciar Sesión</Link>
             </p>
           </>
         )}
@@ -207,7 +207,7 @@ export default function RecuperarContrasena() {
             <div className={styles.divider} />
 
             <p className={styles.backLink}>
-              <Link to="/login">Volver a iniciar sesión</Link>
+              <Link to="/login">Volver a Iniciar Sesión</Link>
             </p>
           </>
         )}
@@ -218,12 +218,12 @@ export default function RecuperarContrasena() {
               <div className={styles.successIcon}>✓</div>
               <h1 className={styles.title}>Contraseña actualizada</h1>
               <p className={styles.subtitle}>
-                Tu contraseña fue actualizada correctamente. Ya puedes iniciar sesión.
+                Tu contraseña fue actualizada correctamente. Ya puedes Iniciar Sesión.
               </p>
             </div>
 
             <button type="button" className={styles.submitBtn} onClick={() => navigate('/login', { replace: true })}>
-              Ir a iniciar sesión
+              Ir a Iniciar Sesión
             </button>
 
             <div className={styles.divider} />
