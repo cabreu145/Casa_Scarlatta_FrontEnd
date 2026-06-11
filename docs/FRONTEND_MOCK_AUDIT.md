@@ -189,3 +189,12 @@ Responsable: Codex
 - Refresh manual queda como fallback legacy solamente.
 - `Configuracion > Roles y permisos` ya consume backend real RBAC (`/api/v1/rbac/*`) en API mode.
 - `/auth/me` ya hidrata `roleCode`, `roleName` y `permissions`; frontend usa esos permisos para ocultar modulos sensibles por UX.
+
+## Site configuration cerrado
+
+- Los hallazgos `HOME-01` a `HOME-04` quedan cerrados en API mode.
+- Admin > Configuración usa GET/PUT/upload de `/api/v1/configuracion/site`.
+- Home, Nosotros, Clases y Contacto ya no usan localStorage como verdad en API mode.
+- `configuracionStore` queda fallback legacy con API off o error controlado.
+- Imágenes `/media/site` se comparten entre dispositivos y breakpoints desde backend.
+- Upload de video local sigue fuera del MVP backend; no se simula persistencia.

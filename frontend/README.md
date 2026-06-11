@@ -452,3 +452,14 @@ Notas:
 - `cajero_pos` entra por `/cajero/dashboard` y usa shell limitado a POS.
 - `pay_table.read` / `pay_table.manage` gobiernan tabulador.
 - En API mode no usar mocks/localStorage como source of truth para RBAC.
+
+## Site configuration API-first
+
+- `GET /api/v1/configuracion/site` alimenta Home, Nosotros, Clases y Contacto.
+- `PUT /api/v1/configuracion/site` persiste Admin > Configuración con permiso `settings.update`.
+- `POST /api/v1/configuracion/site/upload` sube JPG, PNG o WEBP a `/media/site/`.
+- `queryKeys.siteConfiguration.detail()` es key canónica; lecturas y mutaciones usan TanStack Query.
+- `configuracionStore` y localStorage quedan solo fallback con API apagada o error controlado.
+- Desktop y mobile consumen misma configuración; CSS responsive no sustituye imágenes configuradas.
+- Upload de video local no está soportado en MVP. YouTube y URLs de video existentes siguen permitidos.
+- `nombreEstudio` y `ciudad` ya persisten; PDFs legacy con branding fijo requieren migración independiente.

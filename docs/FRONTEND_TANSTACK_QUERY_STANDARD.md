@@ -231,3 +231,14 @@ const mutation = useMutation({
 - `spotHolds.byOccurrence` queda como key canonica de invalidacion por occurrence.
 - `occurrenceRoster.detail(occurrenceId, includeCanceled)` es key canonica para roster privado.
 - Refresh manual no es estrategia de server state en API mode.
+
+## Site configuration
+
+- Key canónica: `queryKeys.siteConfiguration.detail()`.
+- Lectura pública: `useSiteConfigurationQuery`.
+- Guardado admin: `useUpdateSiteConfigurationMutation`.
+- Upload: `useUploadSiteConfigurationMediaMutation`.
+- PUT/upload invalidan `siteConfiguration.detail()` y `activity.list`.
+- Backend es source of truth en API mode.
+- `configuracionStore` no se hidrata con respuesta API ni persiste server state.
+- Fallback local permitido solo con API off o error controlado.

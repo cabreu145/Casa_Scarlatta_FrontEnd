@@ -5,6 +5,12 @@ import styles from '../AdminPanel.module.css'
 import ConfiguracionCorreoSection from './ConfiguracionCorreoSection'
 import RolesPermissionsSection from '../components/rbac/RolesPermissionsSection'
 import { hasAnyPermission, hasPermission } from '@/auth/permissions'
+import {
+  useUpdateSiteConfigurationMutation,
+  useUploadSiteConfigurationMediaMutation,
+} from '@/hooks/useApiQueries'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
+import { isVideoMediaUrl } from '@/adapters/siteConfigurationAdapter'
 
 // ── Compresión de imagen vía canvas (max 1920px, JPEG 0.82) ──────────────────
 function compressImage(file, maxWidth = 1920, quality = 0.82) {
@@ -79,6 +85,36 @@ const grid2 = {
   gap:                 20,
 }
 
+const SITE_CONFIGURATION_ERROR_MESSAGES = {
+  SITE_CONFIG_MAX_HERO_SLIDES_EXCEEDED: 'Máximo 6 slides en el carrusel de inicio.',
+  SITE_CONFIG_MAX_NOSOTROS_ITEMS_EXCEEDED: 'Máximo 8 elementos en el carrusel de Nosotros.',
+  SITE_MEDIA_INVALID_TYPE: 'Formato no permitido. Usa JPG, PNG o WEBP.',
+  SITE_MEDIA_TOO_LARGE: 'La imagen supera el tamaño máximo permitido.',
+  SITE_VIDEO_UPLOAD_NOT_SUPPORTED: 'El video local aún no está soportado.',
+  SITE_CONFIG_INVALID_INSTAGRAM_URL: 'La URL de Instagram debe iniciar con https://',
+  SITE_CONFIG_INVALID_WHATSAPP: 'WhatsApp debe contener solo números.',
+}
+
+function getSiteConfigurationErrorMessage(error) {
+  return SITE_CONFIGURATION_ERROR_MESSAGES[error?.code]
+    ?? error?.message
+    ?? 'No se pudo guardar la configuración del sitio.'
+}
+
+async function persistConfiguration({ actualizar, payload, setGuardando, successMessage }) {
+  setGuardando(true)
+  try {
+    await actualizar(payload)
+    toast.success(successMessage)
+    return true
+  } catch (error) {
+    toast.error(getSiteConfigurationErrorMessage(error))
+    return false
+  } finally {
+    setGuardando(false)
+  }
+}
+
 // ── Componentes pequeños ──────────────────────────────────────────────────────
 function Field({ label: lbl, children, hint: h }) {
   return (
@@ -117,29 +153,30 @@ function MediaPreview({ url, isVideo }) {
   )
 }
 
-function BotonesGuardar({ guardando, onRestaurar }) {
+function BotonesGuardar({ guardando, onRestaurar, canEdit = true }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
       <button
         type="button"
         onClick={onRestaurar}
+        disabled={guardando || !canEdit}
         style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer' }}
       >
         ↩️ Restaurar defaults
       </button>
       <button
         type="submit"
-        disabled={guardando}
+        disabled={guardando || !canEdit}
         style={{ padding: '10px 28px', borderRadius: 8, border: 'none', background: '#7B1E22', color: '#fff', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, cursor: guardando ? 'not-allowed' : 'pointer', opacity: guardando ? 0.7 : 1 }}
       >
-        {guardando ? 'Guardando…' : 'Guardar cambios'}
+        {guardando ? 'Guardando…' : canEdit ? 'Guardar cambios' : 'Sin permiso para editar'}
       </button>
     </div>
   )
 }
 
 // ── TAB 1: Contacto ───────────────────────────────────────────────────────────
-function TabContacto({ cfg, actualizar }) {
+function TabContacto({ cfg, actualizar, canEdit = true }) {
   const [form, setForm] = useState({
     telefono:        cfg.get('telefono'),
     direccion:       cfg.get('direccion'),
@@ -153,26 +190,31 @@ function TabContacto({ cfg, actualizar }) {
 
   async function handleGuardar(e) {
     e.preventDefault()
-    setGuardando(true)
-    actualizar({
+    await persistConfiguration({
+      actualizar,
+      setGuardando,
+      successMessage: 'Información de contacto guardada',
+      payload: {
       telefono:        form.telefono.trim(),
       direccion:       form.direccion.trim(),
       instagram:       form.instagram.trim(),
       instagramHandle: form.instagramHandle.trim(),
       whatsapp:        form.whatsapp.trim(),
+      },
     })
-    await new Promise(r => setTimeout(r, 350))
-    setGuardando(false)
-    toast.success('Información de contacto guardada 📞')
   }
 
-  function handleRestaurar() {
+  async function handleRestaurar() {
     if (!window.confirm('¿Restaurar la información de contacto a los valores predeterminados?')) return
     const keys = ['telefono', 'direccion', 'instagram', 'instagramHandle', 'whatsapp']
     const defaults = Object.fromEntries(keys.map(k => [k, CONFIG_DEFAULTS[k]]))
-    actualizar(defaults)
-    setForm(defaults)
-    toast('Contacto restaurado', { icon: '↩️' })
+    const saved = await persistConfiguration({
+      actualizar,
+      payload: defaults,
+      setGuardando,
+      successMessage: 'Contacto restaurado',
+    })
+    if (saved) setForm(defaults)
   }
 
   return (
@@ -199,13 +241,13 @@ function TabContacto({ cfg, actualizar }) {
           </Field>
         </div>
       </div>
-      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} />
+      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} canEdit={canEdit} />
     </form>
   )
 }
 
 // ── TAB 2: Textos ─────────────────────────────────────────────────────────────
-function TabTextos({ cfg, actualizar }) {
+function TabTextos({ cfg, actualizar, canEdit = true }) {
   const [form, setForm] = useState({
     nosotrosTexto1: cfg.get('nosotrosTexto1'),
     nosotrosTexto2: cfg.get('nosotrosTexto2'),
@@ -216,20 +258,28 @@ function TabTextos({ cfg, actualizar }) {
 
   async function handleGuardar(e) {
     e.preventDefault()
-    setGuardando(true)
-    actualizar({ nosotrosTexto1: form.nosotrosTexto1.trim(), nosotrosTexto2: form.nosotrosTexto2.trim() })
-    await new Promise(r => setTimeout(r, 350))
-    setGuardando(false)
-    toast.success('Textos del sitio guardados 📝')
+    await persistConfiguration({
+      actualizar,
+      setGuardando,
+      successMessage: 'Textos del sitio guardados',
+      payload: {
+        nosotrosTexto1: form.nosotrosTexto1.trim(),
+        nosotrosTexto2: form.nosotrosTexto2.trim(),
+      },
+    })
   }
 
-  function handleRestaurar() {
+  async function handleRestaurar() {
     if (!window.confirm('¿Restaurar los textos a los valores predeterminados?')) return
     const keys = ['nosotrosTexto1', 'nosotrosTexto2']
     const defaults = Object.fromEntries(keys.map(k => [k, CONFIG_DEFAULTS[k]]))
-    actualizar(defaults)
-    setForm(defaults)
-    toast('Textos restaurados', { icon: '↩️' })
+    const saved = await persistConfiguration({
+      actualizar,
+      payload: defaults,
+      setGuardando,
+      successMessage: 'Textos restaurados',
+    })
+    if (saved) setForm(defaults)
   }
 
   return (
@@ -245,14 +295,14 @@ function TabTextos({ cfg, actualizar }) {
           </Field>
         </div>
       </div>
-      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} />
+      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} canEdit={canEdit} />
     </form>
   )
 }
 
 // ── TAB 3: Imágenes ───────────────────────────────────────────────────────────
-function TabImagenes({ cfg, actualizar }) {
-  const [carouselHome,     setCarouselHome]     = useState(() => cfg.get('carouselHome'))
+function TabImagenes({ cfg, actualizar, uploadMedia, apiMode, canEdit = true }) {
+  const [carouselHero,     setCarouselHero]     = useState(() => cfg.get('carouselHero'))
   const [carouselNosotros, setCarouselNosotros] = useState(() => cfg.get('carouselNosotros'))
   const [imagenes, setImagenes] = useState({
     imagenBannerClases:  cfg.get('imagenBannerClases'),
@@ -269,10 +319,10 @@ function TabImagenes({ cfg, actualizar }) {
 
   // ── Shared hidden file input ──────────────────────────────────────────────
   const fileInputRef = useRef(null)
-  const callbackRef  = useRef(null) // (url: string, isVideo: boolean) => void
+  const callbackRef  = useRef(null)
 
-  const triggerUpload = useCallback((onResult) => {
-    callbackRef.current = onResult
+  const triggerUpload = useCallback((field, onResult) => {
+    callbackRef.current = { field, onResult }
     fileInputRef.current.value = ''
     fileInputRef.current.click()
   }, [])
@@ -282,16 +332,27 @@ function TabImagenes({ cfg, actualizar }) {
     if (!file || !callbackRef.current) return
     setUploading(true)
     try {
-      if (file.type.startsWith('video/')) {
+      const { field, onResult } = callbackRef.current
+      if (apiMode && file.type.startsWith('video/')) {
+        const error = new Error('El video local aún no está soportado.')
+        error.code = 'SITE_VIDEO_UPLOAD_NOT_SUPPORTED'
+        throw error
+      }
+      if (apiMode) {
+        const result = await uploadMedia({ field, file })
+        if (!result?.url) throw new Error('SITE_MEDIA_UPLOAD_FAILED')
+        onResult(result.url, false)
+        toast.success('Imagen subida. Presiona Guardar cambios para publicarla.')
+      } else if (file.type.startsWith('video/')) {
         const blobUrl = URL.createObjectURL(file)
-        callbackRef.current(blobUrl, true)
+        onResult(blobUrl, true)
         toast('Video cargado. Solo disponible esta sesión — se perderá al recargar.', { icon: '⚠️', duration: 6000 })
       } else {
         const dataUrl = await compressImage(file)
-        callbackRef.current(dataUrl, false)
+        onResult(dataUrl, false)
       }
-    } catch {
-      toast.error('No se pudo leer el archivo')
+    } catch (error) {
+      toast.error(getSiteConfigurationErrorMessage(error))
     } finally {
       setUploading(false)
       callbackRef.current = null
@@ -300,36 +361,43 @@ function TabImagenes({ cfg, actualizar }) {
 
   async function handleGuardar(e) {
     e.preventDefault()
-    setGuardando(true)
-    actualizar({ carouselHome, carouselNosotros, ...imagenes })
-    await new Promise(r => setTimeout(r, 350))
-    setGuardando(false)
-    toast.success('Guardado 🖼️')
+    await persistConfiguration({
+      actualizar,
+      setGuardando,
+      successMessage: 'Imágenes publicadas',
+      payload: { carouselHero, carouselNosotros, ...imagenes },
+    })
   }
 
-  function handleRestaurar() {
+  async function handleRestaurar() {
     if (!window.confirm('¿Restaurar todas las imágenes a los valores predeterminados?')) return
-    const keys = ['carouselHome', 'carouselNosotros', 'imagenBannerClases', 'imagenStryde', 'imagenSlow', 'imagenCoachesBanner']
+    const keys = ['carouselHero', 'carouselNosotros', 'imagenBannerClases', 'imagenStryde', 'imagenSlow', 'imagenCoachesBanner']
     const defaults = Object.fromEntries(keys.map(k => [k, CONFIG_DEFAULTS[k]]))
-    actualizar(defaults)
-    setCarouselHome(CONFIG_DEFAULTS.carouselHome)
-    setCarouselNosotros(CONFIG_DEFAULTS.carouselNosotros)
-    setImagenes({ imagenBannerClases: CONFIG_DEFAULTS.imagenBannerClases, imagenStryde: CONFIG_DEFAULTS.imagenStryde, imagenSlow: CONFIG_DEFAULTS.imagenSlow, imagenCoachesBanner: CONFIG_DEFAULTS.imagenCoachesBanner })
-    setVideoNosotros(new Set())
-    setVideoImagenes(new Set())
-    toast('Imágenes restauradas', { icon: '↩️' })
+    const saved = await persistConfiguration({
+      actualizar,
+      payload: defaults,
+      setGuardando,
+      successMessage: 'Imágenes restauradas',
+    })
+    if (saved) {
+      setCarouselHero(CONFIG_DEFAULTS.carouselHero)
+      setCarouselNosotros(CONFIG_DEFAULTS.carouselNosotros)
+      setImagenes({ imagenBannerClases: CONFIG_DEFAULTS.imagenBannerClases, imagenStryde: CONFIG_DEFAULTS.imagenStryde, imagenSlow: CONFIG_DEFAULTS.imagenSlow, imagenCoachesBanner: CONFIG_DEFAULTS.imagenCoachesBanner })
+      setVideoNosotros(new Set())
+      setVideoImagenes(new Set())
+    }
   }
 
   // ── Carrusel Home helpers
   function updateHomeSlide(idx, field, val) {
-    setCarouselHome(prev => prev.map((s, i) => i === idx ? { ...s, [field]: val } : s))
+    setCarouselHero(prev => prev.map((s, i) => i === idx ? { ...s, [field]: val } : s))
   }
   function removeHomeSlide(idx) {
-    setCarouselHome(prev => prev.filter((_, i) => i !== idx))
+    setCarouselHero(prev => prev.filter((_, i) => i !== idx))
   }
   function addHomeSlide() {
-    if (carouselHome.length >= 6) return
-    setCarouselHome(prev => [...prev, { tipo: 'imagen', url: '' }])
+    if (carouselHero.length >= 6) return
+    setCarouselHero(prev => [...prev, { tipo: 'imagen', url: '' }])
   }
 
   // ── Carrusel Nosotros helpers
@@ -357,13 +425,20 @@ function TabImagenes({ cfg, actualizar }) {
     flexShrink: 0, whiteSpace: 'nowrap',
   }
 
-  function UploadBtn({ onResult }) {
+  function UploadBtn({ field, onResult, videoUpload = false, ariaLabel = 'Subir archivo' }) {
     return (
       <button
         type="button"
         style={uploadBtnStyle}
-        disabled={uploading}
-        onClick={() => triggerUpload(onResult)}
+        disabled={uploading || !canEdit}
+        aria-label={ariaLabel}
+        onClick={() => {
+          if (apiMode && videoUpload) {
+            toast.error(SITE_CONFIGURATION_ERROR_MESSAGES.SITE_VIDEO_UPLOAD_NOT_SUPPORTED)
+            return
+          }
+          triggerUpload(field, onResult)
+        }}
         title="Subir imagen o video desde tu computadora"
       >
         {uploading ? '⏳' : '📁'} {uploading ? 'Leyendo…' : 'Subir'}
@@ -383,7 +458,7 @@ function TabImagenes({ cfg, actualizar }) {
           placeholder="https://... o /fotos/archivo.jpg"
           style={{ flex: 1 }}
         />
-        <UploadBtn onResult={(val, isVid) => {
+        <UploadBtn field={key} ariaLabel={`Subir ${labelText}`} onResult={(val, isVid) => {
           setImagenes(p => ({ ...p, [key]: val }))
           setVideoImagenes(prev => { const n = new Set(prev); isVid ? n.add(key) : n.delete(key); return n })
         }} />
@@ -398,7 +473,7 @@ function TabImagenes({ cfg, actualizar }) {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,video/*"
+        accept={apiMode ? 'image/jpeg,image/png,image/webp' : 'image/*,video/*'}
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
@@ -407,9 +482,9 @@ function TabImagenes({ cfg, actualizar }) {
       <div style={panel}>
         <div style={sectionTitle}>Inicio — Carrusel hero</div>
         <p style={{ ...hint, marginBottom: 16 }}>
-          Máx. 6 slides. YouTube: pega solo el ID (ej: djp5ZQQ7WXA). Video local: solo esta sesión.
+          Máx. 6 slides. YouTube: pega solo el ID (ej: djp5ZQQ7WXA). {apiMode ? 'Upload de video local aún no soportado.' : 'Video local: solo esta sesión.'}
         </p>
-        {carouselHome.map((slide, i) => (
+        {carouselHero.map((slide, i) => (
           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12, borderBottom: '1px solid var(--neutral-border)', paddingBottom: 12 }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -445,7 +520,12 @@ function TabImagenes({ cfg, actualizar }) {
                       className={styles.formInput}
                       style={{ flex: 1 }}
                     />
-                    <UploadBtn onResult={(val) => updateHomeSlide(i, 'url', val)} />
+                    <UploadBtn
+                      field="carouselHero"
+                      ariaLabel={`Subir slide ${i + 1} del carrusel de inicio`}
+                      videoUpload={slide.tipo === 'videolocal'}
+                      onResult={(val) => updateHomeSlide(i, 'url', val)}
+                    />
                   </>
                 )}
               </div>
@@ -464,7 +544,7 @@ function TabImagenes({ cfg, actualizar }) {
             >×</button>
           </div>
         ))}
-        {carouselHome.length < 6 && (
+        {carouselHero.length < 6 && (
           <button
             type="button"
             onClick={addHomeSlide}
@@ -476,7 +556,9 @@ function TabImagenes({ cfg, actualizar }) {
       {/* ── Carrusel Nosotros ──────────────────────────────────────────── */}
       <div style={panel}>
         <div style={sectionTitle}>Nosotros — Carrusel de fotos</div>
-        <p style={{ ...hint, marginBottom: 16 }}>Máx. 8 archivos. [BACKEND] → configuracion.carouselNosotros</p>
+        <p style={{ ...hint, marginBottom: 16 }}>
+          Máx. 8 archivos. En API mode el upload acepta imágenes JPG, PNG o WEBP; video puede configurarse por URL.
+        </p>
         {carouselNosotros.map((url, i) => (
           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
@@ -489,12 +571,12 @@ function TabImagenes({ cfg, actualizar }) {
                   className={styles.formInput}
                   style={{ flex: 1 }}
                 />
-                <UploadBtn onResult={(val, isVid) => {
+                <UploadBtn field="carouselNosotros" ariaLabel={`Subir elemento ${i + 1} del carrusel Nosotros`} onResult={(val, isVid) => {
                   updateNosotrosSlide(i, val)
                   setVideoNosotros(prev => { const n = new Set(prev); isVid ? n.add(i) : n.delete(i); return n })
                 }} />
               </div>
-              <MediaPreview url={url} isVideo={videoNosotros.has(i)} />
+              <MediaPreview url={url} isVideo={videoNosotros.has(i) || isVideoMediaUrl(url)} />
             </div>
             <button
               type="button"
@@ -524,13 +606,13 @@ function TabImagenes({ cfg, actualizar }) {
         </div>
       </div>
 
-      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} />
+      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} canEdit={canEdit} />
     </form>
   )
 }
 
 // ── TAB 4: Reservas ───────────────────────────────────────────────────────────
-function TabReservas({ cfg, actualizar }) {
+function TabReservas({ cfg, actualizar, canEdit = true }) {
   const [form, setForm] = useState({
     horasCancelacion: cfg.get('horasCancelacion'),
     maxListaEspera:   cfg.get('maxListaEspera'),
@@ -549,20 +631,25 @@ function TabReservas({ cfg, actualizar }) {
       toast.error('El máximo de lista de espera debe estar entre 0 y 50')
       return
     }
-    setGuardando(true)
-    actualizar({ horasCancelacion: horas, maxListaEspera: maxEspera })
-    await new Promise(r => setTimeout(r, 350))
-    setGuardando(false)
-    toast.success('Configuración de reservas guardada 🗓️')
+    await persistConfiguration({
+      actualizar,
+      setGuardando,
+      successMessage: 'Configuración de reservas guardada',
+      payload: { horasCancelacion: horas, maxListaEspera: maxEspera },
+    })
   }
 
-  function handleRestaurar() {
+  async function handleRestaurar() {
     if (!window.confirm('¿Restaurar la configuración de reservas a los valores predeterminados?')) return
     const keys = ['horasCancelacion', 'maxListaEspera']
     const defaults = Object.fromEntries(keys.map(k => [k, CONFIG_DEFAULTS[k]]))
-    actualizar(defaults)
-    setForm(defaults)
-    toast('Reservas restauradas', { icon: '↩️' })
+    const saved = await persistConfiguration({
+      actualizar,
+      payload: defaults,
+      setGuardando,
+      successMessage: 'Reservas restauradas',
+    })
+    if (saved) setForm(defaults)
   }
 
   return (
@@ -607,13 +694,13 @@ function TabReservas({ cfg, actualizar }) {
           ℹ️ Cuando un cliente cancela, el lugar se asigna automáticamente al primero en la lista de espera y recibe un correo de notificación.
         </div>
       </div>
-      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} />
+      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} canEdit={canEdit} />
     </form>
   )
 }
 
 // ── TAB 5: Estudio ────────────────────────────────────────────────────────────
-function TabEstudio({ cfg, actualizar }) {
+function TabEstudio({ cfg, actualizar, canEdit = true }) {
   const [form, setForm] = useState({
     nombreEstudio: cfg.get('nombreEstudio'),
     ciudad:        cfg.get('ciudad'),
@@ -622,20 +709,28 @@ function TabEstudio({ cfg, actualizar }) {
 
   async function handleGuardar(e) {
     e.preventDefault()
-    setGuardando(true)
-    actualizar({ nombreEstudio: form.nombreEstudio.trim(), ciudad: form.ciudad.trim() })
-    await new Promise(r => setTimeout(r, 350))
-    setGuardando(false)
-    toast.success('Información del estudio guardada 🏢')
+    await persistConfiguration({
+      actualizar,
+      setGuardando,
+      successMessage: 'Información del estudio guardada',
+      payload: {
+        nombreEstudio: form.nombreEstudio.trim(),
+        ciudad: form.ciudad.trim(),
+      },
+    })
   }
 
-  function handleRestaurar() {
+  async function handleRestaurar() {
     if (!window.confirm('¿Restaurar la información del estudio a los valores predeterminados?')) return
     const keys = ['nombreEstudio', 'ciudad']
     const defaults = Object.fromEntries(keys.map(k => [k, CONFIG_DEFAULTS[k]]))
-    actualizar(defaults)
-    setForm(defaults)
-    toast('Estudio restaurado', { icon: '↩️' })
+    const saved = await persistConfiguration({
+      actualizar,
+      payload: defaults,
+      setGuardando,
+      successMessage: 'Estudio restaurado',
+    })
+    if (saved) setForm(defaults)
   }
 
   return (
@@ -651,7 +746,7 @@ function TabEstudio({ cfg, actualizar }) {
           </Field>
         </div>
       </div>
-      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} />
+      <BotonesGuardar guardando={guardando} onRestaurar={handleRestaurar} canEdit={canEdit} />
     </form>
   )
 }
@@ -659,8 +754,12 @@ function TabEstudio({ cfg, actualizar }) {
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function ConfiguracionSection({ currentUser = null }) {
   const store = useConfiguracionStore()
+  const siteConfiguration = useEffectiveSiteConfiguration()
+  const updateSiteConfiguration = useUpdateSiteConfigurationMutation()
+  const uploadSiteMedia = useUploadSiteConfigurationMediaMutation()
   const [tabActivo, setTabActivo] = useState('contacto')
   const canReadSettings = hasPermission(currentUser, 'settings.read') || !currentUser
+  const canUpdateSettings = hasPermission(currentUser, 'settings.update') || !currentUser
   const canReadEmailConfig = hasAnyPermission(currentUser, ['email_config.read', 'email_outbox.read']) || !currentUser
   const canReadRoles = hasPermission(currentUser, 'roles.read') || !currentUser
   const visibleTabs = useMemo(() => TABS.filter((tab) => {
@@ -673,6 +772,36 @@ export default function ConfiguracionSection({ currentUser = null }) {
     if (visibleTabs.some((tab) => tab.id === tabActivo)) return
     setTabActivo(visibleTabs[0]?.id ?? '')
   }, [tabActivo, visibleTabs])
+
+  const actualizarSite = useCallback(async (changes) => {
+    if (!canUpdateSettings) {
+      const error = new Error('No tienes permisos para modificar la configuración.')
+      error.code = 'FORBIDDEN'
+      throw error
+    }
+    if (siteConfiguration.apiMode) {
+      return updateSiteConfiguration.mutateAsync(changes)
+    }
+    store.actualizar(changes)
+    return changes
+  }, [canUpdateSettings, siteConfiguration.apiMode, store, updateSiteConfiguration])
+
+  const actualizarLegacy = useCallback(async (changes) => {
+    if (!canUpdateSettings) {
+      const error = new Error('No tienes permisos para modificar la configuración.')
+      error.code = 'FORBIDDEN'
+      throw error
+    }
+    store.actualizar(changes)
+    return changes
+  }, [canUpdateSettings, store])
+
+  const uploadMedia = useCallback(
+    (payload) => uploadSiteMedia.mutateAsync(payload),
+    [uploadSiteMedia]
+  )
+
+  const siteTabActive = ['contacto', 'textos', 'imagenes', 'estudio'].includes(tabActivo)
 
   const tabStyle = (id) => ({
     padding:      '8px 16px',
@@ -699,11 +828,31 @@ export default function ConfiguracionSection({ currentUser = null }) {
       </div>
 
       {/* Contenido del tab activo */}
-      {tabActivo === 'contacto' && <TabContacto  cfg={store} actualizar={store.actualizar} />}
-      {tabActivo === 'textos'   && <TabTextos    cfg={store} actualizar={store.actualizar} />}
-      {tabActivo === 'imagenes' && <TabImagenes  cfg={store} actualizar={store.actualizar} />}
-      {tabActivo === 'reservas' && <TabReservas  cfg={store} actualizar={store.actualizar} />}
-      {tabActivo === 'estudio'  && <TabEstudio   cfg={store} actualizar={store.actualizar} />}
+      {siteTabActive && siteConfiguration.apiMode && siteConfiguration.isLoading && (
+        <div style={panel}>Cargando configuración del sitio...</div>
+      )}
+      {siteTabActive && siteConfiguration.apiMode && siteConfiguration.isError && (
+        <div style={{ ...panel, borderColor: 'rgba(245,158,11,0.45)', color: 'var(--text-secondary)' }}>
+          No se pudo cargar la configuración del backend. Se muestra fallback local temporal; guardar volverá a intentar contra API.
+        </div>
+      )}
+      {(!siteTabActive || !siteConfiguration.apiMode || !siteConfiguration.isLoading) && (
+        <>
+          {tabActivo === 'contacto' && <TabContacto cfg={siteConfiguration} actualizar={actualizarSite} canEdit={canUpdateSettings} />}
+          {tabActivo === 'textos'   && <TabTextos cfg={siteConfiguration} actualizar={actualizarSite} canEdit={canUpdateSettings} />}
+          {tabActivo === 'imagenes' && (
+            <TabImagenes
+              cfg={siteConfiguration}
+              actualizar={actualizarSite}
+              uploadMedia={uploadMedia}
+              apiMode={siteConfiguration.apiMode}
+              canEdit={canUpdateSettings}
+            />
+          )}
+          {tabActivo === 'reservas' && <TabReservas cfg={store} actualizar={actualizarLegacy} canEdit={canUpdateSettings} />}
+          {tabActivo === 'estudio'  && <TabEstudio cfg={siteConfiguration} actualizar={actualizarSite} canEdit={canUpdateSettings} />}
+        </>
+      )}
       {tabActivo === 'correo'   && <ConfiguracionCorreoSection />}
       {tabActivo === 'roles'    && <RolesPermissionsSection currentUser={currentUser} />}
     </div>

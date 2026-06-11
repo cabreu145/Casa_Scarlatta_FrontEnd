@@ -60,6 +60,9 @@ export const queryKeys = {
   emailConfig: {
     detail: () => ['emailConfig', 'detail'],
   },
+  siteConfiguration: {
+    detail: () => ['siteConfiguration', 'detail'],
+  },
   notifications: {
     list: (params = {}) => ['notifications', 'list', params],
     unreadCount: () => ['notifications', 'unreadCount'],

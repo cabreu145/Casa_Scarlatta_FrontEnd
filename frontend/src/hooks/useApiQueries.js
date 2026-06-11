@@ -52,6 +52,11 @@ import {
   updateEmailConfigApi,
 } from '@/services/emailConfigApiService'
 import {
+  getSiteConfigurationApi,
+  updateSiteConfigurationApi,
+  uploadSiteConfigurationMediaApi,
+} from '@/services/siteConfigurationApiService'
+import {
   confirmPasswordResetApi,
   requestPasswordResetApi,
 } from '@/services/authPasswordResetApiService'
@@ -612,6 +617,43 @@ export function useEmailConfigQuery({ enabled = false } = {}) {
     queryFn: getEmailConfigApi,
     enabled,
     ...shortDefaults,
+  })
+}
+
+export function useSiteConfigurationQuery({ enabled = true } = {}) {
+  return useQuery({
+    queryKey: queryKeys.siteConfiguration.detail(),
+    queryFn: getSiteConfigurationApi,
+    enabled,
+    staleTime: 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useUpdateSiteConfigurationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateSiteConfigurationApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.siteConfiguration.detail() }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUploadSiteConfigurationMediaMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: uploadSiteConfigurationMediaApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.siteConfiguration.detail() }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
   })
 }
 

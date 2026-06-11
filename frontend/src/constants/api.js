@@ -160,6 +160,8 @@ export const ENDPOINTS = {
   marcarTodasLeidas: withPrefix('/notificaciones/read-all'),
 
   configuracionEmail: withPrefix('/configuracion/email'),
+  siteConfiguration: withPrefix('/configuracion/site'),
+  siteConfigurationUpload: withPrefix('/configuracion/site/upload'),
   emailTest: withPrefix('/email/test'),
   emailOutbox: withPrefix('/email/outbox'),
   emailOutboxRetryById: (id) => withPrefix(`/email/outbox/${id}/retry`),

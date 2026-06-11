@@ -268,3 +268,19 @@ Reglas frontend:
 - `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos` y `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos?includeCanceled=true` quedan como roster privado canonico.
 - Notificaciones, configuracion de correo y outbox ya usan hooks Query para lectura/mutacion.
 - `PaymentReturnPage` invalida estado financiero, membresias, movimientos, pagos, notificaciones y actividad tras pago aplicado.
+
+## Site configuration (vigente)
+
+| Archivo frontend | Función | Endpoint backend | Uso |
+|---|---|---|---|
+| `frontend/src/services/siteConfigurationApiService.js` | `getSiteConfigurationApi()` | `GET /api/v1/configuracion/site` | Configuración pública persistente |
+| `frontend/src/services/siteConfigurationApiService.js` | `updateSiteConfigurationApi(payload)` | `PUT /api/v1/configuracion/site` | Guardado con `settings.update` |
+| `frontend/src/services/siteConfigurationApiService.js` | `uploadSiteConfigurationMediaApi({ field, file })` | `POST /api/v1/configuracion/site/upload` | Upload multipart de imágenes |
+
+Reglas:
+- `siteConfiguration.detail()` es server state canónico en API mode.
+- `configuracionStore` no pisa backend; queda fallback API off/error controlado.
+- Home, Nosotros, Clases y Contacto consumen `useEffectiveSiteConfiguration`.
+- `/media/site/...` se resuelve contra `VITE_API_BASE_URL`, no contra Vite.
+- Upload acepta JPG, PNG y WEBP; video local muestra error MVP controlado.
+- Máximos: 6 slides Hero y 8 elementos Nosotros.

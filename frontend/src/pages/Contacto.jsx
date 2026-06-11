@@ -1,6 +1,6 @@
 import { MapPin } from 'lucide-react'
 import styles from './Contacto.module.css'
-import { useConfiguracionStore } from '@/stores/configuracionStore'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
 
 function InstagramIcon({ size = 32 }) {
   return (
@@ -19,7 +19,7 @@ function WhatsAppIcon({ size = 32 }) {
 }
 
 export default function Contacto() {
-  const cfg = useConfiguracionStore()
+  const cfg = useEffectiveSiteConfiguration()
   return (
     <main className={styles.page}>
       <div className={styles.inner}>

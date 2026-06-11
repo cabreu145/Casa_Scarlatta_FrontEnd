@@ -8,6 +8,8 @@ const mockGetOccurrencesForDateRangeApi = vi.fn()
 const mockCancelReserva = vi.fn()
 const mockUsePublicCoachesQuery = vi.fn()
 const todayIso = fechaLocal(new Date())
+const customBannerUrl = 'https://cdn.example.com/custom-classes-mobile.jpg'
+const originalInnerWidth = window.innerWidth
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
@@ -51,9 +53,14 @@ vi.mock('@/stores/configuracionStore', () => ({
   useConfiguracionStore: () => ({
     get: (key) => {
       if (key === 'horasCancelacion') return 2
-      if (key === 'imagenBannerClases') return ''
       return ''
     },
+  }),
+}))
+
+vi.mock('@/hooks/useSiteConfiguration', () => ({
+  useEffectiveSiteConfiguration: () => ({
+    get: (key) => key === 'imagenBannerClases' ? customBannerUrl : '',
   }),
 }))
 
@@ -116,6 +123,7 @@ vi.mock('@/utils/formatters', async () => {
 
 describe('Clases public avatar regression', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
     vi.stubEnv('VITE_USE_API_CLASSES', 'true')
     vi.stubEnv('VITE_USE_API_RESERVATIONS', 'true')
     mockUsePublicCoachesQuery.mockReturnValue({
@@ -143,6 +151,7 @@ describe('Clases public avatar regression', () => {
   })
 
   afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
   })
@@ -166,5 +175,6 @@ describe('Clases public avatar regression', () => {
     expect(avatar).toBeInTheDocument()
     expect(avatar.getAttribute('src')).toContain('/media/coaches/coach-demo.png')
     expect(avatar.getAttribute('src')).not.toContain('localhost:5173')
+    expect(document.querySelector('section').style.getPropertyValue('--hero-image')).toContain(customBannerUrl)
   })
 })

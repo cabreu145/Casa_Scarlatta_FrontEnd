@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 import MotionButton from '@/components/ui/MotionButton'
-import { useConfiguracionStore } from '@/stores/configuracionStore'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
 import styles from './DisciplinasSection.module.css'
 
 export default function DisciplinasSection() {
   const navigate = useNavigate()
-  const cfg = useConfiguracionStore()
+  const cfg = useEffectiveSiteConfiguration()
 
   const disciplinas = [
     {
