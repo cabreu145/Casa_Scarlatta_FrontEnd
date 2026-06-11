@@ -1,7 +1,8 @@
-﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/queryKeys'
 import { getMyFinancialStateApi, getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
 import { getClasesApi, getClasesPaginatedApi, getClaseByIdApi } from '@/services/clasesApiService'
+import { useClasesStore } from '@/stores/clasesStore'
 import { getOccurrencesByClassApi } from '@/services/occurrencesApiService'
 import {
   addClientMembershipBeneficiaryApi,
@@ -51,13 +52,40 @@ import {
   updateEmailConfigApi,
 } from '@/services/emailConfigApiService'
 import {
+  getSiteConfigurationApi,
+  updateSiteConfigurationApi,
+  uploadSiteConfigurationMediaApi,
+} from '@/services/siteConfigurationApiService'
+import {
+  confirmPasswordResetApi,
+  requestPasswordResetApi,
+} from '@/services/authPasswordResetApiService'
+import {
   getNotificationsApi,
   getUnreadNotificationsCountApi,
   markAllNotificationsReadApi,
   markNotificationReadApi,
 } from '@/services/notificationsApiService'
 import { getEmailOutboxApi, retryEmailOutboxApi } from '@/services/emailOutboxApiService'
-import { getOccurrenceRosterApi } from '@/services/reservasApiService'
+import {
+  createRoleApi,
+  deleteRoleApi,
+  getPermissionsApi,
+  getRbacUsersApi,
+  getRoleByIdApi,
+  getRolesApi,
+  getUserEffectivePermissionsApi,
+  updateRoleApi,
+  updateRolePermissionsApi,
+  updateUserPermissionOverridesApi,
+  updateUserRoleApi,
+} from '@/services/rbacApiService'
+import {
+  cancelarReservaApi,
+  crearReservaApi,
+  getMisReservasPaginatedApi,
+  getOccurrenceRosterApi,
+} from '@/services/reservasApiService'
 import {
   adjustClientCreditsApi,
   assignClientPackageApi,
@@ -68,7 +96,11 @@ import {
   updateClientApi,
 } from '@/services/clientsApiService'
 import { getCoachesPaginatedApi, getPublicCoachesApi } from '@/services/coachesApiService'
-import { getOccurrenceSpotsApi } from '@/services/equipmentReservationApiService'
+import {
+  createSpotHoldApi,
+  getOccurrenceSpotsApi,
+  releaseSpotHoldApi,
+} from '@/services/equipmentReservationApiService'
 import {
   createProductApi,
   createSaleApi,
@@ -588,6 +620,43 @@ export function useEmailConfigQuery({ enabled = false } = {}) {
   })
 }
 
+export function useSiteConfigurationQuery({ enabled = true } = {}) {
+  return useQuery({
+    queryKey: queryKeys.siteConfiguration.detail(),
+    queryFn: getSiteConfigurationApi,
+    enabled,
+    staleTime: 60_000,
+    retry: 1,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export function useUpdateSiteConfigurationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateSiteConfigurationApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.siteConfiguration.detail() }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUploadSiteConfigurationMediaMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: uploadSiteConfigurationMediaApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.siteConfiguration.detail() }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
 export function useUpdateEmailConfigMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -607,6 +676,22 @@ export function useSendTestEmailMutation() {
         queryClient.invalidateQueries({ queryKey: ['emailOutbox'] }),
         queryClient.invalidateQueries({ queryKey: ['activity'] }),
       ])
+    },
+  })
+}
+
+export function useRequestPasswordResetMutation() {
+  return useMutation({
+    mutationFn: requestPasswordResetApi,
+  })
+}
+
+export function useConfirmPasswordResetMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: confirmPasswordResetApi,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me })
     },
   })
 }
@@ -698,6 +783,149 @@ export function useRetryEmailOutboxMutation() {
     mutationFn: retryEmailOutboxApi,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['emailOutbox'] })
+    },
+  })
+}
+
+export function useRbacPermissionsQuery({ enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.rbac.permissions(),
+    queryFn: getPermissionsApi,
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useRbacRolesQuery({ page = 1, pageSize = 20, search, status, enabled = false } = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
+  return useQuery({
+    queryKey: queryKeys.rbac.roles({ page, pageSize: normalizedPageSize, search: search || '', status: status || 'all' }),
+    queryFn: () => getRolesApi({ page, pageSize: normalizedPageSize, search, status }),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useRbacRoleDetailQuery(roleId, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.rbac.roleDetail(roleId),
+    queryFn: () => getRoleByIdApi(roleId),
+    enabled: Boolean(enabled && roleId),
+    ...shortDefaults,
+  })
+}
+
+export function useRbacUsersQuery({ page = 1, pageSize = 20, search, role, status, enabled = false } = {}) {
+  const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
+  return useQuery({
+    queryKey: queryKeys.rbac.users({ page, pageSize: normalizedPageSize, search: search || '', role: role || 'all', status: status || 'all' }),
+    queryFn: () => getRbacUsersApi({ page, pageSize: normalizedPageSize, search, role, status }),
+    enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useRbacUserPermissionsQuery(userId, { enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.rbac.userPermissions(userId),
+    queryFn: () => getUserEffectivePermissionsApi(userId),
+    enabled: Boolean(enabled && userId),
+    ...shortDefaults,
+  })
+}
+
+export function useCreateRbacRoleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createRoleApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUpdateRbacRoleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roleId, payload }) => updateRoleApi(roleId, payload),
+    onSuccess: async (_result, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
+        variables?.roleId ? queryClient.invalidateQueries({ queryKey: queryKeys.rbac.roleDetail(variables.roleId) }) : Promise.resolve(),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users', 'permissions'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUpdateRbacRolePermissionsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ roleId, permissionKeys }) => updateRolePermissionsApi(roleId, permissionKeys),
+    onSuccess: async (_result, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
+        variables?.roleId ? queryClient.invalidateQueries({ queryKey: queryKeys.rbac.roleDetail(variables.roleId) }) : Promise.resolve(),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users', 'permissions'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useDeleteRbacRoleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteRoleApi,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'roles'] }),
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUpdateRbacUserRoleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, payload }) => updateUserRoleApi(userId, payload),
+    onSuccess: async (_result, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        variables?.userId ? queryClient.invalidateQueries({ queryKey: queryKeys.rbac.userPermissions(variables.userId) }) : Promise.resolve(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['clients'] }),
+        queryClient.invalidateQueries({ queryKey: ['coaches'] }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
+    },
+  })
+}
+
+export function useUpdateRbacUserPermissionOverridesMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ userId, overrides }) => updateUserPermissionOverridesApi(userId, overrides),
+    onSuccess: async (_result, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['rbac', 'users'] }),
+        variables?.userId ? queryClient.invalidateQueries({ queryKey: queryKeys.rbac.userPermissions(variables.userId) }) : Promise.resolve(),
+        queryClient.invalidateQueries({ queryKey: queryKeys.auth.me }),
+        queryClient.invalidateQueries({ queryKey: ['activity'] }),
+      ])
     },
   })
 }
@@ -865,20 +1093,75 @@ export function useDeleteProductCategoryMutation() {
   })
 }
 
+export function invalidatePosSaleSideEffects(queryClient, { customerId } = {}) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['admin', 'pos'] }),
+    queryClient.invalidateQueries({ queryKey: ['finance'] }),
+    queryClient.invalidateQueries({ queryKey: ['cashClosings'] }),
+    queryClient.invalidateQueries({ queryKey: ['reports'] }),
+    queryClient.invalidateQueries({ queryKey: ['activity'] }),
+    queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    queryClient.invalidateQueries({ queryKey: ['packages'] }),
+    queryClient.invalidateQueries({ queryKey: ['clients'] }),
+    queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.clients.detail(customerId) }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(customerId) }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }) : Promise.resolve(),
+    customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.packages() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.users() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.pos() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.finance() }),
+  ])
+}
+
+export function invalidateClassSideEffects(queryClient, { classId, occurrenceId, coachId } = {}) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['classes'] }),
+    queryClient.invalidateQueries({ queryKey: ['coaches'] }),
+    queryClient.invalidateQueries({ queryKey: ['coachAgenda'] }),
+    queryClient.invalidateQueries({ queryKey: ['reservations'] }),
+    queryClient.invalidateQueries({ queryKey: ['spots'] }),
+    queryClient.invalidateQueries({ queryKey: ['spotHolds'] }),
+    queryClient.invalidateQueries({ queryKey: ['waitlist'] }),
+    queryClient.invalidateQueries({ queryKey: ['reports'] }),
+    queryClient.invalidateQueries({ queryKey: ['activity'] }),
+    queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    classId ? queryClient.invalidateQueries({ queryKey: queryKeys.classes.detail(classId) }) : Promise.resolve(),
+    classId ? queryClient.invalidateQueries({ queryKey: queryKeys.classes.list({}) }) : Promise.resolve(),
+    classId ? queryClient.invalidateQueries({ queryKey: queryKeys.classes.occurrences(classId) }) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId) }) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.waitlist.byOccurrence(occurrenceId) }) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.spots.byOccurrence(occurrenceId) }) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.spotHolds.byOccurrence(occurrenceId) }) : Promise.resolve(),
+    coachId ? queryClient.invalidateQueries({ queryKey: queryKeys.coaches.detail(coachId) }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.coachAgenda.me() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.topClasses() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.occupancyByDiscipline() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.coaches() }),
+    Promise.resolve(useClasesStore.getState().loadClasesFromApi({ force: true }).catch(() => {})),
+  ])
+}
+
 export function useCreatePosSaleMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createSaleApi,
-    onSuccess: async (_, variables, context) => {
+    onSuccess: async (_, variables) => {
       await Promise.all([
+        invalidatePosSaleSideEffects(queryClient, { customerId: variables?.customerId }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'sales'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'products'] }),
-        variables?.customerId
-          ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(variables.customerId) })
-          : Promise.resolve(),
-        variables?.customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }) : Promise.resolve(),
-        variables?.customerId ? queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }) : Promise.resolve(),
-        queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
       ])
     },
   })
@@ -1038,6 +1321,76 @@ export function useRemoveClientMembershipBeneficiaryMutation() {
     mutationFn: ({ clientId, membershipId, beneficiaryId }) => removeClientMembershipBeneficiaryApi(clientId, membershipId, beneficiaryId),
     onSuccess: async (_, variables) => {
       await invalidateAdminClients(queryClient, variables?.clientId)
+    },
+  })
+}
+
+// -- Asientos / holds / reservas --------------------------------------------
+
+function invalidateSpotsAndHolds(queryClient, occurrenceId) {
+  if (!occurrenceId) return Promise.resolve()
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.spots.byOccurrence(occurrenceId) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.spotHolds.byOccurrence(occurrenceId) }),
+  ])
+}
+
+export function invalidateReservationSideEffects(queryClient, { occurrenceId, classId } = {}) {
+  return Promise.all([
+    invalidateSpotsAndHolds(queryClient, occurrenceId),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reservations.me() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reservations.list() }),
+    classId ? queryClient.invalidateQueries({ queryKey: queryKeys.classes.occurrences(classId) }) : Promise.resolve(),
+    occurrenceId ? Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['occurrenceRoster', occurrenceId] }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId) }),
+    ]) : Promise.resolve(),
+    occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.waitlist.byOccurrence(occurrenceId) }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
+  ])
+}
+
+export function useCreateSpotHoldMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ occurrenceId, spotId }) => createSpotHoldApi({ occurrenceId, spotId }),
+    onSuccess: async (_data, variables) => {
+      await invalidateSpotsAndHolds(queryClient, variables?.occurrenceId)
+    },
+  })
+}
+
+export function useDeleteSpotHoldMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ holdId }) => releaseSpotHoldApi({ holdId }),
+    onSuccess: async (_data, variables) => {
+      await invalidateSpotsAndHolds(queryClient, variables?.occurrenceId)
+    },
+  })
+}
+
+export function useCreateReservationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ claseId, userId, asiento, occurrenceId, spotId, holdId }) =>
+      crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId }),
+    onSuccess: async (_data, variables) => {
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.claseId })
+    },
+  })
+}
+
+export function useCancelReservationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ reservationId }) => cancelarReservaApi(reservationId),
+    onSuccess: async (_data, variables) => {
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId })
     },
   })
 }

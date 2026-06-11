@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { crearReservaApi } from '@/services/reservasApiService'
-import { getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
 import { useFinancialStateStore } from '@/stores/financialStateStore'
-import { useReservasStore } from '@/stores/reservasStore'
-import { createSpotHoldApi, getOccurrenceSpotsApi, releaseSpotHoldApi } from '@/services/equipmentReservationApiService'
 import { mapOccurrenceSpotsResponseToFrontend } from '@/adapters/equipmentReservationAdapter'
+import {
+  useCreateReservationMutation,
+  useCreateSpotHoldMutation,
+  useDeleteSpotHoldMutation,
+  useOccurrenceSpotsQuery,
+} from '@/hooks/useApiQueries'
 import {
   buildSpotLookup,
   formatOccurrenceDateTime,
@@ -129,11 +131,7 @@ export default function EquipmentReservationPanel({
   const storeActiveMembership = useFinancialStateStore((s) => s.activeMembership)
   const storeFinancialLoading = useFinancialStateStore((s) => s.isLoading)
   const storeFinancialError = useFinancialStateStore((s) => s.error)
-  const loadMisReservasFromApi = useReservasStore((s) => s.loadMisReservasFromApi)
 
-  const [layoutData, setLayoutData] = useState(null)
-  const [isLoadingSpots, setIsLoadingSpots] = useState(true)
-  const [spotsError, setSpotsError] = useState('')
   const [selectionError, setSelectionError] = useState('')
   const [selectedSpotId, setSelectedSpotId] = useState(null)
   const [activeHold, setActiveHold] = useState(null)
@@ -143,6 +141,12 @@ export default function EquipmentReservationPanel({
   const [clockTick, setClockTick] = useState(0)
   const activeHoldRef = useRef(null)
   const releasedHoldsRef = useRef(new Set())
+  const hasRestoredHoldRef = useRef(false)
+
+  const occurrenceSpotsQuery = useOccurrenceSpotsQuery(occurrenceId, { enabled: Boolean(occurrenceId) })
+  const createSpotHoldMutation = useCreateSpotHoldMutation()
+  const deleteSpotHoldMutation = useDeleteSpotHoldMutation()
+  const createReservationMutation = useCreateReservationMutation()
 
   useEffect(() => {
     activeHoldRef.current = activeHold
@@ -154,11 +158,11 @@ export default function EquipmentReservationPanel({
     if (releasedHoldsRef.current.has(normalizedHoldId)) return
     releasedHoldsRef.current.add(normalizedHoldId)
     try {
-      await releaseSpotHoldApi({ holdId })
+      await deleteSpotHoldMutation.mutateAsync({ holdId, occurrenceId })
     } catch {
       // hold TTL covers release failures
     }
-  }, [])
+  }, [deleteSpotHoldMutation, occurrenceId])
 
   const resolvedFinancial = financialState ?? storeFinancialState
   const resolvedCreditsBalance = financialState?.creditsBalance ?? storeCreditsBalance
@@ -179,6 +183,11 @@ export default function EquipmentReservationPanel({
     if (storeFinancialState || storeFinancialLoading) return
     loadFinancialState({ enabled: true }).catch(() => {})
   }, [financialState, storeFinancialLoading, storeFinancialState, loadFinancialState])
+
+  const layoutData = useMemo(
+    () => (occurrenceSpotsQuery.data ? mapOccurrenceSpotsResponseToFrontend(occurrenceSpotsQuery.data) : null),
+    [occurrenceSpotsQuery.data]
+  )
 
   const layoutKind = normalizeDiscipline(layoutData?.discipline ?? layoutData?.raw?.discipline)
 
@@ -219,8 +228,13 @@ export default function EquipmentReservationPanel({
     startAt: layoutData?.startAt ?? layoutData?.start_at,
   }), [layoutData?.occurrenceDate, layoutData?.occurrence_date, layoutData?.startAt, layoutData?.start_at])
 
-  const restoreHoldFromStorage = useCallback((spotsPayload) => {
-    if (!occurrenceId) return
+  // Restaura un hold activo (holdId / expiresAt) al remontar, ya que el
+  // backend no expone el holdId en el mapa de spots, solo held_by_me.
+  useEffect(() => {
+    if (hasRestoredHoldRef.current) return
+    if (!occurrenceId || !layoutData) return
+    hasRestoredHoldRef.current = true
+
     const stored = readStoredHold(occurrenceId)
     if (!stored?.holdId || !stored?.spotId || !stored?.expiresAt) return
 
@@ -230,9 +244,9 @@ export default function EquipmentReservationPanel({
       return
     }
 
-    const lookup = buildSpotLookup(spotsPayload?.spots ?? [])
+    const lookup = buildSpotLookup(layoutData.spots ?? [])
     const storedKey = stored.spotKey ?? null
-    const fallbackSpot = lookup.get(storedKey) ?? [...lookup.values()].find((spot) => Number(spot.spotId) === Number(stored.spotId)) ?? null
+    const fallbackSpot = lookup.get(storedKey) ?? (layoutData.spots ?? []).find((spot) => Number(spot.spotId) === Number(stored.spotId)) ?? null
     if (!fallbackSpot) {
       removeStoredHold(occurrenceId)
       return
@@ -243,39 +257,17 @@ export default function EquipmentReservationPanel({
       occurrenceId,
       spotId: fallbackSpot.spotId,
       expiresAt: stored.expiresAt,
-      serverNow: stored.serverNow ?? spotsPayload?.serverNow ?? null,
+      serverNow: stored.serverNow ?? layoutData.serverNow ?? null,
     })
     setSelectedSpotId(fallbackSpot.spotId)
-  }, [occurrenceId])
-
-  const loadSpots = useCallback(async () => {
-    if (!occurrenceId) {
-      setIsLoadingSpots(false)
-      setSpotsError('No pudimos identificar la clase a reservar.')
-      return
-    }
-
-    setIsLoadingSpots(true)
-    setSpotsError('')
-    try {
-      const data = await getOccurrenceSpotsApi({ occurrenceId })
-      const mappedData = mapOccurrenceSpotsResponseToFrontend(data ?? {})
-      setLayoutData(mappedData)
-      setIsLoadingSpots(false)
-      restoreHoldFromStorage(mappedData)
-    } catch (error) {
-      setLayoutData(null)
-      setIsLoadingSpots(false)
-      setSpotsError(error?.message ?? 'No pudimos cargar mapa de lugares.')
-    }
-  }, [occurrenceId, restoreHoldFromStorage])
+  }, [occurrenceId, layoutData])
 
   useEffect(() => {
-    loadSpots()
     return () => {
       void releaseHoldOnce(activeHoldRef.current?.holdId)
     }
-  }, [loadSpots, occurrenceId, releaseHoldOnce])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!activeHold?.expiresAt) return undefined
@@ -295,8 +287,9 @@ export default function EquipmentReservationPanel({
     removeStoredHold(occurrenceId)
     void releaseHoldOnce(activeHoldRef.current?.holdId)
     setClockTick((tick) => tick + 1)
-    loadSpots()
-  }, [activeHold?.expiresAt, remainingHoldMs, occurrenceId, loadSpots, releaseHoldOnce, selectedSpotId])
+    occurrenceSpotsQuery.refetch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeHold?.expiresAt, remainingHoldMs, occurrenceId, releaseHoldOnce, selectedSpotId])
 
   const clearCurrentHold = useCallback(async () => {
     if (!activeHold?.holdId) {
@@ -320,7 +313,6 @@ export default function EquipmentReservationPanel({
   const handleSpotSelect = useCallback(async (spot) => {
     if (!spot) return
     const spotKey = getEquipmentSpotKey(spot)
-    const previousSpotId = activeHold?.spotId ?? selectedSpotId
     const selectable = spot.status === 'available' || spot.status === 'held_by_me'
     if (!selectable) {
       setSelectionError(getEquipmentSpotStatusLabel(spot) === 'Ocupado'
@@ -340,7 +332,7 @@ export default function EquipmentReservationPanel({
         await releaseHoldOnce(activeHold.holdId)
       }
 
-      const hold = await createSpotHoldApi({ occurrenceId, spotId: spot.spotId })
+      const hold = await createSpotHoldMutation.mutateAsync({ occurrenceId, spotId: spot.spotId })
       setSelectedSpotId(spot.spotId)
       setActiveHold({
         holdId: hold.holdId,
@@ -358,56 +350,17 @@ export default function EquipmentReservationPanel({
         equipmentType: spot.equipmentType,
         label: spot.label,
       })
-      setLayoutData((prev) => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          spots: (prev.spots ?? []).map((rowSpot) => {
-            const rowSpotId = Number(rowSpot.spotId)
-            if (Number(rowSpotId) === Number(spot.spotId)) {
-              return {
-                ...rowSpot,
-                status: 'held_by_me',
-                heldByMe: true,
-                heldUntil: hold.expiresAt,
-              }
-            }
-
-            if (previousSpotId != null && rowSpotId === Number(previousSpotId)) {
-              return {
-                ...rowSpot,
-                status: 'available',
-                heldByMe: false,
-                heldUntil: null,
-              }
-            }
-
-            return {
-              ...rowSpot,
-              heldByMe: Boolean(rowSpot.heldByMe && rowSpot.status === 'held_by_me'),
-            }
-          }),
-        }
-      })
       setClockTick((tick) => tick + 1)
     } catch (error) {
       setSelectedSpotId(null)
       setActiveHold(null)
       removeStoredHold(occurrenceId)
       setSelectionError(formatReservationError(error))
-      loadSpots()
+      occurrenceSpotsQuery.refetch()
     } finally {
       setIsSelecting(false)
     }
-  }, [activeHold?.holdId, isSelecting, isConfirming, occurrenceId, releaseHoldOnce, selectedSpotId, layoutData?.serverNow, loadSpots])
-
-  const refreshFinancialState = useCallback(async () => {
-    await loadFinancialState({ force: true, enabled: true }).catch(() => {})
-    await getMyCreditMovementsPaginatedApi({ page: 1, pageSize: 8 }).catch(() => {})
-    if (loadMisReservasFromApi) {
-      await loadMisReservasFromApi({ force: true }).catch(() => {})
-    }
-  }, [loadFinancialState, loadMisReservasFromApi])
+  }, [activeHold?.holdId, isSelecting, isConfirming, occurrenceId, releaseHoldOnce, selectedSpotId, layoutData?.serverNow, createSpotHoldMutation, occurrenceSpotsQuery])
 
   const handleConfirmReservation = useCallback(async () => {
     if (!selectedSpot || !activeHold?.holdId) {
@@ -426,7 +379,7 @@ export default function EquipmentReservationPanel({
     setSelectionError('')
     setIsConfirming(true)
     try {
-      const reservation = await crearReservaApi({
+      const reservation = await createReservationMutation.mutateAsync({
         claseId: classId,
         userId,
         occurrenceId,
@@ -438,18 +391,16 @@ export default function EquipmentReservationPanel({
       setReservationSuccess(reservation)
       setActiveHold(null)
       setSelectedSpotId(null)
-      await refreshFinancialState()
-      await loadSpots()
       onReservationCreated?.(reservation)
     } catch (error) {
       setSelectionError(formatReservationError(error))
       if (error?.code === 'HOLD_EXPIRED' || error?.code === 'SPOT_ALREADY_RESERVED' || error?.code === 'SPOT_HELD_BY_ANOTHER_USER') {
-        loadSpots()
+        occurrenceSpotsQuery.refetch()
       }
     } finally {
       setIsConfirming(false)
     }
-  }, [activeHold?.holdId, classId, occurrenceId, onReservationCreated, refreshFinancialState, remainingHoldMs, selectedSpot, userId, loadSpots])
+  }, [activeHold?.holdId, classId, occurrenceId, onReservationCreated, remainingHoldMs, selectedSpot, userId, createReservationMutation, occurrenceSpotsQuery])
 
   const currentSpots = layoutData?.spots ?? []
   const holdCountdown = activeHold?.expiresAt ? remainingHoldLabel : null
@@ -457,12 +408,12 @@ export default function EquipmentReservationPanel({
   const coachName = layoutData?.coachName ?? layoutData?.coach_name ?? 'Coach'
   const classDateTime = occurrenceLabel.fullLabel
 
-  if (isLoadingSpots) {
+  if (occurrenceSpotsQuery.isLoading) {
     return <div role="status" style={{ padding: 24, color: 'var(--muted)' }}>Cargando mapa...</div>
   }
 
-  if (spotsError) {
-    return <div role="alert" style={{ padding: 24, color: '#b42318' }}>{spotsError}</div>
+  if (occurrenceSpotsQuery.error) {
+    return <div role="alert" style={{ padding: 24, color: '#b42318' }}>{occurrenceSpotsQuery.error?.message ?? 'No pudimos cargar mapa de lugares.'}</div>
   }
 
   if (!layoutData || !layoutKind) return null
@@ -494,6 +445,4 @@ export default function EquipmentReservationPanel({
       onClose={handleClose}
     />
   )
-
-
 }

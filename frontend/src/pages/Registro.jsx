@@ -303,7 +303,7 @@ export default function Registro() {
             fecha de nacimiento) únicamente para gestionar tu cuenta y reservas. Tus datos no serán
             compartidos con terceros. Puedes solicitar la eliminación de tu cuenta en cualquier
             momento escribiendo a{' '}
-            <strong>hola@casascarlatta.com</strong>.
+            <strong>contacto@casascarlatta.mx</strong>.
           </p>
         </LegalModal>
       )}

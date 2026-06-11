@@ -14,6 +14,7 @@ const rolDashboard = {
   cliente: '/cliente/dashboard',
   coach: '/coach/dashboard',
   admin: '/admin/dashboard',
+  cajero_pos: '/cajero/dashboard',
 }
 
 const underlineInputStyle = {
@@ -95,7 +96,7 @@ export default function Login() {
             className={`${styles.toggleBtn} ${mode === 'login' ? styles.toggleActive : ''}`}
             onClick={() => setMode('login')}
           >
-            Iniciar sesión
+            Iniciar Sesión
           </button>
           <button
             className={`${styles.toggleBtn} ${mode === 'register' ? styles.toggleActive : ''}`}
@@ -137,7 +138,7 @@ function LoginForm({ redirect }) {
       clearPendingPackagePurchaseIntent()
       navigate(destination, { replace: true })
     } catch (err) {
-      toast.error(err.message || 'Error al iniciar sesión')
+      toast.error(err.message || 'Error al Iniciar Sesión')
     } finally {
       setLoading(false)
     }
@@ -324,7 +325,7 @@ function RegisterForm({ onSuccess, LegalModal: Modal }) {
           <p>Casa Scarlatta Wellness Studio recopila tus datos personales (nombre, email, teléfono,
             fecha de nacimiento) únicamente para gestionar tu cuenta y reservas. Tus datos no serán
             compartidos con terceros. Puedes solicitar la eliminación de tu cuenta en cualquier
-            momento escribiendo a <strong>hola@casascarlatta.com</strong>.</p>
+            momento escribiendo a <strong>contacto@casascarlatta.mx</strong>.</p>
         </Modal>
       )}
       {legalModal === 'responsiva' && (

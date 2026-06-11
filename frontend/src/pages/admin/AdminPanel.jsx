@@ -77,6 +77,7 @@ import {
   useAdminClientsQuery,
   useAdminClientsActiveCountQuery,
   useAdminCoachesActiveCountQuery,
+  invalidateClassSideEffects,
   useCreateProductMutation,
   useDeleteProductMutation,
   useOccurrenceRosterQuery,
@@ -86,6 +87,13 @@ import {
 import { COACHES_SELECTOR_PAGE_SIZE } from './adminCoachesApiUtils'
 import { ADMIN_PACKAGES_PAGE_SIZE, buildAdminPackagesApiQuery } from './adminPackagesApiUtils'
 import { resolveCoachAvatarUrl } from '@/adapters/coachAdapter'
+import {
+  ADMIN_SECTION_PERMISSIONS,
+  canAccessAdminSection,
+  hasAnyPermission,
+  hasPermission,
+  isRole,
+} from '@/auth/permissions'
 import {
   adjustClientCreditsApi,
   assignClientPackageApi,
@@ -198,9 +206,9 @@ function resolveMembershipErrorMessage(error) {
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-export default function AdminPanel() {
+export default function AdminPanel({ initialSection = 'dashboard' }) {
   const navigate = useNavigate()
-  const [activeSection, setActiveSection] = useState('dashboard')
+  const [activeSection, setActiveSection] = useState(initialSection)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [modalType, setModalType]         = useState(null) // null | 'coach' | 'clase' | 'paquete' | 'usuario'
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
@@ -314,6 +322,41 @@ export default function AdminPanel() {
   const apiClientsTotalFromQuery = adminClientsQuery.data?.total ?? 0
   const apiClientsLoadingFromQuery = adminClientsQuery.isLoading
   const apiClientsErrorFromQuery = adminClientsQuery.error?.message ?? ''
+  const sectionPermissions = useMemo(() => ADMIN_SECTION_PERMISSIONS, [])
+  const visibleAdminSections = useMemo(
+    () => Object.keys(SECTIONS).filter((sectionId) => canAccessAdminSection(usuario, sectionId)),
+    [usuario]
+  )
+  const firstVisibleAdminSection = visibleAdminSections[0] ?? 'dashboard'
+  const canManageSettings = hasPermission(usuario, 'settings.read')
+  const canReadRoles = hasPermission(usuario, 'roles.read')
+  const canReadPayTable = hasPermission(usuario, 'pay_table.read')
+  const canManagePayTable = hasPermission(usuario, 'pay_table.manage')
+  const canReadClassRoster = hasAnyPermission(usuario, ['classes.roster.read', 'classes.roster.manage'])
+  const canManageClassRoster = hasPermission(usuario, 'classes.roster.manage')
+  const canManageReservations = hasPermission(usuario, 'reservations.manage')
+
+  const denyPermission = useCallback((message = 'No tienes permisos para esta acción.') => {
+    toast.error(message)
+  }, [])
+
+  const canCreateCoach = hasPermission(usuario, 'coaches.create')
+  const canUpdateCoach = hasPermission(usuario, 'coaches.update')
+  const canDeleteCoach = hasPermission(usuario, 'coaches.delete')
+  const canManageCoachAvatar = hasPermission(usuario, 'coaches.avatar.manage')
+  const canCreateClass = hasPermission(usuario, 'classes.create')
+  const canUpdateClass = hasPermission(usuario, 'classes.update')
+  const canDeleteClass = hasPermission(usuario, 'classes.delete')
+  const canCreatePackage = hasPermission(usuario, 'packages.create')
+  const canUpdatePackage = hasPermission(usuario, 'packages.update')
+  const canDeletePackagePermission = hasPermission(usuario, 'packages.delete')
+  const canManageFeaturedPackages = hasPermission(usuario, 'packages.featured.manage')
+  const canReadUsers = hasAnyPermission(usuario, ['users.read', 'clients.read'])
+  const canCreateUser = hasPermission(usuario, 'clients.create')
+  const canDeleteUser = hasAnyPermission(usuario, ['clients.delete', 'users.delete'])
+  const canReadPos = hasAnyPermission(usuario, ['pos.read', 'pos.sell', 'pos.products.manage'])
+  const canSellPos = hasPermission(usuario, 'pos.sell')
+  const canManagePosProducts = hasPermission(usuario, 'pos.products.manage')
 
   // Product CRUD state
   const [prodModal, setProdModal]               = useState(null) // null | 'nuevo' | { producto }
@@ -396,7 +439,7 @@ export default function AdminPanel() {
   const modalAlumnosOccurrenceId = modalAlumnosClase?.occurrenceId ?? modalAlumnosClase?.occurrence_id ?? null
   const occurrenceRosterQuery = useOccurrenceRosterQuery(modalAlumnosOccurrenceId, {
     includeCanceled: false,
-    enabled: useApiClasses && Boolean(modalAlumnosOccurrenceId && modalAlumnosClase),
+    enabled: useApiClasses && canReadClassRoster && Boolean(modalAlumnosOccurrenceId && modalAlumnosClase),
   })
   // Usuario — asignar paquete desde modal Ver
   const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
@@ -509,6 +552,10 @@ export default function AdminPanel() {
   }, [apiPackagesPage, apiPackagesRefreshToken, apiPackagesSearch, apiPackagesStatus, useApiPackages])
 
   const openClientDetail = useCallback(async (client) => {
+    if (!canReadUsers) {
+      denyPermission('No tienes permisos para ver usuarios.')
+      return
+    }
     setAsignarPaqueteForm({ paqueteNombre: client.paquete || '', metodoPago: 'efectivo' })
     setEditNotas(client.notas || '')
     setCederClaseUserId('')
@@ -517,7 +564,7 @@ export default function AdminPanel() {
       return
     }
     setModalVerUsuario(client)
-  }, [useApiClients])
+  }, [canReadUsers, denyPermission, useApiClients])
 
   const refreshClientDetail = useCallback(async (clientId) => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(clientId) })
@@ -528,6 +575,10 @@ export default function AdminPanel() {
   }, [queryClient])
 
   const handleDeleteClients = useCallback(async (ids) => {
+    if (!canDeleteUser) {
+      denyPermission()
+      return
+    }
     const clientIds = Array.isArray(ids) ? ids : [ids]
     if (!useApiClients) {
       clientIds.forEach((id) => eliminarUsuario(id))
@@ -535,9 +586,13 @@ export default function AdminPanel() {
     }
     await Promise.all(clientIds.map((id) => deleteClientApi(id)))
     await queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
-  }, [eliminarUsuario, useApiClients])
+  }, [canDeleteUser, denyPermission, eliminarUsuario, queryClient, useApiClients])
 
   const handleSavePackage = useCallback(async () => {
+    if (modalEditPaquete ? !canUpdatePackage : !canCreatePackage) {
+      denyPermission()
+      return
+    }
     const isEdit = Boolean(modalEditPaquete)
     const form = isEdit ? editPaqueteForm : paqueteForm
 
@@ -555,7 +610,13 @@ export default function AdminPanel() {
           await createMembershipPackageApi(payload)
           setApiPackagesPage(1)
         }
-        setApiPackagesRefreshToken((value) => value + 1)
+        await Promise.all([
+          loadApiPackages(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminPackages() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+        ])
         if (isEdit) {
           setModalEditPaquete(null)
           setNuevoBeneficio('')
@@ -621,26 +682,40 @@ export default function AdminPanel() {
   }, [
     agregarPaquete,
     buildPackageApiPayload,
+    canCreatePackage,
+    canUpdatePackage,
     closeModal,
     createMembershipPackageApi,
+    denyPermission,
     editarPaquete,
     editPaqueteForm,
     modalEditPaquete,
     paqueteForm,
     setApiPackagesPage,
-    setApiPackagesRefreshToken,
+    loadApiPackages,
     setModalEditPaquete,
     setNuevoBeneficio,
     updateMembershipPackageApi,
     useApiPackages,
     validatePackageApiPayload,
+    queryClient,
   ])
 
   const handleDeletePackage = useCallback(async (packageId) => {
+    if (!canDeletePackagePermission) {
+      denyPermission()
+      return
+    }
     if (useApiPackages) {
       try {
         await deleteMembershipPackageApi(packageId)
-        setApiPackagesRefreshToken((value) => value + 1)
+        await Promise.all([
+          loadApiPackages(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminPackages() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+        ])
         toast.success('Paquete inactivado')
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo eliminar el paquete')
@@ -649,13 +724,22 @@ export default function AdminPanel() {
     }
     eliminarPaquete(packageId)
     toast.success('Paquete eliminado')
-  }, [deleteMembershipPackageApi, eliminarPaquete, setApiPackagesRefreshToken, useApiPackages])
+  }, [canDeletePackagePermission, deleteMembershipPackageApi, denyPermission, eliminarPaquete, loadApiPackages, queryClient, useApiPackages])
 
   const handleTogglePackageStatus = useCallback(async (packageId, isActive) => {
+    if (!canUpdatePackage) {
+      denyPermission()
+      return
+    }
     if (useApiPackages) {
       try {
         await updateMembershipPackageStatusApi(packageId, isActive)
-        setApiPackagesRefreshToken((value) => value + 1)
+        await Promise.all([
+          loadApiPackages(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminPackages() }),
+        ])
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo actualizar el paquete')
       }
@@ -665,20 +749,29 @@ export default function AdminPanel() {
     if (current) {
       editarPaquete(packageId, { ...current, activo: isActive })
     }
-  }, [editarPaquete, paquetes, setApiPackagesRefreshToken, updateMembershipPackageStatusApi, useApiPackages])
+  }, [canUpdatePackage, denyPermission, editarPaquete, loadApiPackages, paquetes, queryClient, updateMembershipPackageStatusApi, useApiPackages])
 
   const handleTogglePackageFeatured = useCallback(async (packageId, isFeatured) => {
+    if (!canManageFeaturedPackages) {
+      denyPermission()
+      return
+    }
     if (useApiPackages) {
       try {
         await updateMembershipPackageFeaturedApi(packageId, isFeatured)
-        setApiPackagesRefreshToken((value) => value + 1)
+        await Promise.all([
+          loadApiPackages(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.packages.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminPackages() }),
+        ])
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo actualizar el paquete destacado')
       }
       return
     }
     marcarDestacado(packageId)
-  }, [marcarDestacado, setApiPackagesRefreshToken, updateMembershipPackageFeaturedApi, useApiPackages])
+  }, [canManageFeaturedPackages, denyPermission, loadApiPackages, marcarDestacado, queryClient, updateMembershipPackageFeaturedApi, useApiPackages])
 
   useEffect(() => {
     setReservasModalPage(1)
@@ -721,6 +814,10 @@ export default function AdminPanel() {
   }, [apiPackagesSearch, apiPackagesStatus])
 
   const handleSaveCoach = useCallback(async () => {
+    if (modalEditCoach ? !canUpdateCoach : !canCreateCoach) {
+      denyPermission()
+      return
+    }
     const form = modalEditCoach ? editCoachForm : coachForm
     const avatarFile = modalEditCoach ? editAvatarFile : coachAvatarFile
     if (!form.nombre.trim()) return
@@ -742,11 +839,15 @@ export default function AdminPanel() {
         }
         const savedCoachId = resultado.coachId ?? resultado.id ?? coachId
         if (avatarFile && savedCoachId) {
-          try {
-            await uploadCoachAvatarApi(savedCoachId, avatarFile)
-          } catch (avatarError) {
-            toast.error('Coach guardado, pero no se pudo subir la foto. Puedes editarlo e intentar de nuevo.')
-            console.error('[admin] avatar upload failed', avatarError)
+          if (!canManageCoachAvatar) {
+            toast.error('No tienes permisos para subir avatar de coach.')
+          } else {
+            try {
+              await uploadCoachAvatarApi(savedCoachId, avatarFile)
+            } catch (avatarError) {
+              toast.error('Coach guardado, pero no se pudo subir la foto. Puedes editarlo e intentar de nuevo.')
+              console.error('[admin] avatar upload failed', avatarError)
+            }
           }
         }
         toast.success(`${form.nombre} ${modalEditCoach ? 'actualizado' : 'agregado'}`)
@@ -759,8 +860,13 @@ export default function AdminPanel() {
         setEditCoachForm({ nombre: '', disciplina: '', especialidad: '', email: '', telefono: '', bio: '', instagram: '', public_profile_enabled: true, estado: 'activo' })
         setModalEditCoach(null)
         closeModal()
-        await queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() })
-        setCoachesRefreshToken((v) => v + 1)
+        await Promise.all([
+          loadApiCoaches(),
+          loadApiCoachList(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+        ])
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo guardar coach')
       }
@@ -778,11 +884,15 @@ export default function AdminPanel() {
       })
       if (resultado.ok) {
         if (avatarFile && resultado.coach?.coachId) {
-          try {
-            await uploadCoachAvatarApi(resultado.coach.coachId, avatarFile)
-          } catch (avatarError) {
-            toast.error('Coach creado, pero no se pudo subir la foto. Puedes editarlo e intentar de nuevo.')
-            console.error('[admin] avatar upload failed', avatarError)
+          if (!canManageCoachAvatar) {
+            toast.error('No tienes permisos para subir avatar de coach.')
+          } else {
+            try {
+              await uploadCoachAvatarApi(resultado.coach.coachId, avatarFile)
+            } catch (avatarError) {
+              toast.error('Coach creado, pero no se pudo subir la foto. Puedes editarlo e intentar de nuevo.')
+              console.error('[admin] avatar upload failed', avatarError)
+            }
           }
         }
         toast.success(`${form.nombre} agregado`)
@@ -790,7 +900,13 @@ export default function AdminPanel() {
         clearAvatarSelection(setCoachAvatarPreview, setCoachAvatarFile)
         setCoachForm({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', password: '', instagram: '', public_profile_enabled: true })
         closeModal()
-        await queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() })
+        await Promise.all([
+          loadApiCoaches(),
+          loadApiCoachList(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+        ])
       } else {
         toast.error(resultado.mensaje)
       }
@@ -807,11 +923,15 @@ export default function AdminPanel() {
       instagram:    form.instagram || null,
     })
     if (avatarFile) {
-      try {
-        await uploadCoachAvatarApi(modalEditCoach.coachId ?? modalEditCoach.id, avatarFile)
-      } catch (avatarError) {
-        toast.error('Coach guardado, pero no se pudo subir la foto. Puedes editarlo e intentar de nuevo.')
-        console.error('[admin] avatar upload failed', avatarError)
+      if (!canManageCoachAvatar) {
+        toast.error('No tienes permisos para subir avatar de coach.')
+      } else {
+        try {
+          await uploadCoachAvatarApi(modalEditCoach.coachId ?? modalEditCoach.id, avatarFile)
+        } catch (avatarError) {
+          toast.error('Coach guardado, pero no se pudo subir la foto. Puedes editarlo e intentar de nuevo.')
+          console.error('[admin] avatar upload failed', avatarError)
+        }
       }
     }
     const userLogin = usuarios.find(
@@ -824,19 +944,31 @@ export default function AdminPanel() {
     }
     toast.success(`${form.nombre} actualizado`)
     setModalEditCoach(null)
-    await queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() })
+    await Promise.all([
+      loadApiCoaches(),
+      loadApiCoachList(),
+      queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+    ])
   }, [
+    canCreateCoach,
+    canManageCoachAvatar,
+    canUpdateCoach,
     clearAvatarSelection,
     coachForm,
     coachAvatarFile,
     coachAvatarPreview,
     closeModal,
+    denyPermission,
     editCoachForm,
     editAvatarFile,
     editAvatarPreview,
     editarCoach,
     editarUsuario,
     logCoachAgregado,
+    loadApiCoachList,
+    loadApiCoaches,
     modalEditCoach,
     queryClient,
     usuarios,
@@ -845,12 +977,22 @@ export default function AdminPanel() {
 
   const handleToggleCoachStatus = useCallback(async (coach) => {
     if (!coach) return
+    if (!canUpdateCoach) {
+      denyPermission()
+      return
+    }
     if (useApiCoaches) {
       try {
         const nextStatus = coach.status === 'active' ? 'inactive' : 'active'
         await updateCoachStatusApi(coach.coachId ?? coach.id, nextStatus)
         toast.success(`${coach.nombre ?? coach.name} ${nextStatus === 'active' ? 'reactivado' : 'dado de baja'}`)
-        setCoachesRefreshToken((v) => v + 1)
+        await Promise.all([
+          loadApiCoaches(),
+          loadApiCoachList(),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+        ])
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo actualizar coach')
       }
@@ -863,16 +1005,26 @@ export default function AdminPanel() {
       eliminarCoach(coach.id)
       toast.success(`${coach.nombre} dado de baja`)
     }
-  }, [editarCoach, eliminarCoach, useApiCoaches])
+  }, [canUpdateCoach, denyPermission, editarCoach, eliminarCoach, loadApiCoaches, loadApiCoachList, queryClient, useApiCoaches])
 
   const handleDeleteCoach = useCallback(async (coach) => {
     if (!coach) return
+    if (!canDeleteCoach) {
+      denyPermission()
+      return
+    }
     if (useApiCoaches) {
       try {
         const result = await deleteCoachApi(coach.coachId ?? coach.id)
         if (result) {
           toast.success(`${coach.nombre ?? coach.name} eliminado`)
-          setCoachesRefreshToken((v) => v + 1)
+          await Promise.all([
+            loadApiCoaches(),
+            loadApiCoachList(),
+            queryClient.invalidateQueries({ queryKey: queryKeys.coaches.public() }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.coaches.list() }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.adminBadges.coachesActive() }),
+          ])
         }
       } catch (error) {
         toast.error(error?.message ?? 'No se pudo eliminar coach')
@@ -886,7 +1038,7 @@ export default function AdminPanel() {
     } else {
       toast.error(resultado.mensaje)
     }
-  }, [useApiCoaches])
+  }, [canDeleteCoach, denyPermission, loadApiCoaches, loadApiCoachList, queryClient, useApiCoaches])
 
   function closeModal() {
     clearAvatarSelection(setCoachAvatarPreview, setCoachAvatarFile)
@@ -905,7 +1057,19 @@ export default function AdminPanel() {
     setSharedMembershipActionKey('')
     setModalType(null)
   }
-  function openModal(type) { setModalType(type) }
+  function openModal(type) {
+    const permissionByModal = {
+      coach: canCreateCoach,
+      clase: canCreateClass,
+      paquete: canCreatePackage,
+      usuario: canCreateUser,
+    }
+    if (Object.prototype.hasOwnProperty.call(permissionByModal, type) && !permissionByModal[type]) {
+      denyPermission()
+      return
+    }
+    setModalType(type)
+  }
 
   // Cart helpers
   const cartSubtotal = cart.reduce((s, i) => s + i.price, 0)
@@ -1074,6 +1238,10 @@ export default function AdminPanel() {
   }
 
   function showSection(name) {
+    if (!canAccessAdminSection(usuario, name)) {
+      denyPermission('No tienes permisos para ver este módulo.')
+      return
+    }
     setActiveSection(name)
     setIsSidebarOpen(false)
   }
@@ -1087,6 +1255,11 @@ export default function AdminPanel() {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [isSidebarOpen])
+
+  useEffect(() => {
+    if (canAccessAdminSection(usuario, activeSection)) return
+    setActiveSection(firstVisibleAdminSection)
+  }, [activeSection, firstVisibleAdminSection, usuario])
 
   // ── Finanzas handlers ────────────────────────────────────────────────────────
   function handleCerrarDia() {
@@ -1171,7 +1344,10 @@ export default function AdminPanel() {
     setFile(null)
   }
 
-  const sec = SECTIONS[activeSection]
+  const sec = SECTIONS[activeSection] ?? SECTIONS[firstVisibleAdminSection] ?? {
+    title: 'Acceso restringido',
+    sub: 'No tienes permisos para ver módulos administrativos.',
+  }
 
   return (
     <div className={styles.root}>
@@ -1205,7 +1381,7 @@ export default function AdminPanel() {
             },
             { id: 'clases',    icon: '🗓', label: 'Clases'       },
             { id: 'paquetes',  icon: '📦', label: 'Paquetes'     },
-          ].map(({ id, icon, label, badge }) => (
+          ].filter(({ id }) => canAccessAdminSection(usuario, id)).map(({ id, icon, label, badge }) => (
             <button
               key={id}
               className={`${styles.navItem}${activeSection === id ? ' ' + styles.active : ''}`}
@@ -1230,7 +1406,7 @@ export default function AdminPanel() {
                 ? String(clientsBadgeQuery.data ?? apiClientsTotal ?? usuarios.length)
                 : String(usuarios.length),
             },
-          ].map(({ id, icon, label, badge }) => (
+          ].filter(({ id }) => canAccessAdminSection(usuario, id)).map(({ id, icon, label, badge }) => (
             <button
               key={id}
               className={`${styles.navItem}${activeSection === id ? ' ' + styles.active : ''}`}
@@ -1252,7 +1428,7 @@ export default function AdminPanel() {
             { id: 'reportes',      icon: '📄', label: 'Reportes'       },
             { id: 'actividad',     icon: '📋', label: 'Actividad'      },
             { id: 'configuracion', icon: '⚙️', label: 'Configuración'  },
-          ].map(({ id, icon, label }) => (
+          ].filter(({ id }) => canAccessAdminSection(usuario, id)).map(({ id, icon, label }) => (
             <button
               key={id}
               className={`${styles.navItem}${activeSection === id ? ' ' + styles.active : ''}`}
@@ -1477,7 +1653,7 @@ export default function AdminPanel() {
 
           {/* ── CONFIGURACIÓN ── */}
           <section className={`${styles.section}${activeSection === 'configuracion' ? ' ' + styles.active : ''}`}>
-            <ConfiguracionSection />
+            <ConfiguracionSection currentUser={usuario} />
           </section>
 
         </div>
@@ -1745,9 +1921,12 @@ export default function AdminPanel() {
                       toast.error('Programar publicación no está soportado todavía por backend')
                       return
                     }
-                    await createClaseApi(payload)
+                    const createdClase = await createClaseApi(payload)
+                    await invalidateClassSideEffects(queryClient, {
+                      classId: createdClase?.id,
+                      coachId: createdClase?.coachId ?? createdClase?.coach_id ?? payload.coach_id,
+                    })
                     await loadClasesFromApi({ force: true })
-                    setClasesRefreshToken((v) => v + 1)
                   } else {
                     const coachObj = coaches.find(c => c.nombre === claseForm.coach)
                     agregarClase({
@@ -2430,9 +2609,12 @@ export default function AdminPanel() {
                       toast.error('Programar publicación no está soportado todavía por backend')
                       return
                     }
-                    await updateClaseApi(modalEditClase.id, payload)
+                    const updatedClase = await updateClaseApi(modalEditClase.id, payload)
+                    await invalidateClassSideEffects(queryClient, {
+                      classId: updatedClase?.id ?? modalEditClase.id,
+                      coachId: updatedClase?.coachId ?? updatedClase?.coach_id ?? payload.coach_id,
+                    })
                     await loadClasesFromApi({ force: true })
-                    setClasesRefreshToken((v) => v + 1)
                   } else {
                     const coachObj = coaches.find(c => c.nombre === editClaseForm.coach)
                     editarClase(modalEditClase.id, {
@@ -2488,7 +2670,9 @@ export default function AdminPanel() {
           : usuarios.filter((u) => !idsInscritos.has(u.id) && u.rol === 'cliente')
         const rosterLoading = useApiClasses ? occurrenceRosterQuery.isLoading : false
         const rosterError = useApiClasses ? occurrenceRosterQuery.error : null
-        const rosterErrorMessage = rosterError
+        const rosterErrorMessage = !canReadClassRoster
+          ? 'No tienes permisos para ver alumnos de esta ocurrencia.'
+          : rosterError
           ? (rosterError?.status === 403
             ? 'No tienes permisos para ver alumnos de esta ocurrencia.'
             : rosterError?.status === 404
@@ -2505,6 +2689,10 @@ export default function AdminPanel() {
           : (cls.cupoActual ?? inscritos.length ?? 0)
 
         async function handleCancelar(r) {
+          if (!canManageReservations) {
+            toast.error('No tienes permisos para cancelar reservas.')
+            return
+          }
           const res = await cancelarReservaService(r.id, r.userId)
           if (res.ok) {
             toast.success(`Reserva de ${r.nombreUsuario} cancelada`)
@@ -2516,6 +2704,10 @@ export default function AdminPanel() {
         }
 
         async function handleAgregar() {
+          if (!canManageReservations) {
+            toast.error('No tienes permisos para inscribir alumnos.')
+            return
+          }
           if (!alumnoAgregarId) return
           const userId = Number(alumnoAgregarId)
           const usuario = useApiClients
@@ -2633,7 +2825,13 @@ export default function AdminPanel() {
                                 <button
                                   className={`${styles.btn} ${styles.btnGhost}`}
                                   style={{ fontSize: 11, padding: '4px 10px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.3)' }}
+                                  disabled={!canManageClassRoster}
+                                  title={canManageClassRoster ? 'Marcar ausente' : 'No tienes permisos para gestionar roster'}
                                   onClick={async () => {
+                                    if (!canManageClassRoster) {
+                                      toast.error('No tienes permisos para gestionar roster.')
+                                      return
+                                    }
                                     const res = await marcarNoAsistio(r.reservationId ?? r.id)
                                     if (res.ok) {
                                       toast.success(`${r.nombreUsuario} marcado como no asistió`)
@@ -2651,6 +2849,8 @@ export default function AdminPanel() {
                                 <button
                                   className={`${styles.btn} ${styles.btnGhost}`}
                                   style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
+                                  disabled={!canManageReservations}
+                                  title={canManageReservations ? 'Cancelar reserva' : 'No tienes permisos para cancelar reservas'}
                                   onClick={() => handleCancelar({
                                     ...r,
                                     id: r.reservationId ?? r.id,
@@ -2761,7 +2961,7 @@ export default function AdminPanel() {
                     className={`${styles.btn} ${styles.btnSecondary}`}
                     style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
                     onClick={handleAgregar}
-                    disabled={!alumnoAgregarId || (useApiClasses && !occurrenceId)}
+                    disabled={!alumnoAgregarId || (useApiClasses && !occurrenceId) || !canManageReservations}
                   >
                     + Inscribir
                   </button>
@@ -2769,7 +2969,7 @@ export default function AdminPanel() {
                     className={`${styles.btn} ${styles.btnPrimary}`}
                     style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
                     onClick={() => alumnoAgregarId && setAdminSeatSelector({ cls, userId: Number(alumnoAgregarId) })}
-                    disabled={!alumnoAgregarId || (useApiClasses && !occurrenceId)}
+                    disabled={!alumnoAgregarId || (useApiClasses && !occurrenceId) || !canManageReservations}
                   >
                     🪑 Elegir asiento
                   </button>

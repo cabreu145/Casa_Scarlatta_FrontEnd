@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useCoachesStore } from '../stores/coachesStore'
-import { useConfiguracionStore } from '@/stores/configuracionStore'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
+import { isVideoMediaUrl } from '@/adapters/siteConfigurationAdapter'
 import { resolveCoachAvatarUrl } from '@/adapters/coachAdapter'
 import { getPublicCoachesApi } from '@/services/coachesApiService'
 import styles from './Nosotros.module.css'
@@ -19,7 +20,7 @@ export default function Nosotros() {
   const { coaches: todosCoaches } = useCoachesStore()
   const useApiMode = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const coachesActivos = todosCoaches.filter((c) => c.activo !== false)
-  const cfg = useConfiguracionStore()
+  const cfg = useEffectiveSiteConfiguration()
   const carouselImages = cfg.get('carouselNosotros')
   const [current, setCurrent] = useState(0)
   const [filtro, setFiltro] = useState('Todas')
@@ -82,14 +83,22 @@ export default function Nosotros() {
         {/* Imagen — izquierda */}
         <div className={styles.carouselWrap}>
           <div className={styles.carouselTrack}>
-            {carouselImages.map((src, i) => (
-              <img
-                key={src}
-                src={src}
-                alt=""
-                className={`${styles.carouselImg} ${i === current ? styles.carouselImgActive : ''}`}
-              />
-            ))}
+            {carouselImages.map((src, i) => {
+              const className = `${styles.carouselImg} ${i === current ? styles.carouselImgActive : ''}`
+              return isVideoMediaUrl(src) ? (
+                <video
+                  key={src}
+                  src={src}
+                  className={className}
+                  muted
+                  autoPlay
+                  loop
+                  playsInline
+                />
+              ) : (
+                <img key={src} src={src} alt="" className={className} />
+              )
+            })}
             <div className={styles.imageOverlay} />
           </div>
           <div className={styles.carouselDots}>

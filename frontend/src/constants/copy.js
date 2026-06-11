@@ -22,7 +22,7 @@ export const COPY = {
     slow:     'Slow',
     nosotros: 'Nosotros',
     contacto: 'Contacto',
-    login:    'Iniciar sesión',
+    login:    'Iniciar Sesión',
   },
 
   //── Home ───────────────────────────────
@@ -58,7 +58,7 @@ export const COPY = {
 
   //── Autenticación ──────────────────────
   auth: {
-    login:         'Iniciar sesión',
+    login:         'Iniciar Sesión',
     registro:      'Crear cuenta',
     subtitulo:     'Tu espacio. Tu ritmo. Tu bienestar.',
     bienvenida:    'Bienvenido a tu espacio de equilibrio.',

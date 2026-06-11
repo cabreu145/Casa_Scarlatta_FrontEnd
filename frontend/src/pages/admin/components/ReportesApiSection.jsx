@@ -15,6 +15,8 @@ import {
   useTopClassesReportQuery,
   useUsersReportQuery,
 } from '@/hooks/useApiQueries'
+import { useAuth } from '@/context/AuthContext'
+import { hasPermission } from '@/auth/permissions'
 import { abrirReportePDF } from '@/utils/reportePDF'
 import { buildReportFilename, downloadCsvFromRows } from '@/utils/reportExport'
 import styles from '@/styles/dashboard.module.css'
@@ -31,6 +33,15 @@ function formatMoneyMx(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number.isFinite(amount) ? amount : 0)
+}
+
+function buildSalesBreakdownLabel(summary = {}) {
+  const pos = Number(summary.posSalesTotalMxn ?? 0)
+  const mercadoPago = Number(summary.mercadoPagoTotalMxn ?? 0)
+  if (pos > 0 || mercadoPago > 0) {
+    return `POS ${formatMoneyMx(pos)} · Mercado Pago ${formatMoneyMx(mercadoPago)}`
+  }
+  return `${summary.salesCount ?? 0} ventas`
 }
 
 function formatDateMx(value) {
@@ -214,13 +225,14 @@ function btnStyle(bg, color) {
 function lineItemsFromSummary(finance, rangeLabel) {
   const summary = finance?.summary ?? {}
   return [
-    { Concepto: 'Ingresos totales', Monto: summary.salesTotalMxn ?? 0, Detalle: `Ventas ${summary.salesCount ?? 0}` },
+    { Concepto: 'Ingresos totales', Monto: summary.salesTotalMxn ?? 0, Detalle: buildSalesBreakdownLabel(summary) },
     { Concepto: 'Gastos totales', Monto: -(summary.expensesTotalMxn ?? 0), Detalle: `Cortes ${summary.cashClosingsCount ?? 0}` },
     { Concepto: 'Utilidad neta', Monto: summary.netTotalMxn ?? 0, Detalle: `Rango ${rangeLabel}` },
     { Concepto: 'Ticket promedio', Monto: summary.averageTicketMxn ?? 0, Detalle: 'Promedio operativo' },
     { Concepto: 'Efectivo', Monto: summary.paymentMethods?.cashMxn ?? 0, Detalle: 'Método de pago' },
     { Concepto: 'Tarjeta', Monto: summary.paymentMethods?.cardMxn ?? 0, Detalle: 'Método de pago' },
     { Concepto: 'Transferencia', Monto: summary.paymentMethods?.transferMxn ?? 0, Detalle: 'Método de pago' },
+    { Concepto: 'Mercado Pago', Monto: summary.paymentMethods?.mercadoPagoMxn ?? 0, Detalle: 'Método de pago' },
     { Concepto: 'Otro', Monto: summary.paymentMethods?.otherMxn ?? 0, Detalle: 'Método de pago' },
   ]
 }
@@ -324,6 +336,9 @@ function payTableRowsFromReport(payTableItems = []) {
 }
 
 export default function ReportesApiSection({ inPanel = false }) {
+  const { usuario } = useAuth()
+  const canReadPayTable = hasPermission(usuario, 'pay_table.read')
+  const canManagePayTable = hasPermission(usuario, 'pay_table.manage')
   const [periodoReporte, setPeriodoReporte] = useState({ tipo: 'todos' })
   const [navKey, setNavKey] = useState(0)
   const { from, to, label } = useMemo(() => buildReportRange(periodoReporte), [periodoReporte])
@@ -336,7 +351,7 @@ export default function ReportesApiSection({ inPanel = false }) {
   const topClassesQuery = useTopClassesReportQuery({ from, to, limit: 5, enabled: true })
   const occupancyQuery = useOccupancyByDisciplineReportQuery({ from, to, enabled: true })
   const coachPaymentsQuery = useCoachPaymentsReportQuery({ from, to, enabled: true })
-  const payTableQuery = usePayTableQuery({ enabled: true })
+  const payTableQuery = usePayTableQuery({ enabled: canReadPayTable })
   const createPayTableMutation = useCreatePayTableMutation()
   const updatePayTableMutation = useUpdatePayTableMutation()
   const deletePayTableMutation = useDeletePayTableMutation()
@@ -431,6 +446,10 @@ export default function ReportesApiSection({ inPanel = false }) {
   }
 
   const openPayTableEditor = (item = null) => {
+    if (!canManagePayTable) {
+      toast.error('No tienes permisos para esta acción.')
+      return
+    }
     if (item) {
       setPayTableEditingId(item.id ?? null)
       setPayTableForm({
@@ -466,6 +485,10 @@ export default function ReportesApiSection({ inPanel = false }) {
   }
 
   const savePayTable = async () => {
+    if (!canManagePayTable) {
+      toast.error('No tienes permisos para esta acción.')
+      return
+    }
     const payload = {
       discipline: payTableForm.discipline,
       minAttendees: payTableForm.minAttendees,
@@ -497,6 +520,10 @@ export default function ReportesApiSection({ inPanel = false }) {
   }
 
   const togglePayTableActive = async (item) => {
+    if (!canManagePayTable) {
+      toast.error('No tienes permisos para esta acción.')
+      return
+    }
     try {
       await updatePayTableMutation.mutateAsync({
         id: item.id,
@@ -521,6 +548,10 @@ export default function ReportesApiSection({ inPanel = false }) {
   }
 
   const deletePayTable = async (item) => {
+    if (!canManagePayTable) {
+      toast.error('No tienes permisos para esta acción.')
+      return
+    }
     const ok = window.confirm('Eliminar rango. Baja lógica, historial se conserva.')
     if (!ok) return
     try {
@@ -599,7 +630,7 @@ export default function ReportesApiSection({ inPanel = false }) {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <MetricCard label="Ingresos" value={formatMoneyMx(finance.summary.salesTotalMxn)} helper={`${finance.summary.salesCount} ventas`} accent="#22c55e" />
+        <MetricCard label="Ingresos" value={formatMoneyMx(finance.summary.salesTotalMxn)} helper={buildSalesBreakdownLabel(finance.summary)} accent="#22c55e" />
         <MetricCard label="Gastos" value={formatMoneyMx(finance.summary.expensesTotalMxn)} helper={`Cortes ${finance.summary.cashClosingsCount}`} accent="#ef4444" />
         <MetricCard label="Utilidad neta" value={formatMoneyMx(finance.summary.netTotalMxn)} helper={`Ticket prom. ${formatMoneyMx(finance.summary.averageTicketMxn)}`} accent={finance.summary.netTotalMxn >= 0 ? '#22c55e' : '#ef4444'} />
         <MetricCard label="Efectivo" value={formatMoneyMx(finance.summary.paymentMethods.cashMxn)} helper={`Tarjeta ${formatMoneyMx(finance.summary.paymentMethods.cardMxn)}`} accent="#3b82f6" />
@@ -666,7 +697,7 @@ export default function ReportesApiSection({ inPanel = false }) {
 
       <SectionCard title="Reporte financiero" subtitle={`Rango ${formatDateMx(from)} a ${formatDateMx(to)}`}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-          <MetricCard label="Ingresos totales" value={formatMoneyMx(finance.summary.salesTotalMxn)} helper="Ventas POS y paquetes" accent="#22c55e" />
+          <MetricCard label="Ingresos totales" value={formatMoneyMx(finance.summary.salesTotalMxn)} helper={buildSalesBreakdownLabel(finance.summary)} accent="#22c55e" />
           <MetricCard label="Gastos totales" value={formatMoneyMx(finance.summary.expensesTotalMxn)} helper="Gastos activos del rango" accent="#ef4444" />
           <MetricCard label="Utilidad neta" value={formatMoneyMx(finance.summary.netTotalMxn)} helper="Ingresos - gastos" accent={finance.summary.netTotalMxn >= 0 ? '#22c55e' : '#ef4444'} />
           <MetricCard label="Ticket promedio" value={formatMoneyMx(finance.summary.averageTicketMxn)} helper={`${finance.summary.salesCount} ventas`} accent="var(--text-primary)" />
@@ -720,6 +751,7 @@ export default function ReportesApiSection({ inPanel = false }) {
             <MetricCard label="Productos vendidos" value={String(pos.productsSold)} helper={`Ingresos ${formatMoneyMx(pos.productRevenueMxn)}`} accent="#3b82f6" />
             <MetricCard label="Paquetes vendidos" value={formatMoneyMx(pos.packageRevenueMxn)} helper="Ingresos por membresías" accent="#eab308" />
             <MetricCard label="Efectivo" value={formatMoneyMx(pos.paymentMethods.cashMxn)} helper={`Tarjeta ${formatMoneyMx(pos.paymentMethods.cardMxn)}`} accent="#ef4444" />
+            <MetricCard label="Mercado Pago" value={formatMoneyMx(pos.paymentMethods.mercadoPagoMxn)} helper="Método de pago" accent="#8b5cf6" />
           </div>
           <div style={{ marginTop: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
             Categorías vendidas:
@@ -882,6 +914,7 @@ export default function ReportesApiSection({ inPanel = false }) {
         )}
       </SectionCard>
 
+      {canReadPayTable && (
       <SectionCard title="Tabulador de pagos por clase" subtitle="Disciplina, Rango y Pago">
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
           <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
@@ -905,6 +938,7 @@ export default function ReportesApiSection({ inPanel = false }) {
             >
               CSV
             </button>
+            {canManagePayTable && (
             <button
               type="button"
               onClick={() => openPayTableEditor()}
@@ -922,6 +956,7 @@ export default function ReportesApiSection({ inPanel = false }) {
             >
               Nuevo rango
             </button>
+            )}
           </div>
         </div>
 
@@ -1035,6 +1070,7 @@ export default function ReportesApiSection({ inPanel = false }) {
                   </td>
                   <td style={{ padding: '10px' }}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {canManagePayTable && (
                       <button
                         type="button"
                         onClick={() => openPayTableEditor(item)}
@@ -1051,6 +1087,8 @@ export default function ReportesApiSection({ inPanel = false }) {
                       >
                         Editar
                       </button>
+                      )}
+                      {canManagePayTable && (
                       <button
                         type="button"
                         onClick={() => togglePayTableActive(item)}
@@ -1067,6 +1105,8 @@ export default function ReportesApiSection({ inPanel = false }) {
                       >
                         {item.isActive ? 'Desactivar' : 'Activar'}
                       </button>
+                      )}
+                      {canManagePayTable && (
                       <button
                         type="button"
                         onClick={() => deletePayTable(item)}
@@ -1083,6 +1123,7 @@ export default function ReportesApiSection({ inPanel = false }) {
                       >
                         Eliminar
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1093,6 +1134,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           <EmptyState>Sin rangos de tabulador para este rango.</EmptyState>
         )}
       </SectionCard>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 16 }}>
         <SectionCard title="Top clases" subtitle="Clases más llenas">

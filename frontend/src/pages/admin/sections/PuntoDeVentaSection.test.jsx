@@ -12,12 +12,22 @@ const updateCategoryMutateAsync = vi.fn()
 const updateCategoryStatusMutateAsync = vi.fn()
 const deleteCategoryMutateAsync = vi.fn()
 const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
+let currentPermissions = ['pos.read', 'pos.sell', 'pos.products.read', 'pos.categories.read']
 
 vi.mock('react-hot-toast', () => ({
   default: {
     error: (...args) => toastError(...args),
     success: (...args) => toastSuccess(...args),
   },
+}))
+
+vi.mock('@/stores/authStore', () => ({
+  useAuthStore: () => ({
+    usuario: {
+      id: 1,
+      permissions: currentPermissions,
+    },
+  }),
 }))
 
 vi.mock('@/hooks/useApiQueries', () => ({
@@ -182,6 +192,7 @@ function Harness() {
 
 describe('PuntoDeVentaSection', () => {
   beforeEach(() => {
+    currentPermissions = ['pos.read', 'pos.sell', 'pos.products.read', 'pos.categories.read']
     toastError.mockReset()
     toastSuccess.mockReset()
     mutateAsync.mockReset()
@@ -211,18 +222,24 @@ describe('PuntoDeVentaSection', () => {
     })
   })
 
-  test('carga catalogo API, bloquea producto inactivo y genera venta con ticket', async () => {
+  test('cajero_pos ve productos/categorias, agrega al carrito y cobra sin manage', async () => {
     const user = userEvent.setup()
     render(<Harness />)
 
     expect(await screen.findByRole('button', { name: /Toalla/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /Accesorios/i }).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /Mensual 12/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Nuevo producto/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Nueva categoría/i })).not.toBeInTheDocument()
     expect(screen.getByRole('table')).toBeInTheDocument()
 
     const recentSalesTable = screen.getByRole('table')
     expect(within(recentSalesTable).getByText('Cliente Demo')).toBeInTheDocument()
     expect(within(recentSalesTable).getByText(/08\/06\/2026/)).toBeInTheDocument()
     expect(within(recentSalesTable).getByText('Efectivo')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Toalla/i }))
+    expect(screen.getByRole('button', { name: /Cobrar/i })).toBeEnabled()
 
     const buyerSelect = screen.getByText('Selecciona cliente', { selector: 'option' }).closest('select')
     await user.selectOptions(buyerSelect, '1')
@@ -238,6 +255,7 @@ describe('PuntoDeVentaSection', () => {
       taxMxn: expect.any(Number),
       totalMxn: expect.any(Number),
       items: expect.arrayContaining([
+        expect.objectContaining({ type: 'product', id: 1, name: 'Toalla' }),
         expect.objectContaining({ type: 'package', id: 2, beneficiaries: ['beneficiario@demo.local'] }),
       ]),
     }))
@@ -258,6 +276,19 @@ describe('PuntoDeVentaSection', () => {
     expect(screen.getByRole('button', { name: /Inactivo/i })).toBeDisabled()
   })
 
+  test('usuario pos.read sin sell no ve productos ni cobra', async () => {
+    currentPermissions = ['pos.read']
+    render(<Harness />)
+
+    expect(await screen.findByText('No tienes permisos para ver productos en POS.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Toalla/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Nuevo producto/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Nueva categoría/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Cobrar/i })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /✏️/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /🗑/i })).not.toBeInTheDocument()
+  })
+
   test('paquete sin cliente no permite agregar', async () => {
     const user = userEvent.setup()
     render(<Harness />)
@@ -268,6 +299,7 @@ describe('PuntoDeVentaSection', () => {
 
   test('abre modal de categoria', async () => {
     const user = userEvent.setup()
+    currentPermissions = ['pos.read', 'pos.sell', 'pos.products.manage', 'pos.categories.manage']
     render(<Harness />)
 
     await user.click(screen.getByRole('button', { name: /Nueva categor/i }))
@@ -282,6 +314,7 @@ describe('PuntoDeVentaSection', () => {
 
   test('editar, activar o desactivar y eliminar categoria usan las mutations correctas', async () => {
     const user = userEvent.setup()
+    currentPermissions = ['pos.read', 'pos.sell', 'pos.products.manage', 'pos.categories.manage']
     render(<Harness />)
 
     await user.click(screen.getByRole('button', { name: /Editar/i }))

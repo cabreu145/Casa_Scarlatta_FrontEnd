@@ -73,3 +73,12 @@ Responsable: Codex
 - `localStorage` sigue siendo state UI/fallback, no verdad backend.
 - Notificaciones, configuración de correo y outbox ya tienen hooks Query; badge unread y panel deben invalidar/refetch con Query, no con store.
 - `ConfiguracionCorreoSection` es API-only; passwords solo viajan si usuario los escribe.
+
+## Addendum 2026-06-10
+
+- `PaymentReturnPage` ya invalida finanzas, membresias, movimientos, pagos, notificaciones y actividad tras pago `approved + applied`.
+- `spotHolds.byOccurrence` ya existe como key de invalidacion para mapa de asientos/holds.
+- `occurrenceRoster.detail(occurrenceId, includeCanceled)` ya es key canonica para roster por occurrence.
+- CRUD de paquetes y coaches sigue usando hooks Query para mutaciones; refresh manual queda fuera del flujo principal.
+- RBAC frontend ya consume `GET /api/v1/auth/me` enriquecido y `GET/POST/PUT/PATCH/DELETE /api/v1/rbac/*` via TanStack Query.
+- `Roles y permisos` en Configuracion ya no usa mocks/localStorage como source of truth en API mode.

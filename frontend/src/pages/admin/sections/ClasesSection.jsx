@@ -1,10 +1,12 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
 import toast from 'react-hot-toast'
 import { eliminarClaseConReservas } from '@/services/reservasService'
 import { logClaseEliminada, logClaseCreada } from '@/services/actividadService'
 import { useListaEsperaStore } from '@/stores/listaEsperaStore'
+import { useAuthStore } from '@/stores/authStore'
 import DateNavigator from '@/components/ui/DateNavigator'
 import InfiniteList  from '@/components/ui/InfiniteList'
 import PaginationControls from '@/components/ui/PaginationControls'
@@ -16,6 +18,8 @@ import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
 import { createClaseApi, deleteClaseApi, getClasesPaginatedApi } from '@/services/clasesApiService'
 import { getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
+import { invalidateClassSideEffects } from '@/hooks/useApiQueries'
+import { hasAnyPermission, hasPermission } from '@/auth/permissions'
 import { buildClaseApiPayload } from '../classApiPayload'
 import { buildAdminClasesApiQuery } from '../adminClassesApiUtils'
 import {
@@ -450,6 +454,7 @@ export default function ClasesSection({
   setClaseForm,
   refreshToken = 0,
 }) {
+  const { usuario } = useAuthStore()
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() => {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
@@ -479,6 +484,11 @@ export default function ClasesSection({
   const { getPorClase }  = useListaEsperaStore()
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useBackendPaginationInList = useApiClasses
+  const queryClient = useQueryClient()
+  const canCreateClass = hasPermission(usuario, 'classes.create')
+  const canUpdateClass = hasPermission(usuario, 'classes.update')
+  const canDeleteClass = hasPermission(usuario, 'classes.delete')
+  const canReadRoster = hasAnyPermission(usuario, ['classes.roster.read', 'classes.roster.manage'])
   const selectedDiscipline = useMemo(() => {
     if (clasesFilter === 'Slow') return 'slow'
     if (clasesFilter === 'Stryde X') return 'stryde'
@@ -524,9 +534,14 @@ export default function ClasesSection({
   }, [clasesCoachFilter, clasesListPage, clasesSearch, clasesStatusFilter, selectedDiscipline])
 
   const handleDeleteClase = useCallback(async (claseId, { refetch = true } = {}) => {
+    if (!canDeleteClass) {
+      toast.error('No tienes permisos para eliminar clases.')
+      return
+    }
     if (useApiClasses) {
       await deleteClaseApi(claseId)
       useListaEsperaStore.getState().limpiarClase(claseId)
+      await invalidateClassSideEffects(queryClient, { classId: claseId })
       if (refetch) {
         await useClasesStore.getState().loadClasesFromApi({ force: true })
         await fetchApiClasesPage(clasesListPage)
@@ -534,9 +549,13 @@ export default function ClasesSection({
       return
     }
     eliminarClaseConReservas(claseId)
-  }, [clasesListPage, fetchApiClasesPage, useApiClasses])
+  }, [canDeleteClass, clasesListPage, fetchApiClasesPage, queryClient, useApiClasses])
 
   const handleImportar = async (clases) => {
+    if (!canCreateClass) {
+      toast.error('No tienes permisos para crear clases.')
+      return
+    }
     if (useApiClasses) {
       try {
         for (const clase of clases) {
@@ -548,7 +567,11 @@ export default function ClasesSection({
             coaches,
             fallbackCoachId: clase.coachId ?? null,
           })
-          await createClaseApi(payload)
+          const createdClase = await createClaseApi(payload)
+          await invalidateClassSideEffects(queryClient, {
+            classId: createdClase?.id,
+            coachId: createdClase?.coachId ?? createdClase?.coach_id ?? payload.coach_id,
+          })
         }
         await useClasesStore.getState().loadClasesFromApi({ force: true })
         await fetchApiClasesPage(clasesListPage)
@@ -734,7 +757,7 @@ export default function ClasesSection({
               </option>
             ))}
           </select>
-          {selectMode && selectedIds.size > 0 && (
+          {canDeleteClass && selectMode && selectedIds.size > 0 && (
             <button
               className={`${styles.btn} ${styles.btnPrimary}`}
               style={{ background: '#ef4444', borderColor: '#ef4444' }}
@@ -755,7 +778,14 @@ export default function ClasesSection({
           )}
           <button
             className={`${styles.btn} ${selectMode ? styles.btnSecondary : styles.btnGhost}`}
-            onClick={async () => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
+            onClick={async () => {
+              if (!canDeleteClass && !selectMode) {
+                toast.error('No tienes permisos para eliminar clases.')
+                return
+              }
+              setSelectMode(v => !v)
+              setSelectedIds(new Set())
+            }}
           >
             {selectMode ? '✕ Cancelar' : '☑ Seleccionar'}
           </button>
@@ -788,12 +818,16 @@ export default function ClasesSection({
                   ☰ Lista
                 </button>
               </div>
-              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalImport(true)}>
-                📊 Importar Excel
-              </button>
-              <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('clase')}>
-                + Nueva Clase
-              </button>
+              {canCreateClass && (
+                <>
+                  <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setModalImport(true)}>
+                    📊 Importar Excel
+                  </button>
+                  <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => openModal('clase')}>
+                    + Nueva Clase
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
@@ -958,45 +992,51 @@ export default function ClasesSection({
                         className={`${styles.btn} ${styles.btnSecondary}`}
                         style={{ padding: '6px 12px', fontSize: 12 }}
                         onClick={async () => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
+                        disabled={!canReadRoster}
+                        title={canReadRoster ? 'Ver alumnos' : 'No tienes permisos para ver alumnos'}
                       >
                         👥 {c.cupoActual}
                       </button>
-                      <button
-                        className={`${styles.btn} ${styles.btnGhost}`}
-                        style={{ padding: '6px 12px', fontSize: 12 }}
-                        onClick={async () => {
-                          setModalEditClase(c)
-                          const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
-                          setEditClaseForm({
-                            nombre:      c.nombre,
-                            tipo:        c.tipo,
-                            coach:       coachNombre,
-                            dia:         c.dia,
-                            hora:        c.hora,
-                            duracion:    String(c.duracion || 50),
-                            cupoMax:     String(c.cupoMax || 15),
-                            descripcion: c.descripcion || '',
-                            publicarEn:  c.publicarEn
-                              ? new Date(c.publicarEn).toISOString().slice(0, 16)
-                              : '',
-                            fecha:       c.fecha ?? '',
-                          })
-                        }}
-                      >
-                        ✏️ Editar
-                      </button>
-                      <button
-                        className={`${styles.btn} ${styles.btnGhost}`}
-                        style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
-                        onClick={async () => {
-                          if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
-                          await handleDeleteClase(c.id)
-                          logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
-                          toast.success('Clase eliminada')
-                        }}
-                      >
-                        🗑
-                      </button>
+                      {canUpdateClass && (
+                        <button
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          style={{ padding: '6px 12px', fontSize: 12 }}
+                          onClick={async () => {
+                            setModalEditClase(c)
+                            const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
+                            setEditClaseForm({
+                              nombre:      c.nombre,
+                              tipo:        c.tipo,
+                              coach:       coachNombre,
+                              dia:         c.dia,
+                              hora:        c.hora,
+                              duracion:    String(c.duracion || 50),
+                              cupoMax:     String(c.cupoMax || 15),
+                              descripcion: c.descripcion || '',
+                              publicarEn:  c.publicarEn
+                                ? new Date(c.publicarEn).toISOString().slice(0, 16)
+                                : '',
+                              fecha:       c.fecha ?? '',
+                            })
+                          }}
+                        >
+                          ✏️ Editar
+                        </button>
+                      )}
+                      {canDeleteClass && (
+                        <button
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
+                          onClick={async () => {
+                            if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
+                            await handleDeleteClase(c.id)
+                            logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                            toast.success('Clase eliminada')
+                          }}
+                        >
+                          🗑
+                        </button>
+                      )}
                     </div>}
                   </div>
                 )
@@ -1165,36 +1205,41 @@ export default function ClasesSection({
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
                             onClick={async () => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
-                            title="Ver alumnos"
-                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title={canReadRoster ? 'Ver alumnos' : 'No tienes permisos para ver alumnos'}
+                            disabled={!canReadRoster}
+                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: canReadRoster ? 'pointer' : 'not-allowed', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: canReadRoster ? 1 : 0.45 }}
                           >👥</button>
-                          <button
-                            onClick={async () => {
-                              setModalEditClase(c)
-                              const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
-                              setEditClaseForm({
-                                nombre: c.nombre, tipo: c.tipo, coach: coachNombre,
-                                dia: c.dia, hora: c.hora,
-                                duracion: String(c.duracion || 50),
-                                cupoMax: String(c.cupoMax || 15),
-                                descripcion: c.descripcion || '',
-                                publicarEn: c.publicarEn ? new Date(c.publicarEn).toISOString().slice(0, 16) : '',
-                                fecha: c.fecha ?? '',
-                              })
-                            }}
-                            title="Editar"
-                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >✏️</button>
-                          <button
-                            onClick={async () => {
-                              if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
-                              await handleDeleteClase(c.id)
-                              logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
-                              toast.success('Clase eliminada')
-                            }}
-                            title="Eliminar"
-                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >🗑</button>
+                          {canUpdateClass && (
+                            <button
+                              onClick={async () => {
+                                setModalEditClase(c)
+                                const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
+                                setEditClaseForm({
+                                  nombre: c.nombre, tipo: c.tipo, coach: coachNombre,
+                                  dia: c.dia, hora: c.hora,
+                                  duracion: String(c.duracion || 50),
+                                  cupoMax: String(c.cupoMax || 15),
+                                  descripcion: c.descripcion || '',
+                                  publicarEn: c.publicarEn ? new Date(c.publicarEn).toISOString().slice(0, 16) : '',
+                                  fecha: c.fecha ?? '',
+                                })
+                              }}
+                              title="Editar"
+                              style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >✏️</button>
+                          )}
+                          {canDeleteClass && (
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
+                                await handleDeleteClase(c.id)
+                                logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                                toast.success('Clase eliminada')
+                              }}
+                              title="Eliminar"
+                              style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >🗑</button>
+                          )}
                         </div>
                       </td>
                     </tr>

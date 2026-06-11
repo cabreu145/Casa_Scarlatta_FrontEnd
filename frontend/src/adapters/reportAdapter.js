@@ -25,6 +25,7 @@ function normalizePaymentMethods(payload = {}) {
     cashMxn: toNumber(methods.cash_mxn ?? methods.cashMxn ?? payload.cash_mxn ?? payload.cashMxn, 0),
     cardMxn: toNumber(methods.card_mxn ?? methods.cardMxn ?? payload.card_mxn ?? payload.cardMxn, 0),
     transferMxn: toNumber(methods.transfer_mxn ?? methods.transferMxn ?? payload.transfer_mxn ?? payload.transferMxn, 0),
+    mercadoPagoMxn: toNumber(methods.mercado_pago_mxn ?? methods.mercadoPagoMxn ?? payload.mercado_pago_mxn ?? payload.mercadoPagoMxn, 0),
     otherMxn: toNumber(methods.other_mxn ?? methods.otherMxn ?? payload.other_mxn ?? payload.otherMxn, 0),
   }
 }
@@ -36,6 +37,20 @@ function mapFinanceSummary(payload = {}) {
       payload.salesTotalMxn ??
       payload.sales?.total_mxn ??
       payload.sales?.totalMxn,
+      0
+    ),
+    posSalesTotalMxn: toNumber(
+      payload.pos_sales_total_mxn ??
+      payload.posSalesTotalMxn ??
+      payload.sales?.pos_sales_total_mxn ??
+      payload.sales?.posSalesTotalMxn,
+      0
+    ),
+    mercadoPagoTotalMxn: toNumber(
+      payload.mercado_pago_total_mxn ??
+      payload.mercadoPagoTotalMxn ??
+      payload.sales?.mercado_pago_total_mxn ??
+      payload.sales?.mercadoPagoTotalMxn,
       0
     ),
     expensesTotalMxn: toNumber(

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { useConfiguracionStore } from '@/stores/configuracionStore'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
 import styles from './HeroCarousel.module.css'
 
 const INTERVAL = 4000
 
 export default function HeroCarousel() {
-  const cfg    = useConfiguracionStore()
-  const slides = cfg.get('carouselHome')
+  const cfg    = useEffectiveSiteConfiguration()
+  const slides = cfg.get('carouselHero')
 
   const [current, setCurrent] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -16,7 +16,7 @@ export default function HeroCarousel() {
   const iframeRef = useRef(null)
 
   const advance = useCallback(() => {
-    setCurrent(prev => (prev + 1) % slides.length)
+    setCurrent(prev => slides.length ? (prev + 1) % slides.length : 0)
   }, [slides.length])
 
   // Load YouTube iframe when browser is idle (after critical resources)

@@ -45,7 +45,7 @@ describe('Login redirect flow', () => {
     await user.click(screen.getByRole('button', { name: /entrar/i }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard?section=pagos&packageId=12')
+      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard&packageId=12')
     })
   })
 
@@ -67,7 +67,7 @@ describe('Login redirect flow', () => {
     await user.click(screen.getByRole('button', { name: /entrar/i }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard?section=pagos&packageId=16')
+      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard&packageId=16')
     })
     expect(localStorage.getItem('pending_package_purchase_id')).toBeNull()
   })
@@ -92,5 +92,23 @@ describe('Login redirect flow', () => {
       expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard')
     })
     expect(screen.getByTestId('location')).not.toHaveTextContent('evil.com')
+  })
+
+  test('link de recuperar contraseña lleva a ruta oficial', async () => {
+    const { default: Login } = await import('./Login')
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <LocationProbe />
+        <Login />
+      </MemoryRouter>
+    )
+
+    await user.click(screen.getByRole('link', { name: /olvidaste tu contraseña/i }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent('/recuperar-contrasena')
+    })
   })
 })

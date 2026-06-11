@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+﻿import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import PagoModal from '@/features/pagos/PagoModal'
 import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationPanel'
@@ -23,7 +23,6 @@ import { editarPerfilService }            from '@/services/usuariosService'
 import { getPublicClassesByDate, getReservationOccurrenceDate, isPublished } from '@/services/classService'
 import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { logListaEsperaUnirse, logListaEsperaSalir } from '@/services/actividadService'
-import { getMisReservasPaginatedApi } from '@/services/reservasApiService'
 import {
   hoyLocal,
   DAYS_ES, DAYS_ABBR, MONTHS_ES,
@@ -62,6 +61,8 @@ import {
   useAddMyMembershipBeneficiaryMutation,
   usePublicCoachesQuery,
   useNotificationsQuery,
+  useReservationsMeQuery,
+  invalidateReservationSideEffects,
 } from '@/hooks/useApiQueries'
 
 const SECTION_META = {
@@ -91,7 +92,7 @@ function StatusPill({ status }) {
     confirmada: 'Confirmada',
     cancelada:  'Cancelada',
     pendiente:  'Pendiente',
-    no_asistio: 'NNo asistió',
+    no_asistio: 'No asistió',
     completada: 'Completada',
   }
   return <span className={`${s.statusPill} ${map[status] ?? ''}`}>{labels[status] ?? status}</span>
@@ -130,6 +131,8 @@ function toClsShape(r) {
   }))
   return {
     id:         r.id,
+    claseId:    r.claseId,
+    occurrenceId: r.occurrenceId,
     title:      r.claseNombre,
     coach:      r.coachNombre,
     date:       r.claseDia,
@@ -240,18 +243,10 @@ export default function ClientPanel() {
   const [pagoModal, setPagoModal] = useState(null)
   const [seatSelectorClass, setSeatSelectorClass] = useState(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  //const sectionQuery = new URLSearchParams(location.search).get('section')
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
   const [financialRefreshTick, setFinancialRefreshTick] = useState(0)
   const [misClasesPage, setMisClasesPage] = useState(1)
-  const [misClasesPageState, setMisClasesPageState] = useState({
-    items: [],
-    page: 1,
-    pageSize: 10,
-    total: 0,
-    totalPages: 1,
-    isLoading: false,
-    error: null,
-  })
   const [apiCreditMovementsPageLegacy, setApiCreditMovementsPageLegacy] = useState({
     items: [],
     page: 1,
@@ -264,11 +259,40 @@ export default function ClientPanel() {
   const weekDays = useMemo(() => buildWeek(weekOff), [weekOff])
   const resWeekDays = useMemo(() => buildWeek(resWeekOff), [resWeekOff])
   const [selectedPackageId, setSelectedPackageId] = useState(packageIdQuery ?? null)
+  const misClasesApiFilters = useMemo(
+    () => buildMisClasesApiFilters(misClasesStatusFilter, weekDays),
+    [misClasesStatusFilter, weekDays]
+  )
+  const misClasesQuery = useReservationsMeQuery({
+    page: misClasesPage,
+    pageSize: 10,
+    status: misClasesApiFilters.status,
+    from: misClasesApiFilters.from,
+    to: misClasesApiFilters.to,
+    enabled: useApiReservations && activeSection === 'clases' && Boolean(usuario?.id) && Boolean(misClasesApiFilters.from) && Boolean(misClasesApiFilters.to),
+  })
+  const misClasesPageState = useMemo(() => {
+    const result = misClasesQuery.data
+    const totalPages = Math.max(1, Math.ceil((result?.total ?? 0) / (result?.pageSize || 10)))
+    return {
+      items: result?.items ?? [],
+      page: result?.page ?? misClasesPage,
+      pageSize: result?.pageSize ?? 10,
+      total: result?.total ?? 0,
+      totalPages,
+      isLoading: misClasesQuery.isLoading,
+      error: misClasesQuery.error?.message ?? null,
+    }
+  }, [misClasesQuery.data, misClasesQuery.isLoading, misClasesQuery.error, misClasesPage])
   const requestFinancialRefresh = useCallback(() => {
     if (useApiFinancialState) {
       queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState })
       queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships })
       queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements({ page: financialHistoryPage, pageSize: 8 }) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() })
+      queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() })
       return
     }
     setFinancialRefreshTick((tick) => tick + 1)
@@ -288,6 +312,12 @@ export default function ClientPanel() {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [isSidebarOpen])
+
+  useEffect(() => {
+    if (sectionQuery && sectionQuery !== activeSection) {
+      setActiveSection(sectionQuery)
+    }
+  }, [activeSection, sectionQuery])
 
   useEffect(() => {
     if (!useApiClasses) return
@@ -485,37 +515,6 @@ export default function ClientPanel() {
   }, [misClasesStatusFilter, weekOff])
 
   useEffect(() => {
-    if (!useApiReservations || activeSection !== 'clases' || !usuario?.id) return
-    const { status, from, to } = buildMisClasesApiFilters(misClasesStatusFilter, weekDays)
-    if (!from || !to) return
-    let active = true
-    setMisClasesPageState((prev) => ({ ...prev, isLoading: true, error: null }))
-    getMisReservasPaginatedApi({ page: misClasesPage, pageSize: 10, status, from, to })
-      .then((result) => {
-        if (!active) return
-        const totalPages = Math.max(1, Math.ceil((result.total ?? 0) / (result.pageSize || 10)))
-        setMisClasesPageState({
-          items: result.items ?? [],
-          page: result.page ?? misClasesPage,
-          pageSize: result.pageSize ?? 10,
-          total: result.total ?? 0,
-          totalPages,
-          isLoading: false,
-          error: null,
-        })
-      })
-      .catch((err) => {
-        if (!active) return
-        setMisClasesPageState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: err?.message ?? 'No se pudo cargar Mis clases',
-        }))
-      })
-    return () => { active = false }
-  }, [activeSection, misClasesPage, misClasesStatusFilter, useApiReservations, usuario?.id, weekDays])
-
-  useEffect(() => {
     if (useApiFinancialState || usuario?.rol !== 'cliente') return
   }, [financialHistoryPage, financialHistoryPageSize, financialRefreshTick, useApiFinancialState, usuario?.rol])
 
@@ -668,32 +667,12 @@ export default function ClientPanel() {
   }
 
   // â”€â”€ Handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  async function handleCancelReserva(reservaId) {
+  async function handleCancelReserva(reservaId, { occurrenceId, classId } = {}) {
     const resultado = await cancelarReserva(reservaId, usuario.id)
     if (resultado.ok) toast.success('Reserva cancelada. Te enviamos confirmación por correo 📧')
     else toast.error(resultado.error)
-    if (resultado.ok && useApiReservations && activeSection === 'clases') {
-      const { status, from, to } = buildMisClasesApiFilters(misClasesStatusFilter, weekDays)
-      try {
-        const result = await getMisReservasPaginatedApi({ page: misClasesPage, pageSize: 10, status, from, to })
-        const totalPages = Math.max(1, Math.ceil((result.total ?? 0) / (result.pageSize || 10)))
-        const safePage = Math.min(misClasesPage, totalPages)
-        if (safePage !== misClasesPage) {
-          setMisClasesPage(safePage)
-          return
-        }
-        setMisClasesPageState({
-          items: result.items ?? [],
-          page: result.page ?? misClasesPage,
-          pageSize: result.pageSize ?? 10,
-          total: result.total ?? 0,
-          totalPages,
-          isLoading: false,
-          error: null,
-        })
-      } catch {
-        // noop: mantener estado local y toast ya mostrado
-      }
+    if (resultado.ok && useApiReservations) {
+      await invalidateReservationSideEffects(queryClient, { occurrenceId, classId })
     }
   }
 
@@ -1233,7 +1212,7 @@ export default function ClientPanel() {
               return dayClasses.length > 0 ? (
                 <div>
                   {dayClasses.map((c, index) => (
-                    <MisClasesCard key={`${c.occurrenceId ?? c.id}-${c.claseFecha ?? day.isoDate}-${c.time ?? 'sin-hora'}-${index}`} cls={c} dayIsoDate={day.isoDate} onCancel={() => handleCancelReserva(c.id)} coachFoto={coachFotoById[String(c.coachId ?? c.coach_id ?? '')] ?? coachFotoByName[c.coach] ?? null} />
+                    <MisClasesCard key={`${c.occurrenceId ?? c.id}-${c.claseFecha ?? day.isoDate}-${c.time ?? 'sin-hora'}-${index}`} cls={c} dayIsoDate={day.isoDate} onCancel={() => handleCancelReserva(c.id, { occurrenceId: c.occurrenceId, classId: c.claseId })} coachFoto={coachFotoById[String(c.coachId ?? c.coach_id ?? '')] ?? coachFotoByName[c.coach] ?? null} />
                   ))}
                   {useApiReservations && (
                     <PaginationControls
@@ -1971,7 +1950,13 @@ export default function ClientPanel() {
             occurrenceId={seatSelectorClass.occurrenceId}
             classId={seatSelectorClass.id}
             userId={usuario?.id}
-            financialState={financialState}
+            financialState={{
+              financialState: effectiveFinancialState,
+              creditsBalance: effectiveCreditsBalance,
+              activeMembership: effectiveActiveMembership,
+              isLoading: effectiveFinancialStateLoading,
+              error: effectiveFinancialStateError,
+            }}
             onClose={() => setSeatSelectorClass(null)}
           />
         ) : (

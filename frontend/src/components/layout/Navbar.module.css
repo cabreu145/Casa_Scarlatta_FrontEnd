@@ -159,6 +159,14 @@
 .avatar:hover {
   opacity: 0.85;
 }
+.avatar > div {
+  background: #7B1F2E !important;
+  color: #F5EDE8 !important;
+}
+
+.avatar > div > span {
+  color: #F5EDE8 !important;
+}
 
 .notifButton {
   width: 38px;

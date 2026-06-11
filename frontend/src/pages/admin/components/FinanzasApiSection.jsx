@@ -19,6 +19,7 @@ import {
 } from '@/hooks/useApiQueries'
 import { exportFinanceCsv } from '@/services/financeApiService'
 import { abrirReportePDF } from '@/utils/reportePDF'
+import { formatBusinessDateTime } from '@/utils/formatters'
 import styles from '@/styles/dashboard.module.css'
 
 const METODO_LABELS = {
@@ -71,17 +72,7 @@ function formatDateMx(value) {
 }
 
 function formatDateTimeMx(value) {
-  if (!value) return '—'
-  const date = new Date(String(value))
-  if (Number.isNaN(date.getTime())) return String(value)
-  return date.toLocaleString('es-MX', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  return formatBusinessDateTime(value)
 }
 
 function paymentMethodLabel(method) {
@@ -636,8 +627,8 @@ export default function FinanzasApiSection({ inPanel = false }) {
           <div style={panel}>
             <PanelTitle
               title="Ingresos históricos"
-              sub={`Serie operativa ${historicalQuery.data?.groupBy ?? resolveHistoricalGroupBy(rango)} · Backend real`}
-              right={historicalItems.length > 0 ? <Badge color="blue">Real</Badge> : <Badge color="yellow">Sin datos</Badge>}
+              sub={`Serie operativa ${historicalQuery.data?.groupBy ?? resolveHistoricalGroupBy(rango)}`}
+              right={historicalItems.length > 0 ? <Badge color="blue"></Badge> : <Badge color="yellow">Sin datos</Badge>}
             />
             {historicalItems.length > 0 ? (
               <div style={{ display: 'grid', gap: 10 }}>
@@ -670,15 +661,16 @@ export default function FinanzasApiSection({ inPanel = false }) {
 
           <div style={panel}>
             <PanelTitle
-              title={`Método de pago — ${getRangeLabel(rango, fechaEspecifica, fechaDesde, fechaHasta)}`}
+              title={`Método de pago Punto de venta — Rango de fecha: ${getRangeLabel(rango, fechaEspecifica, fechaDesde, fechaHasta)}`}
               sub="Ventas del rango seleccionado"
             />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                ['cash', kpis.paymentMethods.cashMxn],
-                ['card', kpis.paymentMethods.cardMxn],
-                ['transfer', kpis.paymentMethods.transferMxn],
-                ['other', kpis.paymentMethods.otherMxn],
+                ['Efectivo', kpis.paymentMethods.cashMxn],
+                ['Tarjeta de crédito', kpis.paymentMethods.cardMxn],
+                ['Transferencia', kpis.paymentMethods.transferMxn],
+                ['Mercado Pago', kpis.paymentMethods.mercadoPagoMxn],
+                ['Otro', kpis.paymentMethods.otherMxn],
               ].map(([method, amount]) => {
                 const pct = Math.round((Number(amount ?? 0) / (kpis.sales.totalMxn || 1)) * 100)
                 return (

@@ -1,17 +1,31 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
+vi.mock('@/context/AuthContext', () => ({
+  useAuth: () => ({
+    usuario: {
+      id: 1,
+      rol: 'admin',
+      role: 'admin',
+      roleCode: 'admin',
+      permissions: ['pay_table.read', 'pay_table.manage'],
+    },
+  }),
+}))
+
 const apiState = {
   finance: {
     data: {
       summary: {
         salesCount: 12,
         salesTotalMxn: 10000,
+        posSalesTotalMxn: 6000,
+        mercadoPagoTotalMxn: 4000,
         expensesTotalMxn: 1200,
         netTotalMxn: 8800,
         averageTicketMxn: 250,
         cashClosingsCount: 2,
-        paymentMethods: { cashMxn: 4000, cardMxn: 5000, transferMxn: 1000, otherMxn: 0 },
+        paymentMethods: { cashMxn: 4000, cardMxn: 5000, transferMxn: 1000, mercadoPagoMxn: 1500, otherMxn: 0 },
       },
     },
     isLoading: false,
@@ -48,7 +62,7 @@ const apiState = {
       productsSold: 20,
       productRevenueMxn: 1500,
       packageRevenueMxn: 5200,
-      paymentMethods: { cashMxn: 2000, cardMxn: 3000, transferMxn: 1700, otherMxn: 0 },
+      paymentMethods: { cashMxn: 2000, cardMxn: 3000, transferMxn: 1700, mercadoPagoMxn: 1500, otherMxn: 0 },
       productCategories: [{ category: 'Bebidas', totalMxn: 1200, itemsSold: 10 }],
     },
     isLoading: false,
@@ -187,6 +201,7 @@ describe('AdminReportes API mode', () => {
     expect(screen.getByText('Mensual 12')).toBeInTheDocument()
     expect(screen.getByText('Hay clases sin tarifa configurada en el tabulador.')).toBeInTheDocument()
     expect(screen.getByText('Tabulador de pagos por clase')).toBeInTheDocument()
+    expect(screen.getByText('Mercado Pago')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'CSV' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'PDF' }).length).toBeGreaterThan(0)
   })

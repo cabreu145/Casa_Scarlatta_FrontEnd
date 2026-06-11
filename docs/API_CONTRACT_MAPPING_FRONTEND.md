@@ -78,6 +78,30 @@ Notas:
 Notas:
 - Admin > Coaches en API mode ya usa backend real como source of truth.
 - `coachesStore` queda como fallback legacy para flags API en `false`.
+
+## Mapeo RBAC / Roles y permisos (vigente)
+
+| Archivo frontend | Funcion actual | Endpoint backend | Request esperado | Response esperado | Transformacion necesaria | Prioridad |
+|---|---|---|---|---|---|---|
+| `frontend/src/context/AuthContext.jsx` + `frontend/src/adapters/authAdapter.js` | bootstrap/login `auth/me` | `GET /api/v1/auth/me` | Bearer token | usuario con `role`, `rol`, `roleCode`, `roleName`, `permissions[]` | normalizar aliases legacy + catalogo de permisos efectivo | Alta |
+| `frontend/src/services/rbacApiService.js` | `getPermissionsApi()` | `GET /api/v1/rbac/permissions` | Bearer admin | `Permission[]` | `snake_case -> camelCase` | Alta |
+| `frontend/src/services/rbacApiService.js` | `getRolesApi(params)` | `GET /api/v1/rbac/roles?page=&page_size=&search=&status=` | query estandar | paginado `{ page, page_size, total, items[] }` | adapter RBAC | Alta |
+| `frontend/src/services/rbacApiService.js` | `getRoleByIdApi(roleId)` | `GET /api/v1/rbac/roles/{role_id}` | path `role_id` | detalle rol | adapter RBAC | Alta |
+| `frontend/src/services/rbacApiService.js` | `createRoleApi(payload)` | `POST /api/v1/rbac/roles` | `{ code, name, description, base_role, is_active, permission_keys[] }` | rol creado | payload builder + adapter | Alta |
+| `frontend/src/services/rbacApiService.js` | `updateRoleApi(roleId,payload)` | `PUT /api/v1/rbac/roles/{role_id}` | mismo shape sin cambiar `code` cuando backend lo proteja | rol actualizado | payload builder + adapter | Alta |
+| `frontend/src/services/rbacApiService.js` | `updateRolePermissionsApi(roleId, permissionKeys)` | `PUT /api/v1/rbac/roles/{role_id}/permissions` | `{ permission_keys: [] }` | rol/permisos actualizados | payload builder | Alta |
+| `frontend/src/services/rbacApiService.js` | `deleteRoleApi(roleId)` | `DELETE /api/v1/rbac/roles/{role_id}` | path `role_id` | baja logica o confirmacion backend | sin mocks | Alta |
+| `frontend/src/services/rbacApiService.js` | `getRbacUsersApi(params)` | `GET /api/v1/rbac/users?page=&page_size=&search=&role=&status=` | query estandar | paginado usuarios RBAC | adapter RBAC | Alta |
+| `frontend/src/services/rbacApiService.js` | `updateUserRoleApi(userId,payload)` | `PATCH /api/v1/rbac/users/{user_id}/role` | preferido `{ role_code }`, compat `{ role_id }` si backend acepta | confirmacion backend | payload builder | Alta |
+| `frontend/src/services/rbacApiService.js` | `getUserEffectivePermissionsApi(userId)` | `GET /api/v1/rbac/users/{user_id}/permissions` | path `user_id` | permisos de rol + overrides + efectivos | adapter RBAC | Alta |
+| `frontend/src/services/rbacApiService.js` | `updateUserPermissionOverridesApi(userId, overrides)` | `PUT /api/v1/rbac/users/{user_id}/permissions` | `{ overrides: [{ permission_key, effect }] }` | permisos efectivos actualizados | payload builder + adapter | Alta |
+
+Notas:
+- Frontend oculta modulos y acciones por UX usando `permissions[]` de `/auth/me`.
+- Backend sigue siendo source of truth; `403` manda.
+- `cajero_pos` usa shell limitado a POS en `/cajero/dashboard`.
+- `pay_table.read` / `pay_table.manage` gobiernan tabulador.
+- `users.*` gobierna gestion de usuarios genericos; compat visual con `clients.*` se mantiene donde aplica.
 - `coach_id` es identidad canónica en frontend API mode.
 - `public_profile_enabled` controla visibilidad pública; `avatar_url` es string persistido por backend.
 - `avatar_url` llega desde backend y frontend lo resuelve como URL pública; no se captura manualmente en form.
@@ -238,3 +262,25 @@ Reglas frontend:
 - Toda lectura/mutacion contra backend real en API mode va por TanStack Query.
 - Zustand/localStorage no son source of truth de datos backend.
 - Mocks/demo solo fallback cuando flags API estan apagadas.
+
+## Addendum 2026-06-10
+
+- `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos` y `GET /api/v1/reservas/ocurrencias/{occurrence_id}/alumnos?includeCanceled=true` quedan como roster privado canonico.
+- Notificaciones, configuracion de correo y outbox ya usan hooks Query para lectura/mutacion.
+- `PaymentReturnPage` invalida estado financiero, membresias, movimientos, pagos, notificaciones y actividad tras pago aplicado.
+
+## Site configuration (vigente)
+
+| Archivo frontend | Función | Endpoint backend | Uso |
+|---|---|---|---|
+| `frontend/src/services/siteConfigurationApiService.js` | `getSiteConfigurationApi()` | `GET /api/v1/configuracion/site` | Configuración pública persistente |
+| `frontend/src/services/siteConfigurationApiService.js` | `updateSiteConfigurationApi(payload)` | `PUT /api/v1/configuracion/site` | Guardado con `settings.update` |
+| `frontend/src/services/siteConfigurationApiService.js` | `uploadSiteConfigurationMediaApi({ field, file })` | `POST /api/v1/configuracion/site/upload` | Upload multipart de imágenes |
+
+Reglas:
+- `siteConfiguration.detail()` es server state canónico en API mode.
+- `configuracionStore` no pisa backend; queda fallback API off/error controlado.
+- Home, Nosotros, Clases y Contacto consumen `useEffectiveSiteConfiguration`.
+- `/media/site/...` se resuelve contra `VITE_API_BASE_URL`, no contra Vite.
+- Upload acepta JPG, PNG y WEBP; video local muestra error MVP controlado.
+- Máximos: 6 slides Hero y 8 elementos Nosotros.

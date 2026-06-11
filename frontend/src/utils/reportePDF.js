@@ -38,15 +38,48 @@ function parseMonto(v) {
   return isNaN(Number(limpio)) ? 0 : Number(limpio)
 }
 
+function normalizeComparableText(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+function findRowByConcept(datos, concepts = []) {
+  const normalizedConcepts = concepts.map((concept) => normalizeComparableText(concept))
+  return datos.find((row = {}) => {
+    const concept = normalizeComparableText(row.Concepto ?? row.Indicador ?? row.etiqueta ?? row.label ?? '')
+    return normalizedConcepts.some((needle) => concept === needle || concept.includes(needle))
+  })
+}
+
+function readRowMonto(row) {
+  if (!row) return null
+  const value = row.Monto ?? row.Valor ?? row.Total ?? row.total ?? row.monto ?? null
+  const parsed = parseMonto(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function readFinancialMetric(datos, concepts, fallback = 0, { absolute = false } = {}) {
+  const row = findRowByConcept(datos, concepts)
+  if (row) {
+    const value = readRowMonto(row)
+    if (value != null) return absolute ? Math.abs(value) : value
+  }
+  return fallback
+}
+
 export function calcularStats(tipo, datos) {
   if (!datos?.length) return []
 
   if (tipo === 'financiero') {
-    const ingresos = datos.filter(r => parseMonto(r.Monto ?? 0) > 0).reduce((a, r) => a + parseMonto(r.Monto), 0)
-    const gastos   = datos.filter(r => parseMonto(r.Monto ?? 0) < 0).reduce((a, r) => a + Math.abs(parseMonto(r.Monto)), 0)
-    const utilidad = ingresos - gastos
+    const ingresos = readFinancialMetric(datos, ['Ingresos totales', 'Ingresos'], 0)
+    const gastos   = readFinancialMetric(datos, ['Gastos totales', 'Gastos'], 0, { absolute: true })
+    const utilidad  = readFinancialMetric(datos, ['Utilidad neta', 'Utilidad'], ingresos - gastos)
     return [
-      { valor: datos.length.toLocaleString('es-MX'),     etiqueta: 'Total de registros' },
+      { valor: datos.length.toLocaleString('es-MX'),     etiqueta: 'Conceptos del reporte' },
       { valor: '$' + ingresos.toLocaleString('es-MX'),   etiqueta: 'Ingresos' },
       { valor: '$' + gastos.toLocaleString('es-MX'),     etiqueta: 'Gastos' },
       { valor: '$' + utilidad.toLocaleString('es-MX'),   etiqueta: 'Utilidad' },
@@ -127,7 +160,7 @@ export function calcularStats(tipo, datos) {
   return [{ valor: datos.length.toLocaleString('es-MX'), etiqueta: 'Total de registros' }]
 }
 
-function construirFilasTabla(datos, tipo) {
+export function construirFilasTabla(datos, tipo) {
   if (!datos?.length) {
     return '<tr><td colspan="99" style="text-align:center;padding:24px;color:#9C7A74;">Sin datos</td></tr>'
   }
@@ -157,9 +190,24 @@ function construirFilasTabla(datos, tipo) {
   const blanks = '<td></td>'.repeat(cols.length - 2)
 
   if (tipo === 'financiero') {
-    const ingresos = datos.filter(r => parseMonto(r[colMonto] ?? 0) > 0).reduce((a, r) => a + parseMonto(r[colMonto]), 0)
-    const gastos   = datos.filter(r => parseMonto(r[colMonto] ?? 0) < 0).reduce((a, r) => a + Math.abs(parseMonto(r[colMonto])), 0)
-    const utilidad = ingresos - gastos
+    // Si el reporte trae filas-resumen explícitas (Ingresos totales, Gastos
+    // totales, Utilidad neta), se leen esos valores directamente: las demás
+    // filas (Ticket promedio, métodos de pago) son informativas y no deben
+    // sumarse de nuevo. Si no existen filas-resumen (modo legacy: lista de
+    // transacciones individuales), se calcula sumando montos por signo.
+    const tieneResumen = !!findRowByConcept(datos, ['Ingresos totales', 'Ingresos'])
+    let ingresos
+    let gastos
+    let utilidad
+    if (tieneResumen) {
+      ingresos = readFinancialMetric(datos, ['Ingresos totales', 'Ingresos'], 0)
+      gastos   = readFinancialMetric(datos, ['Gastos totales', 'Gastos'], 0, { absolute: true })
+      utilidad = readFinancialMetric(datos, ['Utilidad neta', 'Utilidad'], ingresos - gastos)
+    } else {
+      ingresos = datos.filter(r => parseMonto(r[colMonto] ?? 0) > 0).reduce((a, r) => a + parseMonto(r[colMonto]), 0)
+      gastos   = datos.filter(r => parseMonto(r[colMonto] ?? 0) < 0).reduce((a, r) => a + Math.abs(parseMonto(r[colMonto])), 0)
+      utilidad = ingresos - gastos
+    }
     return filas
       + '<tr class="total-row"><td>INGRESOS</td>' + blanks + '<td>$' + ingresos.toLocaleString('es-MX') + '</td></tr>'
       + '<tr class="total-row gastos-row"><td>GASTOS</td>' + blanks + '<td style="color:#B91C1C;">−$' + gastos.toLocaleString('es-MX') + '</td></tr>'
@@ -326,6 +374,9 @@ function construirHTML({ tipo, titulo, datos, periodo, landscape = false }) {
   const periodoStr = periodo
     ? '&nbsp;·&nbsp; Período: <strong>' + periodo + '</strong>'
     : ''
+  const unidadRegistro = tipo === 'financiero'
+    ? 'concepto' + (nReg !== 1 ? 's' : '')
+    : 'registro' + (nReg !== 1 ? 's' : '')
 
   const cssBlock = landscape ? CSS_LANDSCAPE : CSS_BLOCK
 
@@ -345,7 +396,7 @@ function construirHTML({ tipo, titulo, datos, periodo, landscape = false }) {
     + '      <div>\n'
     + '        <div class="report-title">' + titulo + '</div>\n'
     + '        <div class="report-date">Generado el ' + fechaHoy + periodoStr
-    + ' &nbsp;·&nbsp; ' + nReg + ' registro' + (nReg !== 1 ? 's' : '') + '</div>\n'
+    + ' &nbsp;·&nbsp; ' + nReg + ' ' + unidadRegistro + '</div>\n'
     + '      </div>\n    </div>\n'
     + '    <div class="stats-grid">' + statsHTML + '</div>\n'
     + '    <div class="table-wrap"><table>\n'

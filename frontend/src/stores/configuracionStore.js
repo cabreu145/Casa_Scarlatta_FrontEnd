@@ -1,20 +1,10 @@
 /**
  * configuracionStore.js
  * ─────────────────────────────────────────────────────
- * Store de configuración global del estudio.
- * Persiste en localStorage hasta que el backend esté listo.
- *
- * [BACKEND] → Reemplazar por:
- *   GET  /api/configuracion
- *   PUT  /api/configuracion
- *   Solo el rol 'admin' puede modificar estos valores.
- *
- * Para conectar:
- *   1. En el useEffect inicial de AdminPanel,
- *      hacer GET /api/configuracion y llamar
- *      setConfiguracion(data) para sincronizar.
- *   2. En actualizar(), hacer PUT /api/configuracion
- *      con los nuevos valores.
+ * Store legacy de configuración global del estudio.
+ * En API mode, GET/PUT /api/v1/configuracion/site es source of truth.
+ * Este store persiste solo fallback legacy y preferencias no cubiertas por
+ * el contrato site configuration.
  * ─────────────────────────────────────────────────────
  */
 import { create } from 'zustand'
@@ -66,11 +56,11 @@ const DEFAULTS = {
   ],
 
   // ── Carrusel hero de Home (URLs o YouTube IDs) ───────
-  // [BACKEND] → configuracion.carouselHome (object[])
+  // [BACKEND] → configuracion.carouselHero (object[])
   // Estructura de cada slide:
   //   { tipo: 'imagen'|'video', url: string, videoId?: string, start?: number }
   // Cuando haya backend con storage: cambiar a uploads reales.
-  carouselHome: [
+  carouselHero: [
     { tipo: 'video',  url: '',    videoId: 'djp5ZQQ7WXA', start: 14 },
     { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1600&q=80' },
     { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1600&q=80' },
@@ -92,15 +82,29 @@ export const useConfiguracionStore = create(
     (set, get) => ({
       config: { ...DEFAULTS },
 
-      // Obtener un valor de configuración con fallback al default
-      get: (key) => get().config[key] ?? DEFAULTS[key],
+      // carouselHome remains readable for persisted legacy configuration.
+      get: (key) => {
+        const config = get().config
+        if (key === 'carouselHero' || key === 'carouselHome') {
+          return config.carouselHero ?? config.carouselHome ?? DEFAULTS.carouselHero
+        }
+        return config[key] ?? DEFAULTS[key]
+      },
 
       // Actualizar uno o varios valores
       // [BACKEND] → PUT /api/configuracion
       actualizar: (cambios) => {
-        set(s => ({
-          config: { ...s.config, ...cambios },
-        }))
+        set(s => {
+          const normalized = { ...cambios }
+          if ('carouselHome' in normalized && !('carouselHero' in normalized)) {
+            normalized.carouselHero = normalized.carouselHome
+          }
+          delete normalized.carouselHome
+
+          const config = { ...s.config, ...normalized }
+          delete config.carouselHome
+          return { config }
+        })
       },
 
       // Restaurar todos los valores a los defaults

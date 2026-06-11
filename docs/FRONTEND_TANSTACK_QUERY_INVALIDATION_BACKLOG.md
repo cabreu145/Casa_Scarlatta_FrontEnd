@@ -48,3 +48,9 @@ Este bloque va despues del backlog de email/notificaciones en el roadmap.
 - Query keys nuevas ya cubren classes, reservations, waitlist, spots y activity.
 - Activity ya usa backend real en API mode; backlog solo cubre invalidacion futura por mutaciones.
 - Siguiente paso de backlog: migrar mutations criticas por modulo usando invalidacion por prefijo.
+
+## Addendum 2026-06-10
+
+- `spotHolds.byOccurrence` ya forma parte del estandar de invalidacion.
+- `PaymentReturnPage` invalida `myFinancialState`, `myMemberships`, `myCreditMovements`, `myPayments`, `notifications.list`, `notifications.unreadCount` y `activity.list` cuando pago queda `approved + applied`.
+- Refresh manual no es estrategia de server state en API mode.

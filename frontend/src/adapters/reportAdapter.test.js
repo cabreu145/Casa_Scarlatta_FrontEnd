@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+﻿import { describe, expect, test } from 'vitest'
 import {
   mapBackendCoachPaymentsReportToFrontend,
   mapBackendCoachesReportToFrontend,
@@ -16,11 +16,13 @@ describe('reportAdapter', () => {
       from: '2026-06-01',
       to: '2026-06-09',
       sales_total_mxn: 10000,
+      pos_sales_total_mxn: 6000,
+      mercado_pago_total_mxn: 4000,
       expenses_total_mxn: 1200,
       net_total_mxn: 8800,
       average_ticket_mxn: 250,
       cash_closings_count: 2,
-      payment_methods: { cash_mxn: 4000, card_mxn: 5000, transfer_mxn: 1000, other_mxn: 0 },
+      payment_methods: { cash_mxn: 4000, card_mxn: 5000, transfer_mxn: 1000, mercado_pago_mxn: 1500, other_mxn: 0 },
     })
 
     expect(mapped).toMatchObject({
@@ -28,11 +30,13 @@ describe('reportAdapter', () => {
       to: '2026-06-09',
       summary: {
         salesTotalMxn: 10000,
+        posSalesTotalMxn: 6000,
+        mercadoPagoTotalMxn: 4000,
         expensesTotalMxn: 1200,
         netTotalMxn: 8800,
         averageTicketMxn: 250,
         cashClosingsCount: 2,
-        paymentMethods: { cashMxn: 4000, cardMxn: 5000, transferMxn: 1000, otherMxn: 0 },
+        paymentMethods: { cashMxn: 4000, cardMxn: 5000, transferMxn: 1000, mercadoPagoMxn: 1500, otherMxn: 0 },
       },
     })
   })
@@ -73,7 +77,7 @@ describe('reportAdapter', () => {
     })
   })
 
-  test('mapea pos, coaches, top clases y ocupaci�n', () => {
+  test('mapea pos, coaches, top clases y ocupación', () => {
     const pos = mapBackendPosReportToFrontend({
       sales_count: 8,
       average_ticket_mxn: 340,

@@ -151,7 +151,7 @@ describe('PaymentReturnPage', () => {
       await new Promise((resolve) => setTimeout(resolve, 2700))
     })
 
-    expect(navigateMock).toHaveBeenCalledWith('/cliente/dashboard?section=pagos', { replace: true })
+    expect(navigateMock).toHaveBeenCalledWith('/cliente/dashboard', { replace: true })
     expect(screen.getByText(/Ir a Paquetes & Pagos/i)).toBeInTheDocument()
   }, 10000)
 

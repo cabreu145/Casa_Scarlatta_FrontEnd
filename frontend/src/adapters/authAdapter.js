@@ -15,11 +15,22 @@
 
 export function mapBackendUserToFrontendUser(user) {
   if (!user) return null
+  const roleCode = user.roleCode ?? user.role_code ?? user.role ?? user.rol ?? 'cliente'
+  const roleName = user.roleName ?? user.role_name ?? roleCode
+  const permissions = Array.isArray(user.permissions)
+    ? user.permissions
+        .map((permission) => String(permission ?? '').trim())
+        .filter(Boolean)
+    : []
   return {
     id: user.id,
     nombre: user.nombre ?? user.name ?? user.full_name ?? '',
     email: user.email ?? '',
-    rol: user.rol ?? user.role ?? 'cliente',
+    rol: user.rol ?? user.role ?? roleCode,
+    role: user.role ?? user.rol ?? roleCode,
+    roleCode,
+    roleName,
+    permissions,
     telefono: user.telefono ?? user.phone ?? '',
     phone: user.phone ?? user.telefono ?? '',
     genero: normalizeGender(user.genero ?? user.gender) ?? '',

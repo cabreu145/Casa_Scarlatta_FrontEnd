@@ -3,7 +3,7 @@
  * ─────────────────────────────────────────────────────
  * Lógica de negocio para gestión de coaches.
  * Al crear un coach se genera automáticamente un usuario
- * con rol 'coach' para que pueda iniciar sesión.
+ * con rol 'coach' para que pueda Iniciar Sesión.
  * Al eliminar un coach sus clases quedan "Sin asignar".
  *
  * Usado en: admin/AdminCoaches.jsx

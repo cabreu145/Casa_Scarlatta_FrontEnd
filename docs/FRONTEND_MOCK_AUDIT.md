@@ -180,3 +180,21 @@ Responsable: Codex
 - Zustand/localStorage quedan solo para fallback legacy y UI local.
 - No usar mocks como verdad en API mode.
 - `AdminDashboard.jsx` sigue siendo legacy/dead code; `DashboardSection.jsx` es shell vivo.
+
+## Addendum 2026-06-10
+
+- `PaymentReturnPage` ya invalida finanzas, membresias, movimientos, pagos, notificaciones y actividad tras pago `approved + applied`.
+- `spotHolds.byOccurrence` ya existe y se invalida desde mutation hooks.
+- `occurrenceRoster.detail(occurrenceId, includeCanceled)` ya es key canonica para roster privado.
+- Refresh manual queda como fallback legacy solamente.
+- `Configuracion > Roles y permisos` ya consume backend real RBAC (`/api/v1/rbac/*`) en API mode.
+- `/auth/me` ya hidrata `roleCode`, `roleName` y `permissions`; frontend usa esos permisos para ocultar modulos sensibles por UX.
+
+## Site configuration cerrado
+
+- Los hallazgos `HOME-01` a `HOME-04` quedan cerrados en API mode.
+- Admin > Configuración usa GET/PUT/upload de `/api/v1/configuracion/site`.
+- Home, Nosotros, Clases y Contacto ya no usan localStorage como verdad en API mode.
+- `configuracionStore` queda fallback legacy con API off o error controlado.
+- Imágenes `/media/site` se comparten entre dispositivos y breakpoints desde backend.
+- Upload de video local sigue fuera del MVP backend; no se simula persistencia.

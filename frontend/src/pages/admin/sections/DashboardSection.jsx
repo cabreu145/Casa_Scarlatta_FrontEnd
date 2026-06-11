@@ -7,6 +7,7 @@ import { useUsuariosStore }      from '@/stores/usuariosStore'
 import { useClasesStore }        from '@/stores/clasesStore'
 import { usePaquetesStore }      from '@/stores/paquetesStore'
 import { getClassDisplayTime } from '@/utils/classSchedule'
+import { formatBusinessDateTime } from '@/utils/formatters'
 import {
   useFinanceCategoriesQuery,
   useFinanceDaySummaryQuery,
@@ -300,17 +301,7 @@ function formatDateMx(value) {
 }
 
 function formatDateTimeMx(value) {
-  if (!value) return '—'
-  const date = new Date(String(value))
-  if (Number.isNaN(date.getTime())) return String(value)
-  return date.toLocaleString('es-MX', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+  return formatBusinessDateTime(value)
 }
 
 function paymentMethodLabel(method) {

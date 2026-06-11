@@ -1,7 +1,24 @@
-﻿export function getPackageDisplayName(pkg = {}) {
-  const name = String(pkg?.name ?? '').trim()
+﻿function normalizeMojibakeText(value = '') {
+  return String(value ?? '')
+    .replace(/\u00C2\u00B7/g, '·')
+    .replace(/\u00C3\u00A1/g, 'á')
+    .replace(/\u00C3\u00A9/g, 'é')
+    .replace(/\u00C3\u00AD/g, 'í')
+    .replace(/\u00C3\u00B3/g, 'ó')
+    .replace(/\u00C3\u00BA/g, 'ú')
+    .replace(/\u00C3\u00B1/g, 'ñ')
+    .replace(/\u00C3\u0081/g, 'Á')
+    .replace(/\u00C3\u0089/g, 'É')
+    .replace(/\u00C3\u008D/g, 'Í')
+    .replace(/\u00C3\u0093/g, 'Ó')
+    .replace(/\u00C3\u009A/g, 'Ú')
+    .replace(/\u00C3\u0091/g, 'Ñ')
+}
+
+export function getPackageDisplayName(pkg = {}) {
+  const name = normalizeMojibakeText(String(pkg?.name ?? '').trim())
   if (name) return name
-  const displayName = String(pkg?.displayName ?? pkg?.display_name ?? pkg?.nombre ?? '').trim()
+  const displayName = normalizeMojibakeText(String(pkg?.displayName ?? pkg?.display_name ?? pkg?.nombre ?? '').trim())
   if (displayName) return displayName
   return 'Paquete'
 }
@@ -26,7 +43,7 @@ function resolvePackageDurationDays(value) {
 
 export function formatPackageValidityLabel(value = {}) {
   const days = resolvePackageDurationDays(value)
-  if (!Number.isFinite(days) || days <= 0) return 'Vigencia por definir'
+  if (!Number.isFinite(days) || days <= 0) return 'Válido por definir'
   return `Válido por ${days} ${days === 1 ? 'día' : 'días'}`
 }
 

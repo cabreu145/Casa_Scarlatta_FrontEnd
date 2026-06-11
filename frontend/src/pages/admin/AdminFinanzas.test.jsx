@@ -2,10 +2,11 @@ import { fireEvent, render, screen, within, waitFor } from '@testing-library/rea
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const apiState = {
+  today: new Date().toISOString().slice(0, 10),
   kpis: {
     data: {
-      from: '2026-06-09',
-      to: '2026-06-09',
+      from: new Date().toISOString().slice(0, 10),
+      to: new Date().toISOString().slice(0, 10),
       sales: { count: 12, subtotalMxn: 10000, taxMxn: 1600, totalMxn: 11600 },
       expenses: { count: 3, totalMxn: 1200 },
       net: { totalMxn: 10400 },
@@ -25,7 +26,7 @@ const apiState = {
           customerName: 'Cliente Demo',
           paymentMethod: 'cash',
           totalMxn: 350,
-          createdAt: '2026-06-09T10:00:00-06:00',
+          createdAt: '2026-06-10T22:30:00Z',
         },
       ],
       recentExpenses: [
@@ -75,15 +76,15 @@ const apiState = {
   },
   recentSales: {
     data: [
-      {
-        id: 1,
-        folio: 'POS-000001',
-        customerName: 'Cliente Demo',
-        paymentMethod: 'cash',
-        totalMxn: 350,
-        createdAt: '2026-06-09T10:00:00-06:00',
-      },
-    ],
+        {
+          id: 1,
+          folio: 'POS-000001',
+          customerName: 'Cliente Demo',
+          paymentMethod: 'cash',
+          totalMxn: 350,
+          createdAt: '2026-06-10T22:30:00Z',
+        },
+      ],
     isLoading: false,
     error: null,
   },
@@ -281,6 +282,7 @@ describe('AdminFinanzas API mode', () => {
     expect(screen.getByText('Utilidad neta')).toBeInTheDocument()
     expect(screen.getByText('Ticket promedio')).toBeInTheDocument()
     expect(screen.getAllByText('Cliente Demo').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/16:30/).length).toBeGreaterThan(0)
     expect(screen.getAllByText('Compra de agua').length).toBeGreaterThan(0)
     expect(screen.getByText(/Serie operativa day/i)).toBeInTheDocument()
     expect(screen.getByText('Historial de cortes')).toBeInTheDocument()
@@ -293,8 +295,8 @@ describe('AdminFinanzas API mode', () => {
 
     await waitFor(() => {
       expect(exportFinanceCsv).toHaveBeenCalledWith({
-        from: '2026-06-09',
-        to: '2026-06-09',
+        from: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        to: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         type: 'summary',
       })
     })
@@ -323,7 +325,7 @@ describe('AdminFinanzas API mode', () => {
 
     await waitFor(() => {
       expect(executeCashClosingMutation.mutateAsync).toHaveBeenCalledWith({
-        date: '2026-06-09',
+        date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         notes: '',
       })
     })

@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      allowedHosts: ['3104-189-176-134-126.ngrok-free.app', 'localhost'],
+      allowedHosts: ['casascarlatta.mx', 'localhost', 'https://3104-189-176-134-126.ngrok-free.app', '3104-189-176-134-126.ngrok-free.app'],
       proxy: {
         '/api': {
           target: apiTarget,

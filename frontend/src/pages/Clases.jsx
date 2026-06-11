@@ -19,6 +19,7 @@ import { useClasesStore }          from '@/stores/clasesStore'
 import { useCoachesStore }         from '@/stores/coachesStore'
 import { useReservasStore }        from '@/stores/reservasStore'
 import { useConfiguracionStore } from '@/stores/configuracionStore'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
 import { useAuth } from '@/context/AuthContext'
 import { getPublicClassesByDate, getPublicAvailability, getReservationOccurrenceDate } from '@/services/classService'
 import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
@@ -63,7 +64,7 @@ export default function Clases() {
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
-  const cfg = useConfiguracionStore()
+  const siteConfig = useEffectiveSiteConfiguration()
   const useApiCoachAvatars = useApiClasses || useApiReservations
   const publicCoachesQuery = usePublicCoachesQuery({ enabled: useApiCoachAvatars })
   const coachSource = useApiCoachAvatars ? (publicCoachesQuery.data ?? []) : coaches
@@ -182,7 +183,7 @@ export default function Clases() {
       {/* Hero - keep exactly as-is*/}
       <section
         className={styles.hero}
-        style={{ backgroundImage: `url(${cfg.get('imagenBannerClases')})` }}
+        style={{ '--hero-image': `url("${siteConfig.get('imagenBannerClases')}")` }}
       >
         <div className={styles.heroInner}>
           <span className={styles.heroLabel}>RESERVA TU LUGAR</span>
@@ -250,8 +251,8 @@ export default function Clases() {
         <div className={styles.classList}>
           {dayClasses.length === 0 ? (
             <div className={styles.emptyState}>
-              <span className={styles.emptyIcon}>ðŸ“…</span>
-              <p>Sin clases este dÃ­a</p>
+              <span className={styles.emptyIcon}>📅</span>
+              <p>Sin clases este día</p>
             </div>
           ) : (
             dayClasses.map((cls, i) => {

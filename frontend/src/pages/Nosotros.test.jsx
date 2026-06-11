@@ -3,6 +3,9 @@ import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest'
 import Nosotros from './Nosotros'
 
 const getPublicCoachesApi = vi.fn()
+const customCarouselImage = 'https://example.com/custom-nosotros-mobile.jpg'
+const customCarouselVideo = 'https://example.com/custom-nosotros.mp4'
+const originalInnerWidth = window.innerWidth
 
 vi.mock('@/services/coachesApiService', () => ({
   getPublicCoachesApi: (...args) => getPublicCoachesApi(...args),
@@ -12,10 +15,10 @@ vi.mock('@/stores/coachesStore', () => ({
   useCoachesStore: () => ({ coaches: [] }),
 }))
 
-vi.mock('@/stores/configuracionStore', () => ({
-  useConfiguracionStore: () => ({
+vi.mock('@/hooks/useSiteConfiguration', () => ({
+  useEffectiveSiteConfiguration: () => ({
     get: (key) => {
-      if (key === 'carouselNosotros') return ['https://example.com/1.jpg']
+      if (key === 'carouselNosotros') return [customCarouselImage, customCarouselVideo]
       if (key === 'nosotrosTexto1') return 'Casa Scarlatta'
       if (key === 'nosotrosTexto2') return 'Texto'
       return ''
@@ -25,6 +28,7 @@ vi.mock('@/stores/configuracionStore', () => ({
 
 describe('Nosotros coaches públicos', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 414 })
     vi.stubEnv('VITE_USE_API_CLASSES', 'true')
     getPublicCoachesApi.mockResolvedValue([
       {
@@ -40,6 +44,7 @@ describe('Nosotros coaches públicos', () => {
   })
 
   afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
   })
@@ -51,6 +56,8 @@ describe('Nosotros coaches públicos', () => {
     expect(await screen.findByText('Coach Demo')).toBeInTheDocument()
     expect(screen.getByText('Bio pública')).toBeInTheDocument()
     expect(screen.getByAltText('Coach Demo')).toBeInTheDocument()
+    expect(document.querySelector(`img[src="${customCarouselImage}"]`)).toBeInTheDocument()
+    expect(document.querySelector(`video[src="${customCarouselVideo}"]`)).toBeInTheDocument()
     expect(screen.queryByText('coach@demo.local')).not.toBeInTheDocument()
     expect(screen.queryByText('5551234567')).not.toBeInTheDocument()
   })

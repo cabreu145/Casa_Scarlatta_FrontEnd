@@ -2,38 +2,24 @@ import { render, screen, waitFor, act, fireEvent, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-const getOccurrenceSpotsMock = vi.fn()
 const createSpotHoldMock = vi.fn()
 const releaseSpotHoldMock = vi.fn()
-const crearReservaApiMock = vi.fn()
+const createReservationMock = vi.fn()
+const refetchMock = vi.fn()
 const loadFinancialStateMock = vi.fn()
-const loadMisReservasFromApiMock = vi.fn()
-const getCreditMovementsMock = vi.fn()
 
+let spotsQueryState
 let financialStoreState
 
-vi.mock('@/services/equipmentReservationApiService', () => ({
-  getOccurrenceSpotsApi: (...args) => getOccurrenceSpotsMock(...args),
-  createSpotHoldApi: (...args) => createSpotHoldMock(...args),
-  releaseSpotHoldApi: (...args) => releaseSpotHoldMock(...args),
-}))
-
-vi.mock('@/services/reservasApiService', () => ({
-  crearReservaApi: (...args) => crearReservaApiMock(...args),
-}))
-
-vi.mock('@/services/financialStateApiService', () => ({
-  getMyCreditMovementsPaginatedApi: (...args) => getCreditMovementsMock(...args),
+vi.mock('@/hooks/useApiQueries', () => ({
+  useOccurrenceSpotsQuery: () => spotsQueryState,
+  useCreateSpotHoldMutation: () => ({ mutateAsync: createSpotHoldMock }),
+  useDeleteSpotHoldMutation: () => ({ mutateAsync: releaseSpotHoldMock }),
+  useCreateReservationMutation: () => ({ mutateAsync: createReservationMock }),
 }))
 
 vi.mock('@/stores/financialStateStore', () => ({
   useFinancialStateStore: (selector) => selector(financialStoreState),
-}))
-
-vi.mock('@/stores/reservasStore', () => ({
-  useReservasStore: (selector) => selector({
-    loadMisReservasFromApi: loadMisReservasFromApiMock,
-  }),
 }))
 
 function buildSlowResponse() {
@@ -97,14 +83,18 @@ describe('EquipmentReservationPanel', () => {
   beforeEach(() => {
     vi.resetModules()
     vi.useRealTimers()
-    getOccurrenceSpotsMock.mockReset()
     createSpotHoldMock.mockReset()
     releaseSpotHoldMock.mockReset()
-    crearReservaApiMock.mockReset()
+    createReservationMock.mockReset()
+    refetchMock.mockReset()
     loadFinancialStateMock.mockReset()
-    loadMisReservasFromApiMock.mockReset()
-    getCreditMovementsMock.mockReset()
     sessionStorage.clear()
+    spotsQueryState = {
+      data: null,
+      isLoading: true,
+      error: null,
+      refetch: refetchMock,
+    }
     financialStoreState = {
       financialState: null,
       creditsBalance: 0,
@@ -117,7 +107,7 @@ describe('EquipmentReservationPanel', () => {
 
   test('slow renderiza 10 tapetes, coach no clicable y confirma reserva con hold', async () => {
     const user = userEvent.setup()
-    getOccurrenceSpotsMock.mockResolvedValue(buildSlowResponse())
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
     createSpotHoldMock.mockResolvedValue({
       holdId: 123,
       occurrenceId: 5,
@@ -126,16 +116,13 @@ describe('EquipmentReservationPanel', () => {
       expiresAt: '2026-06-03T02:35:00',
       serverNow: '2026-06-03T02:30:00',
     })
-    crearReservaApiMock.mockResolvedValue({
+    createReservationMock.mockResolvedValue({
       id: 77,
-      spotId: 1,
+      spotId: 2,
       holdId: 123,
       occurrenceId: 5,
       status: 'confirmada',
     })
-    loadFinancialStateMock.mockResolvedValue({})
-    getCreditMovementsMock.mockResolvedValue({ items: [], page: 1, pageSize: 8, total: 0 })
-    loadMisReservasFromApiMock.mockResolvedValue([])
 
     const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
     render(
@@ -179,13 +166,13 @@ describe('EquipmentReservationPanel', () => {
 
     await user.click(slowSpot02)
     await waitFor(() => {
-      expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 123 })
+      expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 123, occurrenceId: 5 })
       expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 5, spotId: 2 })
     })
 
     await user.click(screen.getByRole('button', { name: /Confirmar reserva/i }))
     await waitFor(() => {
-      expect(crearReservaApiMock).toHaveBeenCalledWith({
+      expect(createReservationMock).toHaveBeenCalledWith({
         claseId: 9,
         userId: 3,
         occurrenceId: 5,
@@ -194,14 +181,11 @@ describe('EquipmentReservationPanel', () => {
       })
     })
     expect(screen.getByText(/Reserva confirmada/i)).toBeInTheDocument()
-    expect(loadFinancialStateMock).toHaveBeenCalled()
-    expect(getCreditMovementsMock).toHaveBeenCalled()
-    expect(loadMisReservasFromApiMock).toHaveBeenCalled()
   }, 20000)
 
   test('stryde distingue bench 01 y treadmill 01', async () => {
     const user = userEvent.setup()
-    getOccurrenceSpotsMock.mockResolvedValue(buildStrydeResponse())
+    spotsQueryState = { data: buildStrydeResponse(), isLoading: false, error: null, refetch: refetchMock }
     createSpotHoldMock
       .mockResolvedValueOnce({
         holdId: 201,
@@ -253,7 +237,7 @@ describe('EquipmentReservationPanel', () => {
 
     await user.click(treadmill01)
     await waitFor(() => {
-      expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 201 })
+      expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 201, occurrenceId: 6 })
       expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 6, spotId: 10 })
       expect(screen.getByTestId('stryde-spot-bench-01')).toHaveAttribute('aria-pressed', 'false')
       expect(screen.getByTestId('stryde-spot-treadmill-01')).toHaveAttribute('aria-pressed', 'true')
@@ -262,8 +246,7 @@ describe('EquipmentReservationPanel', () => {
 
   test('libera hold una sola vez al cambiar spot y al desmontar', async () => {
     const user = userEvent.setup()
-    const releaseHoldOnceMock = releaseSpotHoldMock
-    getOccurrenceSpotsMock.mockResolvedValue(buildSlowResponse())
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
     createSpotHoldMock
       .mockResolvedValueOnce({
         holdId: 901,
@@ -310,20 +293,20 @@ describe('EquipmentReservationPanel', () => {
 
     await user.click(slowSpot02)
     await waitFor(() => {
-      expect(releaseHoldOnceMock).toHaveBeenCalledTimes(1)
-      expect(releaseHoldOnceMock).toHaveBeenCalledWith({ holdId: 901 })
+      expect(releaseSpotHoldMock).toHaveBeenCalledTimes(1)
+      expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 901, occurrenceId: 5 })
       expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 5, spotId: 2 })
     })
 
     const closeButton = screen.getByRole('button', { name: /cerrar/i })
     await user.click(closeButton)
     await waitFor(() => {
-      expect(releaseHoldOnceMock).toHaveBeenCalledTimes(2)
-      expect(releaseHoldOnceMock).toHaveBeenLastCalledWith({ holdId: 902 })
+      expect(releaseSpotHoldMock).toHaveBeenCalledTimes(2)
+      expect(releaseSpotHoldMock).toHaveBeenLastCalledWith({ holdId: 902, occurrenceId: 5 })
     })
 
     unmount()
-    expect(releaseHoldOnceMock).toHaveBeenCalledTimes(2)
+    expect(releaseSpotHoldMock).toHaveBeenCalledTimes(2)
   })
 
   test('timer expira y credits loading no muestra 0 falso', async () => {
@@ -335,7 +318,7 @@ describe('EquipmentReservationPanel', () => {
       error: null,
       loadFinancialState: loadFinancialStateMock,
     }
-    getOccurrenceSpotsMock.mockResolvedValue(buildSlowResponse())
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
     createSpotHoldMock.mockResolvedValue({
       holdId: 303,
       occurrenceId: 5,
@@ -366,7 +349,7 @@ describe('EquipmentReservationPanel', () => {
   })
 
   test('monta con store financiero sin selector compuesto y no crashea', async () => {
-    getOccurrenceSpotsMock.mockResolvedValue(buildSlowResponse())
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
     loadFinancialStateMock.mockResolvedValue({
       creditsBalance: 12,
       activeMembership: { creditsAvailable: 12 },
@@ -393,7 +376,7 @@ describe('EquipmentReservationPanel', () => {
     response.spots[0].status = 'held'
     response.spots[1].status = 'reserved'
     response.spots[2].status = 'inactive'
-    getOccurrenceSpotsMock.mockResolvedValue(response)
+    spotsQueryState = { data: response, isLoading: false, error: null, refetch: refetchMock }
 
     const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
     render(
@@ -420,5 +403,27 @@ describe('EquipmentReservationPanel', () => {
     fireEvent.click(screen.getByTestId('slow-spot-02'))
     fireEvent.click(within(slowGrid).getByTestId('slow-spot-03'))
     expect(createSpotHoldMock).not.toHaveBeenCalled()
+  })
+
+  test('error de carga de spots muestra alerta', async () => {
+    spotsQueryState = { data: null, isLoading: false, error: new Error('No pudimos cargar mapa de lugares.'), refetch: refetchMock }
+
+    const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
+    render(
+      <EquipmentReservationPanel
+        occurrenceId={5}
+        classId={9}
+        userId={3}
+        financialState={{
+          financialState: {},
+          creditsBalance: 12,
+          activeMembership: { creditsAvailable: 12 },
+          isLoading: false,
+          error: null,
+        }}
+      />
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No pudimos cargar mapa de lugares/i)
   })
 })

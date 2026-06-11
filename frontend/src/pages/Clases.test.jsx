@@ -1,11 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { fechaLocal } from '@/utils/fecha'
 
 const mockLoadClasesFromApi = vi.fn().mockResolvedValue(undefined)
 const mockGetOccurrencesForDateRangeApi = vi.fn()
 const mockCancelReserva = vi.fn()
 const mockUsePublicCoachesQuery = vi.fn()
+const todayIso = fechaLocal(new Date())
+const customBannerUrl = 'https://cdn.example.com/custom-classes-mobile.jpg'
+const originalInnerWidth = window.innerWidth
 
 vi.mock('@/context/AuthContext', () => ({
   useAuth: () => ({
@@ -49,9 +53,14 @@ vi.mock('@/stores/configuracionStore', () => ({
   useConfiguracionStore: () => ({
     get: (key) => {
       if (key === 'horasCancelacion') return 2
-      if (key === 'imagenBannerClases') return ''
       return ''
     },
+  }),
+}))
+
+vi.mock('@/hooks/useSiteConfiguration', () => ({
+  useEffectiveSiteConfiguration: () => ({
+    get: (key) => key === 'imagenBannerClases' ? customBannerUrl : '',
   }),
 }))
 
@@ -114,6 +123,7 @@ vi.mock('@/utils/formatters', async () => {
 
 describe('Clases public avatar regression', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
     vi.stubEnv('VITE_USE_API_CLASSES', 'true')
     vi.stubEnv('VITE_USE_API_RESERVATIONS', 'true')
     mockUsePublicCoachesQuery.mockReturnValue({
@@ -127,9 +137,9 @@ describe('Clases public avatar regression', () => {
     })
     mockGetOccurrencesForDateRangeApi.mockResolvedValue({
       3: [
-        {
+      {
           occurrenceId: 10,
-          fecha: '2026-06-09',
+          fecha: todayIso,
           cupoMax: 15,
           cupoActual: 0,
           estado: 'programada',
@@ -141,11 +151,12 @@ describe('Clases public avatar regression', () => {
   })
 
   afterEach(() => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
   })
 
-  test('renderiza sin ReferenceError y usa avatar público por coach_id', async () => {
+  test('renderiza sin ReferenceError y usa avatar pÃºblico por coach_id', async () => {
     const { default: Clases } = await import('./Clases')
 
     render(
@@ -162,6 +173,8 @@ describe('Clases public avatar regression', () => {
 
     const avatar = screen.getByRole('img', { name: 'Coach Demo' })
     expect(avatar).toBeInTheDocument()
-    expect(avatar.getAttribute('src')).toContain('http://127.0.0.1:8000/media/coaches/coach-demo.png')
+    expect(avatar.getAttribute('src')).toContain('/media/coaches/coach-demo.png')
+    expect(avatar.getAttribute('src')).not.toContain('localhost:5173')
+    expect(document.querySelector('section').style.getPropertyValue('--hero-image')).toContain(customBannerUrl)
   })
 })
