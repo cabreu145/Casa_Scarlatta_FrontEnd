@@ -276,7 +276,7 @@ export default function Navbar() {
           ) : (
             <li>
               <Link
-                to="/reservar"
+                to="/clases"
                 className={`${styles.mobileNavLink} ${styles.mobileNavCta}`}
                 onClick={() => setOpen(false)}
               >

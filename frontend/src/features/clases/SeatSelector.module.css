@@ -1786,6 +1786,29 @@
   .strydeSidebar .sbPolicy { font-size: 9.5px; flex: 1 1 100%; }
   .strydeConfirmBtn { width: 100%; text-align: center; margin-top: 2px; }
 
+  /* ── Rotation flow: keep compact and centered on mobile ── */
+  .rotationFlow {
+    width: fit-content;
+    max-width: calc(100vw - 24px);
+    margin: 0.75rem auto 0;
+    align-self: center;
+  }
+
+  .rfTimeline {
+    justify-content: center;
+    gap: 0.45rem;
+    flex-wrap: nowrap;
+    overflow: visible;
+  }
+
+  .rfStep {
+    flex: 0 0 auto;
+  }
+
+  .rfArrow {
+    margin-inline: 0.1rem;
+  }
+
   /* ── original .modal (Stryde original, non-premium) ── */
   .modal {
     padding: var(--space-xl) var(--space-lg);
@@ -1795,12 +1818,25 @@
   }
 }
 
-/* ── ≤420px: very narrow phones — reduce Slow to 4 columns ── */
+/* ── ≤420px: very narrow phones — keep Slow at 5 columns, shrink cards ── */
 @media (max-width: 420px) {
   .machineGrid {
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 6px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
   }
+
+  .machineCard {
+    padding: 5px 2px 5px;
+    border-radius: 10px;
+    gap: 3px;
+  }
+
+  .matIconWrap {
+    width: 38px;
+    height: 26px;
+  }
+
+  .machineNumber { font-size: 8px; }
 
   /* Treadmill: 3 per row so cards aren't microscopic */
   .strydeTreadRow {
@@ -1811,4 +1847,15 @@
   .strydeCardTread { min-height: 68px; }
   .benchIconWrap { width: 44px; height: 15px; }
   .treadIconWrap { width: 34px; height: 34px; }
+}
+
+/* ── ≤360px: hide rotation arrows so B1-B4 always fit on one row ── */
+@media (max-width: 360px) {
+  .rfArrow {
+    display: none;
+  }
+
+  .rfTimeline {
+    gap: 0.35rem;
+  }
 }
