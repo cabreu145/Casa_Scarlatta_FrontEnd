@@ -469,9 +469,9 @@ DecisiÃ³n final:
 - Landing usa catÃ¡logo backend real `GET /api/v1/memberships/packages` en API mode.
 - Click Comprar sin sesiÃ³n:
   - guarda intenciÃ³n local `pending_package_purchase_id`
-  - redirige a `/login?redirect=/cliente/dashboard?section=pagos&packageId=...`
+  - redirige a `/login?redirect=/cliente/dashboard&packageId=...`
 - Click Comprar con cliente autenticado:
-  - redirige directo a `/cliente/dashboard?section=pagos&packageId=...`
+  - redirige directo a `/cliente/dashboard&packageId=...`
 - En dashboard, paquete queda resaltado; compra real ocurre solo con `PagoModal` + checkout backend.
 - Redirect post-login acepta solo rutas internas que empiezan con `/`.
 ## Nota 2026-06-07 - Reservar visual premium
@@ -520,4 +520,4 @@ Frontend MVP uses TanStack Query for server state. Zustand queda para fallback l
 - [ ] Abrir detalle con `GET /api/v1/cortes/{id}`.
 - [ ] Ejecutar corte con `POST /api/v1/cortes/ejecutar`.
 - [ ] Confirmar mensaje claro para `CASH_CLOSING_ALREADY_EXISTS`.
-- [ ] Confirmar formatos legibles de fecha, moneda y m�todo de pago.
+- [ ] Confirmar formatos legibles de fecha, moneda y m�todo de pago.

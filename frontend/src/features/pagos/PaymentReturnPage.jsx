@@ -125,7 +125,7 @@ export default function PaymentReturnPage() {
       redirectRef.current = null
     }
     redirectRef.current = setTimeout(() => {
-      navigate('/cliente/dashboard?section=pagos', { replace: true })
+      navigate('/cliente/dashboard', { replace: true })
     }, 2600)
   }
 
@@ -352,12 +352,12 @@ export default function PaymentReturnPage() {
             )}
 
             {uiState.canRedirectToDashboard ? (
-              <Link to="/cliente/dashboard?section=pagos">Ir a Paquetes & Pagos</Link>
+              <Link to="/cliente/dashboard">Ir a Paquetes & Pagos</Link>
             ) : (
               <>
-                <Link to="/cliente/dashboard?section=pagos">Volver a Paquetes & Pagos</Link>
+                <Link to="/cliente/dashboard">Volver a Paquetes & Pagos</Link>
                 {canShowRetry && (
-                  <Link to="/cliente/dashboard?section=pagos">Intentar nuevamente</Link>
+                  <Link to="/cliente/dashboard">Intentar nuevamente</Link>
                 )}
               </>
             )}

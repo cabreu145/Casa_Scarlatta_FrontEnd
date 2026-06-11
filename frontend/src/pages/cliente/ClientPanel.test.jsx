@@ -218,7 +218,7 @@ describe('ClientPanel payments section', () => {
     vi.stubEnv('VITE_USE_API_CLASSES', 'true')
     vi.stubEnv('VITE_USE_API_RESERVATIONS', 'true')
     vi.stubEnv('VITE_USE_API_WAITLIST', 'true')
-    window.history.pushState({}, '', '/cliente/dashboard?section=pagos')
+    window.history.pushState({}, '', '/cliente/dashboard')
     mockGetMembershipPackagesApi.mockReset()
     mockGetMembershipPackagesApi.mockResolvedValue([])
     mockGetMyMembershipsApi.mockReset()
@@ -234,7 +234,7 @@ describe('ClientPanel payments section', () => {
 
     render(
       <QueryClientProvider client={testQueryClient}>
-        <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos']}>
+        <MemoryRouter initialEntries={['/cliente/dashboard']}>
           <ClientPanel />
         </MemoryRouter>
       </QueryClientProvider>
@@ -256,12 +256,12 @@ describe('ClientPanel payments section', () => {
       },
     ])
 
-    window.history.pushState({}, '', '/cliente/dashboard?section=pagos&packageId=2')
+    window.history.pushState({}, '', '/cliente/dashboard&packageId=2')
     const { default: ClientPanel } = await import('./ClientPanel')
 
     render(
       <QueryClientProvider client={testQueryClient}>
-        <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos&packageId=2']}>
+        <MemoryRouter initialEntries={['/cliente/dashboard&packageId=2']}>
           <ClientPanel />
         </MemoryRouter>
       </QueryClientProvider>
@@ -289,7 +289,7 @@ describe('ClientPanel payments section', () => {
 
     render(
       <QueryClientProvider client={testQueryClient}>
-        <MemoryRouter initialEntries={['/cliente/dashboard?section=pagos']}>
+        <MemoryRouter initialEntries={['/cliente/dashboard']}>
           <ClientPanel />
         </MemoryRouter>
       </QueryClientProvider>

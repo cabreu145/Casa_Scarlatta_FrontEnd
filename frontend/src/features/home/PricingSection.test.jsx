@@ -106,7 +106,7 @@ describe('PricingSection', () => {
     await user.click(screen.getByRole('button', { name: /comprar/i }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard?section=pagos&packageId=12')
+      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard&packageId=12')
     })
   })
 

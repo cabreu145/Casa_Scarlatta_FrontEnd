@@ -45,7 +45,7 @@ describe('Login redirect flow', () => {
     await user.click(screen.getByRole('button', { name: /entrar/i }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard?section=pagos&packageId=12')
+      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard&packageId=12')
     })
   })
 
@@ -67,7 +67,7 @@ describe('Login redirect flow', () => {
     await user.click(screen.getByRole('button', { name: /entrar/i }))
 
     await waitFor(() => {
-      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard?section=pagos&packageId=16')
+      expect(screen.getByTestId('location')).toHaveTextContent('/cliente/dashboard&packageId=16')
     })
     expect(localStorage.getItem('pending_package_purchase_id')).toBeNull()
   })

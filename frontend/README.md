@@ -327,7 +327,7 @@ Siguiente mï¿½dulo recomendado: BUG-009 (integraciï¿½n Mercado Pago).
 ## Nota 2026-06-03 - Landing paquetes
 - Landing usa catï¿½logo backend real `GET /api/v1/memberships/packages` en API mode.
 - Compra desde landing no procesa pago ahï¿½: guarda intenciï¿½n y lleva a login o dashboard pagos.
-- Usuario cliente autenticado va directo a `/cliente/dashboard?section=pagos&packageId=...`.
+- Usuario cliente autenticado va directo a `/cliente/dashboard&packageId=...`.
 - Pago real sigue solo dentro de `ClientPanel` con `PagoModal` + backend checkout.
 ## Nota 2026-06-07 - Reservar visual premium
 - `/reservar` recupera flujo visual premium: cards grandes STRYDE X / SLOW, paso sala -> clase -> spot.
