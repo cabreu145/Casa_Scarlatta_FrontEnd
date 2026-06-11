@@ -1,9 +1,9 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+﻿import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import PagoModal from '@/features/pagos/PagoModal'
 import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationPanel'
 import SeatSelector from '@/features/clases/SeatSelector'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useLocation, useNavigate } from 'react-router-dom'
 import {
   Home, CalendarDays, PlusCircle, User, CreditCard, LogOut, ArrowLeft,
   MapPin, ChevronLeft, ChevronRight, Menu, X
@@ -243,6 +243,7 @@ export default function ClientPanel() {
   const [pagoModal, setPagoModal] = useState(null)
   const [seatSelectorClass, setSeatSelectorClass] = useState(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const sectionQuery = new URLSearchParams(location.search).get('section')
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
   const [financialRefreshTick, setFinancialRefreshTick] = useState(0)
   const [misClasesPage, setMisClasesPage] = useState(1)
@@ -311,6 +312,12 @@ export default function ClientPanel() {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [isSidebarOpen])
+
+  useEffect(() => {
+    if (sectionQuery && sectionQuery !== activeSection) {
+      setActiveSection(sectionQuery)
+    }
+  }, [activeSection, sectionQuery])
 
   useEffect(() => {
     if (!useApiClasses) return

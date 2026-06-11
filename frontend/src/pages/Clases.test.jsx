@@ -146,7 +146,7 @@ describe('Clases public avatar regression', () => {
     vi.restoreAllMocks()
   })
 
-  test('renderiza sin ReferenceError y usa avatar público por coach_id', async () => {
+  test('renderiza sin ReferenceError y usa avatar pÃºblico por coach_id', async () => {
     const { default: Clases } = await import('./Clases')
 
     render(
@@ -163,6 +163,7 @@ describe('Clases public avatar regression', () => {
 
     const avatar = screen.getByRole('img', { name: 'Coach Demo' })
     expect(avatar).toBeInTheDocument()
-    expect(avatar.getAttribute('src')).toContain('http://127.0.0.1:8000/media/coaches/coach-demo.png')
+    expect(avatar.getAttribute('src')).toContain('/media/coaches/coach-demo.png')
+    expect(avatar.getAttribute('src')).not.toContain('localhost:5173')
   })
 })

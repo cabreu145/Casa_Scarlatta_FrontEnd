@@ -1,24 +1,24 @@
 /**
  * formatters.js
- * ─────────────────────────────────────────────────────
- * Fuente única de funciones de formato de fechas, horas y texto.
- * dateHelpers.js y fecha.js re-exportan desde aquí para
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ * Fuente Ãºnica de funciones de formato de fechas, horas y texto.
+ * dateHelpers.js y fecha.js re-exportan desde aquÃ­ para
  * preservar imports existentes sin cambios en stores/services.
  *
  * Importar directamente en componentes nuevos:
  *   import { formatHour, getWeekDays } from '@/utils/formatters'
- * ─────────────────────────────────────────────────────
+ * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
  */
 
 import { formatClassTime } from '@/utils/classSchedule'
 
-// ── Constantes de calendario ──────────────────────────────────────────────────
-export const DAYS_ES   = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
-export const DAYS_ABBR = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB']
+// â”€â”€ Constantes de calendario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+export const DAYS_ES   = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado']
+export const DAYS_ABBR = ['DOM','LUN','MAR','MIÃ‰','JUE','VIE','SÃB']
 export const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                           'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
-// ── Timezone-safe date strings ────────────────────────────────────────────────
+// â”€â”€ Timezone-safe date strings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /** Returns YYYY-MM-DD in local timezone (no UTC shift). */
 export function fechaLocal(date = new Date()) {
@@ -37,8 +37,61 @@ export function hoyLocal() {
 export function mesLocal(date = new Date()) {
   return fechaLocal(date).slice(0, 7)
 }
+const BUSINESS_TIME_ZONE = 'America/Merida'
 
-// ── Semana / calendario ───────────────────────────────────────────────────────
+function toBusinessDate(value) {
+  if (value instanceof Date) return value
+  if (value == null || value === '') return null
+  const raw = String(value).trim()
+  if (!raw) return null
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+export function formatBusinessDateTime(value) {
+  const date = toBusinessDate(value)
+  if (!date) return '—'
+  return new Intl.DateTimeFormat('es-MX', {
+    timeZone: BUSINESS_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+export function formatBusinessDateParts(value) {
+  const date = toBusinessDate(value)
+  if (!date) {
+    return {
+      time: '—',
+      date: '—',
+      location: 'Campeche, Campeche, México',
+      offset: 'UTC-6',
+    }
+  }
+
+  return {
+    time: new Intl.DateTimeFormat('es-MX', {
+      timeZone: BUSINESS_TIME_ZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date),
+    date: new Intl.DateTimeFormat('es-MX', {
+      timeZone: BUSINESS_TIME_ZONE,
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(date),
+    location: 'Campeche, Campeche, México',
+    offset: 'UTC-6',
+  }
+}
+
+// â”€â”€ Semana / calendario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Genera 7 Date objects (lunes a domingo) para la semana con el offset dado.
@@ -60,7 +113,7 @@ export function getWeekDays(offset = 0) {
 /**
  * Genera 7 objetos enriquecidos para la semana con el offset dado.
  * A diferencia de getWeekDays, devuelve metadatos listos para render
- * (fullName, abbr, num, isoDate) — útil en ClientPanel.
+ * (fullName, abbr, num, isoDate) â€” Ãºtil en ClientPanel.
  * @param {number} off - offset en semanas
  * @returns {{ fullName, abbr, num, month, year, isoDate }[]}
  */
@@ -86,32 +139,32 @@ export function buildWeek(off = 0) {
 
 /**
  * Etiqueta de rango mensual para un resultado de buildWeek.
- * Ejemplo: "Abril 2026" o "Abril – Mayo 2026"
+ * Ejemplo: "Abril 2026" o "Abril â€“ Mayo 2026"
  * @param {{ month: number, year: number }[]} days - resultado de buildWeek
  */
 export function weekRangeLabel(days) {
   const f = days[0], l = days[6]
   return f.month === l.month
     ? `${MONTHS_ES[f.month]} ${f.year}`
-    : `${MONTHS_ES[f.month]} – ${MONTHS_ES[l.month]} ${l.year}`
+    : `${MONTHS_ES[f.month]} â€“ ${MONTHS_ES[l.month]} ${l.year}`
 }
 
 /**
  * Etiqueta de rango mensual para un arreglo de Date objects.
- * Ejemplo: "ABRIL 2026" o "ABRIL – MAYO 2026"
+ * Ejemplo: "ABRIL 2026" o "ABRIL â€“ MAYO 2026"
  * @param {Date[]} days - resultado de getWeekDays
  */
 export function getMonthLabel(days) {
   const a = days[0], b = days[days.length - 1]
   if (a.getMonth() === b.getMonth())
     return `${MONTHS_ES[a.getMonth()]} ${b.getFullYear()}`
-  return `${MONTHS_ES[a.getMonth()]} – ${MONTHS_ES[b.getMonth()]} ${b.getFullYear()}`
+  return `${MONTHS_ES[a.getMonth()]} â€“ ${MONTHS_ES[b.getMonth()]} ${b.getFullYear()}`
 }
 
-// ── Comparación de fechas ─────────────────────────────────────────────────────
+// â”€â”€ ComparaciÃ³n de fechas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Compara si dos Date son el mismo día calendario.
+ * Compara si dos Date son el mismo dÃ­a calendario.
  */
 export function isSameDay(fecha1, fecha2) {
   return fecha1.getDate()     === fecha2.getDate()  &&
@@ -124,7 +177,7 @@ export function isToday(date) {
   return isSameDay(date, new Date())
 }
 
-// ── Formateo de hora ──────────────────────────────────────────────────────────
+// â”€â”€ Formateo de hora â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Convierte "HH:MM" a "H:MM a.m./p.m.".
@@ -141,11 +194,11 @@ export function formatHour(hora) {
   return `${hr}:${String(m || 0).padStart(2, '0')} ${suffix}`
 }
 
-// ── Formateo de fechas ────────────────────────────────────────────────────────
+// â”€â”€ Formateo de fechas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
  * Formatea una fecha ISO ("YYYY-MM-DD") como "D de Mes de YYYY".
- * Ejemplo: "2026-05-15" → "15 de Mayo de 2026"
+ * Ejemplo: "2026-05-15" â†’ "15 de Mayo de 2026"
  * @param {string|null} iso
  */
 export function formatFechaISO(iso) {
@@ -155,7 +208,7 @@ export function formatFechaISO(iso) {
 }
 
 /**
- * Devuelve el nombre del día de la semana en español para una fecha ISO.
+ * Devuelve el nombre del dÃ­a de la semana en espaÃ±ol para una fecha ISO.
  * Usa T00:00:00 para evitar desfase UTC.
  * @param {string} fechaStr - "YYYY-MM-DD"
  */
@@ -164,11 +217,11 @@ export function diaDesdefecha(fechaStr) {
   return DAYS_ES[new Date(fechaStr + 'T00:00:00').getDay()] ?? ''
 }
 
-// ── Texto ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Texto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Genera las iniciales de un nombre completo (máximo 2 letras).
- * @param {string} nombre - Ejemplo: "Carlos Méndez"
+ * Genera las iniciales de un nombre completo (mÃ¡ximo 2 letras).
+ * @param {string} nombre - Ejemplo: "Carlos MÃ©ndez"
  * @returns {string} Ejemplo: "CM"
  */
 export function getInitials(nombre) {

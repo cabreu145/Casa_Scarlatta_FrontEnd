@@ -26,7 +26,7 @@ const apiState = {
           customerName: 'Cliente Demo',
           paymentMethod: 'cash',
           totalMxn: 350,
-          createdAt: '2026-06-09T10:00:00-06:00',
+          createdAt: '2026-06-10T22:30:00Z',
         },
       ],
       recentExpenses: [
@@ -76,15 +76,15 @@ const apiState = {
   },
   recentSales: {
     data: [
-      {
-        id: 1,
-        folio: 'POS-000001',
-        customerName: 'Cliente Demo',
-        paymentMethod: 'cash',
-        totalMxn: 350,
-        createdAt: '2026-06-09T10:00:00-06:00',
-      },
-    ],
+        {
+          id: 1,
+          folio: 'POS-000001',
+          customerName: 'Cliente Demo',
+          paymentMethod: 'cash',
+          totalMxn: 350,
+          createdAt: '2026-06-10T22:30:00Z',
+        },
+      ],
     isLoading: false,
     error: null,
   },
@@ -282,6 +282,7 @@ describe('AdminFinanzas API mode', () => {
     expect(screen.getByText('Utilidad neta')).toBeInTheDocument()
     expect(screen.getByText('Ticket promedio')).toBeInTheDocument()
     expect(screen.getAllByText('Cliente Demo').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/16:30/).length).toBeGreaterThan(0)
     expect(screen.getAllByText('Compra de agua').length).toBeGreaterThan(0)
     expect(screen.getByText(/Serie operativa day/i)).toBeInTheDocument()
     expect(screen.getByText('Historial de cortes')).toBeInTheDocument()

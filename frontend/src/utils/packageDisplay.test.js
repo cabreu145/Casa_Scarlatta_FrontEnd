@@ -10,6 +10,10 @@ describe('packageDisplay', () => {
     expect(getPackageDisplayName({ name: '', display_name: '1 clase · válido por 7 días' })).toBe('1 clase · válido por 7 días')
   })
 
+  test('corrige mojibake visible en nombre de paquete', () => {
+    expect(getPackageDisplayName({ name: '', display_name: '8 clases Â· vÃ¡lido por 30 dÃ­as' })).toBe('8 clases · válido por 30 días')
+  })
+
   test('formatPackageCreditsLabel pluraliza bien', () => {
     expect(formatPackageCreditsLabel(1)).toBe('1 clase')
     expect(formatPackageCreditsLabel(8)).toBe('8 clases')

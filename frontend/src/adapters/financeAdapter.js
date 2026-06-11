@@ -13,6 +13,7 @@ function normalizePaymentMethod(value) {
   if (raw === 'cash' || raw === 'efectivo') return 'cash'
   if (raw === 'card' || raw === 'tarjeta') return 'card'
   if (raw === 'transfer' || raw === 'transferencia' || raw === 'bank_transfer') return 'transfer'
+  if (raw === 'mercado_pago' || raw === 'mercadopago' || raw === 'mercado_pago_mxn') return 'mercadoPago'
   if (raw === 'other' || raw === 'otro') return 'other'
   return raw || 'other'
 }
@@ -55,6 +56,8 @@ function mapHistoricalItem(item = {}) {
     ),
     salesCount: toNumber(item.sales_count ?? item.salesCount, 0),
     salesTotalMxn: toNumber(item.sales_total_mxn ?? item.salesTotalMxn, 0),
+    posSalesTotalMxn: toNumber(item.pos_sales_total_mxn ?? item.posSalesTotalMxn, 0),
+    mercadoPagoTotalMxn: toNumber(item.mercado_pago_total_mxn ?? item.mercadoPagoTotalMxn, 0),
     expensesTotalMxn: toNumber(item.expenses_total_mxn ?? item.expensesTotalMxn, 0),
     netTotalMxn: toNumber(item.net_total_mxn ?? item.netTotalMxn, 0),
     averageTicketMxn: toNumber(item.average_ticket_mxn ?? item.averageTicketMxn, 0),
@@ -88,6 +91,14 @@ export function mapBackendFinanceKpisToFrontend(payload = {}) {
       subtotalMxn: toNumber(payload.sales?.subtotal_mxn ?? payload.sales?.subtotalMxn ?? 0, 0),
       taxMxn: toNumber(payload.sales?.tax_mxn ?? payload.sales?.taxMxn ?? 0, 0),
       totalMxn: toNumber(payload.sales?.total_mxn ?? payload.sales?.totalMxn ?? 0, 0),
+      posSalesTotalMxn: toNumber(
+        payload.sales?.pos_sales_total_mxn ?? payload.sales?.posSalesTotalMxn ?? payload.pos_sales_total_mxn ?? payload.posSalesTotalMxn,
+        0
+      ),
+      mercadoPagoTotalMxn: toNumber(
+        payload.sales?.mercado_pago_total_mxn ?? payload.sales?.mercadoPagoTotalMxn ?? payload.mercado_pago_total_mxn ?? payload.mercadoPagoTotalMxn,
+        0
+      ),
     },
     expenses: {
       count: toNumber(payload.expenses?.count ?? payload.expenses_count, 0),
@@ -100,6 +111,7 @@ export function mapBackendFinanceKpisToFrontend(payload = {}) {
       cashMxn: toNumber(payload.payment_methods?.cash_mxn ?? payload.payment_methods?.cashMxn, 0),
       cardMxn: toNumber(payload.payment_methods?.card_mxn ?? payload.payment_methods?.cardMxn, 0),
       transferMxn: toNumber(payload.payment_methods?.transfer_mxn ?? payload.payment_methods?.transferMxn, 0),
+      mercadoPagoMxn: toNumber(payload.payment_methods?.mercado_pago_mxn ?? payload.payment_methods?.mercadoPagoMxn, 0),
       otherMxn: toNumber(payload.payment_methods?.other_mxn ?? payload.payment_methods?.otherMxn, 0),
     },
     cashClosing: {

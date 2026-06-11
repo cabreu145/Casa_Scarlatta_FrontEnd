@@ -33,6 +33,15 @@ function formatMoneyMx(value) {
   }).format(Number.isFinite(amount) ? amount : 0)
 }
 
+function buildSalesBreakdownLabel(summary = {}) {
+  const pos = Number(summary.posSalesTotalMxn ?? 0)
+  const mercadoPago = Number(summary.mercadoPagoTotalMxn ?? 0)
+  if (pos > 0 || mercadoPago > 0) {
+    return `POS ${formatMoneyMx(pos)} · Mercado Pago ${formatMoneyMx(mercadoPago)}`
+  }
+  return `${summary.salesCount ?? 0} ventas`
+}
+
 function formatDateMx(value) {
   if (!value) return '—'
   const raw = String(value).trim()
@@ -214,13 +223,14 @@ function btnStyle(bg, color) {
 function lineItemsFromSummary(finance, rangeLabel) {
   const summary = finance?.summary ?? {}
   return [
-    { Concepto: 'Ingresos totales', Monto: summary.salesTotalMxn ?? 0, Detalle: `Ventas ${summary.salesCount ?? 0}` },
+    { Concepto: 'Ingresos totales', Monto: summary.salesTotalMxn ?? 0, Detalle: buildSalesBreakdownLabel(summary) },
     { Concepto: 'Gastos totales', Monto: -(summary.expensesTotalMxn ?? 0), Detalle: `Cortes ${summary.cashClosingsCount ?? 0}` },
     { Concepto: 'Utilidad neta', Monto: summary.netTotalMxn ?? 0, Detalle: `Rango ${rangeLabel}` },
     { Concepto: 'Ticket promedio', Monto: summary.averageTicketMxn ?? 0, Detalle: 'Promedio operativo' },
     { Concepto: 'Efectivo', Monto: summary.paymentMethods?.cashMxn ?? 0, Detalle: 'Método de pago' },
     { Concepto: 'Tarjeta', Monto: summary.paymentMethods?.cardMxn ?? 0, Detalle: 'Método de pago' },
     { Concepto: 'Transferencia', Monto: summary.paymentMethods?.transferMxn ?? 0, Detalle: 'Método de pago' },
+    { Concepto: 'Mercado Pago', Monto: summary.paymentMethods?.mercadoPagoMxn ?? 0, Detalle: 'Método de pago' },
     { Concepto: 'Otro', Monto: summary.paymentMethods?.otherMxn ?? 0, Detalle: 'Método de pago' },
   ]
 }
@@ -599,7 +609,7 @@ export default function ReportesApiSection({ inPanel = false }) {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
-        <MetricCard label="Ingresos" value={formatMoneyMx(finance.summary.salesTotalMxn)} helper={`${finance.summary.salesCount} ventas`} accent="#22c55e" />
+        <MetricCard label="Ingresos" value={formatMoneyMx(finance.summary.salesTotalMxn)} helper={buildSalesBreakdownLabel(finance.summary)} accent="#22c55e" />
         <MetricCard label="Gastos" value={formatMoneyMx(finance.summary.expensesTotalMxn)} helper={`Cortes ${finance.summary.cashClosingsCount}`} accent="#ef4444" />
         <MetricCard label="Utilidad neta" value={formatMoneyMx(finance.summary.netTotalMxn)} helper={`Ticket prom. ${formatMoneyMx(finance.summary.averageTicketMxn)}`} accent={finance.summary.netTotalMxn >= 0 ? '#22c55e' : '#ef4444'} />
         <MetricCard label="Efectivo" value={formatMoneyMx(finance.summary.paymentMethods.cashMxn)} helper={`Tarjeta ${formatMoneyMx(finance.summary.paymentMethods.cardMxn)}`} accent="#3b82f6" />
@@ -666,7 +676,7 @@ export default function ReportesApiSection({ inPanel = false }) {
 
       <SectionCard title="Reporte financiero" subtitle={`Rango ${formatDateMx(from)} a ${formatDateMx(to)}`}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-          <MetricCard label="Ingresos totales" value={formatMoneyMx(finance.summary.salesTotalMxn)} helper="Ventas POS y paquetes" accent="#22c55e" />
+          <MetricCard label="Ingresos totales" value={formatMoneyMx(finance.summary.salesTotalMxn)} helper={buildSalesBreakdownLabel(finance.summary)} accent="#22c55e" />
           <MetricCard label="Gastos totales" value={formatMoneyMx(finance.summary.expensesTotalMxn)} helper="Gastos activos del rango" accent="#ef4444" />
           <MetricCard label="Utilidad neta" value={formatMoneyMx(finance.summary.netTotalMxn)} helper="Ingresos - gastos" accent={finance.summary.netTotalMxn >= 0 ? '#22c55e' : '#ef4444'} />
           <MetricCard label="Ticket promedio" value={formatMoneyMx(finance.summary.averageTicketMxn)} helper={`${finance.summary.salesCount} ventas`} accent="var(--text-primary)" />
@@ -720,6 +730,7 @@ export default function ReportesApiSection({ inPanel = false }) {
             <MetricCard label="Productos vendidos" value={String(pos.productsSold)} helper={`Ingresos ${formatMoneyMx(pos.productRevenueMxn)}`} accent="#3b82f6" />
             <MetricCard label="Paquetes vendidos" value={formatMoneyMx(pos.packageRevenueMxn)} helper="Ingresos por membresías" accent="#eab308" />
             <MetricCard label="Efectivo" value={formatMoneyMx(pos.paymentMethods.cashMxn)} helper={`Tarjeta ${formatMoneyMx(pos.paymentMethods.cardMxn)}`} accent="#ef4444" />
+            <MetricCard label="Mercado Pago" value={formatMoneyMx(pos.paymentMethods.mercadoPagoMxn)} helper="Método de pago" accent="#8b5cf6" />
           </div>
           <div style={{ marginTop: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
             Categorías vendidas:
