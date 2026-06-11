@@ -92,7 +92,7 @@ function StatusPill({ status }) {
     confirmada: 'Confirmada',
     cancelada:  'Cancelada',
     pendiente:  'Pendiente',
-    no_asistio: 'NNo asistió',
+    no_asistio: 'No asistió',
     completada: 'Completada',
   }
   return <span className={`${s.statusPill} ${map[status] ?? ''}`}>{labels[status] ?? status}</span>
