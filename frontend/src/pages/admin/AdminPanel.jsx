@@ -2033,7 +2033,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 </label>
               </div>
 
-              <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 20 }}>
+              {/* <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 20 }}>
                 <input
                   type="checkbox"
                   id="shareable"
@@ -2048,9 +2048,9 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 <label htmlFor="shareable" className={styles.formLabel} style={{ margin: 0, cursor: 'pointer' }}>
                   Permitir compartir paquete
                 </label>
-              </div>
+              </div> */}
 
-              <div className={styles.formGroup}>
+              {/* <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Número máximo de beneficiarios</label>
                 <input
                   className={styles.formInput}
@@ -2066,7 +2066,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     ? `Compartible con hasta ${Number(paqueteForm.maxBeneficiaries) || 1} ${Number(paqueteForm.maxBeneficiaries) === 1 ? 'beneficiario' : 'beneficiarios'}`
                     : 'No compartible'}
                 </small>
-              </div>
+              </div> */}
 
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                 <label className={styles.formLabel}>{useApiPackages ? 'Beneficios' : 'Descripción'}</label>
@@ -3115,7 +3115,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 <label htmlFor="destEdit" className={styles.formLabel} style={{ margin: 0 }}>Marcar como popular</label>
               </div>
 
-              <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+             {/*  <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <input
                   type="checkbox"
                   id="shareEdit"
@@ -3127,9 +3127,9 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   }))}
                 />
                 <label htmlFor="shareEdit" className={styles.formLabel} style={{ margin: 0 }}>Permitir compartir paquete</label>
-              </div>
+              </div> */}
 
-              <div className={styles.formGroup}>
+              {/* <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Máximo de beneficiarios</label>
                 <input
                   className={styles.formInput}
@@ -3144,7 +3144,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     ? `Compartible con hasta ${Number(editPaqueteForm.maxBeneficiaries) || 1} ${Number(editPaqueteForm.maxBeneficiaries) === 1 ? 'beneficiario' : 'beneficiarios'}`
                     : 'No compartible'}
                 </small>
-              </div>
+              </div> */}
 
               {/* Beneficios */}
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>

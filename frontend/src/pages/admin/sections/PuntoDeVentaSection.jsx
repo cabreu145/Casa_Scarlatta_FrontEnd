@@ -340,7 +340,7 @@ export default function PuntoDeVentaSection({
         PACKAGE_NOT_SHAREABLE: 'Paquete no compartible.',
         SHARED_CREDITS_NOT_DIVISIBLE: 'Este paquete no se puede dividir exactamente entre los beneficiarios seleccionados.',
         BENEFICIARY_NOT_FOUND: 'No encontramos un cliente con ese correo.',
-        MAX_BENEFICIARIES_EXCEEDED: 'Se excedió número máximo de beneficiarios.',
+        /* MAX_BENEFICIARIES_EXCEEDED: 'Se excedió número máximo de beneficiarios.', */
         CUSTOMER_REQUIRED_FOR_PACKAGE: 'Selecciona cliente para vender paquete.',
         VALIDATION_ERROR: raw || 'No pudimos completar la venta.',
       }
@@ -781,7 +781,7 @@ export default function PuntoDeVentaSection({
                         <strong className={styles.cartItemPrice}>{money((Number(item.quantity ?? 1)) * Number(item.unitPriceMxn ?? item.price ?? 0))}</strong>
                       </div>
 
-                      {isPackage && (
+                      {/* {isPackage && (
                         <div style={{ display: 'grid', gap: 6 }}>
                           <label style={{ fontSize: 11, color: 'var(--muted)' }}>
                             Beneficiarios opcionales
@@ -800,7 +800,7 @@ export default function PuntoDeVentaSection({
                             {formatPackageShareabilityLabel(item.package ?? item) || 'No compartible'}
                           </div>
                         </div>
-                      )}
+                      )} */}
                     </div>
                   )
                 })
