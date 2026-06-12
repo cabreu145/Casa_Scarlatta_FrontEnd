@@ -98,8 +98,8 @@ function AnimatedRoutes() {
           <Routes location={location} key={location.pathname}>
             <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
             <Route path="/clases" element={<PageWrapper><Clases /></PageWrapper>} />
-            <Route path="/suet" element={<PageWrapper><Suet /></PageWrapper>} />
-            <Route path="/flow" element={<PageWrapper><Flow /></PageWrapper>} />
+            <Route path="/stryde-x" element={<PageWrapper><Suet /></PageWrapper>} />
+            <Route path="/slow" element={<PageWrapper><Flow /></PageWrapper>} />
             <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
             <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
             <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
