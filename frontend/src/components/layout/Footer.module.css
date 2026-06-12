@@ -65,14 +65,17 @@
 
 .scheduleRow {
   display: flex;
-  justify-content: space-between;
-  font-size: 13px;
+  gap: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  font-size: 11px;
   color: rgba(245, 237, 232, 0.65);
 }
 
 .scheduleRow span:first-child {
   color: rgba(245, 237, 232, 0.45);
-  font-size: 12px;
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 .bottom {

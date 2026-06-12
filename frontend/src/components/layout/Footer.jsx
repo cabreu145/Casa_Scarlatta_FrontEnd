@@ -95,15 +95,11 @@ export default function Footer() {
             <div className={styles.schedule}>
               <div className={styles.scheduleRow}>
                 <span>Lun — Vie</span>
-                <span>6:00 – 21:00</span>
+                <span>07:00 am – 11:00 am &nbsp;|&nbsp; 17:00 pm – 20:00 pm</span>
               </div>
               <div className={styles.scheduleRow}>
-                <span>Sábado</span>
-                <span>7:00 – 18:00</span>
-              </div>
-              <div className={styles.scheduleRow}>
-                <span>Domingo</span>
-                <span>8:00 – 14:00</span>
+                <span>Sáb — Dom</span>
+                <span>10:00 am – 12:00 pm</span>
               </div>
             </div>
           </div>
@@ -115,7 +111,7 @@ export default function Footer() {
           </p>
           <div className={styles.social}>
             <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/casa.scarlatta/"
               target="_blank"
               rel="noopener noreferrer"
               className={styles.socialLink}
@@ -131,15 +127,6 @@ export default function Footer() {
               aria-label="Facebook"
             >
               <IconFacebook />
-            </a>
-            <a
-              href="https://youtube.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.socialLink}
-              aria-label="YouTube"
-            >
-              <IconYoutube />
             </a>
           </div>
         </div>

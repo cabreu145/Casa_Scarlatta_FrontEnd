@@ -36,10 +36,8 @@ export default function Suet() {
       {/* Stats */}
       <div className={styles.statsBar}>
         {[
-          { num: '20', label: 'Cupo máximo' },
-          { num: '45', label: 'Minutos' },
-          { num: '+6', label: 'Clases por semana' },
-          { num: '3', label: 'Instructores' },
+          { num: '15', label: 'Cupo máximo' },
+          { num: '50', label: 'Minutos' },
         ].map(({ num, label }) => (
           <div key={label} className={styles.stat}>
             <span className={styles.statNum}>{num}</span>

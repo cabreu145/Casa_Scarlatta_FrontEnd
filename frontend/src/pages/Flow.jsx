@@ -30,10 +30,8 @@ export default function Flow() {
       {/* Stats */}
       <div className={styles.statsBar}>
         {[
-          { num: '15', label: 'Cupo máximo' },
-          { num: '60', label: 'Minutos' },
-          { num: '+5', label: 'Clases por semana' },
-          { num: '2', label: 'Instructoras' },
+          { num: '9', label: 'Cupo máximo' },
+          { num: '45', label: 'Minutos' },
         ].map(({ num, label }) => (
           <div key={label} className={styles.stat}>
             <span className={styles.statNum}>{num}</span>
