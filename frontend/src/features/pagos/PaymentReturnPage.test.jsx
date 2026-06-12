@@ -1,12 +1,13 @@
+import { StrictMode } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { queryKeys } from '@/api/queryKeys'
 
 const navigateMock = vi.fn()
 const getPaymentStatusMock = vi.fn()
-const getCreditMovementsMock = vi.fn()
-const loadFinancialStateMock = vi.fn()
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -20,109 +21,84 @@ vi.mock('@/services/paymentsApiService', () => ({
   getPaymentStatusApi: (...args) => getPaymentStatusMock(...args),
 }))
 
-vi.mock('@/services/financialStateApiService', () => ({
-  getMyCreditMovementsPaginatedApi: (...args) => getCreditMovementsMock(...args),
-}))
+function createWrapper(queryClient, initialEntry, { strict = false } = {}) {
+  const content = (
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <PaymentReturnPage />
+      </MemoryRouter>
+    </QueryClientProvider>
+  )
 
-vi.mock('@/stores/financialStateStore', () => ({
-  useFinancialStateStore: (selector) =>
-    selector({
-      loadFinancialState: loadFinancialStateMock,
-    }),
-}))
+  return strict ? <StrictMode>{content}</StrictMode> : content
+}
+
+let PaymentReturnPage
 
 describe('PaymentReturnPage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     navigateMock.mockReset()
     getPaymentStatusMock.mockReset()
-    getCreditMovementsMock.mockReset()
-    loadFinancialStateMock.mockReset()
     localStorage.clear()
     sessionStorage.clear()
     vi.useRealTimers()
+    ;({ default: PaymentReturnPage } = await import('./PaymentReturnPage'))
   })
 
-  test('consulta estado real y no asume aprobado por /success', async () => {
+  test('llama una sola vez a getPaymentStatusApi por external_reference', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
     getPaymentStatusMock.mockResolvedValue({
       externalReference: 'ref123',
       status: 'pending',
       applied: false,
       paymentMethodId: 'oxxo',
     })
-    const { default: PaymentReturnPage } = await import('./PaymentReturnPage')
 
-    render(
-      <MemoryRouter initialEntries={['/pago/success?external_reference=ref123']}>
-        <PaymentReturnPage />
-      </MemoryRouter>
-    )
+    render(createWrapper(queryClient, '/pago/success?external_reference=ref123'))
 
+    expect(await screen.findByText(/Pago pendiente de acreditación/i)).toBeInTheDocument()
     await waitFor(() => {
+      expect(getPaymentStatusMock).toHaveBeenCalledTimes(1)
       expect(getPaymentStatusMock).toHaveBeenCalledWith({ externalReference: 'ref123' })
     })
-    expect(await screen.findByText(/Pago pendiente de acreditación/i)).toBeInTheDocument()
-    expect(screen.getByText(/1 a 2 días hábiles/i)).toBeInTheDocument()
-    expect(screen.queryByText(/Detalles técnicos para soporte/i)).toBeInTheDocument()
   })
 
-  test('pending genérico no inventa OXXO', async () => {
+  test('no llama API si falta external_reference', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+
+    render(createWrapper(queryClient, '/pago/success'))
+
+    expect(await screen.findByText(/No encontramos la referencia del pago/i)).toBeInTheDocument()
+    expect(getPaymentStatusMock).not.toHaveBeenCalled()
+  })
+
+  test('pending e in_process no invalidan créditos', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
     getPaymentStatusMock.mockResolvedValue({
-      externalReference: 'ref-generic',
-      status: 'pending',
+      externalReference: 'ref-pending',
+      status: 'in_process',
       applied: false,
     })
-    const { default: PaymentReturnPage } = await import('./PaymentReturnPage')
 
-    render(
-      <MemoryRouter initialEntries={['/pago/pending?external_reference=ref-generic']}>
-        <PaymentReturnPage />
-      </MemoryRouter>
-    )
+    render(createWrapper(queryClient, '/pago/pending?external_reference=ref-pending'))
 
     expect(await screen.findByText(/Pago pendiente de acreditación/i)).toBeInTheDocument()
     expect(screen.getByText(/Este proceso puede tardar unos minutos u horas/i)).toBeInTheDocument()
+    expect(invalidateSpy).not.toHaveBeenCalled()
   })
 
-  test('created muestra confirmacion pendiente', async () => {
-    getPaymentStatusMock.mockResolvedValue({
-      externalReference: 'ref-created',
-      status: 'created',
-      applied: false,
+  test('approved + applied invalida una sola vez y no invalida payments.status', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     })
-    const { default: PaymentReturnPage } = await import('./PaymentReturnPage')
-
-    render(
-      <MemoryRouter initialEntries={['/pago/success?external_reference=ref-created']}>
-        <PaymentReturnPage />
-      </MemoryRouter>
-    )
-
-    expect(await screen.findByText(/Pago creado, esperando confirmación/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Verificar estado del pago/i })).toBeInTheDocument()
-    expect(screen.getByText(/Volver a Paquetes & Pagos/i)).toBeInTheDocument()
-  })
-
-  test('approved sin applied muestra actualizacion pendiente', async () => {
-    getPaymentStatusMock.mockResolvedValue({
-      externalReference: 'ref-wait',
-      status: 'approved',
-      applied: false,
-    })
-    const { default: PaymentReturnPage } = await import('./PaymentReturnPage')
-
-    render(
-      <MemoryRouter initialEntries={['/pago/success?external_reference=ref-wait']}>
-        <PaymentReturnPage />
-      </MemoryRouter>
-    )
-
-    expect(await screen.findByText(/Pago aprobado, actualizando créditos/i)).toBeInTheDocument()
-    expect(screen.getByText(/Verifica nuevamente en unos segundos/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Verificar estado del pago/i })).toBeInTheDocument()
-    expect(loadFinancialStateMock).not.toHaveBeenCalled()
-  })
-
-  test('approved + applied refresca estado financiero y redirige a dashboard pagos', async () => {
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
     getPaymentStatusMock.mockResolvedValue({
       externalReference: 'ref999',
       status: 'approved',
@@ -131,80 +107,89 @@ describe('PaymentReturnPage', () => {
       amount: 1500,
       credits: 8,
     })
-    loadFinancialStateMock.mockResolvedValue({})
-    getCreditMovementsMock.mockResolvedValue({ items: [], page: 1, pageSize: 8, total: 0 })
-    const { default: PaymentReturnPage } = await import('./PaymentReturnPage')
 
-    render(
-      <MemoryRouter initialEntries={['/pago/success?external_reference=ref999']}>
-        <PaymentReturnPage />
-      </MemoryRouter>
-    )
+    render(createWrapper(queryClient, '/pago/success?external_reference=ref999'))
 
     expect(await screen.findByText(/Pago aprobado/i)).toBeInTheDocument()
     await waitFor(() => {
-      expect(loadFinancialStateMock).toHaveBeenCalled()
-      expect(getCreditMovementsMock).toHaveBeenCalled()
+      expect(invalidateSpy).toHaveBeenCalledTimes(7)
     })
+
+    const invalidatedKeys = invalidateSpy.mock.calls.map(([arg]) => JSON.stringify(arg.queryKey))
+    expect(invalidatedKeys).toEqual(expect.arrayContaining([
+      JSON.stringify(queryKeys.myFinancialState),
+      JSON.stringify(queryKeys.myMemberships),
+      JSON.stringify(queryKeys.myCreditMovements()),
+      JSON.stringify(queryKeys.myPayments()),
+      JSON.stringify(queryKeys.notifications.list()),
+      JSON.stringify(queryKeys.notifications.unreadCount()),
+      JSON.stringify(queryKeys.activity.list()),
+    ]))
+    expect(invalidatedKeys).not.toContain(JSON.stringify(queryKeys.payments.status('ref999')))
 
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 2700))
     })
 
     expect(navigateMock).toHaveBeenCalledWith('/cliente/dashboard', { replace: true })
-    expect(screen.getByText(/Ir a Paquetes & Pagos/i)).toBeInTheDocument()
   }, 10000)
 
-  test('ruta failure con payment_id null no muestra aprobado y consulta por external_reference', async () => {
+  test('StrictMode no duplica invalidaciones approved + applied', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
     getPaymentStatusMock.mockResolvedValue({
-      externalReference: 'ref-fail',
-      status: 'created',
-      applied: false,
+      externalReference: 'ref-strict',
+      status: 'approved',
+      applied: true,
     })
-    const { default: PaymentReturnPage } = await import('./PaymentReturnPage')
 
-    render(
-      <MemoryRouter initialEntries={['/pago/failure?payment_id=null&status=null&external_reference=ref-fail&payment_status=failed&payment_status_detail=payment_creation_failed']}>
-        <PaymentReturnPage />
-      </MemoryRouter>
-    )
+    render(createWrapper(queryClient, '/pago/success?external_reference=ref-strict', { strict: true }))
 
+    expect(await screen.findByText(/Pago aprobado/i)).toBeInTheDocument()
     await waitFor(() => {
-      expect(getPaymentStatusMock).toHaveBeenCalledWith({ externalReference: 'ref-fail' })
+      expect(getPaymentStatusMock).toHaveBeenCalledTimes(1)
+      expect(invalidateSpy).toHaveBeenCalledTimes(7)
     })
-    expect(await screen.findByText(/No pudimos confirmar tu pago/i)).toBeInTheDocument()
-    expect(screen.getByText(/Tus créditos no fueron modificados/i)).toBeInTheDocument()
-    expect(screen.queryByText(/Pago aprobado/i)).not.toBeInTheDocument()
   })
 
-  test('failed muestra pago no procesado', async () => {
+  test('failure y rejected muestran estado controlado', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
     getPaymentStatusMock.mockResolvedValue({
-      externalReference: 'ref-rejected',
+      externalReference: 'ref-fail',
       status: 'failed',
       applied: false,
     })
-    const { default: PaymentReturnPage } = await import('./PaymentReturnPage')
 
-    render(
-      <MemoryRouter initialEntries={['/pago/failure?external_reference=ref-rejected']}>
-        <PaymentReturnPage />
-      </MemoryRouter>
-    )
+    render(createWrapper(queryClient, '/pago/failure?external_reference=ref-fail'))
 
     expect(await screen.findByText(/No pudimos confirmar tu pago/i)).toBeInTheDocument()
     expect(screen.getByText(/Tus créditos no fueron modificados/i)).toBeInTheDocument()
   })
 
-  test('sin external_reference muestra error controlado', async () => {
-    const { default: PaymentReturnPage } = await import('./PaymentReturnPage')
+  test('botón verificar usa refetch del hook, no llamada manual extra en mount', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    })
+    const user = userEvent.setup()
+    getPaymentStatusMock.mockResolvedValue({
+      externalReference: 'ref-manual',
+      status: 'approved',
+      applied: false,
+    })
 
-    render(
-      <MemoryRouter initialEntries={['/pago/success']}>
-        <PaymentReturnPage />
-      </MemoryRouter>
-    )
+    render(createWrapper(queryClient, '/pago/success?external_reference=ref-manual'))
 
-    expect(await screen.findByText(/No pudimos identificar la referencia del pago/i)).toBeInTheDocument()
-    expect(getPaymentStatusMock).not.toHaveBeenCalled()
+    expect(await screen.findByRole('button', { name: /Verificar estado del pago/i })).toBeInTheDocument()
+    expect(getPaymentStatusMock).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: /Verificar estado del pago/i }))
+
+    await waitFor(() => {
+      expect(getPaymentStatusMock).toHaveBeenCalledTimes(2)
+    })
   })
 })

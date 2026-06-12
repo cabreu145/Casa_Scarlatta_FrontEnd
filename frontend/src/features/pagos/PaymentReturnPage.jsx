@@ -1,19 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/api/queryKeys'
-import { getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
-import { getPaymentStatusApi } from '@/services/paymentsApiService'
-import { useFinancialStateStore } from '@/stores/financialStateStore'
+import { usePaymentStatusQuery } from '@/hooks/useApiQueries'
 import {
   readLastPaymentExternalReference,
   readRecentPaymentReferences,
   upsertRecentPaymentReference,
 } from './paymentTracking'
 import { resolvePaymentUiState } from './paymentUi'
-
-const POLL_INTERVAL_MS = 4000
-const MAX_POLL_ATTEMPTS = 6
 
 function resolveRouteKind(pathname) {
   if (pathname.endsWith('/pago/success')) return 'success'
@@ -50,35 +45,34 @@ function formatCurrency(value) {
   return `$${numberValue.toLocaleString()} MXN`
 }
 
-function useOptionalQueryClient() {
-  try {
-    return useQueryClient()
-  } catch {
-    return null
-  }
-}
-
 export default function PaymentReturnPage() {
   const location = useLocation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const routeKind = useMemo(() => resolveRouteKind(location.pathname), [location.pathname])
   const returnParams = useMemo(() => parseReturnParams(location.search), [location.search])
   const externalReference = useMemo(() => resolveExternalReference(location.search), [location.search])
-
-  const [statusData, setStatusData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [error, setError] = useState('')
-  const attemptsRef = useRef(0)
-  const timeoutRef = useRef(null)
   const redirectRef = useRef(null)
-  const queryClient = useOptionalQueryClient()
-  const loadFinancialState = useFinancialStateStore((s) => s.loadFinancialState)
+  const handledApprovedRef = useRef(false)
+  const syncedStatusRef = useRef('')
+
+  const paymentStatusQuery = usePaymentStatusQuery(externalReference, {
+    enabled: Boolean(externalReference),
+  })
+
+  const statusData = paymentStatusQuery.data ?? null
+  const loading = Boolean(externalReference) ? paymentStatusQuery.isLoading : false
+  const isRefreshing = Boolean(externalReference)
+    ? paymentStatusQuery.isFetching && !paymentStatusQuery.isLoading
+    : false
+  const error = !externalReference
+    ? 'No encontramos la referencia del pago. Revisa tu historial de pagos.'
+    : (paymentStatusQuery.error?.message ?? '')
 
   const recentReference = useMemo(() => {
     const items = readRecentPaymentReferences()
     return items.find((item) => item.externalReference === externalReference) ?? null
-  }, [externalReference, statusData])
+  }, [externalReference])
 
   const uiState = useMemo(
     () => resolvePaymentUiState({ statusData, routeKind, returnParams }),
@@ -108,115 +102,77 @@ export default function PaymentReturnPage() {
     ['appliedAt', statusData?.appliedAt],
   ]
 
-  const stopTimers = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current)
-      timeoutRef.current = null
-    }
+  function stopRedirectTimer() {
     if (redirectRef.current) {
       clearTimeout(redirectRef.current)
       redirectRef.current = null
     }
   }
 
-  const scheduleRedirectToPagos = () => {
-    if (redirectRef.current) {
-      clearTimeout(redirectRef.current)
-      redirectRef.current = null
-    }
+  function scheduleRedirectToPagos() {
+    stopRedirectTimer()
     redirectRef.current = setTimeout(() => {
       navigate('/cliente/dashboard', { replace: true })
     }, 2600)
   }
 
   useEffect(() => {
-    let active = true
+    if (!statusData) return
 
-    const refreshFinancial = async () => {
-      if (queryClient) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
-        ])
-      }
-      await loadFinancialState({ force: true, enabled: true }).catch(() => {})
-      await getMyCreditMovementsPaginatedApi({ page: 1, pageSize: 8 }).catch(() => {})
-    }
+    const statusFingerprint = JSON.stringify([
+      statusData.externalReference ?? externalReference,
+      statusData.status ?? '',
+      Boolean(statusData.applied),
+      statusData.paymentId ?? '',
+      statusData.appliedAt ?? '',
+    ])
 
-    const fetchStatus = async ({ manual = false } = {}) => {
-      if (!externalReference) {
-        if (!active) return
-        setError('No pudimos identificar la referencia del pago. Vuelve a Paquetes & Pagos e intenta nuevamente.')
-        setLoading(false)
-        setIsRefreshing(false)
-        return
-      }
+    if (syncedStatusRef.current === statusFingerprint) return
+    syncedStatusRef.current = statusFingerprint
 
-      try {
-        if (manual) setIsRefreshing(true)
+    upsertRecentPaymentReference({
+      externalReference: statusData.externalReference ?? externalReference,
+      packageId: statusData.packageId ?? recentReference?.packageId ?? null,
+      packageName: recentReference?.packageName ?? null,
+      amount: statusData.amount ?? recentReference?.amount ?? null,
+      credits: statusData.credits ?? recentReference?.credits ?? null,
+      status: statusData.status ?? null,
+      applied: statusData.applied ?? null,
+      paymentMethodId: statusData.paymentMethodId ?? null,
+      paymentTypeId: statusData.paymentTypeId ?? null,
+      statusDetail: statusData.statusDetail ?? null,
+      failureReason: statusData.failureReason ?? null,
+      paymentId: statusData.paymentId ?? null,
+      preferenceId: statusData.preferenceId ?? null,
+      merchantOrderId: statusData.merchantOrderId ?? null,
+      approvedAt: statusData.approvedAt ?? null,
+      appliedAt: statusData.appliedAt ?? null,
+    })
+  }, [externalReference, recentReference, statusData])
 
-        const data = await getPaymentStatusApi({ externalReference })
-        if (!active) return
+  useEffect(() => {
+    if (handledApprovedRef.current) return
+    if (!statusData) return
+    if (statusData.status !== 'approved' || !statusData.applied) return
 
-        setStatusData(data)
-        setError('')
-        setLoading(false)
-        setIsRefreshing(false)
+    handledApprovedRef.current = true
 
-        upsertRecentPaymentReference({
-          externalReference: data.externalReference ?? externalReference,
-          packageId: data.packageId ?? recentReference?.packageId ?? null,
-          packageName: recentReference?.packageName ?? null,
-          amount: data.amount ?? recentReference?.amount ?? null,
-          credits: data.credits ?? recentReference?.credits ?? null,
-          status: data.status ?? null,
-          applied: data.applied ?? null,
-          paymentMethodId: data.paymentMethodId ?? null,
-          paymentTypeId: data.paymentTypeId ?? null,
-          statusDetail: data.statusDetail ?? null,
-          failureReason: data.failureReason ?? null,
-          paymentId: data.paymentId ?? null,
-          preferenceId: data.preferenceId ?? null,
-          merchantOrderId: data.merchantOrderId ?? null,
-          approvedAt: data.approvedAt ?? null,
-          appliedAt: data.appliedAt ?? null,
-        })
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
+    ]).catch(() => {})
 
-        const shouldKeepPolling =
-          data.status === 'created' ||
-          data.status === 'pending' ||
-          data.status === 'in_process' ||
-          (data.status === 'approved' && !data.applied)
+    scheduleRedirectToPagos()
+  }, [queryClient, statusData])
 
-        if (data.status === 'approved' && data.applied) {
-          await refreshFinancial()
-          scheduleRedirectToPagos()
-        }
-
-        if (shouldKeepPolling && attemptsRef.current < MAX_POLL_ATTEMPTS) {
-          attemptsRef.current += 1
-          timeoutRef.current = setTimeout(() => fetchStatus(), POLL_INTERVAL_MS)
-        }
-      } catch (err) {
-        if (!active) return
-        setError(err?.message || 'No se pudo consultar estado de pago')
-        setLoading(false)
-        setIsRefreshing(false)
-      }
-    }
-
-    fetchStatus()
-
-    return () => {
-      active = false
-      stopTimers()
-    }
-  }, [externalReference, loadFinancialState, navigate])
+  useEffect(() => () => {
+    stopRedirectTimer()
+  }, [])
 
   const canManualRefresh = !loading && !error && Boolean(externalReference) && uiState.allowManualRefresh
   const canShowRetry = uiState.canRetry
@@ -289,54 +245,8 @@ export default function PaymentReturnPage() {
             {(uiState.allowManualRefresh || isRefreshing) && (
               <button
                 type="button"
-        onClick={() => {
-                  attemptsRef.current = 0
-                  stopTimers()
-                  setError('')
-                  setIsRefreshing(true)
-                  getPaymentStatusApi({ externalReference })
-                    .then(async (data) => {
-                      setStatusData(data)
-                      setIsRefreshing(false)
-
-                      upsertRecentPaymentReference({
-                        externalReference: data.externalReference ?? externalReference,
-                        packageId: data.packageId ?? recentReference?.packageId ?? null,
-                        packageName: recentReference?.packageName ?? null,
-                        amount: data.amount ?? recentReference?.amount ?? null,
-                        credits: data.credits ?? recentReference?.credits ?? null,
-                        status: data.status ?? null,
-                        applied: data.applied ?? null,
-                        paymentMethodId: data.paymentMethodId ?? null,
-                        paymentTypeId: data.paymentTypeId ?? null,
-                        statusDetail: data.statusDetail ?? null,
-                        failureReason: data.failureReason ?? null,
-                        paymentId: data.paymentId ?? null,
-                        preferenceId: data.preferenceId ?? null,
-                        merchantOrderId: data.merchantOrderId ?? null,
-                        approvedAt: data.approvedAt ?? null,
-                        appliedAt: data.appliedAt ?? null,
-                      })
-
-                      if (data.status === 'approved' && data.applied) {
-                        await Promise.all([
-                          queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
-                          queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
-                          queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
-                          queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
-                          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
-                          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
-                          queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
-                        ])
-                        await loadFinancialState({ force: true, enabled: true }).catch(() => {})
-                        await getMyCreditMovementsPaginatedApi({ page: 1, pageSize: 8 }).catch(() => {})
-                        scheduleRedirectToPagos()
-                      }
-                    })
-                    .catch((err) => {
-                      setError(err?.message || 'No se pudo consultar estado de pago')
-                      setIsRefreshing(false)
-                    })
+                onClick={() => {
+                  paymentStatusQuery.refetch()
                 }}
                 disabled={!canManualRefresh || isRefreshing}
                 style={{
