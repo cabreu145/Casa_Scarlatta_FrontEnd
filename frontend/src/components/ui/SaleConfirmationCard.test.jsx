@@ -14,7 +14,7 @@ describe('SaleConfirmationCard', () => {
     onClose.mockReset()
   })
 
-  test('renderiza resumen y usa urls publicas', async () => {
+  test('oculta impuesto para venta nueva sin IVA y usa urls publicas', async () => {
     const user = userEvent.setup()
 
     render(
@@ -23,8 +23,8 @@ describe('SaleConfirmationCard', () => {
         paymentMethod='cash'
         dateTime='2026-06-08T12:00:00'
         subtotalAmount={200}
-        taxAmount={32}
-        totalAmount={232}
+        taxAmount={0}
+        totalAmount={200}
         publicTicketImageUrl='http://api.test/api/v1/public/tickets/abc123.png'
         publicTicketUrl='http://api.test/api/v1/public/tickets/abc123'
         onViewTicket={onViewTicket}
@@ -37,9 +37,8 @@ describe('SaleConfirmationCard', () => {
     expect(screen.getByText('Venta completada')).toBeInTheDocument()
     expect(screen.getByText('POS-000100')).toBeInTheDocument()
     expect(screen.getByText('Efectivo')).toBeInTheDocument()
-    expect(screen.getByText('$200.00')).toBeInTheDocument()
-    expect(screen.getByText('$32.00')).toBeInTheDocument()
-    expect(screen.getByText('$232.00')).toBeInTheDocument()
+    expect(screen.getAllByText('$200.00').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Impuesto/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Descargar PDF/i })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Ver ticket/i }))
@@ -51,5 +50,26 @@ describe('SaleConfirmationCard', () => {
 
     await user.click(screen.getAllByRole('button', { name: /Cerrar/i })[0])
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  test('muestra impuesto si snapshot histórico sí lo trae', () => {
+    render(
+      <SaleConfirmationCard
+        folio='POS-000101'
+        paymentMethod='cash'
+        dateTime='2026-06-08T12:00:00'
+        subtotalAmount={100}
+        taxAmount={16}
+        totalAmount={116}
+        publicTicketUrl='http://api.test/api/v1/public/tickets/abc124'
+        onViewTicket={onViewTicket}
+        onSendWhatsApp={onSendWhatsApp}
+        onClose={onClose}
+      />
+    )
+
+    expect(screen.getByText('Impuesto')).toBeInTheDocument()
+    expect(screen.getByText('$16.00')).toBeInTheDocument()
+    expect(screen.getByText('$116.00')).toBeInTheDocument()
   })
 })

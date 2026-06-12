@@ -1,6 +1,6 @@
 const VALID_PRODUCT_STATUSES = new Set(['active', 'inactive'])
 const VALID_PAYMENT_METHODS = new Set(['cash', 'card', 'transfer', 'other'])
-const TAX_RATE = 0.16
+const TAX_RATE = 0
 
 function toNumber(value, fallback = 0) {
   const parsed = Number(value)
@@ -88,8 +88,8 @@ export function buildPosSaleApiPayload({ customerId, items = [], paymentMethod, 
     0
   )
   const subtotal = Number.isFinite(Number(subtotalMxn)) ? Number(subtotalMxn) : computedSubtotal
-  const tax = Number.isFinite(Number(taxMxn)) ? Number(taxMxn) : Math.round(subtotal * TAX_RATE * 100) / 100
-  const total = Number.isFinite(Number(totalMxn)) ? Number(totalMxn) : Math.round((subtotal + tax) * 100) / 100
+  const tax = Number.isFinite(Number(taxMxn)) ? Number(taxMxn) : 0
+  const total = Number.isFinite(Number(totalMxn)) ? Number(totalMxn) : subtotal
 
   return {
     customer_id: customerId ? Number(customerId) : null,
@@ -112,14 +112,14 @@ export function validatePosSaleApiPayload(payload = {}) {
     return 'Subtotal de venta inválido.'
   }
   if (!Number.isFinite(Number(payload.tax_mxn)) || Number(payload.tax_mxn) < 0) {
-    return 'IVA de venta inválido.'
+    return 'Impuesto de venta invalido.'
   }
   if (!Number.isFinite(Number(payload.total_mxn)) || Number(payload.total_mxn) <= 0) {
     return 'Total de venta inválido.'
   }
   const expectedTotal = Math.round((Number(payload.subtotal_mxn) + Number(payload.tax_mxn)) * 100) / 100
   if (Math.abs(expectedTotal - Number(payload.total_mxn)) > 0.01) {
-    return 'Total de venta no coincide con subtotal e IVA.'
+    return 'Total de venta no coincide con subtotal e impuesto.'
   }
   const hasPackage = payload.items.some((item) => String(item.type ?? '').toLowerCase() === 'package')
   if (hasPackage && !payload.customer_id) return 'Selecciona cliente para vender paquete.'

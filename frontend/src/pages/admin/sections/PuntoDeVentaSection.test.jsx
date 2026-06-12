@@ -212,8 +212,8 @@ describe('PuntoDeVentaSection', () => {
       status: 'paid',
       customerId: 1,
       subtotalMxn: 2000,
-      taxMxn: 340,
-      totalMxn: 2340,
+      taxMxn: 0,
+      totalMxn: 2000,
       paymentMethod: 'cash',
       createdAt: '2026-06-08T12:00:00',
       publicTicketUrl: 'http://api.test/api/v1/public/tickets/abc123',
@@ -240,6 +240,8 @@ describe('PuntoDeVentaSection', () => {
 
     await user.click(screen.getByRole('button', { name: /Toalla/i }))
     expect(screen.getByRole('button', { name: /Cobrar/i })).toBeEnabled()
+    expect(screen.getByText('Total a cobrar')).toBeInTheDocument()
+    expect(screen.queryByText(/IVA 16%/i)).not.toBeInTheDocument()
 
     const buyerSelect = screen.getByText('Selecciona cliente', { selector: 'option' }).closest('select')
     await user.selectOptions(buyerSelect, '1')
@@ -252,7 +254,7 @@ describe('PuntoDeVentaSection', () => {
       customerId: '1',
       paymentMethod: 'cash',
       subtotalMxn: expect.any(Number),
-      taxMxn: expect.any(Number),
+      taxMxn: 0,
       totalMxn: expect.any(Number),
       items: expect.arrayContaining([
         expect.objectContaining({ type: 'product', id: 1, name: 'Toalla' }),
@@ -268,6 +270,18 @@ describe('PuntoDeVentaSection', () => {
     await user.click(screen.getByRole('button', { name: /Enviar por WhatsApp/i }))
     expect(windowOpen).toHaveBeenCalledWith(expect.stringContaining('https://wa.me/525512345678?text='), '_blank', 'noopener,noreferrer')
   }, 20000)
+
+  test('carrito POS suma directo sin IVA en API mode', async () => {
+    const user = userEvent.setup()
+    render(<Harness />)
+
+    await user.click(await screen.findByRole('button', { name: /Toalla/i }))
+
+    expect(screen.getByText('Total a cobrar')).toBeInTheDocument()
+    expect(screen.getAllByText('$120').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/IVA 16%/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/impuesto/i)).not.toBeInTheDocument()
+  })
 
   test('producto inactivo queda deshabilitado', async () => {
     render(<Harness />)

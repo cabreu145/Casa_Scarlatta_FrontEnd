@@ -204,7 +204,7 @@ Frontend MVP uses TanStack Query for server state. Zustand queda para fallback l
 |---|---|---|---|---|---|---|
 | `frontend/src/services/posApiService.js` | `getProductsApi({ page, pageSize, search, category, status })` | `GET /api/v1/productos?page=&page_size=&search=&category=&status=` | query paginada | `{ page, page_size, total, items[] }` | `posAdapter` | Alta |
 | `frontend/src/services/posApiService.js` | `createProductApi(payload)` / `updateProductApi(id,payload)` / `updateProductStatusApi(id,status)` / `deleteProductApi(id)` | `POST/PUT/PATCH/DELETE /api/v1/productos` | `{ name, category, price_mxn, stock, status, description? }` | `ProductRead` | `posApiPayload` + `posAdapter` | Alta |
-| `frontend/src/services/posApiService.js` | `createSaleApi(payload)` | `POST /api/v1/ventas` | `{ customer_id, items[], payment_method, total_mxn, notes? }` | `SaleRead` con `ticket_url`, `ticket_pdf_url`, `public_ticket_url` | `posApiPayload` + `posAdapter` | Alta |
+| `frontend/src/services/posApiService.js` | `createSaleApi(payload)` | `POST /api/v1/ventas` | `{ customer_id, items[], payment_method, subtotal_mxn, tax_rate: 0, tax_mxn: 0, total_mxn, notes? }` | `SaleRead` con `ticket_url`, `ticket_pdf_url`, `public_ticket_url` | `posApiPayload` + `posAdapter` | Alta |
 | `frontend/src/services/posApiService.js` | `getSalesApi({ page, pageSize, from, to, paymentMethod, status })` | `GET /api/v1/ventas?page=&page_size=&from=&to=&payment_method=&status=` | query filtrada | `{ page, page_size, total, items[] }` | `posAdapter` + `paginationAdapter` | Alta |
 | `frontend/src/services/posApiService.js` | `getSaleByIdApi(id)` / `getSaleTicketApi(id)` / `getSaleTicketPdfUrl(id)` / `getPublicTicketUrl(token)` | `GET /api/v1/ventas/{id}` / `GET /api/v1/ventas/{id}/ticket` / `GET /api/v1/ventas/{id}/ticket.pdf` / `GET /api/v1/public/tickets/{token}` | path/token | venta/ticket/ticket PDF/public ticket | `posAdapter` | Alta |
 
@@ -212,6 +212,9 @@ Notas POS:
 - Carrito queda local de UI; server state va con TanStack Query.
 - `public_ticket_url` se usa para WhatsApp Web en MVP.
 - POS no usa Mercado Pago.
+- POS cobra precio final sin desglose de IVA para ventas nuevas.
+- En ventas nuevas: `subtotal_mxn === total_mxn`, `tax_rate = 0`, `tax_mxn = 0`.
+- Si ticket histórico trae `tax_mxn > 0`, frontend lo respeta como snapshot y no lo recalcula.
 
 ## Mapeo Reportes operativos (vigente)
 | Archivo frontend | Función actual | Endpoint backend | Request esperado | Response esperado | Transformación necesaria | Prioridad |

@@ -53,6 +53,8 @@ describe('posAdapter', () => {
       customerName: 'Cliente Demo',
       customerEmail: 'cliente@demo.local',
       totalMxn: 2340,
+      taxRate: 0,
+      taxMxn: 0,
       paymentMethod: 'cash',
       ticketUrl: '/api/v1/ventas/100/ticket',
       ticketPdfUrl: '/api/v1/ventas/100/ticket.pdf',
@@ -64,6 +66,26 @@ describe('posAdapter', () => {
       quantity: 2,
       unitPriceMxn: 120,
       lineTotalMxn: 240,
+    })
+  })
+
+  test('preserva impuesto histórico si backend lo trae en snapshot', () => {
+    const result = mapBackendSaleToFrontend({
+      id: 101,
+      folio: 'POS-000101',
+      status: 'paid',
+      subtotal_mxn: 100,
+      tax_rate: 0.16,
+      tax_mxn: 16,
+      total_mxn: 116,
+      payment_method: 'cash',
+    })
+
+    expect(result).toMatchObject({
+      subtotalMxn: 100,
+      taxRate: 0.16,
+      taxMxn: 16,
+      totalMxn: 116,
     })
   })
 })

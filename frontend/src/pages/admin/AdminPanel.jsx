@@ -1073,8 +1073,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
 
   // Cart helpers
   const cartSubtotal = cart.reduce((s, i) => s + i.price, 0)
-  const cartIva      = Math.round(cartSubtotal * 0.16)
-  const cartTotal    = cartSubtotal + cartIva
+  const cartIva      = 0
+  const cartTotal    = cartSubtotal
 
   function addToCart(product) {
     setCart((current) => {

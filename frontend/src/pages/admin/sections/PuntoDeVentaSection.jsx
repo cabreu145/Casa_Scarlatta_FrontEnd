@@ -204,8 +204,8 @@ export default function PuntoDeVentaSection({
     [cart]
   )
   const subtotalToShow = useApiMode ? cartTotalComputed : cartSubtotal
-  const ivaToShow = useApiMode ? Math.round(cartTotalComputed * 0.16 * 100) / 100 : cartIva
-  const totalToShow = useApiMode ? Math.round((cartTotalComputed + (Math.round(cartTotalComputed * 0.16 * 100) / 100)) * 100) / 100 : cartTotal
+  const ivaToShow = useApiMode ? 0 : cartIva
+  const totalToShow = useApiMode ? cartTotalComputed : cartTotal
 
   const categoryOptions = useMemo(() => {
     if (!useApiMode) {
@@ -809,8 +809,7 @@ export default function PuntoDeVentaSection({
 
             <div className={styles.cartTotal}>
               <div className={styles.cartTotalRow}><span>Subtotal</span><span>{money(subtotalToShow)}</span></div>
-              {!useApiMode && <div className={styles.cartTotalRow}><span>IVA (16%)</span><span>{money(ivaToShow)}</span></div>}
-              <div className={styles.cartTotalMain}><span>Total</span><span>{money(totalToShow)}</span></div>
+              <div className={styles.cartTotalMain}><span>Total a cobrar</span><span>{money(totalToShow)}</span></div>
             </div>
 
             {useApiMode && (
@@ -1076,8 +1075,7 @@ export default function PuntoDeVentaSection({
           </div>
           <div className={styles.cartTotal}>
             <div className={styles.cartTotalRow}><span>Subtotal</span><span>${cartSubtotal.toLocaleString()}</span></div>
-            <div className={styles.cartTotalRow}><span>IVA (16%)</span><span>${cartIva.toLocaleString()}</span></div>
-            <div className={styles.cartTotalMain}><span>Total</span><span>${cartTotal.toLocaleString()}</span></div>
+            <div className={styles.cartTotalMain}><span>Total a cobrar</span><span>${cartTotal.toLocaleString()}</span></div>
           </div>
           <button
             className={`${styles.btn} ${styles.btnPrimary}`}
