@@ -68,6 +68,8 @@ Responsable: Codex
 ### POS
 - POS activo ya esta bastante API-first. Queda carrito local de UI, que es correcto.
 - No hay mock critico visible en ventas/tickets cuando API mode esta activo; el riesgo es el fallback legacy y previews calculados localmente.
+- POS nuevo ya no calcula IVA en frontend: total a cobrar = suma directa de items seleccionados.
+- Si una venta histórica trae `tax_mxn > 0`, frontend solo lo presenta como snapshot persistido.
 - `page_size=100` aparece en servicios, no `1000`.
 - El punto sensible es evitar que el fallback demo se use como verdad en API mode.
 

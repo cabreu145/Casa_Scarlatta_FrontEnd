@@ -63,7 +63,7 @@ describe('useApiQueries - POS invalidation', () => {
     const { result } = renderHook(() => useCreatePosSaleMutation(), { wrapper: wrapper(queryClient) })
 
     await act(async () => {
-      await result.current.mutateAsync({ customerId: 7, items: [], paymentMethod: 'cash', subtotalMxn: 100, taxMxn: 16, totalMxn: 116 })
+      await result.current.mutateAsync({ customerId: 7, items: [], paymentMethod: 'cash', subtotalMxn: 100, taxMxn: 0, totalMxn: 100 })
     })
 
     expect(createSaleApi).toHaveBeenCalled()
@@ -72,8 +72,8 @@ describe('useApiQueries - POS invalidation', () => {
       items: [],
       paymentMethod: 'cash',
       subtotalMxn: 100,
-      taxMxn: 16,
-      totalMxn: 116,
+      taxMxn: 0,
+      totalMxn: 100,
     })
     seededKeys.forEach((key) => {
       expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)

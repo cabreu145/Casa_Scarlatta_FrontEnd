@@ -51,8 +51,9 @@ describe('posApiPayload', () => {
       customer_id: 1,
       payment_method: 'cash',
       subtotal_mxn: 2340,
-      tax_mxn: 374.4,
-      total_mxn: 2714.4,
+      tax_rate: 0,
+      tax_mxn: 0,
+      total_mxn: 2340,
       notes: 'Venta en caja',
     })
     expect(payload.items[1]).toMatchObject({
@@ -61,6 +62,23 @@ describe('posApiPayload', () => {
       beneficiaries: ['a@demo.local', 'b@demo.local'],
     })
     expect(validatePosSaleApiPayload(payload)).toBeNull()
+  })
+
+  test('venta nueva sin totales explícitos usa subtotal como total final', () => {
+    const payload = buildPosSaleApiPayload({
+      paymentMethod: 'cash',
+      items: [
+        { type: 'product', id: 1, quantity: 1, unitPriceMxn: 100 },
+        { type: 'product', id: 2, quantity: 1, unitPriceMxn: 50 },
+      ],
+    })
+
+    expect(payload).toMatchObject({
+      subtotal_mxn: 150,
+      tax_rate: 0,
+      tax_mxn: 0,
+      total_mxn: 150,
+    })
   })
 
   test('venta bloquea paquete sin cliente', () => {

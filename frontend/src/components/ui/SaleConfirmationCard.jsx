@@ -55,6 +55,7 @@ export default function SaleConfirmationCard({
     if (publicTicketUrl) return 'Sin imagen público. Ticket público disponible.'
     return 'No hay link público de ticket disponible.'
   }, [publicTicketImageUrl, publicTicketUrl])
+  const hasTax = Number(taxAmount ?? 0) > 0
 
   function handleViewTicket() {
     if (!resolvedPublicUrl) {
@@ -127,10 +128,12 @@ export default function SaleConfirmationCard({
           <span>Subtotal</span>
           <strong>{money(subtotalAmount)}</strong>
         </div>
-        <div className={styles.amountRow}>
-          <span>IVA 16%</span>
-          <strong>{money(taxAmount)}</strong>
-        </div>
+        {hasTax && (
+          <div className={styles.amountRow}>
+            <span>Impuesto</span>
+            <strong>{money(taxAmount)}</strong>
+          </div>
+        )}
         <div className={styles.amountRow + ' ' + styles.amountRowTotal}>
           <span>Total</span>
           <strong>{money(totalAmount)}</strong>

@@ -379,6 +379,9 @@ Variable:
 Comportamiento:
 - `PuntoDeVentaSection` usa `GET /api/v1/productos`, `GET /api/v1/memberships/packages`, `GET /api/v1/clientes`, `GET /api/v1/ventas` y `POST /api/v1/ventas` en modo API.
 - Carrito sigue local de UI; backend valida stock, total y beneficiarios.
+- POS cobra precio final sin desglose de IVA para ventas nuevas.
+- En ventas nuevas: `subtotal_mxn = total_mxn`, `tax_rate = 0`, `tax_mxn = 0`.
+- Frontend no recalcula `16%`; si ticket hist?rico trae impuesto, solo lo muestra como snapshot.
 - Venta exitosa abre modal con ticket, PDF y link pï¿½blico para WhatsApp Web.
 - `public_ticket_url` es la URL recomendada para compartir.
 - `POS` no usa Mercado Pago.

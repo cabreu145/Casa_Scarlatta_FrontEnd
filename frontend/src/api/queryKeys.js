@@ -28,6 +28,9 @@ export const queryKeys = {
   myMemberships: ['client', 'me', 'memberships'],
   myCreditMovements: (params = {}) => ['client', 'me', 'creditMovements', params],
   myPayments: (params = {}) => ['client', 'me', 'payments', params],
+  payments: {
+    status: (externalReference) => ['payments', 'status', externalReference],
+  },
   coachAgenda: {
     me: (params = {}) => ['coachAgenda', 'me', params],
   },

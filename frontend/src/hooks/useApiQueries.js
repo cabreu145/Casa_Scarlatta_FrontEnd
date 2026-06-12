@@ -51,6 +51,7 @@ import {
   sendTestEmailApi,
   updateEmailConfigApi,
 } from '@/services/emailConfigApiService'
+import { getPaymentStatusApi } from '@/services/paymentsApiService'
 import {
   getSiteConfigurationApi,
   updateSiteConfigurationApi,
@@ -168,6 +169,28 @@ export function useMyPaymentsQuery({ page = 1, pageSize = 10, status, enabled = 
     enabled,
     placeholderData: (previousData) => previousData,
     ...shortDefaults,
+  })
+}
+
+export function usePaymentStatusQuery(externalReference, options = {}) {
+  const {
+    enabled = true,
+    staleTime = 30_000,
+    refetchOnMount = false,
+    refetchOnWindowFocus = false,
+    retry = 1,
+    ...restOptions
+  } = options
+
+  return useQuery({
+    queryKey: queryKeys.payments.status(externalReference),
+    queryFn: () => getPaymentStatusApi({ externalReference }),
+    enabled: Boolean(externalReference) && enabled,
+    staleTime,
+    refetchOnMount,
+    refetchOnWindowFocus,
+    retry,
+    ...restOptions,
   })
 }
 

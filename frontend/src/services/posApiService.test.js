@@ -131,9 +131,9 @@ describe('posApiService', () => {
       status: 'paid',
       customer_id: 1,
       subtotal_mxn: 2000,
-      tax_rate: 0.16,
-      tax_mxn: 340,
-      total_mxn: 2340,
+      tax_rate: 0,
+      tax_mxn: 0,
+      total_mxn: 2000,
       payment_method: 'cash',
       created_at: '2026-06-08T12:00:00',
       ticket_url: '/api/v1/ventas/100/ticket',
@@ -175,9 +175,9 @@ describe('posApiService', () => {
       customer_id: 1,
       payment_method: 'cash',
       subtotal_mxn: 2340,
-      tax_rate: 0.16,
-      tax_mxn: 374.4,
-      total_mxn: 2714.4,
+      tax_rate: 0,
+      tax_mxn: 0,
+      total_mxn: 2340,
       items: expect.arrayContaining([
         expect.objectContaining({ type: 'product', id: 1, quantity: 2, unit_price_mxn: 120 }),
         expect.objectContaining({ type: 'package', id: 2, beneficiaries: ['beneficiario@demo.local'] }),
@@ -197,5 +197,38 @@ describe('posApiService', () => {
     expect(httpGet).toHaveBeenCalledWith('/api/v1/ventas/100/ticket')
     expect(getSaleTicketPdfUrl(100)).toBe('/api/v1/ventas/100/ticket.pdf')
     expect(getPublicTicketUrl('abc123')).toBe('/api/v1/public/tickets/abc123')
+  })
+
+  test('mapea snapshot histórico con impuesto sin romper compatibilidad', async () => {
+    httpPost.mockResolvedValue({
+      id: 101,
+      folio: 'POS-000101',
+      status: 'paid',
+      customer_id: 1,
+      subtotal_mxn: 100,
+      tax_rate: 0.16,
+      tax_mxn: 16,
+      total_mxn: 116,
+      payment_method: 'cash',
+      created_at: '2026-06-08T12:00:00',
+      items: [],
+    })
+
+    const service = await import('./posApiService')
+    const sale = await service.createSaleApi({
+      customerId: 1,
+      paymentMethod: 'cash',
+      subtotalMxn: 100,
+      taxMxn: 0,
+      totalMxn: 100,
+      items: [{ type: 'product', id: 1, quantity: 1, unitPriceMxn: 100 }],
+    })
+
+    expect(sale).toMatchObject({
+      subtotalMxn: 100,
+      taxRate: 0.16,
+      taxMxn: 16,
+      totalMxn: 116,
+    })
   })
 })

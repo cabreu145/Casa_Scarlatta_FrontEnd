@@ -1593,7 +1593,7 @@ export default function ClientPanel() {
               <div className={s.card} style={{ marginBottom: 20 }}>
                 <div className={s.cardHeader}>
                   <div className={s.cardTitle}>Mis membresías</div>
-                  <div className={s.cardSubtitle}>Beneficiarios y configuración compartida</div>
+                  {/* <div className={s.cardSubtitle}>Beneficiarios y configuración compartida</div> */}
                 </div>
                 <div className={s.cardBody}>
                   {membershipsQuery.isLoading ? (
@@ -1633,21 +1633,21 @@ export default function ClientPanel() {
                                   {membership.creditsAvailable ?? 0} créditos disponibles
                                   {membership.expiresAt ? ` · Vence ${formatFechaISO(membership.expiresAt)}` : ''}
                                 </div>
-                                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                                {/* <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
                                   {membership.isShareable
                                     ? formatPackageShareabilityLabel({
                                         isShareable: true,
                                         maxBeneficiaries: membership.maxBeneficiaries,
                                       })
                                     : 'No compartible'}
-                                </div>
+                                </div> */}
                               </div>
                               <div style={{ textAlign: 'right', fontSize: 12, color: 'var(--muted)' }}>
                                 {membership.status ?? 'active'}
                               </div>
                             </div>
 
-                            <div style={{ marginTop: 12 }}>
+                            {/* <div style={{ marginTop: 12 }}>
                               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>
                                 Beneficiarios activos
                               </div>
@@ -1668,7 +1668,7 @@ export default function ClientPanel() {
                                   ))}
                                 </div>
                               )}
-                            </div>
+                            </div> */}
 
                             {canInitialShare && (
                               <div style={{ marginTop: 12 }}>

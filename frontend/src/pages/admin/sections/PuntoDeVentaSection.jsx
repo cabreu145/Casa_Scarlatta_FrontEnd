@@ -204,8 +204,8 @@ export default function PuntoDeVentaSection({
     [cart]
   )
   const subtotalToShow = useApiMode ? cartTotalComputed : cartSubtotal
-  const ivaToShow = useApiMode ? Math.round(cartTotalComputed * 0.16 * 100) / 100 : cartIva
-  const totalToShow = useApiMode ? Math.round((cartTotalComputed + (Math.round(cartTotalComputed * 0.16 * 100) / 100)) * 100) / 100 : cartTotal
+  const ivaToShow = useApiMode ? 0 : cartIva
+  const totalToShow = useApiMode ? cartTotalComputed : cartTotal
 
   const categoryOptions = useMemo(() => {
     if (!useApiMode) {
@@ -340,7 +340,7 @@ export default function PuntoDeVentaSection({
         PACKAGE_NOT_SHAREABLE: 'Paquete no compartible.',
         SHARED_CREDITS_NOT_DIVISIBLE: 'Este paquete no se puede dividir exactamente entre los beneficiarios seleccionados.',
         BENEFICIARY_NOT_FOUND: 'No encontramos un cliente con ese correo.',
-        MAX_BENEFICIARIES_EXCEEDED: 'Se excedió número máximo de beneficiarios.',
+        /* MAX_BENEFICIARIES_EXCEEDED: 'Se excedió número máximo de beneficiarios.', */
         CUSTOMER_REQUIRED_FOR_PACKAGE: 'Selecciona cliente para vender paquete.',
         VALIDATION_ERROR: raw || 'No pudimos completar la venta.',
       }
@@ -781,7 +781,7 @@ export default function PuntoDeVentaSection({
                         <strong className={styles.cartItemPrice}>{money((Number(item.quantity ?? 1)) * Number(item.unitPriceMxn ?? item.price ?? 0))}</strong>
                       </div>
 
-                      {isPackage && (
+                      {/* {isPackage && (
                         <div style={{ display: 'grid', gap: 6 }}>
                           <label style={{ fontSize: 11, color: 'var(--muted)' }}>
                             Beneficiarios opcionales
@@ -800,7 +800,7 @@ export default function PuntoDeVentaSection({
                             {formatPackageShareabilityLabel(item.package ?? item) || 'No compartible'}
                           </div>
                         </div>
-                      )}
+                      )} */}
                     </div>
                   )
                 })
@@ -809,8 +809,7 @@ export default function PuntoDeVentaSection({
 
             <div className={styles.cartTotal}>
               <div className={styles.cartTotalRow}><span>Subtotal</span><span>{money(subtotalToShow)}</span></div>
-              {!useApiMode && <div className={styles.cartTotalRow}><span>IVA (16%)</span><span>{money(ivaToShow)}</span></div>}
-              <div className={styles.cartTotalMain}><span>Total</span><span>{money(totalToShow)}</span></div>
+              <div className={styles.cartTotalMain}><span>Total a cobrar</span><span>{money(totalToShow)}</span></div>
             </div>
 
             {useApiMode && (
@@ -1076,8 +1075,7 @@ export default function PuntoDeVentaSection({
           </div>
           <div className={styles.cartTotal}>
             <div className={styles.cartTotalRow}><span>Subtotal</span><span>${cartSubtotal.toLocaleString()}</span></div>
-            <div className={styles.cartTotalRow}><span>IVA (16%)</span><span>${cartIva.toLocaleString()}</span></div>
-            <div className={styles.cartTotalMain}><span>Total</span><span>${cartTotal.toLocaleString()}</span></div>
+            <div className={styles.cartTotalMain}><span>Total a cobrar</span><span>${cartTotal.toLocaleString()}</span></div>
           </div>
           <button
             className={`${styles.btn} ${styles.btnPrimary}`}

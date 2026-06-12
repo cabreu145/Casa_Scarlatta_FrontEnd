@@ -211,12 +211,7 @@ function PaqueteCard({ p, onComprar }) {
         </div>
 
         <ul className="z-10 mb-8 flex flex-1 flex-col gap-3 px-8">
-          {validityLabel && (
-            <li className="font-sans flex items-start gap-3 text-[13px] font-normal leading-snug text-[rgba(245,237,232,0.78)]">
-              <span className="mt-0.5 shrink-0 text-[11px] text-[rgba(245,237,232,0.65)]">•</span>
-              {validityLabel}
-            </li>
-          )}
+          
           {shareableLabel && (
             <li className="font-sans flex items-start gap-3 text-[13px] font-normal leading-snug text-[rgba(245,237,232,0.78)]">
               <span className="mt-0.5 shrink-0 text-[11px] text-[rgba(245,237,232,0.65)]">•</span>
@@ -268,12 +263,7 @@ function PaqueteCard({ p, onComprar }) {
       </div>
 
       <ul className="z-10 mb-8 flex flex-1 flex-col gap-3 px-8">
-        {validityLabel && (
-          <li className="font-sans flex items-start gap-3 text-[13px] font-light leading-snug text-[#7A6560]">
-            <span className="mt-0.5 shrink-0 text-[11px] font-semibold text-[#C26B7A]">•</span>
-            {validityLabel}
-          </li>
-        )}
+        
         {shareableLabel && (
           <li className="font-sans flex items-start gap-3 text-[13px] font-light leading-snug text-[#7A6560]">
             <span className="mt-0.5 shrink-0 text-[11px] font-semibold text-[#C26B7A]">•</span>
