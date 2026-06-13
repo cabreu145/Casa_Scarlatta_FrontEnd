@@ -1577,7 +1577,7 @@ export default function ClientPanel() {
                     />
                   </div>
                   <div className={s.planProgressLabel}>
-                    {clasesUsadas} de {clasesTotal} clases usadas
+                    {clasesUsadas} de {clasesTotal >= 999 ? '∞' : clasesTotal} clases usadas
                     {usuario?.paqueteInfo?.fechaVencimiento
                       ? ` · Vence ${formatFechaISO(usuario.paqueteInfo.fechaVencimiento)}`
                       : ''}

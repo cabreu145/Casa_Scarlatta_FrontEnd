@@ -12,6 +12,7 @@ import Home from '@/pages/Home'
 import Clases from '@/pages/Clases'
 import Suet from '@/pages/Suet'
 import Flow from '@/pages/Flow'
+import Yoga from '@/pages/Yoga'
 import Nosotros from '@/pages/Nosotros'
 import Contacto from '@/pages/Contacto'
 import Login from '@/pages/Login'
@@ -100,6 +101,7 @@ function AnimatedRoutes() {
             <Route path="/clases" element={<PageWrapper><Clases /></PageWrapper>} />
             <Route path="/stryde-x" element={<PageWrapper><Suet /></PageWrapper>} />
             <Route path="/slow" element={<PageWrapper><Flow /></PageWrapper>} />
+            <Route path="/yoga" element={<PageWrapper><Yoga /></PageWrapper>} />
             <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
             <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
             <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
