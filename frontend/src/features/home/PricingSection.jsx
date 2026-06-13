@@ -29,7 +29,8 @@ function buildPackageBenefits(pkg) {
   if (benefits.length) return benefits
 
   const credits = getPackageCredits(pkg)
-  const fallback = [credits > 0 ? `${credits} ${credits === 1 ? 'clase' : 'clases'}` : 'Paquete finito']
+  const creditsDisplay = credits >= 999 ? '∞' : credits
+  const fallback = [credits > 0 ? `${creditsDisplay} ${credits === 1 ? 'clase' : credits >= 999 ? 'clases ilimitadas' : 'clases'}` : 'Paquete finito']
   const validity = formatPackageValidityLabel(pkg)
   if (validity) fallback.push(validity)
   const shareable = formatPackageShareabilityLabel(pkg)
