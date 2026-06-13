@@ -106,7 +106,7 @@
 | BUG-009 |cliente |Dashboard Paeutes & Pagos contratacion desde la web app   |importante | Actualmente, no se tiene un metodo de pago vinculado o pasarela, la que estariamos usando es la de Mercado Pago , ya se tienen los accesos para esto de prod y sandbox (pruebas) es de vital importancia corregir esto antes de pasar a otro modulo. | sin corregir| |
 
 | BUG-010 |coach |Dashboard "Todas mis clases esta semana"   |importante | No se estan mostrando las clases que tienen asignadas los coach en la semana del filtro "Todas mis clases esta semana
-Semana del"  el listado es "DÃ­a	Hora	Clase	Tipo	Alumnos	OcupaciÃ³n" | sin corregir| |
+Semana del"  el listado es "día	Hora	Clase	Tipo	Alumnos	OcupaciÃ³n" | sin corregir| |
 
 | BUG-011 |coach |Dashboard "esta semana"   |importante | Tiene data que debe estar hardcodeado, es decir no es dinamico ya que si en el bug 010 no se tiene calses asignadas como tiene esas metricas ?  | sin corregir| |
 
@@ -150,14 +150,14 @@ Registrar cierre incremental de bugs sin perder trazabilidad:
 | Bug | Estado | Fecha | Archivos modificados | Source of truth validado | QA recomendado | Pendientes relacionados |
 |---|---|---|---|---|---|---|
 | BUG-001 | Corregido | 2026-05-29 | `ClientPanel.jsx`, `clasesStore.js` | Clases API (`/api/v1/clases`) | Validar que `/clases` y dashboard muestran misma clase demo | BUG-003, BUG-005 |
-| BUG-003 | Mitigado | 2026-05-29 | `reservationAdapter.js`, `Clases.jsx`, `ClientPanel.jsx`, `SeatSelector.jsx` | Reservas API (`/api/v1/reservas/me`) sin usar `reserved_at` como fecha de sesiÃ³n | Validar que reserva no se marca en dÃ­as incorrectos cuando falta ocurrencia | Cierre definitivo depende de ocurrencias backend |
+| BUG-003 | Mitigado | 2026-05-29 | `reservationAdapter.js`, `Clases.jsx`, `ClientPanel.jsx`, `SeatSelector.jsx` | Reservas API (`/api/v1/reservas/me`) sin usar `reserved_at` como fecha de sesiÃ³n | Validar que reserva no se marca en días incorrectos cuando falta ocurrencia | Cierre definitivo depende de ocurrencias backend |
 
 ## 15) QA especÃ­fico BUG-003
 Checklist de cierre parcial:
 - [ ] Reservar clase desde `/clases`.
 - [ ] Confirmar que `reserved_at` no se muestra/usa como fecha de sesiÃ³n.
-- [ ] Confirmar que la reserva no aparece confirmada/cancelable en dÃ­as incorrectos.
-- [ ] Confirmar que si `class_date` y `class_start_at` vienen `null`, la UI queda neutral por dÃ­a (sin afirmar reserva diaria).
+- [ ] Confirmar que la reserva no aparece confirmada/cancelable en días incorrectos.
+- [ ] Confirmar que si `class_date` y `class_start_at` vienen `null`, la UI queda neutral por día (sin afirmar reserva diaria).
 - [ ] Confirmar que `SeatSelector` no bloquea asientos por `class_id` plano sin ocurrencia.
 - [ ] Confirmar que con flags API activos no se mezclan mocks en estas vistas.
 
@@ -174,7 +174,7 @@ Evidencia sugerida:
 - [ ] Confirmar que no se mezcla source mock con flags API activos.
 
 ## VerificaciÃ³n de performance (request storm)
-- [ ] Cambiar rÃ¡pidamente semana/dÃ­a en `/clases` y `/cliente/dashboard`.
+- [ ] Cambiar rÃ¡pidamente semana/día en `/clases` y `/cliente/dashboard`.
 - [ ] Confirmar en Network que no hay rÃ¡faga repetida para misma llave `classId+from+to`.
 - [ ] Confirmar que al navegar fuera de pantalla se abortan requests pendientes (sin error UI).
 - [ ] Confirmar que no se dispara precarga masiva de `waitlist?occurrenceId=...` al montar dashboard.

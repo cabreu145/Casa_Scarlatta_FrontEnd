@@ -42,18 +42,18 @@ export const useClasesStore = create(
 
       setClases: (clases) => set({ clases: Array.isArray(clases) ? clases : [], hasLoadedFromApi: true }),
 
-      loadClasesFromApi: async ({ force = false } = {}) => {
+      loadClasesFromApi: async ({ force = false, status = 'programada' } = {}) => {
         if (!useApiClasses) return get().clases
         const current = get()
         if (!force && current.hasLoadedFromApi) {
           return current.clases
         }
-        const currentSignature = 'clases'
+        const currentSignature = `clases|${status || 'all'}`
         if (inflightClasesLoads.has(currentSignature)) {
           return inflightClasesLoads.get(currentSignature)
         }
 
-        const request = getClasesApi()
+        const request = getClasesApi({ status })
           .then((clasesApi) => {
             set({ clases: clasesApi, hasLoadedFromApi: true })
             return clasesApi

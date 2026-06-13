@@ -1,4 +1,4 @@
-﻿import { useCallback, useState, useRef, useMemo, useEffect } from 'react'
+import { useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PasswordInput from '@/components/ui/PasswordInput'
 import DashboardSection from './sections/DashboardSection'
@@ -43,7 +43,7 @@ import SeatSelector from '@/features/clases/SeatSelector'
 import { FinanzasSection } from './AdminFinanzas'
 import { ReportesSection } from './AdminReportes'
 import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
-import { createClaseApi, updateClaseApi } from '@/services/clasesApiService'
+import { createClaseApi, createClassOccurrenceApi, updateClaseApi } from '@/services/clasesApiService'
 import {
   createCoachApi,
   deleteCoachApi,
@@ -117,6 +117,30 @@ import {
   addClientMembershipBeneficiaryApi,
   removeClientMembershipBeneficiaryApi,
 } from '@/services/clientMembershipsApiService'
+
+function pad2(value) {
+  return String(value).padStart(2, '0')
+}
+
+function buildOccurrencePayloadFromClassForm(form, classPayload = {}) {
+  const occurrenceDate = String(form?.fecha ?? '').trim()
+  const startTime = String(form?.hora ?? '07:00').trim() || '07:00'
+  const durationMin = Number(classPayload?.duration_minutes ?? form?.duracion ?? 50) || 50
+  const capacityMax = Number(classPayload?.capacity_max ?? form?.cupoMax ?? 15) || 15
+  const startDate = new Date(`${occurrenceDate}T${startTime}:00`)
+  const endDate = new Date(startDate)
+  endDate.setMinutes(endDate.getMinutes() + durationMin)
+  const endAt = `${endDate.getFullYear()}-${pad2(endDate.getMonth() + 1)}-${pad2(endDate.getDate())}T${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}:00`
+  return {
+    occurrence_date: occurrenceDate,
+    start_at: `${occurrenceDate}T${startTime}:00`,
+    end_at: endAt,
+    duration_min: durationMin,
+    capacity_max: capacityMax,
+    coach_id: classPayload?.coach_id ?? null,
+    status: 'programada',
+  }
+}
 
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
@@ -780,7 +804,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   useEffect(() => {
     if (!useApiClasses) return
     let active = true
-    loadClasesFromApi().catch(() => {
+    loadClasesFromApi({ status: 'programada' }).catch(() => {
       if (!active) return
     })
     return () => { active = false }
@@ -1913,20 +1937,38 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       toast.error('Selecciona un coach válido para guardar en API mode')
                       return
                     }
-                    if (claseForm.fecha) {
-                      toast.error('La fecha específica requiere crear ocurrencia; no se envía en clase base')
-                      return
-                    }
                     if (claseForm.publicarEn) {
                       toast.error('Programar publicación no está soportado todavía por backend')
                       return
                     }
                     const createdClase = await createClaseApi(payload)
+                    let createdOccurrence = null
+                    let occurrenceFailed = false
+                    if (claseForm.fecha) {
+                      const occurrencePayload = buildOccurrencePayloadFromClassForm(claseForm, payload)
+                      try {
+                        createdOccurrence = await createClassOccurrenceApi(createdClase?.id, occurrencePayload)
+                      } catch (_occurrenceError) {
+                        occurrenceFailed = true
+                        await invalidateClassSideEffects(queryClient, {
+                          classId: createdClase?.id,
+                          coachId: createdClase?.coachId ?? createdClase?.coach_id ?? payload.coach_id,
+                        })
+                        await loadClasesFromApi({ force: true, status: 'programada' })
+                        toast.error('La clase base se creó, pero no se pudo programar la sesión en calendario.')
+                      }
+                    }
+                    if (occurrenceFailed) {
+                      setClaseForm({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+                      closeModal()
+                      return
+                    }
                     await invalidateClassSideEffects(queryClient, {
                       classId: createdClase?.id,
+                      occurrenceId: createdOccurrence?.occurrenceId ?? createdOccurrence?.id ?? null,
                       coachId: createdClase?.coachId ?? createdClase?.coach_id ?? payload.coach_id,
                     })
-                    await loadClasesFromApi({ force: true })
+                    await loadClasesFromApi({ force: true, status: 'programada' })
                   } else {
                     const coachObj = coaches.find(c => c.nombre === claseForm.coach)
                     agregarClase({
@@ -1945,7 +1987,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     })
                   }
                   const msg = claseForm.fecha
-                    ? `Clase "${claseForm.nombre}" creada para el ${new Date(claseForm.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                    ? `Clase "${claseForm.nombre}" creada y sesión programada para el ${new Date(claseForm.fecha + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}`
                     : claseForm.publicarEn
                           ? `Clase programada para ${new Date(claseForm.publicarEn).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}`
                       : `Clase "${claseForm.nombre}" publicada`
@@ -2601,20 +2643,37 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       toast.error('Selecciona un coach válido para guardar en API mode')
                       return
                     }
-                    if (editClaseForm.fecha) {
-                      toast.error('La fecha específica requiere crear ocurrencia; no se envía en clase base')
-                      return
-                    }
                     if (editClaseForm.publicarEn) {
                       toast.error('Programar publicación no está soportado todavía por backend')
                       return
                     }
                     const updatedClase = await updateClaseApi(modalEditClase.id, payload)
+                    let editedOccurrence = null
+                    let occurrenceFailed = false
+                    if (editClaseForm.fecha && !modalEditClase?.occurrenceId) {
+                      const occurrencePayload = buildOccurrencePayloadFromClassForm(editClaseForm, payload)
+                      try {
+                        editedOccurrence = await createClassOccurrenceApi(updatedClase?.id ?? modalEditClase.id, occurrencePayload)
+                      } catch (_occurrenceError) {
+                        occurrenceFailed = true
+                        await invalidateClassSideEffects(queryClient, {
+                          classId: updatedClase?.id ?? modalEditClase.id,
+                          coachId: updatedClase?.coachId ?? updatedClase?.coach_id ?? payload.coach_id,
+                        })
+                        await loadClasesFromApi({ force: true, status: 'programada' })
+                        toast.error('La clase se actualizó, pero no se pudo programar la sesión en calendario.')
+                      }
+                    }
+                    if (occurrenceFailed) {
+                      setModalEditClase(null)
+                      return
+                    }
                     await invalidateClassSideEffects(queryClient, {
                       classId: updatedClase?.id ?? modalEditClase.id,
+                      occurrenceId: editedOccurrence?.occurrenceId ?? editedOccurrence?.id ?? modalEditClase?.occurrenceId ?? null,
                       coachId: updatedClase?.coachId ?? updatedClase?.coach_id ?? payload.coach_id,
                     })
-                    await loadClasesFromApi({ force: true })
+                    await loadClasesFromApi({ force: true, status: 'programada' })
                   } else {
                     const coachObj = coaches.find(c => c.nombre === editClaseForm.coach)
                     editarClase(modalEditClase.id, {

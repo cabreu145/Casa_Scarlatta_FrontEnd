@@ -238,7 +238,7 @@ export default function PaquetesSection({
                     maxBeneficiaries: Number(p.maxBeneficiaries ?? p.max_beneficiaries ?? 0),
                   })
                 }}
-              >âœï¸ Editar</button>
+              >✏️ Editar</button>
               <button
                 className={`${styles.btn} ${styles.btnGhost}`}
                 style={{ fontSize: 11, padding: '6px', color: '#ef4444' }}

@@ -11,7 +11,7 @@ describe('packageDisplay', () => {
   })
 
   test('corrige mojibake visible en nombre de paquete', () => {
-    expect(getPackageDisplayName({ name: '', display_name: '8 clases Â· vÃ¡lido por 30 dÃ­as' })).toBe('8 clases · válido por 30 días')
+    expect(getPackageDisplayName({ name: '', display_name: '8 clases Â· vÃ¡lido por 30 días' })).toBe('8 clases · válido por 30 días')
   })
 
   test('formatPackageCreditsLabel pluraliza bien', () => {

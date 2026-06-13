@@ -5,11 +5,19 @@ import {
   mapBackendClassToFrontendClass,
   mapBackendClassesToFrontend,
 } from '@/adapters/classAdapter'
+import { mapBackendOccurrenceToFrontend } from '@/adapters/occurrenceAdapter'
 import { normalizePaginatedResponse } from '@/adapters/paginationAdapter'
 import { buildAdminClasesApiQuery } from '@/pages/admin/adminClassesApiUtils'
 
-export async function getClasesApi() {
-  const payload = await httpGet(ENDPOINTS.clasesList)
+function buildClassesEndpoint({ status } = {}) {
+  const normalizedStatus = String(status ?? '').trim()
+  if (!normalizedStatus) return ENDPOINTS.clasesList
+  const separator = ENDPOINTS.clasesList.includes('?') ? '&' : '?'
+  return `${ENDPOINTS.clasesList}${separator}status=${encodeURIComponent(normalizedStatus)}`
+}
+
+export async function getClasesApi({ status = 'programada' } = {}) {
+  const payload = await httpGet(buildClassesEndpoint({ status }))
   const items = Array.isArray(payload)
     ? payload
     : Array.isArray(payload?.items)
@@ -44,6 +52,11 @@ export async function getDisponibilidadClaseApi(id) {
 export async function createClaseApi(payload) {
   const response = await httpPost(ENDPOINTS.clases, payload)
   return mapBackendClassToFrontendClass(response ?? {})
+}
+
+export async function createClassOccurrenceApi(classId, payload) {
+  const response = await httpPost(ENDPOINTS.claseOcurrenciasCreate(classId), payload)
+  return mapBackendOccurrenceToFrontend(response ?? {})
 }
 
 export async function updateClaseApi(id, payload) {

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+﻿import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import * as XLSX from 'xlsx'
@@ -16,7 +16,7 @@ import { diaDesdefecha } from '@/utils/formatters'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
-import { createClaseApi, deleteClaseApi, getClasesPaginatedApi } from '@/services/clasesApiService'
+import { createClaseApi, createClassOccurrenceApi, deleteClaseApi, getClasesPaginatedApi } from '@/services/clasesApiService'
 import { getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { invalidateClassSideEffects } from '@/hooks/useApiQueries'
 import { hasAnyPermission, hasPermission } from '@/auth/permissions'
@@ -28,9 +28,21 @@ import {
 } from '../adminClassOccurrenceUtils'
 import styles from '../AdminPanel.module.css'
 
-const ABBR_DIA = { Lunes: 'LUN', Martes: 'MAR', Miércoles: 'MIÉ', Jueves: 'JUE', Viernes: 'VIE', Sábado: 'SÁB', Domingo: 'DOM' }
+const ABBR_DIA = {
+  Lunes: 'LUN',
+  Martes: 'MAR',
+  Miercoles: 'MIE',
+  Jueves: 'JUE',
+  Viernes: 'VIE',
+  Sabado: 'SAB',
+  Domingo: 'DOM',
+}
 
 const isSlowDiscipline = (value) => normalizeDiscipline(value) === 'slow'
+
+function resolveClassActionId(row) {
+  return row?.claseId ?? row?.classId ?? row?.id ?? null
+}
 
 function Tag({ color, children }) {
   const cls = {
@@ -60,17 +72,38 @@ function FilterChips({ options, active, onChange }) {
   )
 }
 
-// ─── Import Excel modal ───────────────────────────────────────────────────────
+function buildOccurrencePayloadFromImportedClass(clase, classPayload = {}) {
+  const occurrenceDate = String(clase?.fecha ?? '').trim()
+  const startTime = String(clase?.hora ?? classPayload?.start_time ?? '07:00').trim() || '07:00'
+  const durationMin = Number(clase?.duracion ?? classPayload?.duration_minutes ?? 50) || 50
+  const capacityMax = Number(clase?.cupoMax ?? classPayload?.capacity_max ?? 15) || 15
+  const startDate = new Date(`${occurrenceDate}T${startTime}:00`)
+  const endDate = new Date(startDate)
+  endDate.setMinutes(endDate.getMinutes() + durationMin)
+  const pad2 = (value) => String(value).padStart(2, '0')
+  const endAt = `${endDate.getFullYear()}-${pad2(endDate.getMonth() + 1)}-${pad2(endDate.getDate())}T${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}:00`
+  return {
+    occurrence_date: occurrenceDate,
+    start_at: `${occurrenceDate}T${startTime}:00`,
+    end_at: endAt,
+    duration_min: durationMin,
+    capacity_max: capacityMax,
+    coach_id: classPayload?.coach_id ?? null,
+    status: 'programada',
+  }
+}
+
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Import Excel modal Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function ModalImportarClases({ coaches, onImportar, onClose }) {
   const [clasesParseadas, setClasesParseadas] = useState([])
   const [errores,         setErrores]         = useState([])
-  const [autoPublicarEn,  setAutoPublicarEn]  = useState(null)   // sugerencia automática
+  const [autoPublicarEn,  setAutoPublicarEn]  = useState(null)   // sugerencia automÃƒÂ¡tica
   const [modoPublicacion, setModoPublicacion] = useState('inmediato') // 'inmediato' | 'automatico' | 'personalizado'
   const [publicarEnCustom, setPublicarEnCustom] = useState('')   // datetime-local string
   const [cargando,        setCargando]        = useState(false)
   const fileInputRef = useRef(null)
 
-  // Fecha/hora de publicación efectiva según el modo seleccionado
+  // Fecha/hora de publicaciÃƒÂ³n efectiva segÃƒÂºn el modo seleccionado
   const publicarEnFinal = (() => {
     if (modoPublicacion === 'inmediato') return null
     if (modoPublicacion === 'automatico') return autoPublicarEn
@@ -79,14 +112,14 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
   })()
 
   const normalizar = (s) => String(s ?? '').toLowerCase().trim()
-    .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i')
-    .replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').replace(/ñ/g,'n')
+    .replace(/[ÃƒÂ¡ÃƒÂ ÃƒÂ¤]/g,'a').replace(/[ÃƒÂ©ÃƒÂ¨ÃƒÂ«]/g,'e').replace(/[ÃƒÂ­ÃƒÂ¬ÃƒÂ¯]/g,'i')
+    .replace(/[ÃƒÂ³ÃƒÂ²ÃƒÂ¶]/g,'o').replace(/[ÃƒÂºÃƒÂ¹ÃƒÂ¼]/g,'u').replace(/ÃƒÂ±/g,'n')
     .replace(/[\s_\-()']/g,'')
 
   const descargarPlantilla = () => {
     const hoy = new Date()
     const lunes = new Date(hoy)
-    lunes.setDate(hoy.getDate() + (7 - hoy.getDay() + 1) % 7 || 7) // próximo lunes
+    lunes.setDate(hoy.getDate() + (7 - hoy.getDay() + 1) % 7 || 7) // prÃƒÂ³ximo lunes
     const fmtFecha = (d) => d.toISOString().split('T')[0]
     const addDias  = (d, n) => { const r = new Date(d); r.setDate(d.getDate() + n); return r }
 
@@ -97,7 +130,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
       { Nombre: 'Slow Stretch',  Tipo: 'Slow',     Coach: coaches[1]?.nombre ?? coaches[0]?.nombre ?? 'Coach', Fecha: fmtFecha(addDias(lunes,2)), Hora: '07:30', 'Duracion (min)': 55, Descripcion: 'Stretching profundo' },
     ]
     const ws = XLSX.utils.json_to_sheet(muestra)
-    // Columnas con ancho óptimo
+    // Columnas con ancho ÃƒÂ³ptimo
     ws['!cols'] = [
       { wch: 20 }, // Nombre
       { wch: 12 }, // Tipo
@@ -109,7 +142,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
     ]
     // Encabezado fijo al hacer scroll
     ws['!freeze'] = { xSplit: 0, ySplit: 1 }
-    // Filtros automáticos en encabezados
+    // Filtros automÃƒÂ¡ticos en encabezados
     const range = XLSX.utils.decode_range(ws['!ref'])
     ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r:0, c:0 }, e: { r:0, c: range.e.c } }) }
     const wb = XLSX.utils.book_new()
@@ -200,9 +233,9 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
 
       const auto = calcPublicarEnAuto(parsed)
       setAutoPublicarEn(auto)
-      // Si hay una sugerencia automática válida, seleccionarla por default
+      // Si hay una sugerencia automÃ¡tica vÃ¡lida, seleccionarla por default
       setModoPublicacion(auto ? 'automatico' : 'inmediato')
-      // Precargar el campo personalizado con la misma fecha auto para facilitar edición
+      // Precargar el campo personalizado con la misma fecha auto para facilitar ediciÃƒÂ³n
       if (auto) setPublicarEnCustom(auto)
     } catch (e) { setErrores([`Error leyendo el archivo: ${e.message}`]) }
     finally { setCargando(false) }
@@ -226,7 +259,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
       <div className={styles.modal} style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         <h2 className={styles.modalTitle}>Importar clases desde Excel</h2>
 
-        {/* ── Botones de acción ── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Botones de acciÃƒÂ³n Ã¢â€â‚¬Ã¢â€â‚¬ */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
           <button
             onClick={descargarPlantilla}
@@ -257,7 +290,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
 
         {cargando && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, marginBottom: 14, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>
-            <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span> Procesando archivo…
+            <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>Ã¢ÂÂ³</span> Procesando archivo…
           </div>
         )}
 
@@ -267,7 +300,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
           </div>
         )}
 
-        {/* ── Configuración de publicación ── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ ConfiguraciÃƒÂ³n de publicaciÃƒÂ³n Ã¢â€â‚¬Ã¢â€â‚¬ */}
         {clasesParseadas.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
@@ -290,7 +323,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
                 },
                 {
                   key: 'automatico',
-                  icon: '🗓',
+                  icon: '📅',
                   label: 'Automático',
                   sub: autoPublicarEn
                     ? `Dom ${new Date(autoPublicarEn).toLocaleDateString('es-MX',{day:'2-digit',month:'short'})} · 23:59`
@@ -380,7 +413,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
             )}
             {modoPublicacion === 'personalizado' && publicarEnCustom && (
               <div style={{ padding: '10px 14px', background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 10, fontFamily: 'var(--font-body)', fontSize: 12, color: '#fbbf24' }}>
-                🕐 Se publicarán el <strong>{new Date(publicarEnCustom).toLocaleString('es-MX',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'})}</strong>
+                🕒 Se publicarán el <strong>{new Date(publicarEnCustom).toLocaleString('es-MX',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'})}</strong>
               </div>
             )}
           </div>
@@ -464,7 +497,7 @@ export default function ClasesSection({
   const [vistaLista, setVistaLista]   = useState(false)
   const [clasesListPage, setClasesListPage] = useState(1)
   const [clasesSearch, setClasesSearch] = useState('')
-  const [clasesStatusFilter, setClasesStatusFilter] = useState('Todas')
+  const [clasesStatusFilter, setClasesStatusFilter] = useState('activa')
   const [clasesCoachFilter, setClasesCoachFilter] = useState('Todos')
   const [apiListState, setApiListState] = useState({
     items: [],
@@ -543,7 +576,7 @@ export default function ClasesSection({
       useListaEsperaStore.getState().limpiarClase(claseId)
       await invalidateClassSideEffects(queryClient, { classId: claseId })
       if (refetch) {
-        await useClasesStore.getState().loadClasesFromApi({ force: true })
+        await useClasesStore.getState().loadClasesFromApi({ force: true, status: 'programada' })
         await fetchApiClasesPage(clasesListPage)
       }
       return
@@ -568,6 +601,10 @@ export default function ClasesSection({
             fallbackCoachId: clase.coachId ?? null,
           })
           const createdClase = await createClaseApi(payload)
+          if (clase.fecha) {
+            const occurrencePayload = buildOccurrencePayloadFromImportedClass(clase, payload)
+            await createClassOccurrenceApi(createdClase?.id, occurrencePayload)
+          }
           await invalidateClassSideEffects(queryClient, {
             classId: createdClase?.id,
             coachId: createdClase?.coachId ?? createdClase?.coach_id ?? payload.coach_id,
@@ -583,7 +620,7 @@ export default function ClasesSection({
     }
 
     clases.forEach(c => agregarClase(c))
-    logClaseCreada({ nombre: `Importación masiva: ${clases.length} clases` })
+    logClaseCreada({ nombre: `ImportaciÃƒÂ³n masiva: ${clases.length} clases` })
     toast.success(`${clases.length} clase${clases.length !== 1 ? 's' : ''} importadas correctamente`)
   }
 
@@ -762,7 +799,7 @@ export default function ClasesSection({
               className={`${styles.btn} ${styles.btnPrimary}`}
               style={{ background: '#ef4444', borderColor: '#ef4444' }}
               onClick={async () => {
-                if (!window.confirm(`¿Eliminar ${selectedIds.size} clase${selectedIds.size > 1 ? 's' : ''}?`)) return
+                if (!window.confirm(`Ã‚Â¿Eliminar ${selectedIds.size} clase${selectedIds.size > 1 ? 's' : ''}?`)) return
                 await Promise.all([...selectedIds].map((id) => handleDeleteClase(id, { refetch: false })))
                 if (useApiClasses) {
                   await useClasesStore.getState().loadClasesFromApi({ force: true })
@@ -773,7 +810,7 @@ export default function ClasesSection({
                 setSelectMode(false)
               }}
             >
-              🗑 Eliminar ({selectedIds.size})
+               ðŸ—‘ Eliminar ({selectedIds.size})
             </button>
           )}
           <button
@@ -833,10 +870,10 @@ export default function ClasesSection({
         </div>
       </div>
 
-      {/* ── Vista Calendario ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Vista Calendario Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {!vistaLista && (
         <>
-          {/* Toolbar de selección */}
+          {/* Toolbar de selecciÃƒÂ³n */}
           {selectMode && (() => {
             const todosSeleccionados = clasesFiltradas.length > 0 && clasesFiltradas.every(c => selectedIds.has(c.id))
             return (
@@ -910,6 +947,7 @@ export default function ClasesSection({
                 const statusLabel  = isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
                 const isProgramada = c.publicarEn && new Date(c.publicarEn) > new Date()
                 const isSelected   = selectedIds.has(c.id)
+                const classActionId = resolveClassActionId(c)
                 return (
                   <div
                     key={c.id}
@@ -943,7 +981,7 @@ export default function ClasesSection({
                       <span className={styles.dayNum}>
                         {(() => {
                           if (c.fecha) return new Date(c.fecha + 'T12:00:00').getDate()
-                          const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(c.dia)
+                          const idx = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado'].indexOf(c.dia)
                           const hoy = new Date()
                           const diff = idx - hoy.getDay()
                           const fecha = new Date(hoy)
@@ -957,11 +995,11 @@ export default function ClasesSection({
                         {c.nombre}
                         {isProgramada && (
                           <span style={{ marginLeft: 8, fontSize: 10, background: 'rgba(217,119,6,0.18)', color: '#d97706', padding: '2px 8px', borderRadius: 10, fontFamily: 'var(--font-body)', fontWeight: 600 }}>
-                            🕐 Prog. {new Date(c.publicarEn).toLocaleString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            ðŸ•’ Prog. {new Date(c.publicarEn).toLocaleString('es-MX', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
                       </div>
-                      <div className={styles.claseMeta}>{getClassDisplayTime(c)} · {c.duracion} min · {c.coachNombre}</div>
+                      <div className={styles.claseMeta}>{getClassDisplayTime(c)} Â· {c.duracion} min Â· {c.coachNombre}</div>
                     </div>
                     <Tag color={isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'blue' : 'pink'}>{isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'Slow' : 'Stryde X'}</Tag>
                     <div className={styles.claseSpots}>
@@ -983,7 +1021,7 @@ export default function ClasesSection({
                           fontFamily: 'var(--font-body)',
                           marginLeft: 4,
                         }}>
-                          ⏳ {enEspera.length} en espera
+                          â³ {enEspera.length} en espera
                         </span>
                       )
                     })()}
@@ -995,14 +1033,19 @@ export default function ClasesSection({
                         disabled={!canReadRoster}
                         title={canReadRoster ? 'Ver alumnos' : 'No tienes permisos para ver alumnos'}
                       >
-                        👥 {c.cupoActual}
+                        👥{c.cupoActual}
                       </button>
                       {canUpdateClass && (
                         <button
                           className={`${styles.btn} ${styles.btnGhost}`}
                           style={{ padding: '6px 12px', fontSize: 12 }}
                           onClick={async () => {
-                            setModalEditClase(c)
+                            const classActionId = resolveClassActionId(c)
+                            if (!classActionId) {
+                              toast.error('No se pudo identificar la clase para editar.')
+                              return
+                            }
+                            setModalEditClase({ ...c, id: classActionId })
                             const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
                             setEditClaseForm({
                               nombre:      c.nombre,
@@ -1028,8 +1071,12 @@ export default function ClasesSection({
                           className={`${styles.btn} ${styles.btnGhost}`}
                           style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
                           onClick={async () => {
-                            if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
-                            await handleDeleteClase(c.id)
+                            if (!window.confirm(`Â¿Eliminar la clase "${c.nombre}"?`)) return
+                            if (!classActionId) {
+                              toast.error('No se pudo identificar la clase para eliminar.')
+                              return
+                            }
+                            await handleDeleteClase(classActionId)
                             logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
                             toast.success('Clase eliminada')
                           }}
@@ -1057,7 +1104,7 @@ export default function ClasesSection({
         </>
       )}
 
-      {/* ── Vista Lista ── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬ Vista Lista Ã¢â€â‚¬Ã¢â€â‚¬ */}
       {vistaLista && (() => {
         const isSlow = (tipo) => isSlowDiscipline(tipo)
         const sourceList = (useBackendPaginationInList && apiListState.isPaginated)
@@ -1100,7 +1147,7 @@ export default function ClasesSection({
             )}
             {useBackendPaginationInList && apiListState.error && (
               <div style={{ padding: '10px 16px', fontSize: 12, color: '#ef4444' }}>
-                No se pudo cargar página de clases.
+                No se pudo cargar pÃ¡gina de clases.
               </div>
             )}
             <table style={{
@@ -1109,7 +1156,7 @@ export default function ClasesSection({
             }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--neutral-border)' }}>
-                  {['Día / Fecha','Hora','Clase','Tipo','Coach','Cupo','Estado','Acciones'].map(h => (
+                  {['día / Fecha','Hora','Clase','Tipo','Coach','Cupo','Estado','Acciones'].map(h => (
                     <th key={h} style={{
                       padding: '12px 16px', textAlign: 'left',
                       fontSize: 11, fontWeight: 700,
@@ -1196,27 +1243,37 @@ export default function ClasesSection({
                               background: 'rgba(245,158,11,0.12)', color: '#F59E0B',
                               border: '1px solid rgba(245,158,11,0.25)',
                             }}>
-                              ⏳ {enEspera.length}
+                              â³ {enEspera.length}
                             </span>
                           )}
                         </div>
                       </td>
                       <td style={{ padding: '12px 16px' }}>
-                        <div style={{ display: 'flex', gap: 6 }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <button
                             onClick={async () => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
                             title={canReadRoster ? 'Ver alumnos' : 'No tienes permisos para ver alumnos'}
                             disabled={!canReadRoster}
                             style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: canReadRoster ? 'pointer' : 'not-allowed', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: canReadRoster ? 1 : 0.45 }}
-                          >👥</button>
+                          >
+                            👥
+                          </button>
                           {canUpdateClass && (
                             <button
                               onClick={async () => {
-                                setModalEditClase(c)
+                                const classActionId = resolveClassActionId(c)
+                                if (!classActionId) {
+                                  toast.error('No se pudo identificar la clase para editar.')
+                                  return
+                                }
+                                setModalEditClase({ ...c, id: classActionId })
                                 const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
                                 setEditClaseForm({
-                                  nombre: c.nombre, tipo: c.tipo, coach: coachNombre,
-                                  dia: c.dia, hora: c.hora,
+                                  nombre: c.nombre,
+                                  tipo: c.tipo,
+                                  coach: coachNombre,
+                                  dia: c.dia,
+                                  hora: c.hora,
                                   duracion: String(c.duracion || 50),
                                   cupoMax: String(c.cupoMax || 15),
                                   descripcion: c.descripcion || '',
@@ -1226,19 +1283,28 @@ export default function ClasesSection({
                               }}
                               title="Editar"
                               style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >✏️</button>
+                            >
+                              ✏️
+                            </button>
                           )}
                           {canDeleteClass && (
                             <button
                               onClick={async () => {
                                 if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
-                                await handleDeleteClase(c.id)
+                                const classActionId = resolveClassActionId(c)
+                                if (!classActionId) {
+                                  toast.error('No se pudo identificar la clase para eliminar.')
+                                  return
+                                }
+                                await handleDeleteClase(classActionId)
                                 logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
                                 toast.success('Clase eliminada')
                               }}
                               title="Eliminar"
                               style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >🗑</button>
+                            >
+                              🗑️
+                            </button>
                           )}
                         </div>
                       </td>

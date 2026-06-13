@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act, fireEvent, within } from '@testing-library/react'
+﻿import { render, screen, waitFor, act, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -337,7 +337,7 @@ describe('EquipmentReservationPanel', () => {
       />
     )
     expect(screen.getByText(/Cargando/i)).toBeInTheDocument()
-    expect(screen.queryByText(/^0 créditos restantes./i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^0 crÃ©ditos restantes./i)).not.toBeInTheDocument()
 
     const slowGrid = await screen.findByTestId('slow-grid')
     await userEvent.setup().click(within(slowGrid).getByTestId('slow-spot-01'))
@@ -425,5 +425,27 @@ describe('EquipmentReservationPanel', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/No pudimos cargar mapa de lugares/i)
+  })
+
+  test('spot error OCCURRENCE_NOT_RESERVABLE muestra mensaje claro', async () => {
+    spotsQueryState = { data: null, isLoading: false, error: Object.assign(new Error("No hay spots configurados para esta ocurrencia"), { code: "OCCURRENCE_NOT_RESERVABLE" }), refetch: refetchMock }
+
+    const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
+    render(
+      <EquipmentReservationPanel
+        occurrenceId={5}
+        classId={9}
+        userId={3}
+        financialState={{
+          financialState: {},
+          creditsBalance: 12,
+          activeMembership: { creditsAvailable: 12 },
+          isLoading: false,
+          error: null,
+        }}
+      />
+    )
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/spots configurados/i)
   })
 })
