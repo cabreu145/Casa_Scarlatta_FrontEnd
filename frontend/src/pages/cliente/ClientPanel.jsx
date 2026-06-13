@@ -459,6 +459,8 @@ export default function ClientPanel() {
   }
   const clasesRestantes = financialUiState.clasesRestantes
   const clasesUsadas = financialUiState.clasesUsadas
+  const esUnlimited = typeof clasesRestantes === 'number' && clasesRestantes >= 999
+  const displayClases = esUnlimited ? '∞' : clasesRestantes
 
   const meta = SECTION_META[activeSection]
 
@@ -827,7 +829,7 @@ export default function ClientPanel() {
             <div className={s.topbarProfile}>
               <div>
                 <div className={s.topbarName}>{userName}</div>
-                <div className={s.topbarPlan}>Paquete {planNombre} · {clasesRestantes} clases</div>
+                <div className={s.topbarPlan}>Paquete {planNombre} · {displayClases} clases</div>
               </div>
               <div className={s.topbarAvatar}>{userInitial}</div>
             </div>
@@ -865,7 +867,7 @@ export default function ClientPanel() {
               </div>
               <div className={s.heroRight}>
                 <div className={s.classesRemainingRing}>
-                  <div className={s.ringNum}>{clasesRestantes}</div>
+                  <div className={s.ringNum}>{displayClases}</div>
                   <div className={s.ringLabel}>clases disponibles</div>
                 </div>
               </div>
@@ -900,7 +902,7 @@ export default function ClientPanel() {
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 </div>
                 <div className={s.statLabel}>Clases disponibles</div>
-                <div className={s.statValue}>{clasesRestantes}</div>
+                <div className={s.statValue}>{displayClases}</div>
                 <div className={s.statSub}>Paquete {planNombre}</div>
               </div>
               <div className={`${s.statCard} ${s.green}`}>
@@ -1047,7 +1049,7 @@ export default function ClientPanel() {
                     <div className={s.progressWrap}>
                       <div className={s.progressLabel}>
                         <span>
-                          {clasesTomadasEsteMes} de {metaMensual}{' '}
+                          {clasesTomadasEsteMes} de {metaMensual >= 999 ? '∞' : metaMensual}{' '}
                           <strong>meta mensual</strong>
                         </span>
                         <strong>{pctProgreso}%</strong>
@@ -1059,7 +1061,7 @@ export default function ClientPanel() {
                   </div>
 
                   {/* Paquete utilizado */}
-                  {usuario?.clasesPaquete !== 999 && clasesTotal > 0 && (
+                  {usuario?.clasesPaquete !== 999 && clasesTotal > 0 && clasesTotal < 999 && (
                     <div style={{ marginBottom: 18 }}>
                       <div style={{
                         fontSize: 12, color: 'var(--muted)', marginBottom: 10,
@@ -1070,7 +1072,7 @@ export default function ClientPanel() {
                       <div className={s.progressWrap}>
                         <div className={s.progressLabel}>
                           <span>
-                            {clasesUsadas} de {clasesTotal}{' '}
+                            {clasesUsadas} de {clasesTotal >= 999 ? '∞' : clasesTotal}{' '}
                             <strong>clases usadas</strong>
                           </span>
                           <strong>{pctPaquete}%</strong>
@@ -1433,7 +1435,7 @@ export default function ClientPanel() {
                     </div>
                     <div className={s.miniStatDivider} />
                     <div>
-                      <div className={s.miniStatNum}>{clasesRestantes}</div>
+                      <div className={s.miniStatNum}>{displayClases}</div>
                       <div className={s.miniStatLabel}>Disponibles</div>
                     </div>
                     <div className={s.miniStatDivider} />
@@ -1547,7 +1549,7 @@ export default function ClientPanel() {
               <div className={s.planName}>{planNombre}</div>
               <div className={s.planClassesRow}>
                 <div className={s.planClassesNum}>
-                  {financialUiState.isLoading ? '...' : clasesRestantes}
+                  {financialUiState.isLoading ? '...' : displayClases}
                 </div>
                 <div className={s.planClassesSub}>clases restantes</div>
               </div>
@@ -1630,7 +1632,7 @@ export default function ClientPanel() {
                                   {membership.displayName ?? membership.packageName ?? 'Paquete'}
                                 </div>
                                 <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-                                  {membership.creditsAvailable ?? 0} créditos disponibles
+                                  {(membership.creditsAvailable ?? 0) >= 999 ? '∞' : (membership.creditsAvailable ?? 0)} créditos disponibles
                                   {membership.expiresAt ? ` · Vence ${formatFechaISO(membership.expiresAt)}` : ''}
                                 </div>
                                 {/* <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
@@ -1805,7 +1807,7 @@ export default function ClientPanel() {
                           <div className={s.historyDate}>{mv.createdAt ? formatFechaISO(mv.createdAt.slice(0, 10)) : 'Sin fecha'}</div>
                         </div>
                         <div className={s.historyAmount} style={mv.amount < 0 ? { color: '#e53e3e' } : { color: '#16a34a' }}>
-                          {mv.amount > 0 ? '+' : ''}{mv.amount}
+                          {mv.amount >= 999 ? '+∞' : mv.amount <= -999 ? '-∞' : `${mv.amount > 0 ? '+' : ''}${mv.amount}`}
                         </div>
                       </div>
                     ))
