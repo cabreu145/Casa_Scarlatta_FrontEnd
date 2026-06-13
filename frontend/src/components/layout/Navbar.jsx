@@ -23,6 +23,7 @@ const links = [
   { to: '/clases', label: 'Clases' },
   { to: '/stryde-x', label: 'Stryde X' },
   { to: '/slow', label: 'Slow' },
+  { to: '/yoga', label: 'Yoga' },
   { to: '/nosotros', label: 'Nosotros' },
   { to: '/contacto', label: 'Contacto' },
 ]

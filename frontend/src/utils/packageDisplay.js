@@ -31,6 +31,7 @@ export function getPackageCredits(pkg = {}) {
 export function formatPackageCreditsLabel(value = 0) {
   const credits = typeof value === 'object' && value !== null ? getPackageCredits(value) : Number(value)
   if (!Number.isFinite(credits) || credits <= 0) return '0 clases'
+  if (credits >= 999) return '∞ clases'
   return `${credits} ${credits === 1 ? 'clase' : 'clases'}`
 }
 

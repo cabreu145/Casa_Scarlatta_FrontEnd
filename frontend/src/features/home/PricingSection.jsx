@@ -29,7 +29,8 @@ function buildPackageBenefits(pkg) {
   if (benefits.length) return benefits
 
   const credits = getPackageCredits(pkg)
-  const fallback = [credits > 0 ? `${credits} ${credits === 1 ? 'clase' : 'clases'}` : 'Paquete finito']
+  const creditsDisplay = credits >= 999 ? '∞' : credits
+  const fallback = [credits > 0 ? `${creditsDisplay} ${credits === 1 ? 'clase' : credits >= 999 ? 'clases ilimitadas' : 'clases'}` : 'Paquete finito']
   const validity = formatPackageValidityLabel(pkg)
   if (validity) fallback.push(validity)
   const shareable = formatPackageShareabilityLabel(pkg)
@@ -167,22 +168,124 @@ export default function PricingSection() {
   )
 }
 
+/* ── helpers de promoción ── */
+function getPromoMeta(promo) {
+  if (!promo) return null
+  const tipo = promo.tipo ?? ''
+  if (tipo === 'porcentaje' && promo.valor) {
+    return {
+      badge: `${promo.valor}% OFF`,
+      color: 'from-[#C8A24B] to-[#A07830]',
+      textColor: '#fff',
+      glowColor: 'rgba(200,162,75,0.35)',
+    }
+  }
+  if (tipo === '2x1') {
+    return {
+      badge: '2 × 1',
+      color: 'from-[#4E6855] to-[#354A3A]',
+      textColor: '#fff',
+      glowColor: 'rgba(78,104,85,0.35)',
+    }
+  }
+  if (tipo === '3x2') {
+    return {
+      badge: '3 × 2',
+      color: 'from-[#4E6855] to-[#354A3A]',
+      textColor: '#fff',
+      glowColor: 'rgba(78,104,85,0.35)',
+    }
+  }
+  if (tipo === 'clases_gratis' && promo.valor) {
+    return {
+      badge: `+${promo.valor} gratis`,
+      color: 'from-[#5B7BAA] to-[#3D5A80]',
+      textColor: '#fff',
+      glowColor: 'rgba(91,123,170,0.35)',
+    }
+  }
+  if (tipo === 'monto' && promo.valor) {
+    return {
+      badge: `−$${promo.valor}`,
+      color: 'from-[#C8A24B] to-[#A07830]',
+      textColor: '#fff',
+      glowColor: 'rgba(200,162,75,0.35)',
+    }
+  }
+  // etiqueta libre
+  if (promo.etiqueta) {
+    return {
+      badge: promo.etiqueta,
+      color: 'from-[#C8A24B] to-[#A07830]',
+      textColor: '#fff',
+      glowColor: 'rgba(200,162,75,0.35)',
+    }
+  }
+  return null
+}
+
+function PromoBanner({ meta, featured }) {
+  return (
+    <div
+      className={`relative z-20 flex items-center justify-center gap-3 overflow-hidden`}
+      style={{
+        background: `linear-gradient(135deg, ${meta.glowColor.replace('0.35', '0.18')} 0%, ${meta.glowColor.replace('0.35', '0.28')} 100%)`,
+        borderBottom: `1px solid ${meta.glowColor.replace('0.35', '0.25')}`,
+        padding: '10px 16px',
+      }}
+    >
+      {/* shimmer sweep */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%)',
+        }}
+      />
+      {/* badge principal */}
+      <span
+        className={`bg-gradient-to-r ${meta.color} rounded-full px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] shadow-lg`}
+        style={{ color: meta.textColor, boxShadow: `0 4px 16px ${meta.glowColor}` }}
+      >
+        {meta.badge}
+      </span>
+      <span
+        className="text-[10px] font-medium uppercase tracking-[0.2em]"
+        style={{ color: featured ? 'rgba(245,237,232,0.7)' : 'rgba(60,40,30,0.55)' }}
+      >
+        Promoción activa
+      </span>
+    </div>
+  )
+}
+
 function PaqueteCard({ p, onComprar }) {
   const esFeatured = Boolean(p?.destacado)
   const clases = getPackageCredits(p)
-  const clasesDisplay = clases > 0 ? clases : '—'
-  const clasesLabel = formatPackageCreditsLabel(clases)
+  const esUnlimited = clases >= 999
+  const clasesDisplay = esUnlimited ? '∞' : clases > 0 ? clases : '—'
+  const clasesLabel = esUnlimited ? 'Ilimitado' : formatPackageCreditsLabel(clases)
   const benefits = buildPackageBenefits(p)
   const priceLabel = formatPackagePriceLabel(p)
   const validityLabel = formatPackageValidityLabel(p)
   const shareableLabel = formatPackageShareabilityLabel(p)
   const displayName = getPackageDisplayName(p)
 
+  // ── Promoción ──
+  const promo = p?.promocion ?? p?.promo ?? null
+  const promoMeta = getPromoMeta(promo)
+  const precioPromo = promo?.precioPromo ?? promo?.precio_promo ?? null
+  const promoPriceLabel = precioPromo != null
+    ? `$${Number(precioPromo).toLocaleString('es-MX')} MX`
+    : null
+
   if (esFeatured) {
     return (
       <div className="relative flex flex-col overflow-hidden rounded-[28px] bg-gradient-to-b from-[#7B1E22] to-[#5C1018] shadow-[0_4px_8px_rgba(0,0,0,0.08),0_20px_48px_rgba(92,16,24,0.35),0_48px_96px_rgba(92,16,24,0.20)] transition-all duration-300 -translate-y-3 md:-translate-y-4 hover:-translate-y-6 hover:shadow-[0_8px_16px_rgba(0,0,0,0.10),0_28px_60px_rgba(92,16,24,0.42),0_56px_100px_rgba(92,16,24,0.25)]">
         <div className="pointer-events-none absolute inset-0 rounded-[28px] bg-gradient-to-br from-white/[0.07] to-transparent" />
-        <div className="absolute right-5 top-5">
+
+        {promoMeta && <PromoBanner meta={promoMeta} featured />}
+
+        <div className="absolute right-5 top-5 z-30">
           <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[8px] font-medium uppercase tracking-[0.18em] text-[#F5EDE8] backdrop-blur-sm">
             Más popular
           </span>
@@ -204,10 +307,21 @@ function PaqueteCard({ p, onComprar }) {
             {displayName}
           </p>
         </div>
-        <div className="z-10 flex items-baseline gap-1 px-8 pb-6">
-          <span className="font-display text-[40px] italic font-semibold text-[#F5EDE8]">
-            {priceLabel}
-          </span>
+        <div className="z-10 flex flex-col px-8 pb-6 pt-1 gap-0.5">
+          {promoPriceLabel ? (
+            <>
+              <span className="font-display text-[22px] italic font-normal text-[rgba(245,237,232,0.38)] line-through decoration-[rgba(245,237,232,0.4)]">
+                {priceLabel}
+              </span>
+              <span className="font-display text-[40px] italic font-semibold text-[#F5EDE8]">
+                {promoPriceLabel}
+              </span>
+            </>
+          ) : (
+            <span className="font-display text-[40px] italic font-semibold text-[#F5EDE8]">
+              {priceLabel}
+            </span>
+          )}
         </div>
 
         <ul className="z-10 mb-8 flex flex-1 flex-col gap-3 px-8">
@@ -237,8 +351,10 @@ function PaqueteCard({ p, onComprar }) {
   }
 
   return (
-    <div className="relative flex flex-col overflow-hidden rounded-[28px] border border-[rgba(194,107,122,0.12)] bg-white/70 shadow-[0_2px_4px_rgba(0,0,0,0.03),0_8px_24px_rgba(123,31,46,0.07),0_24px_56px_rgba(123,31,46,0.05)] backdrop-blur-md transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-[0_4px_8px_rgba(0,0,0,0.04),0_16px_40px_rgba(123,31,46,0.12),0_40px_80px_rgba(123,31,46,0.09)]">
+    <div className={`relative flex flex-col overflow-hidden rounded-[28px] border bg-white/70 backdrop-blur-md transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:shadow-[0_4px_8px_rgba(0,0,0,0.04),0_16px_40px_rgba(123,31,46,0.12),0_40px_80px_rgba(123,31,46,0.09)] ${promoMeta ? 'border-[rgba(200,162,75,0.35)] shadow-[0_2px_4px_rgba(0,0,0,0.03),0_8px_24px_rgba(200,162,75,0.12),0_24px_56px_rgba(200,162,75,0.08)]' : 'border-[rgba(194,107,122,0.12)] shadow-[0_2px_4px_rgba(0,0,0,0.03),0_8px_24px_rgba(123,31,46,0.07),0_24px_56px_rgba(123,31,46,0.05)]'}`}>
       <div className="pointer-events-none absolute inset-0 rounded-[28px] bg-gradient-to-br from-white/60 via-transparent to-[rgba(240,228,224,0.3)]" />
+
+      {promoMeta && <PromoBanner meta={promoMeta} featured={false} />}
 
       <div className="z-10 flex flex-col items-center gap-1 px-8 pb-8 pt-11">
         <span className="font-display text-[clamp(80px,10vw,108px)] font-light italic leading-none tracking-tight text-[#7B1E22]">
@@ -256,10 +372,21 @@ function PaqueteCard({ p, onComprar }) {
           {displayName}
         </p>
       </div>
-      <div className="z-10 flex items-baseline gap-1 px-8 pb-6">
-        <span className="font-display text-[40px] italic font-semibold text-[#7B1E22]">
-          {priceLabel}
-        </span>
+      <div className="z-10 flex flex-col px-8 pb-6 pt-1 gap-0.5">
+        {promoPriceLabel ? (
+          <>
+            <span className="font-display text-[22px] italic font-normal text-[rgba(123,31,46,0.32)] line-through decoration-[rgba(123,31,46,0.35)]">
+              {priceLabel}
+            </span>
+            <span className="font-display text-[40px] italic font-semibold text-[#7B1E22]">
+              {promoPriceLabel}
+            </span>
+          </>
+        ) : (
+          <span className="font-display text-[40px] italic font-semibold text-[#7B1E22]">
+            {priceLabel}
+          </span>
+        )}
       </div>
 
       <ul className="z-10 mb-8 flex flex-1 flex-col gap-3 px-8">
