@@ -170,8 +170,9 @@ export default function PricingSection() {
 function PaqueteCard({ p, onComprar }) {
   const esFeatured = Boolean(p?.destacado)
   const clases = getPackageCredits(p)
-  const clasesDisplay = clases > 0 ? clases : '—'
-  const clasesLabel = formatPackageCreditsLabel(clases)
+  const esUnlimited = clases >= 999
+  const clasesDisplay = esUnlimited ? '∞' : clases > 0 ? clases : '—'
+  const clasesLabel = esUnlimited ? 'Ilimitado' : formatPackageCreditsLabel(clases)
   const benefits = buildPackageBenefits(p)
   const priceLabel = formatPackagePriceLabel(p)
   const validityLabel = formatPackageValidityLabel(p)
