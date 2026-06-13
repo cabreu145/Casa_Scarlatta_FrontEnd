@@ -227,34 +227,33 @@ function getPromoMeta(promo) {
 function PromoBanner({ meta, featured }) {
   return (
     <div
-      className="absolute left-0 right-0 top-0 z-20 flex items-center justify-center gap-2 overflow-hidden"
-      style={{ height: 38 }}
+      className={`relative z-20 flex items-center justify-center gap-3 overflow-hidden`}
+      style={{
+        background: `linear-gradient(135deg, ${meta.glowColor.replace('0.35', '0.18')} 0%, ${meta.glowColor.replace('0.35', '0.28')} 100%)`,
+        borderBottom: `1px solid ${meta.glowColor.replace('0.35', '0.25')}`,
+        padding: '10px 16px',
+      }}
     >
-      {/* glow de fondo */}
+      {/* shimmer sweep */}
       <div
         className="pointer-events-none absolute inset-0"
-        style={{ background: `linear-gradient(90deg, transparent 0%, ${meta.glowColor} 50%, transparent 100%)` }}
+        style={{
+          background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.18) 50%, transparent 60%)',
+        }}
       />
-      {/* borde inferior sutil */}
-      <div
-        className="pointer-events-none absolute bottom-0 left-0 right-0 h-px"
-        style={{ background: featured ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)' }}
-      />
+      {/* badge principal */}
       <span
-        className={`bg-gradient-to-r ${meta.color} rounded-full px-3 py-[3px] text-[9px] font-bold uppercase tracking-[0.22em]`}
-        style={{ color: meta.textColor, boxShadow: `0 2px 12px ${meta.glowColor}` }}
+        className={`bg-gradient-to-r ${meta.color} rounded-full px-4 py-1 text-[11px] font-extrabold uppercase tracking-[0.18em] shadow-lg`}
+        style={{ color: meta.textColor, boxShadow: `0 4px 16px ${meta.glowColor}` }}
       >
         {meta.badge}
       </span>
-      {featured ? (
-        <span className="text-[10px] font-light tracking-widest text-[rgba(245,237,232,0.55)]">
-          Promoción activa
-        </span>
-      ) : (
-        <span className="text-[10px] font-light tracking-widest text-[rgba(123,31,46,0.4)]">
-          Promoción activa
-        </span>
-      )}
+      <span
+        className="text-[10px] font-medium uppercase tracking-[0.2em]"
+        style={{ color: featured ? 'rgba(245,237,232,0.7)' : 'rgba(60,40,30,0.55)' }}
+      >
+        Promoción activa
+      </span>
     </div>
   )
 }
@@ -286,13 +285,13 @@ function PaqueteCard({ p, onComprar }) {
 
         {promoMeta && <PromoBanner meta={promoMeta} featured />}
 
-        <div className={`absolute right-5 ${promoMeta ? 'top-11' : 'top-5'}`}>
+        <div className="absolute right-5 top-5 z-30">
           <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[8px] font-medium uppercase tracking-[0.18em] text-[#F5EDE8] backdrop-blur-sm">
             Más popular
           </span>
         </div>
 
-        <div className={`z-10 flex flex-col items-center gap-1 px-8 pb-8 ${promoMeta ? 'pt-16' : 'pt-11'}`}>
+        <div className="z-10 flex flex-col items-center gap-1 px-8 pb-8 pt-11">
           <span className="font-display text-[clamp(80px,10vw,108px)] font-light italic leading-none tracking-tight text-[#F5EDE8]">
             {clasesDisplay}
           </span>
@@ -357,7 +356,7 @@ function PaqueteCard({ p, onComprar }) {
 
       {promoMeta && <PromoBanner meta={promoMeta} featured={false} />}
 
-      <div className={`z-10 flex flex-col items-center gap-1 px-8 pb-8 ${promoMeta ? 'pt-16' : 'pt-11'}`}>
+      <div className="z-10 flex flex-col items-center gap-1 px-8 pb-8 pt-11">
         <span className="font-display text-[clamp(80px,10vw,108px)] font-light italic leading-none tracking-tight text-[#7B1E22]">
           {clasesDisplay}
         </span>
