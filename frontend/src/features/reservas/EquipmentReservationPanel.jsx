@@ -109,11 +109,20 @@ function resolveReservationErrorMessage(error) {
   if (code.includes('SPOT_HELD_BY_ANOTHER_USER')) return 'Ese lugar está bloqueado temporalmente por otra persona.'
   if (code.includes('INSUFFICIENT_CREDITS')) return 'No tienes créditos suficientes.'
   if (code.includes('OCCURRENCE_FULL')) return 'La clase ya está llena.'
+  if (code.includes('OCCURRENCE_NOT_RESERVABLE')) return 'Esta ocurrencia aún no tiene spots configurados.'
   return 'No pudimos completar tu reserva.'
 }
 
 function formatReservationError(error) {
   return resolveReservationErrorMessage(error)
+}
+
+function resolveOccurrenceSpotsErrorMessage(error) {
+  const code = String(error?.code ?? error?.message ?? '').toUpperCase()
+  if (code.includes('OCCURRENCE_NOT_RESERVABLE') || code.includes('NO HAY SPOTS CONFIGURADOS')) {
+    return 'Esta ocurrencia aún no tiene spots configurados.'
+  }
+  return error?.message ?? 'No pudimos cargar mapa de lugares.'
 }
 
 export default function EquipmentReservationPanel({
@@ -407,13 +416,18 @@ export default function EquipmentReservationPanel({
   const className = layoutData?.className ?? layoutData?.class_name ?? 'Clase'
   const coachName = layoutData?.coachName ?? layoutData?.coach_name ?? 'Coach'
   const classDateTime = occurrenceLabel.fullLabel
+  const noSpotsConfigured = Boolean(!occurrenceSpotsQuery.isLoading && !occurrenceSpotsQuery.error && layoutData && currentSpots.length === 0)
 
   if (occurrenceSpotsQuery.isLoading) {
     return <div role="status" style={{ padding: 24, color: 'var(--muted)' }}>Cargando mapa...</div>
   }
 
   if (occurrenceSpotsQuery.error) {
-    return <div role="alert" style={{ padding: 24, color: '#b42318' }}>{occurrenceSpotsQuery.error?.message ?? 'No pudimos cargar mapa de lugares.'}</div>
+    return <div role="alert" style={{ padding: 24, color: '#b42318' }}>{resolveOccurrenceSpotsErrorMessage(occurrenceSpotsQuery.error)}</div>
+  }
+
+  if (noSpotsConfigured) {
+    return <div role="alert" style={{ padding: 24, color: '#b42318' }}>Esta ocurrencia aún no tiene spots configurados.</div>
   }
 
   if (!layoutData || !layoutKind) return null

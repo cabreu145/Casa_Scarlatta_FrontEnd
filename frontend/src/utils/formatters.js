@@ -164,7 +164,7 @@ export function getMonthLabel(days) {
 // â”€â”€ ComparaciÃ³n de fechas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Compara si dos Date son el mismo dÃ­a calendario.
+ * Compara si dos Date son el mismo día calendario.
  */
 export function isSameDay(fecha1, fecha2) {
   return fecha1.getDate()     === fecha2.getDate()  &&
@@ -208,7 +208,7 @@ export function formatFechaISO(iso) {
 }
 
 /**
- * Devuelve el nombre del dÃ­a de la semana en espaÃ±ol para una fecha ISO.
+ * Devuelve el nombre del día de la semana en espaÃ±ol para una fecha ISO.
  * Usa T00:00:00 para evitar desfase UTC.
  * @param {string} fechaStr - "YYYY-MM-DD"
  */

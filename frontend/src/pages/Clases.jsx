@@ -300,7 +300,7 @@ export default function Clases() {
                   {/* DIVIDER */}
                   <div className={styles.divider} />
 
-                  {/* CENTER Ã¢â‚¬â€ class info */}
+                  {/* CENTER — class info */}
                   <div className={styles.classBody}>
                     <div className={styles.classTitleRow}>
                       <span className={styles.className}>{cls.nombre}</span>
@@ -320,7 +320,7 @@ export default function Clases() {
                     </div>
                   </div>
 
-                  {/* RIGHT Ã¢â‚¬â€ availability + button */}
+                  {/* RIGHT — availability + button */}
                   <div className={styles.classActions}>
                     {!clasePasada && (isFull ? (
                       <span className={styles.fullTag}>LLENO</span>

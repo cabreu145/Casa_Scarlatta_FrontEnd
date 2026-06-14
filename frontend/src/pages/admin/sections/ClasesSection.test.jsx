@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+﻿import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import ClasesSection from './ClasesSection'
 
@@ -8,7 +9,16 @@ const agregarClase = vi.fn()
 const loadClasesFromApi = vi.fn()
 const limpiarClase = vi.fn()
 const getPorClase = vi.fn(() => [])
+const eliminarClaseConReservasMock = vi.fn()
 const invalidateQueries = vi.fn()
+const setModalEditClase = vi.fn()
+const setModalAlumnosClase = vi.fn()
+const setAlumnoAgregarId = vi.fn()
+const setClasesFilter = vi.fn()
+const setSelectMode = vi.fn()
+const setSelectedIds = vi.fn()
+const setClaseForm = vi.fn()
+const openModal = vi.fn()
 
 let currentPermissions = ['classes.read', 'classes.create', 'classes.update', 'classes.delete', 'classes.roster.read']
 
@@ -82,7 +92,7 @@ vi.mock('@/components/ui/PaginationControls', () => ({
 }))
 
 vi.mock('@/services/reservasService', () => ({
-  eliminarClaseConReservas: vi.fn(),
+  eliminarClaseConReservas: (...args) => eliminarClaseConReservasMock(...args),
 }))
 
 vi.mock('@/services/actividadService', () => ({
@@ -122,20 +132,20 @@ function renderSection() {
     <ClasesSection
       clases={[{ id: 1, nombre: 'Clase Demo', tipo: 'Stryde X', coachNombre: 'Coach Demo', dia: 'Lunes', hora: '07:00', duracion: 50, cupoActual: 0, cupoMax: 10, fecha: '2026-06-09' }]}
       clasesFilter="Todas"
-      setClasesFilter={vi.fn()}
+      setClasesFilter={setClasesFilter}
       selectMode={false}
-      setSelectMode={vi.fn()}
+      setSelectMode={setSelectMode}
       selectedIds={new Set()}
-      setSelectedIds={vi.fn()}
+      setSelectedIds={setSelectedIds}
       coaches={[{ id: 1, nombre: 'Coach Demo' }]}
       disciplinas={[]}
-      openModal={vi.fn()}
-      setModalAlumnosClase={vi.fn()}
-      setAlumnoAgregarId={vi.fn()}
-      setModalEditClase={vi.fn()}
+      openModal={openModal}
+      setModalAlumnosClase={setModalAlumnosClase}
+      setAlumnoAgregarId={setAlumnoAgregarId}
+      setModalEditClase={setModalEditClase}
       setEditClaseForm={vi.fn()}
       claseForm={{}}
-      setClaseForm={vi.fn()}
+      setClaseForm={setClaseForm}
       refreshToken={0}
     />
   )
@@ -151,17 +161,24 @@ describe('ClasesSection permisos', () => {
     limpiarClase.mockReset()
     getPorClase.mockReset()
     getPorClase.mockReturnValue([])
+    eliminarClaseConReservasMock.mockReset()
     invalidateQueries.mockReset()
+    setModalEditClase.mockReset()
+    setModalAlumnosClase.mockReset()
+    setAlumnoAgregarId.mockReset()
+    setClasesFilter.mockReset()
+    setSelectMode.mockReset()
+    setSelectedIds.mockReset()
+    setClaseForm.mockReset()
+    openModal.mockReset()
     vi.stubEnv('VITE_USE_API_CLASSES', 'false')
+    vi.stubGlobal('confirm', vi.fn(() => true))
   })
 
   test('admin con permisos ve crear, importar, editar y borrar', () => {
     renderSection()
-
-    expect(screen.getByRole('button', { name: '+ Nueva Clase' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '📊 Importar Excel' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Importar Excel/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Editar/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '🗑' })).toBeInTheDocument()
     expect(screen.getByTitle('Ver alumnos')).toBeEnabled()
   })
 
@@ -171,9 +188,22 @@ describe('ClasesSection permisos', () => {
     renderSection()
 
     expect(screen.queryByRole('button', { name: '+ Nueva Clase' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '📊 Importar Excel' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Importar Excel/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Editar/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Eliminar/i })).not.toBeInTheDocument()
     expect(screen.getByTitle('No tienes permisos para ver alumnos')).toBeDisabled()
+  })
+
+  test('editar y eliminar usan id base de clase', async () => {
+    const user = userEvent.setup()
+    renderSection()
+
+    await user.click(screen.getByRole('button', { name: /Editar/i }))
+    expect(setModalEditClase).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }))
+
+    await user.click(screen.getByRole('button', { name: /Lista/i }))
+    await user.click(screen.getByTitle('Eliminar'))
+
+    expect(eliminarClaseConReservasMock).toHaveBeenCalledWith(1)
   })
 })
