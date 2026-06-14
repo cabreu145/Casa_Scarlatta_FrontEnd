@@ -74,7 +74,6 @@
   width: clamp(200px, 28vw, 420px);
   max-width: 100%;
   object-fit: contain;
-  filter: brightness(0) opacity(0.7);
 }
 
 .logoTagline {
