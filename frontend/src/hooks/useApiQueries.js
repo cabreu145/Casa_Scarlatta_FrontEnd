@@ -208,10 +208,10 @@ export function useClassesQuery({
   return useQuery({
     queryKey: paginated
       ? queryKeys.classes.list({ page, pageSize: normalizedPageSize, search: search || '', discipline: discipline || 'all', status: status || 'all', coachId: coachId || 'all' })
-      : queryKeys.classes.list({ scope: 'all' }),
+      : queryKeys.classes.list({ scope: 'programada' }),
     queryFn: () => (paginated
       ? getClasesPaginatedApi({ page, pageSize: normalizedPageSize, search, discipline, status, coachId })
-      : getClasesApi()),
+      : getClasesApi({ status: 'programada' })),
     enabled,
     placeholderData: (previousData) => previousData,
     ...shortDefaults,
