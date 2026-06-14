@@ -75,8 +75,9 @@ export default function Footer() {
           <div>
             <p className={styles.colTitle}>Estudio</p>
             <ul className={styles.colLinks}>
-              <li><Link to="/suet">Stryde X </Link></li>
-              <li><Link to="/flow">Slow </Link></li>
+              <li><Link to="/stryde-x">Stryde X </Link></li>
+              <li><Link to="/slow">Slow </Link></li>
+              <li><Link to="/yoga">Yoga</Link></li>
               <li><Link to="/nosotros">Nosotros</Link></li>
             </ul>
           </div>
