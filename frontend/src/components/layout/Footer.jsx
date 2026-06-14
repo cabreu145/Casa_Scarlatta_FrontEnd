@@ -60,7 +60,7 @@ export default function Footer() {
           <div className={styles.brand}>
             <Link to="/">
               <img
-                src="/brand/CASA_SCARLATTA_ISOTIPO.png"
+                src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/CASA_SCARLATTA_ISOTIPO_mz2cxr.png"
                 alt="Casa Scarlatta"
                 draggable="false"
                 className={styles.footerLogo}
@@ -75,8 +75,9 @@ export default function Footer() {
           <div>
             <p className={styles.colTitle}>Estudio</p>
             <ul className={styles.colLinks}>
-              <li><Link to="/suet">Stryde X </Link></li>
-              <li><Link to="/flow">Slow </Link></li>
+              <li><Link to="/stryde-x">Stryde X </Link></li>
+              <li><Link to="/slow">Slow </Link></li>
+              <li><Link to="/yoga">Yoga</Link></li>
               <li><Link to="/nosotros">Nosotros</Link></li>
             </ul>
           </div>

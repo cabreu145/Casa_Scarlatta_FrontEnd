@@ -1,8 +1,8 @@
 import styles from './ClassTypeFilter.module.css'
 
 const filters = [
-  { value: 'Stryde X', img: '/brand/Isotipo_SX.png', alt: 'STRYDE X' },
-  { value: 'Slow', img: '/brand/SLOW_ISOTIPO.png', alt: 'slow.' },
+  { value: 'Stryde X', img: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/Isotipo_SX_wzpolg.png', alt: 'STRYDE X' },
+  { value: 'Slow', img: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/SLOW_ISOTIPO_piojoa.png', alt: 'slow.' },
 ]
 
 export default function ClassTypeFilter({ active, onChange }) {

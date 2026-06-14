@@ -18,17 +18,17 @@ const SALAS = [
   {
     key: 'stryde',
     label: 'STRYDE X',
-    logo: '/brand/STRYDE_X_T.png',
+    logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/STRYDE_X_T_bsgwov.png',
     subtexto: 'Alta intensidad',
-    img: '/fotos/stride-hero.jpg',
+    img: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/stride-hero_zdajlh.jpg',
     alt: 'Sala STRYDE — alta intensidad',
   },
   {
     key: 'slow',
     label: 'SLOW',
-    logo: '/brand/LOGO_SLOW.png',
+    logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/LOGO_SLOW_rvm3cv.png',
     subtexto: 'Movimiento consciente',
-    img: '/fotos/slow-hero.jpg',
+    img: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781473009/slow-hero_ja55dd.jpg',
     alt: 'Sala Slow — movimiento consciente',
   },
 ]

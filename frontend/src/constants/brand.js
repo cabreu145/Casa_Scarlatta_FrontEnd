@@ -8,7 +8,7 @@
  *    cámbialo aquí y se actualizará en toda la app.
  *
  * ✅ LOGOS:
- *    Los archivos PNG están en /public/brand/
+ *    Los archivos PNG están en /publichttps://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/LOGO_YOGA3_ned3if.png
  *    Úsalos así: <img src={BRAND.logos.isotipo} />
  * ─────────────────────────────────────────────────────
  */
@@ -35,13 +35,13 @@ export const BRAND = {
     body:    "'Montserrat', sans-serif", // párrafos, botones, nav
   },
 
-  //── Logos PNG (en /public/brand/) ──────
+  //── Logos PNG (en /publichttps://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/LOGO_YOGA3_ned3if.png) ──────
   logos: {
-    isotipo:     '/brand/CASA_SCARLATTA_ISOTIPO.png', // monograma C/S
-    wordmark:    '/brand/CASA_SCARLATTA_LOGO.png',    // "CASA SCARLATTA WELLNESS CENTER"
-    slow:        '/brand/LOGO_SLOW.png',              // cursiva "slow."
-    slowIsotipo: '/brand/SLOW_ISOTIPO.png',           // onda decorativa slow.
-    strydeX:     '/brand/STRYDE_X_T.png',             // wordmark "STRYDE X"
-    isotipoSX:   '/brand/Isotipo_SX.png',             // isotipo >>X standalone
+    isotipo:     'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/CASA_SCARLATTA_ISOTIPO_mz2cxr.png', // monograma C/S
+    wordmark:    'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472996/CASA_SCARLATTA_LOGO_onlyyy.png',    // "CASA SCARLATTA WELLNESS CENTER"
+    slow:        'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/LOGO_SLOW_rvm3cv.png',              // cursiva "slow."
+    slowIsotipo: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/SLOW_ISOTIPO_piojoa.png',           // onda decorativa slow.
+    strydeX:     'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/STRYDE_X_T_bsgwov.png',             // wordmark "STRYDE X"
+    isotipoSX:   'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/Isotipo_SX_wzpolg.png',             // isotipo >>X standalone
   },
 }
