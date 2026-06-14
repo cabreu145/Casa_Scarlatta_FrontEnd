@@ -72,8 +72,8 @@ const DEFAULTS = {
   // [BACKEND] → configuracion.imagenes (object)
   // Por ahora el admin pega URLs. Con backend: uploads reales.
   imagenBannerClases:  '/fotos/gym_banner_stryde.jpg',
-  imagenStryde:        '/fotos/stride-hero.jpg',
-  imagenSlow:          '/fotos/yoga_studio.jpg',
+  imagenStryde:        'https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/stride-hero_zdajlh.jpg',
+  imagenSlow:          'https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/yoga_studio_d8ptjd.jpg',
   imagenCoachesBanner: '/fotos/coaches_banner.jpg',
 }
 

@@ -8,12 +8,12 @@ export default function Flow() {
 
       {/* Hero */}
       <section className={styles.hero}>
-        <img src="/fotos/yoga_studio.jpg" alt="" className={styles.heroBgImg} />
+        <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/yoga_studio_d8ptjd.jpg" alt="" className={styles.heroBgImg} />
         <div className={styles.heroBgOverlay} />
         <div className={styles.heroContent}>
           <div className={styles.logoGroup}>
             <span className={styles.overline}>Casa Scarlatta &mdash; Movimiento Consciente</span>
-            <img src="/brand/LOGO_SLOW.png" alt="Slow" className={styles.heroLogo} />
+            <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/LOGO_SLOW_rvm3cv.png" alt="Slow" className={styles.heroLogo} />
             <span className={styles.logoTagline}>Movement &nbsp;·&nbsp; Breath &nbsp;·&nbsp; Presence</span>
           </div>
           <p className={styles.heroSub}>
@@ -45,7 +45,7 @@ export default function Flow() {
 
         {/* Panel: Concepto */}
         <div className={styles.panelConcepto}>
-          <img src="/fotos/yoga_women.jpg" alt="" className={styles.panelBg} />
+          <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473009/yoga_women_ywoota.jpg" alt="" className={styles.panelBg} />
           <div className={styles.panelOverlay} />
           <div className={styles.panelConceptoContent}>
             <span className={styles.secLabel}>Concepto</span>
@@ -89,7 +89,7 @@ export default function Flow() {
 
         {/* Panel: Quote */}
         <div className={styles.panelQuote}>
-          <img src="/fotos/yoga_studio.jpg" alt="" className={styles.panelBg} />
+          <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/yoga_studio_d8ptjd.jpg" alt="" className={styles.panelBg} />
           <div className={styles.panelQuoteOverlay} />
           <div className={styles.panelQuoteContent}>
             <span className={styles.bigQuoteMark}>&ldquo;</span>

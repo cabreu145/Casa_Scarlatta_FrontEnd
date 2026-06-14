@@ -10,12 +10,12 @@ export default function Suet() {
       {/* Hero */}
       <section className={styles.hero}>
         <div className={styles.heroBg} />
-        <img src="/fotos/gym_banner_stryde.jpg" alt="Sala Stryde" className={styles.heroImage} />
+        <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473009/gym_banner_stryde_fwjvb8.jpg" alt="Sala Stryde" className={styles.heroImage} />
         <div className={styles.glow} />
         <div className={styles.heroContent}>
           <div className={styles.logoGroup}>
             <span className={styles.overline}>Casa Scarlatta &mdash; Alta Intensidad</span>
-            <img src="/brand/STRYDE_X_T.png" alt="Stryde" className={styles.heroLogo} />
+            <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/STRYDE_X_T_bsgwov.png" alt="Stryde" className={styles.heroLogo} />
             <span className={styles.logoTagline}>Stronger Every Stryde</span>
           </div>
           <p className={styles.heroSub}>
@@ -50,7 +50,7 @@ export default function Suet() {
       <div className={styles.gridRow1}>
         {/* Panel: Concepto */}
         <div className={styles.panelConcepto}>
-          <img src="/fotos/stride-hero.jpg" alt="" className={styles.panelBg} />
+          <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/stride-hero_zdajlh.jpg" alt="" className={styles.panelBg} />
           <div className={styles.panelOverlay} />
           <div className={styles.panelConceptoContent}>
             <span className={styles.secLabel}>Concepto</span>
@@ -95,7 +95,7 @@ export default function Suet() {
 
         {/* Panel: Quote con foto */}
         <div className={styles.panelQuote}>
-          <img src="/fotos/gym_banner_stryde.jpg" alt="" className={styles.panelBg} />
+          <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473009/gym_banner_stryde_fwjvb8.jpg" alt="" className={styles.panelBg} />
           <div className={styles.panelQuoteOverlay} />
           <div className={styles.panelQuoteContent}>
             <span className={styles.bigQuoteMark}>&ldquo;</span>
