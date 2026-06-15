@@ -1,41 +1,66 @@
-/**
- * Footer.jsx
- * ─────────────────────────────────────────────────────
- * Pie de página con links de navegación, horarios, redes
- * sociales y shader animado de fondo (Dithering, lazy).
- *
- * Usado en: App.jsx (solo en rutas públicas)
- * Depende de: react-router-dom, @paper-design/shaders-react
- * ─────────────────────────────────────────────────────
- */
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
+import { getFooterConfig, resolveSiteMediaUrl } from '@/adapters/siteConfigurationAdapter'
 import styles from './Footer.module.css'
 
 const Dithering = lazy(() =>
-  import('@paper-design/shaders-react').then(mod => ({ default: mod.Dithering }))
+  import('@paper-design/shaders-react').then((mod) => ({ default: mod.Dithering }))
 )
 
 const IconInstagram = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
   </svg>
 )
 
 const IconFacebook = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
   </svg>
 )
 
 const IconYoutube = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/>
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46a2.78 2.78 0 0 0-1.95 1.96A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58A2.78 2.78 0 0 0 3.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.95A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" />
+    <polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02" />
   </svg>
 )
 
+function FooterLinkList({ title, links = [] }) {
+  return (
+    <div>
+      <p className={styles.colTitle}>{title}</p>
+      <ul className={styles.colLinks}>
+        {links.map((item) => {
+          const rawTo = String(item?.to ?? item?.href ?? item?.url ?? '').trim()
+          const isExternal = /^https?:\/\//i.test(rawTo)
+          const label = item?.label ?? rawTo
+          if (!rawTo) return null
+          return (
+            <li key={`${title}-${label}`}>
+              {isExternal ? (
+                <a href={rawTo} target="_blank" rel="noreferrer">
+                  {label}
+                </a>
+              ) : (
+                <Link to={rawTo}>{label}</Link>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 export default function Footer() {
+  const site = useEffectiveSiteConfiguration()
+  const footer = useMemo(() => getFooterConfig(site.config), [site.config])
   const year = new Date().getFullYear()
+  const brandLogo = resolveSiteMediaUrl(footer.brand?.logo)
 
   return (
     <footer className={styles.footer}>
@@ -60,49 +85,47 @@ export default function Footer() {
           <div className={styles.brand}>
             <Link to="/">
               <img
-                src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/CASA_SCARLATTA_ISOTIPO_mz2cxr.png"
+                src={brandLogo}
                 alt="Casa Scarlatta"
                 draggable="false"
                 className={styles.footerLogo}
               />
             </Link>
             <p className={styles.tagline}>
-              Estudio de movimiento enfocado en el bienestar integral.<br />
-              Mind · Body · Flow
+              {(footer.brand?.tagline ?? '').split('\n').map((line, index) => (
+                <span key={`${line}-${index}`}>
+                  {line}
+                  {index === 0 && <br />}
+                </span>
+              ))}
             </p>
+            {footer.contact?.address && (
+              <p style={{ marginTop: 10, color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
+                {footer.contact.address}
+              </p>
+            )}
           </div>
 
-          <div>
-            <p className={styles.colTitle}>Estudio</p>
-            <ul className={styles.colLinks}>
-              <li><Link to="/stryde-x">Stryde X </Link></li>
-              <li><Link to="/slow">Slow </Link></li>
-              <li><Link to="/yoga">Yoga</Link></li>
-              <li><Link to="/nosotros">Nosotros</Link></li>
-            </ul>
-          </div>
+          <FooterLinkList title="Estudio" links={footer.links?.studio ?? []} />
 
-          <div>
-            <p className={styles.colTitle}>Visítanos</p>
-            <ul className={styles.colLinks}>
-              <li><Link to="/clases">Reservar clase</Link></li>
-              <li><Link to="/contacto">Contacto</Link></li>
-              
-            </ul>
-          </div>
+          <FooterLinkList title="Visítanos" links={footer.links?.visit ?? []} />
 
           <div>
             <p className={styles.colTitle}>Horarios</p>
             <div className={styles.schedule}>
-              <div className={styles.scheduleRow}>
-                <span>Lun — Vie</span>
-                <span>07:00 am – 11:00 am &nbsp;|&nbsp; 17:00 pm – 20:00 pm</span>
-              </div>
-              <div className={styles.scheduleRow}>
-                <span>Sáb — Dom</span>
-                <span>10:00 am – 12:00 pm</span>
-              </div>
+              {(footer.scheduleRows ?? []).map((row) => (
+                <div key={`${row.label}-${row.value}`} className={styles.scheduleRow}>
+                  <span>{row.label}</span>
+                  <span>{row.value}</span>
+                </div>
+              ))}
             </div>
+            {(footer.contact?.phone || footer.contact?.email) && (
+              <div style={{ marginTop: 16, display: 'grid', gap: 6, fontSize: 13, color: 'var(--text-muted)' }}>
+                {footer.contact.phone && <span>{footer.contact.phone}</span>}
+                {footer.contact.email && <span>{footer.contact.email}</span>}
+              </div>
+            )}
           </div>
         </div>
 
@@ -111,24 +134,39 @@ export default function Footer() {
             © {year} Casa Scarlatta Wellness Studio · Todos los derechos reservados
           </p>
           <div className={styles.social}>
-            <a
-              href="https://www.instagram.com/casa.scarlatta/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.socialLink}
-              aria-label="Instagram"
-            >
-              <IconInstagram />
-            </a>
-            <a
-              href="https://facebook.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.socialLink}
-              aria-label="Facebook"
-            >
-              <IconFacebook />
-            </a>
+            {footer.social?.instagramUrl && (
+              <a
+                href={footer.social.instagramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.socialLink}
+                aria-label="Instagram"
+              >
+                <IconInstagram />
+              </a>
+            )}
+            {footer.social?.facebookUrl && (
+              <a
+                href={footer.social.facebookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.socialLink}
+                aria-label="Facebook"
+              >
+                <IconFacebook />
+              </a>
+            )}
+            {footer.social?.youtubeUrl && (
+              <a
+                href={footer.social.youtubeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.socialLink}
+                aria-label="YouTube"
+              >
+                <IconYoutube />
+              </a>
+            )}
           </div>
         </div>
       </div>

@@ -163,6 +163,7 @@ export const ENDPOINTS = {
   configuracionEmail: withPrefix('/configuracion/email'),
   siteConfiguration: withPrefix('/configuracion/site'),
   siteConfigurationUpload: withPrefix('/configuracion/site/upload'),
+  cloudinarySignature: withPrefix('/uploads/cloudinary/signature'),
   emailTest: withPrefix('/email/test'),
   emailOutbox: withPrefix('/email/outbox'),
   emailOutboxRetryById: (id) => withPrefix(`/email/outbox/${id}/retry`),

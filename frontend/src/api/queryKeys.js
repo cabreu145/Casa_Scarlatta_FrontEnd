@@ -66,6 +66,9 @@ export const queryKeys = {
   siteConfiguration: {
     detail: () => ['siteConfiguration', 'detail'],
   },
+  cloudinary: {
+    signature: () => ['cloudinary', 'signature'],
+  },
   notifications: {
     list: (params = {}) => ['notifications', 'list', params],
     unreadCount: () => ['notifications', 'unreadCount'],

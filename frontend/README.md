@@ -466,3 +466,10 @@ Notas:
 - Desktop y mobile consumen misma configuración; CSS responsive no sustituye imágenes configuradas.
 - Upload de video local no está soportado en MVP. YouTube y URLs de video existentes siguen permitidos.
 - `nombreEstudio` y `ciudad` ya persisten; PDFs legacy con branding fijo requieren migración independiente.
+
+## Site Configuration
+
+- `GET /api/v1/configuracion/site` fuente de verdad en API mode.
+- `PUT /api/v1/configuracion/site` guarda pages y footer con merge profundo.
+- `POST /api/v1/uploads/cloudinary/signature` + upload directo a Cloudinary para media nueva.
+- Fallback legacy local / localStorage queda solo con API mode apagado.

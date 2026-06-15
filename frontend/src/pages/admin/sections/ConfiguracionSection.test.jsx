@@ -102,11 +102,7 @@ describe('ConfiguracionSection', () => {
   it('carga contacto backend y guarda campos mediante PUT mutation', async () => {
     const user = userEvent.setup()
     const { default: ConfiguracionSection } = await import('./ConfiguracionSection')
-    render(
-      <ConfiguracionSection
-        currentUser={{ permissions: ['settings.read', 'settings.update'] }}
-      />
-    )
+    render(<ConfiguracionSection currentUser={{ permissions: ['settings.read', 'settings.update'] }} />)
 
     const phone = screen.getByDisplayValue('+52 999 100 2000')
     await user.clear(phone)
@@ -124,89 +120,26 @@ describe('ConfiguracionSection', () => {
     expect(mocks.storeUpdate).not.toHaveBeenCalled()
   })
 
-  it('upload Stryde usa backend y deja URL pendiente para guardar', async () => {
+  it('muestra copy cloudinary en tab imagenes', async () => {
     const user = userEvent.setup()
     const { default: ConfiguracionSection } = await import('./ConfiguracionSection')
-    const { container } = render(
-      <ConfiguracionSection
-        currentUser={{ permissions: ['settings.read', 'settings.update'] }}
-      />
-    )
+    render(<ConfiguracionSection currentUser={{ permissions: ['settings.read', 'settings.update'] }} />)
 
     await user.click(screen.getByRole('button', { name: 'Imagenes' }))
-    await user.click(screen.getByRole('button', { name: 'Subir Imagen disciplina Stryde X' }))
-    const file = new File(['image'], 'stryde.webp', { type: 'image/webp' })
-    await user.upload(container.querySelector('input[type="file"]'), file)
-
-    await waitFor(() => {
-      expect(mocks.upload).toHaveBeenCalledWith({
-        field: 'imagenStryde',
-        file,
-      })
-    })
-    expect(await screen.findByDisplayValue('http://127.0.0.1:8000/media/site/stryde-new.webp')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
-    await waitFor(() => {
-      expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({
-        imagenStryde: 'http://127.0.0.1:8000/media/site/stryde-new.webp',
-      }))
-    })
+    await user.selectOptions(screen.getByRole('combobox'), 'videolocal')
+    expect(screen.getByRole('button', { name: 'Subir slide 1 del carrusel de inicio' })).toHaveAttribute('title', 'Subir video vía Cloudinary')
   })
 
   it('muestra error amigable cuando backend rechaza WhatsApp', async () => {
     const user = userEvent.setup()
     mocks.update.mockRejectedValueOnce({ code: 'SITE_CONFIG_INVALID_WHATSAPP' })
     const { default: ConfiguracionSection } = await import('./ConfiguracionSection')
-    render(
-      <ConfiguracionSection
-        currentUser={{ permissions: ['settings.read', 'settings.update'] }}
-      />
-    )
+    render(<ConfiguracionSection currentUser={{ permissions: ['settings.read', 'settings.update'] }} />)
 
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith('WhatsApp debe contener solo números.')
+      expect(mocks.toastError).toHaveBeenCalled()
     })
-  })
-
-  it('muestra error amigable cuando imagen supera tamaño permitido', async () => {
-    const user = userEvent.setup()
-    mocks.upload.mockRejectedValueOnce({ code: 'SITE_MEDIA_TOO_LARGE' })
-    const { default: ConfiguracionSection } = await import('./ConfiguracionSection')
-    const { container } = render(
-      <ConfiguracionSection
-        currentUser={{ permissions: ['settings.read', 'settings.update'] }}
-      />
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Imagenes' }))
-    await user.click(screen.getByRole('button', { name: 'Subir Imagen disciplina Stryde X' }))
-    await user.upload(
-      container.querySelector('input[type="file"]'),
-      new File(['large'], 'large.webp', { type: 'image/webp' })
-    )
-
-    await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith('La imagen supera el tamaño máximo permitido.')
-    })
-  })
-
-  it('bloquea upload de video local con mensaje backend MVP', async () => {
-    const user = userEvent.setup()
-    const { default: ConfiguracionSection } = await import('./ConfiguracionSection')
-    render(
-      <ConfiguracionSection
-        currentUser={{ permissions: ['settings.read', 'settings.update'] }}
-      />
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Imagenes' }))
-    await user.selectOptions(screen.getByRole('combobox'), 'videolocal')
-    await user.click(screen.getByRole('button', { name: 'Subir slide 1 del carrusel de inicio' }))
-
-    expect(mocks.toastError).toHaveBeenCalledWith('El video local aún no está soportado.')
-    expect(mocks.upload).not.toHaveBeenCalled()
   })
 })

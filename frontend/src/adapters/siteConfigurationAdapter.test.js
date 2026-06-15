@@ -50,9 +50,9 @@ describe('siteConfigurationAdapter', () => {
       tipo: 'videolocal',
       url: 'https://cdn.example.com/hero.mp4',
     })
-    expect(result.carouselNosotros).toEqual(['/fotos/team.jpg'])
-    expect(result.imagenBannerClases).toBe('/fotos/banner.jpg')
-    expect(result.imagenCoachesBanner).toBe('/fotos/coaches.jpg')
+    expect(result.carouselNosotros).toEqual([`${BASE_URL}/fotos/team.jpg`])
+    expect(result.imagenBannerClases).toBe(`${BASE_URL}/fotos/banner.jpg`)
+    expect(result.imagenCoachesBanner).toBe(`${BASE_URL}/fotos/coaches.jpg`)
     expect(result.nosotrosTexto1).toBe('Texto uno')
     expect(result.nombreEstudio).toBe('Casa API')
   })
@@ -68,14 +68,12 @@ describe('siteConfigurationAdapter', () => {
     })
 
     expect(result).toEqual({
-      imagenStryde: '/media/site/stryde.webp',
+      imagenStryde: `${BASE_URL}/media/site/stryde.webp`,
       carouselHero: [
-        { type: 'image', src: '/media/site/hero.webp' },
-        { type: 'youtube', youtubeId: 'youtube-id', start: 8 },
+        { tipo: 'imagen', url: '/media/site/hero.webp' },
+        { tipo: 'video', videoId: 'youtube-id', start: 8 },
       ],
-      carouselNosotros: [
-        { type: 'image', src: '/media/site/team.webp' },
-      ],
+      carouselNosotros: [`${BASE_URL}/media/site/team.webp`],
     })
     expect(result.telefono).toBeUndefined()
   })
