@@ -23,6 +23,8 @@ export function buildAdminClientsApiQuery({
       ? 'none'
       : normalizedFilter === 'por vencer'
         ? 'expired'
-        : undefined,
+        : normalizedFilter === 'con paquete'
+          ? 'active'
+          : undefined,
   }
 }

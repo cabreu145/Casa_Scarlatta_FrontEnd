@@ -10,5 +10,6 @@ describe('adminClientsApiUtils', () => {
     expect(buildAdminClientsApiQuery({ filter: 'Activos' }).status).toBe('active')
     expect(buildAdminClientsApiQuery({ filter: 'Sin paquete' }).membershipStatus).toBe('none')
     expect(buildAdminClientsApiQuery({ filter: 'Por vencer' }).membershipStatus).toBe('expired')
+    expect(buildAdminClientsApiQuery({ filter: 'Con paquete' }).membershipStatus).toBe('active')
   })
 })

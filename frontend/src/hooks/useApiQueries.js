@@ -1275,6 +1275,9 @@ function invalidateAdminClients(queryClient, clientId) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
     clientId ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(clientId) }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
   ])
 }
 
@@ -1370,10 +1373,13 @@ export function invalidateReservationSideEffects(queryClient, { occurrenceId, cl
     ]) : Promise.resolve(),
     occurrenceId ? queryClient.invalidateQueries({ queryKey: queryKeys.waitlist.byOccurrence(occurrenceId) }) : Promise.resolve(),
     queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
+    queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
+    Promise.resolve(useClasesStore.getState().loadClasesFromApi({ force: true }).catch(() => {})),
   ])
 }
 
