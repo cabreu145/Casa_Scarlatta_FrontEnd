@@ -1035,6 +1035,14 @@
 
 .formInput[rows] { min-height: 70px; }
 
+.detailsChevron {
+  transition: transform 0.2s ease;
+}
+
+details[open] > summary .detailsChevron {
+  transform: rotate(180deg);
+}
+
 .formSelect {
   padding: 10px 14px;
   background: #2a171e;
