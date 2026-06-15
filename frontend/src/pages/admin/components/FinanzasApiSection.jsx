@@ -390,7 +390,6 @@ export default function FinanzasApiSection({ inPanel = false }) {
     || recentSalesQuery.error
     || historicalQuery.error
   )
-  const hasAnyLoading = (kpisQuery.isLoading && !kpisQuery.data) || (historicalQuery.isLoading && !historicalQuery.data)
 
   const txRows = useMemo(
     () => buildTransactionRows({ sales: recentSales, expenses: expensesItems.length ? expensesItems : recentExpenses }),
@@ -536,16 +535,6 @@ export default function FinanzasApiSection({ inPanel = false }) {
     borderRadius: 12,
     padding: '20px 24px',
     marginBottom: 16,
-  }
-
-  if (hasAnyLoading) {
-    return (
-      <div className={inPanel ? undefined : styles.page}>
-        <div style={{ padding: 24, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
-          Cargando finanzas...
-        </div>
-      </div>
-    )
   }
 
   return (
