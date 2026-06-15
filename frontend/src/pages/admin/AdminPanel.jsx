@@ -414,6 +414,38 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   // Clase — ver alumnos
   const [modalAlumnosClase, setModalAlumnosClase] = useState(null) // clase | null
   const [alumnoAgregarId,   setAlumnoAgregarId]   = useState('')
+  const [enrollSearch, setEnrollSearch] = useState('')
+  const [enrollPage,   setEnrollPage]   = useState(1)
+  const [enrollDropdownOpen, setEnrollDropdownOpen] = useState(false)
+  const enrollDropdownRef = useRef(null)
+  // Lista paginada/buscable de clientes activos para el select de "inscribir alumno",
+  // independiente de la paginación/filtros de la tabla de Usuarios.
+  const ENROLL_CLIENTS_PAGE_SIZE = 20
+  const enrollableClientsQuery = useAdminClientsQuery({
+    page: enrollPage,
+    pageSize: ENROLL_CLIENTS_PAGE_SIZE,
+    search: enrollSearch,
+    status: 'active',
+    enabled: useApiClients,
+  })
+  const enrollableClients = enrollableClientsQuery.data?.items ?? []
+  const enrollableTotal = enrollableClientsQuery.data?.total ?? 0
+  const enrollableTotalPages = Math.max(1, Math.ceil(enrollableTotal / ENROLL_CLIENTS_PAGE_SIZE))
+  useEffect(() => {
+    setEnrollSearch('')
+    setEnrollPage(1)
+    setEnrollDropdownOpen(false)
+  }, [modalAlumnosClase?.id, modalAlumnosClase?.occurrenceId])
+  useEffect(() => {
+    if (!enrollDropdownOpen) return
+    const handleClickOutside = (e) => {
+      if (enrollDropdownRef.current && !enrollDropdownRef.current.contains(e.target)) {
+        setEnrollDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [enrollDropdownOpen])
   const [adminSeatSelector, setAdminSeatSelector] = useState(null) // { cls, userId } | null
   // Clase — selección múltiple
   const [selectMode,         setSelectMode]         = useState(false)
@@ -2725,7 +2757,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
         }))
         const idsInscritos = new Set(inscritos.map((r) => Number(r.userId ?? r.user_id)))
         const disponibles = useApiClients
-          ? (clientsForAdmin ?? []).filter((u) => !idsInscritos.has(Number(u.id)) && String(u.status ?? u.estado ?? 'active') === 'active')
+          ? (enrollableClients ?? []).filter((u) => !idsInscritos.has(Number(u.id)) && String(u.status ?? u.estado ?? 'active') === 'active')
           : usuarios.filter((u) => !idsInscritos.has(u.id) && u.rol === 'cliente')
         const rosterLoading = useApiClasses ? occurrenceRosterQuery.isLoading : false
         const rosterError = useApiClasses ? occurrenceRosterQuery.error : null
@@ -2816,7 +2848,17 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
             className={`${styles.modalOverlay} ${styles.open}`}
             onClick={e => { if (e.target === e.currentTarget) setModalAlumnosClase(null) }}
           >
-            <div className={styles.modal} style={{ maxWidth: 640, width: '90vw', maxHeight: '85vh', overflowY: 'auto' }}>
+            <div
+              className={styles.modal}
+              style={{
+                maxWidth: 720,
+                width: '90vw',
+                height: enrollDropdownOpen ? '92vh' : 'auto',
+                maxHeight: '92vh',
+                overflowY: enrollDropdownOpen ? 'hidden' : 'auto',
+                transition: 'height 0.2s ease',
+              }}
+            >
               <div className={styles.modalHeader}>
                 <div>
                   <div className={styles.modalTitle}>Alumnos — {cls.nombre}</div>
@@ -3000,22 +3042,87 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 10, fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   Inscribir alumno manualmente
                 </div>
+                {useApiClients && (
+                  <input
+                    type="text"
+                    className={styles.formInput}
+                    style={{ width: '100%', fontSize: 13, marginBottom: 8 }}
+                    placeholder="Buscar por nombre o email…"
+                    value={enrollSearch}
+                    onChange={e => {
+                      setEnrollSearch(e.target.value)
+                      setEnrollPage(1)
+                      setAlumnoAgregarId('')
+                    }}
+                  />
+                )}
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <select
-                    className={styles.formSelect}
-                    style={{ flex: 1, fontSize: 13 }}
-                    value={alumnoAgregarId}
-                    onChange={e => setAlumnoAgregarId(e.target.value)}
-                  >
-                    <option value="">Seleccionar usuario…</option>
-                    {disponibles.map(u => (
-                      <option key={u.id} value={u.id}>
-                        {useApiClients
-                          ? buildClientEnrollmentLabel(u)
-                          : `${u.nombre} ${u.paquete ? `· ${u.paquete}` : '· Sin paquete'}`}
-                      </option>
-                    ))}
-                  </select>
+                  <div ref={enrollDropdownRef} style={{ position: 'relative', flex: 1 }}>
+                    <button
+                      type="button"
+                      className={`${styles.formSelect} ${styles.dropdownToggle}`}
+                      style={{ width: '100%', fontSize: 13 }}
+                      onClick={() => setEnrollDropdownOpen(o => !o)}
+                    >
+                      <span>
+                        {(() => {
+                          if (!alumnoAgregarId) return 'Seleccionar usuario…'
+                          const u = (disponibles ?? []).find((uu) => Number(uu.id) === Number(alumnoAgregarId))
+                          if (!u) return 'Seleccionar usuario…'
+                          return useApiClients
+                            ? buildClientEnrollmentLabel(u)
+                            : `${u.nombre} ${u.paquete ? `· ${u.paquete}` : '· Sin paquete'}`
+                        })()}
+                      </span>
+                      <span style={{ opacity: 0.6 }}>▾</span>
+                    </button>
+                    {enrollDropdownOpen && (
+                      <div className={styles.dropdownPanel}>
+                        <div
+                          className={`${styles.dropdownOption} ${!alumnoAgregarId ? styles.dropdownOptionSelected : ''}`}
+                          onClick={() => { setAlumnoAgregarId(''); setEnrollDropdownOpen(false) }}
+                        >
+                          Seleccionar usuario…
+                        </div>
+                        {disponibles.map(u => (
+                          <div
+                            key={u.id}
+                            className={`${styles.dropdownOption} ${Number(alumnoAgregarId) === Number(u.id) ? styles.dropdownOptionSelected : ''}`}
+                            onClick={() => { setAlumnoAgregarId(String(u.id)); setEnrollDropdownOpen(false) }}
+                          >
+                            {useApiClients
+                              ? buildClientEnrollmentLabel(u)
+                              : `${u.nombre} ${u.paquete ? `· ${u.paquete}` : '· Sin paquete'}`}
+                          </div>
+                        ))}
+                        {useApiClients && enrollableTotalPages > 1 && (
+                          <div className={styles.dropdownPagination}>
+                            <button
+                              type="button"
+                              className={`${styles.btn} ${styles.btnGhost}`}
+                              style={{ fontSize: 11, padding: '3px 10px' }}
+                              onClick={(e) => { e.stopPropagation(); setEnrollPage(p => Math.max(1, p - 1)) }}
+                              disabled={enrollPage <= 1 || enrollableClientsQuery.isFetching}
+                            >
+                              ‹ Anterior
+                            </button>
+                            <span style={{ fontSize: 11, color: 'var(--muted)' }}>
+                              Página {enrollPage} de {enrollableTotalPages}
+                            </span>
+                            <button
+                              type="button"
+                              className={`${styles.btn} ${styles.btnGhost}`}
+                              style={{ fontSize: 11, padding: '3px 10px' }}
+                              onClick={(e) => { e.stopPropagation(); setEnrollPage(p => Math.min(enrollableTotalPages, p + 1)) }}
+                              disabled={enrollPage >= enrollableTotalPages || enrollableClientsQuery.isFetching}
+                            >
+                              Siguiente ›
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <button
                     className={`${styles.btn} ${styles.btnSecondary}`}
                     style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
@@ -3035,7 +3142,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 </div>
                 {alumnoAgregarId && (() => {
                   const u = useApiClients
-                    ? (clientsForAdmin ?? []).find((uu) => Number(uu.id) === Number(alumnoAgregarId))
+                    ? (enrollableClients ?? []).find((uu) => Number(uu.id) === Number(alumnoAgregarId))
+                      ?? (clientsForAdmin ?? []).find((uu) => Number(uu.id) === Number(alumnoAgregarId))
                     : usuarios.find(uu => uu.id === Number(alumnoAgregarId))
                   if (!u) return null
                   return (
