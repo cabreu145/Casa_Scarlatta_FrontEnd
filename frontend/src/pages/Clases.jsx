@@ -346,7 +346,7 @@ export default function Clases() {
                             Cancelar
                           </button>
                         ) : (
-                          <span className={styles.cancelarVencido}>Sin cancelaciÃ³n disponible</span>
+                          <span className={styles.cancelarVencido}>Sin cancelación disponible</span>
                         )}
                       </div>
                     ) : (
