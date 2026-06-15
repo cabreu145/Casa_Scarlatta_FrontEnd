@@ -1380,7 +1380,7 @@ export function invalidateReservationSideEffects(queryClient, { occurrenceId, cl
 export function useCreateSpotHoldMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ occurrenceId, spotId }) => createSpotHoldApi({ occurrenceId, spotId }),
+    mutationFn: ({ occurrenceId, spotId, userId }) => createSpotHoldApi({ occurrenceId, spotId, userId }),
     onSuccess: async (_data, variables) => {
       await invalidateSpotsAndHolds(queryClient, variables?.occurrenceId)
     },

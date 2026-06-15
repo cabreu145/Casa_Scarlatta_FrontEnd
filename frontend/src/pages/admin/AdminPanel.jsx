@@ -40,6 +40,7 @@ import { reservarClase as reservarClaseService, cancelarReserva as cancelarReser
 import { borrarCoachService } from '@/services/coachesService'
 import { useDisciplinasStore } from '@/stores/disciplinasStore'
 import SeatSelector from '@/features/clases/SeatSelector'
+import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationPanel'
 import { FinanzasSection } from './AdminFinanzas'
 import { ReportesSection } from './AdminReportes'
 import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
@@ -447,6 +448,10 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [enrollDropdownOpen])
   const [adminSeatSelector, setAdminSeatSelector] = useState(null) // { cls, userId } | null
+  // Saldo/créditos del alumno objetivo al reservar lugar desde el admin
+  const adminSeatTargetClientQuery = useAdminClientDetailQuery(adminSeatSelector?.userId, {
+    enabled: useApiClients && Boolean(adminSeatSelector?.userId),
+  })
   // Clase — selección múltiple
   const [selectMode,         setSelectMode]         = useState(false)
   const [selectedIds,        setSelectedIds]        = useState(new Set())
@@ -3946,24 +3951,52 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       )}
 
       {/* ── SEAT SELECTOR (admin: inscribir con asiento) ── */}
-      {adminSeatSelector && (
-        <SeatSelector
-          cls={adminSeatSelector.cls}
-          targetUserId={adminSeatSelector.userId}
-          adminForce
-          onSuccess={async () => {
-            const u = usuarios.find(u => u.id === adminSeatSelector.userId)
-            toast.success(`${u?.nombre ?? 'Alumno'} inscrito correctamente`)
-            setAdminSeatSelector(null)
-            setAlumnoAgregarId('')
-            const occurrenceId = adminSeatSelector.cls.occurrenceId ?? adminSeatSelector.cls.occurrence_id ?? null
-            if (useApiMode && occurrenceId) {
-              await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
-            }
-          }}
-          onClose={() => setAdminSeatSelector(null)}
-        />
-      )}
+      {adminSeatSelector && (() => {
+        const occurrenceId = adminSeatSelector.cls.occurrenceId ?? adminSeatSelector.cls.occurrence_id ?? null
+        if (useApiReservations && occurrenceId) {
+          const targetClient = adminSeatTargetClientQuery.data
+          return (
+            <EquipmentReservationPanel
+              occurrenceId={occurrenceId}
+              classId={adminSeatSelector.cls.id}
+              userId={adminSeatSelector.userId}
+              financialState={{
+                financialState: targetClient ?? null,
+                creditsBalance: targetClient?.creditsBalance ?? null,
+                activeMembership: targetClient?.activeMembership ?? null,
+                isLoading: adminSeatTargetClientQuery.isLoading,
+                error: adminSeatTargetClientQuery.error,
+              }}
+              onReservationCreated={async () => {
+                const u = (enrollableClients ?? []).find((uu) => Number(uu.id) === adminSeatSelector.userId)
+                  ?? usuarios.find(u => u.id === adminSeatSelector.userId)
+                toast.success(`${u?.nombre ?? 'Alumno'} inscrito correctamente`)
+                setAdminSeatSelector(null)
+                setAlumnoAgregarId('')
+                await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
+              }}
+              onClose={() => setAdminSeatSelector(null)}
+            />
+          )
+        }
+        return (
+          <SeatSelector
+            cls={adminSeatSelector.cls}
+            targetUserId={adminSeatSelector.userId}
+            adminForce
+            onSuccess={async () => {
+              const u = usuarios.find(u => u.id === adminSeatSelector.userId)
+              toast.success(`${u?.nombre ?? 'Alumno'} inscrito correctamente`)
+              setAdminSeatSelector(null)
+              setAlumnoAgregarId('')
+              if (useApiMode && occurrenceId) {
+                await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
+              }
+            }}
+            onClose={() => setAdminSeatSelector(null)}
+          />
+        )
+      })()}
 
       {modalPago && (
         <ModalPago

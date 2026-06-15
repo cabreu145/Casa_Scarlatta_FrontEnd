@@ -341,7 +341,7 @@ export default function EquipmentReservationPanel({
         await releaseHoldOnce(activeHold.holdId)
       }
 
-      const hold = await createSpotHoldMutation.mutateAsync({ occurrenceId, spotId: spot.spotId })
+      const hold = await createSpotHoldMutation.mutateAsync({ occurrenceId, spotId: spot.spotId, userId })
       setSelectedSpotId(spot.spotId)
       setActiveHold({
         holdId: hold.holdId,
@@ -369,7 +369,7 @@ export default function EquipmentReservationPanel({
     } finally {
       setIsSelecting(false)
     }
-  }, [activeHold?.holdId, isSelecting, isConfirming, occurrenceId, releaseHoldOnce, selectedSpotId, layoutData?.serverNow, createSpotHoldMutation, occurrenceSpotsQuery])
+  }, [activeHold?.holdId, isSelecting, isConfirming, occurrenceId, releaseHoldOnce, selectedSpotId, layoutData?.serverNow, createSpotHoldMutation, occurrenceSpotsQuery, userId])
 
   const handleConfirmReservation = useCallback(async () => {
     if (!selectedSpot || !activeHold?.holdId) {
