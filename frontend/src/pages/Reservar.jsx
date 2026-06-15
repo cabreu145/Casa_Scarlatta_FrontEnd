@@ -7,6 +7,8 @@ import WeeklyCalendar from '@/features/clases/WeeklyCalendar'
 import SeatSelector from '@/features/clases/SeatSelector'
 import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationPanel'
 import { useAuth } from '@/context/AuthContext'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
+import { resolveSiteMediaUrl } from '@/adapters/siteConfigurationAdapter'
 import { useClasesStore } from '@/stores/clasesStore'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { formatOccurrenceDateTime } from '@/features/reservas/equipmentLayoutConfig'
@@ -62,6 +64,7 @@ function buildReservationRedirect({ salaKey, classId }) {
 
 export default function Reservar() {
   const { usuario, isAuthenticated } = useAuth()
+  const site = useEffectiveSiteConfiguration()
   const { clases, loadClasesFromApi } = useClasesStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -70,6 +73,19 @@ export default function Reservar() {
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
   const isClient = isAuthenticated && usuario?.rol === 'cliente'
+  const salas = useMemo(() => SALAS.map((sala) => ({
+    ...sala,
+    img: resolveSiteMediaUrl(
+      sala.key === 'stryde'
+        ? site.get('imagenStryde')
+        : site.get('imagenSlow')
+    ) || sala.img,
+    logo: resolveSiteMediaUrl(
+      sala.key === 'stryde'
+        ? site.get('logoStryde')
+        : site.get('logoSlow')
+    ) || sala.logo,
+  })), [site])
 
   const [selectedSalaKey, setSelectedSalaKey] = useState(resolveSalaKey(searchParams.get('tipo')))
   const [selectedClass, setSelectedClass] = useState(null)
@@ -220,7 +236,7 @@ export default function Reservar() {
 
         {!selectedSalaKey && (
           <div className={styles.salaGrid}>
-            {SALAS.map(({ key, label, logo, subtexto, img, alt }) => (
+            {salas.map(({ key, label, logo, subtexto, img, alt }) => (
               <div
                 key={key}
                 className={styles.salaCard}

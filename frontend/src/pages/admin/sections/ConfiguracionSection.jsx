@@ -11,6 +11,8 @@ import {
 } from '@/hooks/useApiQueries'
 import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
 import { isVideoMediaUrl } from '@/adapters/siteConfigurationAdapter'
+import SiteConfigurationSection from './SiteConfigurationSection'
+import { uploadCloudinaryMediaApi } from '@/services/cloudinaryUploadService'
 
 // ── Compresión de imagen vía canvas (max 1920px, JPEG 0.82) ──────────────────
 function compressImage(file, maxWidth = 1920, quality = 0.82) {
@@ -39,6 +41,7 @@ function compressImage(file, maxWidth = 1920, quality = 0.82) {
 }
 
 const TABS = [
+  { id: 'sitio', label: 'Sitio web' },
   { id: 'contacto', label: 'Contacto' },
   { id: 'textos', label: 'Textos' },
   { id: 'imagenes', label: 'Imagenes' },
@@ -333,16 +336,12 @@ function TabImagenes({ cfg, actualizar, uploadMedia, apiMode, canEdit = true }) 
     setUploading(true)
     try {
       const { field, onResult } = callbackRef.current
-      if (apiMode && file.type.startsWith('video/')) {
-        const error = new Error('El video local aún no está soportado.')
-        error.code = 'SITE_VIDEO_UPLOAD_NOT_SUPPORTED'
-        throw error
-      }
       if (apiMode) {
         const result = await uploadMedia({ field, file })
-        if (!result?.url) throw new Error('SITE_MEDIA_UPLOAD_FAILED')
-        onResult(result.url, false)
-        toast.success('Imagen subida. Presiona Guardar cambios para publicarla.')
+        const resolvedUrl = result?.secureUrl ?? result?.url
+        if (!resolvedUrl) throw new Error('SITE_MEDIA_UPLOAD_FAILED')
+        onResult(resolvedUrl, file.type.startsWith('video/'))
+        toast.success('Archivo subido. Presiona Guardar cambios para publicarlo.')
       } else if (file.type.startsWith('video/')) {
         const blobUrl = URL.createObjectURL(file)
         onResult(blobUrl, true)
@@ -433,13 +432,9 @@ function TabImagenes({ cfg, actualizar, uploadMedia, apiMode, canEdit = true }) 
         disabled={uploading || !canEdit}
         aria-label={ariaLabel}
         onClick={() => {
-          if (apiMode && videoUpload) {
-            toast.error(SITE_CONFIGURATION_ERROR_MESSAGES.SITE_VIDEO_UPLOAD_NOT_SUPPORTED)
-            return
-          }
           triggerUpload(field, onResult)
         }}
-        title="Subir imagen o video desde tu computadora"
+        title={apiMode && videoUpload ? 'Subir video vía Cloudinary' : 'Subir imagen o video desde tu computadora'}
       >
         {uploading ? '⏳' : '📁'} {uploading ? 'Leyendo…' : 'Subir'}
       </button>
@@ -482,7 +477,7 @@ function TabImagenes({ cfg, actualizar, uploadMedia, apiMode, canEdit = true }) 
       <div style={panel}>
         <div style={sectionTitle}>Inicio — Carrusel hero</div>
         <p style={{ ...hint, marginBottom: 16 }}>
-          Máx. 6 slides. YouTube: pega solo el ID (ej: djp5ZQQ7WXA). {apiMode ? 'Upload de video local aún no soportado.' : 'Video local: solo esta sesión.'}
+          Máx. 6 slides. YouTube: pega solo el ID (ej: djp5ZQQ7WXA). {apiMode ? 'Video e imagen suben vía Cloudinary.' : 'Video local: solo esta sesión.'}
         </p>
         {carouselHero.map((slide, i) => (
           <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12, borderBottom: '1px solid var(--neutral-border)', paddingBottom: 12 }}>
@@ -797,11 +792,32 @@ export default function ConfiguracionSection({ currentUser = null }) {
   }, [canUpdateSettings, store])
 
   const uploadMedia = useCallback(
-    (payload) => uploadSiteMedia.mutateAsync(payload),
-    [uploadSiteMedia]
+    async ({ field, file }) => {
+      if (!file) return null
+      if (siteConfiguration.apiMode) {
+        try {
+          return await uploadCloudinaryMediaApi({
+            file,
+            folder: 'site',
+            resourceType: String(file.type ?? '').startsWith('video/') ? 'video' : 'image',
+            context: 'site_configuration',
+            publicIdPrefix: field,
+          })
+        } catch (error) {
+          if (String(file.type ?? '').startsWith('video/')) {
+            const legacyError = new Error('El video local aún no está soportado.')
+            legacyError.code = 'SITE_VIDEO_UPLOAD_NOT_SUPPORTED'
+            throw legacyError
+          }
+          return uploadSiteMedia.mutateAsync({ field, file })
+        }
+      }
+      return uploadSiteMedia.mutateAsync({ field, file })
+    },
+    [siteConfiguration.apiMode, uploadSiteMedia]
   )
 
-  const siteTabActive = ['contacto', 'textos', 'imagenes', 'estudio'].includes(tabActivo)
+  const siteTabActive = ['sitio', 'contacto', 'textos', 'imagenes', 'estudio'].includes(tabActivo)
 
   const tabStyle = (id) => ({
     padding:      '8px 16px',
@@ -838,6 +854,7 @@ export default function ConfiguracionSection({ currentUser = null }) {
       )}
       {(!siteTabActive || !siteConfiguration.apiMode || !siteConfiguration.isLoading) && (
         <>
+          {tabActivo === 'sitio' && <SiteConfigurationSection currentUser={currentUser} />}
           {tabActivo === 'contacto' && <TabContacto cfg={siteConfiguration} actualizar={actualizarSite} canEdit={canUpdateSettings} />}
           {tabActivo === 'textos'   && <TabTextos cfg={siteConfiguration} actualizar={actualizarSite} canEdit={canUpdateSettings} />}
           {tabActivo === 'imagenes' && (

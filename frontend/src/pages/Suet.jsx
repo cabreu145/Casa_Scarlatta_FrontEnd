@@ -1,181 +1,170 @@
-import { Music, Zap, Target, Heart, Dumbbell, Flame, Brain, CheckCircle, ArrowRight, Calendar } from 'lucide-react'
+import { Music, Zap, Target, Heart, Dumbbell, Flame, Brain, CheckCircle, ArrowRight } from 'lucide-react'
 import Button from '@/components/ui/Button'
-import ExpandButton from '@/components/ui/ExpandButton'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
+import { getPublicPageConfig, resolveSiteMediaUrl } from '@/adapters/siteConfigurationAdapter'
 import styles from './Suet.module.css'
 
+function textLines(value) {
+  return String(value ?? '')
+    .split('\n')
+    .filter(Boolean)
+}
+
+function renderTextBlock(value) {
+  return textLines(value).map((line, index) => (
+    <span key={`${line}-${index}`}>
+      {line}
+      {index < textLines(value).length - 1 && <br />}
+    </span>
+  ))
+}
+
 export default function Suet() {
+  const site = useEffectiveSiteConfiguration()
+  const page = getPublicPageConfig(site.config, 'suet')
+  const hero = page.hero ?? {}
+  const sections = Object.fromEntries((page.sections ?? []).map((section) => [section.id, section]))
+  const concept = sections.concept ?? {}
+  const experience = sections.experience ?? {}
+  const quote = sections.quote ?? {}
+  const methodology = sections.methodology ?? {}
+  const benefits = sections.benefits ?? {}
+  const ideal = sections.ideal ?? {}
+  const heroImage = resolveSiteMediaUrl(hero.image)
+  const heroLogo = resolveSiteMediaUrl(hero.logo)
+  const conceptImage = resolveSiteMediaUrl(concept.media)
+  const quoteImage = resolveSiteMediaUrl(quote.media)
+
   return (
     <div className={styles.page}>
-
-      {/* Hero */}
       <section className={styles.hero}>
         <div className={styles.heroBg} />
-        <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473009/gym_banner_stryde_fwjvb8.jpg" alt="Sala Stryde" className={styles.heroImage} />
+        <img src={heroImage} alt={hero.imageAlt ?? 'Sala Stryde'} className={styles.heroImage} />
         <div className={styles.glow} />
         <div className={styles.heroContent}>
           <div className={styles.logoGroup}>
-            <span className={styles.overline}>Casa Scarlatta &mdash; Alta Intensidad</span>
-            <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/STRYDE_X_T_bsgwov.png" alt="Stryde" className={styles.heroLogo} />
-            <span className={styles.logoTagline}>Stronger Every Stryde</span>
+            <span className={styles.overline}>{hero.overline}</span>
+            <img src={heroLogo} alt={hero.logoAlt ?? 'Stryde'} className={styles.heroLogo} />
+            <span className={styles.logoTagline}>{hero.tagline}</span>
           </div>
-          <p className={styles.heroSub}>
-            Entrenamiento de alto rendimiento que fusiona cardio y fuerza en bloques de
-            alta intensidad con música envolvente.
-          </p>
-          <p className={styles.heroSubSmall}>
-            Mejora tu resistencia. Tonifica tu cuerpo. Eleva tu disciplina.
-          </p>
+          <p className={styles.heroSub}>{hero.subtitle}</p>
+          <p className={styles.heroSubSmall}>{hero.slogan}</p>
           <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap' }}>
-            <Button to="/clases?tipo=Stride" size="lg" style={{ background: 'var(--suet-red)' }}>
-              Reservar clase
-            </Button>
+            {(hero.ctas?.length ? hero.ctas : [{ label: 'Reservar clase', to: '/clases?tipo=Stride' }]).map((cta) => (
+              <Button key={`${cta.label}-${cta.to}`} to={cta.to} size="lg" style={{ background: 'var(--suet-red)' }}>
+                {cta.label}
+              </Button>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Stats */}
       <div className={styles.statsBar}>
-        {[
-          { num: '15', label: 'Cupo máximo' },
-          { num: '50', label: 'Minutos' },
-        ].map(({ num, label }) => (
+        {(page.stats ?? []).map(({ value, label }) => (
           <div key={label} className={styles.stat}>
-            <span className={styles.statNum}>{num}</span>
+            <span className={styles.statNum}>{value}</span>
             <span className={styles.statLabel}>{label}</span>
           </div>
         ))}
       </div>
 
-      {/* ROW 1 — Concepto / Experiencia / Quote */}
       <div className={styles.gridRow1}>
-        {/* Panel: Concepto */}
         <div className={styles.panelConcepto}>
-          <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/stride-hero_zdajlh.jpg" alt="" className={styles.panelBg} />
+          <img src={conceptImage} alt="" className={styles.panelBg} />
           <div className={styles.panelOverlay} />
           <div className={styles.panelConceptoContent}>
-            <span className={styles.secLabel}>Concepto</span>
+            <span className={styles.secLabel}>{concept.title}</span>
             <h2 className={styles.conceptoTitle}>
-              La fuerza<br />no se encuentra.<br />Se construye.
+              {renderTextBlock(concept.heading)}
             </h2>
-            <p className={styles.conceptoText}>
-              <strong>STRYDE X</strong> es más que una clase.<br />
-              Es disciplina en movimiento.<br />
-              Es el compromiso que transforma<br />tu cuerpo y tu mente.
-            </p>
+            <p className={styles.conceptoText}>{renderTextBlock(concept.body)}</p>
           </div>
         </div>
 
-        {/* Panel: Experiencia */}
         <div className={styles.panelExperiencia}>
-          <span className={styles.secLabel}>Experiencia</span>
+          <span className={styles.secLabel}>{experience.title}</span>
           <div className={styles.expItems}>
-            <div className={styles.expItem}>
-              <Music size={20} className={styles.expIcon} />
-              <div>
-                <h4 className={styles.expTitle}>Música envolvente</h4>
-                <p className={styles.expDesc}>Que marca el ritmo de cada repetición.</p>
-              </div>
-            </div>
-            <div className={styles.expItem}>
-              <Zap size={20} className={styles.expIcon} />
-              <div>
-                <h4 className={styles.expTitle}>Ambiente energético</h4>
-                <p className={styles.expDesc}>Luz, sonido y diseño que te impulsan.</p>
-              </div>
-            </div>
-            <div className={styles.expItem}>
-              <Target size={20} className={styles.expIcon} />
-              <div>
-                <h4 className={styles.expTitle}>Enfoque total</h4>
-                <p className={styles.expDesc}>Un espacio creado para superar tus límites.</p>
-              </div>
-            </div>
+            {(experience.items ?? []).map((item) => {
+              const icon = item.title?.toLowerCase().includes('música')
+                ? Music
+                : item.title?.toLowerCase().includes('energ')
+                  ? Zap
+                  : Target
+              const Icon = icon
+              return (
+                <div key={item.title} className={styles.expItem}>
+                  <Icon size={20} className={styles.expIcon} />
+                  <div>
+                    <h4 className={styles.expTitle}>{item.title}</h4>
+                    <p className={styles.expDesc}>{item.description}</p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
-        {/* Panel: Quote con foto */}
         <div className={styles.panelQuote}>
-          <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473009/gym_banner_stryde_fwjvb8.jpg" alt="" className={styles.panelBg} />
+          <img src={quoteImage} alt="" className={styles.panelBg} />
           <div className={styles.panelQuoteOverlay} />
           <div className={styles.panelQuoteContent}>
             <span className={styles.bigQuoteMark}>&ldquo;</span>
-            <p className={styles.quoteText}>
-              Cada bloque te acerca a tu mejor versión.
-            </p>
+            <p className={styles.quoteText}>{quote.quote}</p>
           </div>
         </div>
       </div>
 
-      {/* ROW 2 — Metodología / Beneficios */}
       <div className={styles.gridRow2}>
-        {/* Panel: Metodología */}
         <div className={styles.panelMetodologia}>
-          <span className={styles.secLabel}>Metodología</span>
-          <p className={styles.metSubtitle}>Entrenamiento en bloques de alta intensidad</p>
+          <span className={styles.secLabel}>{methodology.title}</span>
+          <p className={styles.metSubtitle}>{methodology.subtitle}</p>
           <div className={styles.metFlow}>
-            <div className={styles.metStep}>
-              <Heart size={28} className={styles.metIcon} />
-              <h4 className={styles.metStepTitle}>Cardio</h4>
-              <p className={styles.metStepDesc}>Intervalos de alta intensidad que elevan tu capacidad cardiovascular.</p>
-            </div>
-            <ArrowRight size={20} className={styles.metArrow} />
-            <div className={styles.metStep}>
-              <Dumbbell size={28} className={styles.metIcon} />
-              <h4 className={styles.metStepTitle}>Fuerza</h4>
-              <p className={styles.metStepDesc}>Movimientos funcionales que desarrollan fuerza, potencia y tonicidad muscular.</p>
-            </div>
-            <ArrowRight size={20} className={styles.metArrow} />
-            <div className={styles.metStep}>
-              <Target size={28} className={styles.metIcon} />
-              <h4 className={styles.metStepTitle}>Resistencia</h4>
-              <p className={styles.metStepDesc}>Secuencias continuas para mejorar tu rendimiento y llevarte al siguiente nivel.</p>
-            </div>
+            {(methodology.steps ?? []).map((step, index) => {
+              const icons = [Heart, Dumbbell, Target]
+              const Icon = icons[index] ?? Target
+              return (
+                <span key={step.title} style={{ display: 'contents' }}>
+                  <div className={styles.metStep}>
+                    <Icon size={28} className={styles.metIcon} />
+                    <h4 className={styles.metStepTitle}>{step.title}</h4>
+                    <p className={styles.metStepDesc}>{step.description}</p>
+                  </div>
+                  {index < (methodology.steps ?? []).length - 1 && <ArrowRight size={20} className={styles.metArrow} />}
+                </span>
+              )
+            })}
           </div>
-          <p className={styles.metConclusion}>Todo en una sesión. &nbsp;Máximo rendimiento.</p>
+          <p className={styles.metConclusion}>{methodology.conclusion}</p>
         </div>
 
-        {/* Panel: Beneficios */}
         <div className={styles.panelBeneficios}>
-          <span className={styles.secLabel}>Beneficios</span>
+          <span className={styles.secLabel}>{benefits.title}</span>
           <div className={styles.benRow}>
-            <div className={styles.benItem}>
-              <Flame size={28} className={styles.benIcon} />
-              <p className={styles.benLabel}>Aumento de fuerza y tonificación</p>
-            </div>
-            <div className={styles.benItem}>
-              <Heart size={28} className={styles.benIcon} />
-              <p className={styles.benLabel}>Mejora de resistencia física</p>
-            </div>
-            <div className={styles.benItem}>
-              <Zap size={28} className={styles.benIcon} />
-              <p className={styles.benLabel}>Alto gasto calórico</p>
-            </div>
-            <div className={styles.benItem}>
-              <Brain size={28} className={styles.benIcon} />
-              <p className={styles.benLabel}>Mayor disciplina y enfoque mental</p>
-            </div>
+            {(benefits.items ?? []).map((item, index) => {
+              const icons = [Flame, Heart, Zap, Brain]
+              const Icon = icons[index] ?? CheckCircle
+              return (
+                <div key={item.title} className={styles.benItem}>
+                  <Icon size={28} className={styles.benIcon} />
+                  <p className={styles.benLabel}>{item.title}</p>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
 
-      {/* ROW 3 — Ideal para ti */}
       <div className={styles.idealSection}>
-        <span className={styles.secLabel}>Ideal para ti si…</span>
+        <span className={styles.secLabel}>{ideal.title}</span>
         <ul className={styles.idealList}>
-          {[
-            'Buscas resultados visibles.',
-            'Disfrutas los retos físicos.',
-            'Quieres estructura y progreso.',
-            'Valoras la estética y la experiencia.',
-          ].map(item => (
-            <li key={item} className={styles.idealItem}>
+          {(ideal.items ?? []).map((item) => (
+            <li key={item.title} className={styles.idealItem}>
               <CheckCircle size={16} className={styles.idealIcon} />
-              <span>{item}</span>
+              <span>{item.title}</span>
             </li>
           ))}
         </ul>
       </div>
-
     </div>
   )
 }

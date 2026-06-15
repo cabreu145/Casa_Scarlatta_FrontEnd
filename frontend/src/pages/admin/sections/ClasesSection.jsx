@@ -799,7 +799,7 @@ export default function ClasesSection({
               className={`${styles.btn} ${styles.btnPrimary}`}
               style={{ background: '#ef4444', borderColor: '#ef4444' }}
               onClick={async () => {
-                if (!window.confirm(`Ã‚Â¿Eliminar ${selectedIds.size} clase${selectedIds.size > 1 ? 's' : ''}?`)) return
+                if (!window.confirm(`¿Eliminar ${selectedIds.size} clase${selectedIds.size > 1 ? 's' : ''}?`)) return
                 await Promise.all([...selectedIds].map((id) => handleDeleteClase(id, { refetch: false })))
                 if (useApiClasses) {
                   await useClasesStore.getState().loadClasesFromApi({ force: true })
@@ -999,7 +999,7 @@ export default function ClasesSection({
                           </span>
                         )}
                       </div>
-                      <div className={styles.claseMeta}>{getClassDisplayTime(c)} Â· {c.duracion} min Â· {c.coachNombre}</div>
+                      <div className={styles.claseMeta}>{getClassDisplayTime(c)} · {c.duracion} min · {c.coachNombre}</div>
                     </div>
                     <Tag color={isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'blue' : 'pink'}>{isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'Slow' : 'Stryde X'}</Tag>
                     <div className={styles.claseSpots}>
@@ -1071,7 +1071,7 @@ export default function ClasesSection({
                           className={`${styles.btn} ${styles.btnGhost}`}
                           style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
                           onClick={async () => {
-                            if (!window.confirm(`Â¿Eliminar la clase "${c.nombre}"?`)) return
+                            if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
                             if (!classActionId) {
                               toast.error('No se pudo identificar la clase para eliminar.')
                               return

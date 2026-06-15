@@ -1,173 +1,158 @@
 import { Wind, Heart, Brain, Leaf, Moon, Activity, CheckCircle, ArrowRight } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
+import { getPublicPageConfig, resolveSiteMediaUrl } from '@/adapters/siteConfigurationAdapter'
 import styles from './Yoga.module.css'
 
+function renderTextBlock(value) {
+  return String(value ?? '')
+    .split('\n')
+    .filter(Boolean)
+    .map((line, index, array) => (
+      <span key={`${line}-${index}`}>
+        {line}
+        {index < array.length - 1 && <br />}
+      </span>
+    ))
+}
+
 export default function Yoga() {
+  const site = useEffectiveSiteConfiguration()
+  const page = getPublicPageConfig(site.config, 'yoga')
+  const hero = page.hero ?? {}
+  const sections = Object.fromEntries((page.sections ?? []).map((section) => [section.id, section]))
+  const concept = sections.concept ?? {}
+  const philosophy = sections.philosophy ?? {}
+  const quote = sections.quote ?? {}
+  const methodology = sections.methodology ?? {}
+  const benefits = sections.benefits ?? {}
+  const ideal = sections.ideal ?? {}
+
   return (
     <div className={styles.page}>
-
-      {/* Hero */}
       <section className={styles.hero}>
-        <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473011/yoga_studio2_nqvmqf.png" alt="" className={styles.heroBgImg} />
+        <img src={resolveSiteMediaUrl(hero.image)} alt={hero.imageAlt ?? ''} className={styles.heroBgImg} />
         <div className={styles.heroBgOverlay} />
         <div className={styles.heroContent}>
           <div className={styles.logoGroup}>
-            <span className={styles.overline}>Casa Scarlatta &mdash; Equilibrio Mente-Cuerpo</span>
-            <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/LOGO_YOGA_xbhcjh.png" alt="Yoga" className={styles.heroLogo} />
-            <span className={styles.logoTagline}>Movement &nbsp;·&nbsp; Breath &nbsp;·&nbsp; Balance</span>
+            <span className={styles.overline}>{hero.overline}</span>
+            <img src={resolveSiteMediaUrl(hero.logo)} alt={hero.logoAlt ?? 'Yoga'} className={styles.heroLogo} />
+            <span className={styles.logoTagline}>{hero.tagline}</span>
           </div>
-          <p className={styles.heroSub}>
-            movimiento consciente, respiración y presencia para fortalecer el cuerpo, calmar la mente y cultivar bienestar desde el interior.
-          </p>
-          <p className={styles.heroSlogan}>Respira profundo. Muévete con intención. Habita el presente.</p>
+          <p className={styles.heroSub}>{hero.subtitle}</p>
+          <p className={styles.heroSlogan}>{hero.slogan}</p>
           <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap', marginLeft: '50px' }}>
-            <Button to="/clases?tipo=Slow" size="lg">Reservar clase</Button>
+            {(hero.ctas?.length ? hero.ctas : [{ label: 'Reservar clase', to: '/clases?tipo=Slow' }]).map((cta) => (
+              <Button key={`${cta.label}-${cta.to}`} to={cta.to} size="lg">{cta.label}</Button>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Stats */}
       <div className={styles.statsBar}>
-        {[
-          { num: '9', label: 'Cupo máximo' },
-          { num: '45', label: 'Minutos' },
-        ].map(({ num, label }) => (
+        {(page.stats ?? []).map(({ value, label }) => (
           <div key={label} className={styles.stat}>
-            <span className={styles.statNum}>{num}</span>
+            <span className={styles.statNum}>{value}</span>
             <span className={styles.statLabel}>{label}</span>
           </div>
         ))}
       </div>
 
-      {/* ROW 1 — Concepto / Filosofía / Quote */}
       <div className={styles.gridRow1}>
-
-        {/* Panel: Concepto */}
         <div className={styles.panelConcepto}>
-          <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473011/yoga_position_ufcvce.png" alt="" className={styles.panelBg} />
+          <img src={resolveSiteMediaUrl(concept.media)} alt="" className={styles.panelBg} />
           <div className={styles.panelOverlay} />
           <div className={styles.panelConceptoContent}>
-            <span className={styles.secLabel}>Concepto</span>
+            <span className={styles.secLabel}>{concept.title}</span>
             <h2 className={styles.conceptoTitle}>
-              El movimiento<br />que restaura.<br />La calma<br />que transforma.
+              {renderTextBlock(concept.heading)}
             </h2>
             <p className={styles.conceptoText}>
-              <strong>YOGA</strong> es un espacio para reconectar contigo, desarrollar fuerza consciente y encontrar calma en medio del movimiento.<br />
-              Cada clase combina respiración, alineación y fluidez para crear una experiencia completa de bienestar físico y mental.
+              {renderTextBlock(concept.body)}
             </p>
           </div>
         </div>
 
-        {/* Panel: Filosofía */}
         <div className={styles.panelFilosofia}>
-          <span className={styles.secLabel}>Filosofía</span>
+          <span className={styles.secLabel}>{philosophy.title}</span>
           <div className={styles.expItems}>
-            <div className={styles.expItem}>
-              <Wind size={20} className={styles.expIcon} />
-              <div>
-                <h4 className={styles.expTitle}>Respiración consciente</h4>
-                <p className={styles.expDesc}>La respiración guía cada movimiento y ayuda a mantener la atención en el presente.</p>
-              </div>
-            </div>
-            <div className={styles.expItem}>
-              <Leaf size={20} className={styles.expIcon} />
-              <div>
-                <h4 className={styles.expTitle}>Movimiento con propósito</h4>
-                <p className={styles.expDesc}>Cada postura tiene una intención: fortalecer, abrir, estabilizar o restaurar.</p>
-              </div>
-            </div>
-            <div className={styles.expItem}>
-              <Moon size={20} className={styles.expIcon} />
-              <div>
-                <h4 className={styles.expTitle}>Presencia plena</h4>
-                <p className={styles.expDesc}>La práctica invita a reducir el ruido mental y conectar con el aquí y ahora.</p>
-              </div>
-            </div>
+            {(philosophy.items ?? []).map((item) => {
+              const icon = item.title?.toLowerCase().includes('respir') ? Wind : item.title?.toLowerCase().includes('movimiento') ? Leaf : Moon
+              const Icon = icon
+              return (
+                <div key={item.title} className={styles.expItem}>
+                  <Icon size={20} className={styles.expIcon} />
+                  <div>
+                    <h4 className={styles.expTitle}>{item.title}</h4>
+                    <p className={styles.expDesc}>{item.description}</p>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
-        {/* Panel: Quote */}
         <div className={styles.panelQuote}>
-          <img src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/yoga_studio3_qihsve.png" alt="" className={styles.panelBg} />
+          <img src={resolveSiteMediaUrl(quote.media)} alt="" className={styles.panelBg} />
           <div className={styles.panelQuoteOverlay} />
           <div className={styles.panelQuoteContent}>
             <span className={styles.bigQuoteMark}>&ldquo;</span>
-            <p className={styles.quoteText}>Cada respiración es una oportunidad para volver a ti.</p>
+            <p className={styles.quoteText}>{quote.quote}</p>
           </div>
         </div>
       </div>
 
-      {/* ROW 2 — Metodología / Beneficios */}
       <div className={styles.gridRow2}>
-
-        {/* Panel: Metodología */}
         <div className={styles.panelMetodologia}>
-          <span className={styles.secLabel}>Metodología</span>
-          <p className={styles.metSubtitle}>Tres momentos que transforman tu práctica</p>
+          <span className={styles.secLabel}>{methodology.title}</span>
+          <p className={styles.metSubtitle}>{methodology.subtitle}</p>
           <div className={styles.metFlow}>
-            <div className={styles.metStep}>
-              <Activity size={28} className={styles.metIcon} />
-              <h4 className={styles.metStepTitle}>Centrado y Respiración</h4>
-              <p className={styles.metStepDesc}>Comenzamos conectando con la respiración para preparar cuerpo y mente.</p>
-            </div>
-            <ArrowRight size={20} className={styles.metArrow} />
-            <div className={styles.metStep}>
-              <Wind size={28} className={styles.metIcon} />
-              <h4 className={styles.metStepTitle}>Secuencia de Asanas</h4>
-              <p className={styles.metStepDesc}>Fluimos entre posturas que desarrollan fuerza, movilidad, equilibrio y estabilidad.</p>
-            </div>
-            <ArrowRight size={20} className={styles.metArrow} />
-            <div className={styles.metStep}>
-              <Moon size={28} className={styles.metIcon} />
-              <h4 className={styles.metStepTitle}>Relajación y Meditación</h4>
-              <p className={styles.metStepDesc}>Finalizamos con estiramientos suaves y una relajación guiada para integrar la práctica.</p>
-            </div>
+            {(methodology.steps ?? []).map((step, index) => {
+              const icons = [Activity, Wind, Moon]
+              const Icon = icons[index] ?? Activity
+              return (
+                <span key={step.title} style={{ display: 'contents' }}>
+                  <div className={styles.metStep}>
+                    <Icon size={28} className={styles.metIcon} />
+                    <h4 className={styles.metStepTitle}>{step.title}</h4>
+                    <p className={styles.metStepDesc}>{step.description}</p>
+                  </div>
+                  {index < (methodology.steps ?? []).length - 1 && <ArrowRight size={20} className={styles.metArrow} />}
+                </span>
+              )
+            })}
           </div>
-          <p className={styles.metConclusion}>Un ciclo completo. &nbsp;Cuerpo y mente en equilibrio.</p>
+          <p className={styles.metConclusion}>{methodology.conclusion}</p>
         </div>
 
-        {/* Panel: Beneficios */}
         <div className={styles.panelBeneficios}>
-          <span className={styles.secLabel}>Beneficios</span>
+          <span className={styles.secLabel}>{benefits.title}</span>
           <div className={styles.benRow}>
-            <div className={styles.benItem}>
-              <Leaf size={28} className={styles.benIcon} />
-              <p className={styles.benLabel}>Mayor flexibilidad y movilidad</p>
-            </div>
-            <div className={styles.benItem}>
-              <Brain size={28} className={styles.benIcon} />
-              <p className={styles.benLabel}>Gestión del estrés y ansiedad</p>
-            </div>
-            <div className={styles.benItem}>
-              <Activity size={28} className={styles.benIcon} />
-              <p className={styles.benLabel}>Fuerza y estabilidad</p>
-            </div>
-            <div className={styles.benItem}>
-              <Heart size={28} className={styles.benIcon} />
-              <p className={styles.benLabel}>Equilibrio cuerpo, mente y espíritu.</p>
-            </div>
+            {(benefits.items ?? []).map((item, index) => {
+              const icons = [Leaf, Brain, Activity, Heart]
+              const Icon = icons[index] ?? CheckCircle
+              return (
+                <div key={item.title} className={styles.benItem}>
+                  <Icon size={28} className={styles.benIcon} />
+                  <p className={styles.benLabel}>{item.title}</p>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
 
-      {/* ROW 3 — Ideal para ti */}
       <div className={styles.idealSection}>
-        <span className={styles.secLabel}>Ideal para ti si…</span>
+        <span className={styles.secLabel}>{ideal.title}</span>
         <ul className={styles.idealList}>
-          {[
-            'Buscas reducir el estrés diario.',
-            'Quieres mejorar tu flexibilidad.',
-            'Deseas fortalecer tu cuerpo de forma consciente.',
-            'Te interesa desarrollar equilibrio físico y mental.'
-          ].map(item => (
-            <li key={item} className={styles.idealItem}>
+          {(ideal.items ?? []).map((item) => (
+            <li key={item.title} className={styles.idealItem}>
               <CheckCircle size={16} className={styles.idealIcon} />
-              <span>{item}</span>
+              <span>{item.title}</span>
             </li>
           ))}
         </ul>
       </div>
-
     </div>
   )
 }

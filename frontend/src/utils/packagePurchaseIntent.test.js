@@ -13,7 +13,7 @@ describe('packagePurchaseIntent', () => {
   })
 
   test('buildPackagePurchaseRedirect arma dashboard pagos con packageId', () => {
-    expect(buildPackagePurchaseRedirect(12)).toBe('/cliente/dashboard&packageId=12')
+    expect(buildPackagePurchaseRedirect(12)).toBe('/cliente/dashboard?section=pagos&packageId=12')
   })
 
   test('normalizeInternalRedirect acepta ruta interna y rechaza externa', () => {
@@ -26,7 +26,7 @@ describe('packagePurchaseIntent', () => {
     savePendingPackagePurchaseIntent(8)
     expect(readPendingPackagePurchaseIntent()).toEqual({
       packageId: '8',
-      redirect: '/cliente/dashboard&packageId=8',
+      redirect: '/cliente/dashboard?section=pagos&packageId=8',
     })
 
     clearPendingPackagePurchaseIntent()

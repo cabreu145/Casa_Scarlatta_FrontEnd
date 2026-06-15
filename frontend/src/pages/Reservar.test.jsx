@@ -58,6 +58,20 @@ vi.mock('@/features/reservas/EquipmentReservationPanel', () => ({
   default: () => <div>EquipmentReservationPanel Mock</div>,
 }))
 
+vi.mock('@/hooks/useSiteConfiguration', () => ({
+  useEffectiveSiteConfiguration: () => ({
+    apiMode: false,
+    config: {},
+    get: (key) => ({
+      imagenStryde: 'https://res.cloudinary.com/demo/image/upload/stryde.webp',
+      imagenSlow: 'https://res.cloudinary.com/demo/image/upload/slow.webp',
+    }[key] ?? ''),
+    isLoading: false,
+    isError: false,
+    source: 'legacy',
+  }),
+}))
+
 vi.mock('react-hot-toast', () => ({
   default: {
     error: (...args) => mockToastError(...args),
