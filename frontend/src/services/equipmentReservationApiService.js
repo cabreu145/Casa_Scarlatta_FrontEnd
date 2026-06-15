@@ -29,13 +29,13 @@ export async function getOccurrenceSpotsApi({ occurrenceId }) {
   return request
 }
 
-export async function createSpotHoldApi({ occurrenceId, spotId }) {
+export async function createSpotHoldApi({ occurrenceId, spotId, userId }) {
   const endpoint = ENDPOINTS.spotHolds
   if (!endpoint) {
     throw new Error('SPOT_HOLD_ENDPOINT_MISSING')
   }
 
-  const payload = await httpPost(endpoint, mapReservationHoldPayload({ occurrenceId, spotId }))
+  const payload = await httpPost(endpoint, mapReservationHoldPayload({ occurrenceId, spotId, userId }))
   return mapSpotHoldResponseToFrontend(payload ?? {})
 }
 

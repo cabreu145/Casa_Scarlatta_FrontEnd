@@ -51,6 +51,7 @@ export default function UsuariosSection({
           if (!coincide) return false
         }
         if (usersFilter === 'Activos') return u.activo && u.paquete
+        if (usersFilter === 'Con paquete') return !!u.paquete
         if (usersFilter === 'Sin paquete') return !u.paquete
         if (usersFilter === 'Por vencer') return u.clasesPaquete > 0 && u.clasesPaquete <= 2
         return true
@@ -102,7 +103,7 @@ export default function UsuariosSection({
               value={usersSearch}
               onChange={(event) => setUsersSearch(event.target.value)}
             />
-            {['Todos', 'Activos', 'Sin paquete', 'Por vencer'].map((filter) => (
+            {['Todos', 'Activos', 'Con paquete', 'Sin paquete', 'Por vencer'].map((filter) => (
               <button
                 key={filter}
                 className={`${styles.filterChip}${usersFilter === filter ? ` ${styles.active}` : ''}`}

@@ -1035,6 +1035,14 @@
 
 .formInput[rows] { min-height: 70px; }
 
+.detailsChevron {
+  transition: transform 0.2s ease;
+}
+
+details[open] > summary .detailsChevron {
+  transform: rotate(180deg);
+}
+
 .formSelect {
   padding: 10px 14px;
   background: #2a171e;
@@ -1122,6 +1130,61 @@
 }
 
 .modalClose:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+/* ── CUSTOM DROPDOWN (combobox con paginación) ───────────────────────────────── */
+.dropdownToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dropdownToggle span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdownPanel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: #2a171e;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.dropdownOption {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: var(--font-body);
+  color: #fff;
+  cursor: pointer;
+}
+
+.dropdownOption:hover { background: rgba(255, 255, 255, 0.08); }
+
+.dropdownOptionSelected { background: rgba(255, 255, 255, 0.06); }
+
+.dropdownPagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  bottom: 0;
+  background: #2a171e;
+}
 
 /* ── SCROLLBAR ─────────────────────────────────────────────────────────────── */
 .root ::-webkit-scrollbar { width: 4px; }

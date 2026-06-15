@@ -27,7 +27,7 @@ function normalizeUrl(endpoint) {
   return `${baseUrl}${prefix}${cleanEndpoint}`
 }
 
-async function parseResponse(res) {
+async function parseResponse(res, { hadToken = false } = {}) {
   const contentType = res.headers.get('content-type') ?? ''
   const isJson = contentType.includes('application/json')
   const payload = isJson ? await res.json() : null
@@ -40,6 +40,11 @@ async function parseResponse(res) {
     error.code = backendError?.code ?? backendError?.error ?? null
     error.details = backendError?.details ?? payload?.detail ?? null
     error.payload = payload
+
+    if (res.status === 401 && hadToken && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth:session-expired'))
+    }
+
     throw error
   }
 
@@ -69,7 +74,7 @@ async function request(method, endpoint, body, options = {}) {
     body: body === undefined ? undefined : (isFormData ? body : JSON.stringify(body)),
     signal: options.signal,
   })
-  return parseResponse(res)
+  return parseResponse(res, { hadToken: !!token })
 }
 
 async function requestRaw(method, endpoint, body, options = {}) {

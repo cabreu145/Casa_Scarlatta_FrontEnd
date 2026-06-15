@@ -232,7 +232,7 @@ function formatHistoricalItem(item = {}) {
 
 function buildTransactionRows({ sales = [], expenses = [] }) {
   const salesRows = sales.map((sale) => ({
-    id: `sale-${sale.id ?? sale.folio}`,
+    id: `sale-${sale.folio ?? sale.id}`,
     fecha: sale.createdAt,
     concepto: sale.customerName || sale.customerEmail || 'Venta mostrador',
     tipo: 'venta',
@@ -390,7 +390,6 @@ export default function FinanzasApiSection({ inPanel = false }) {
     || recentSalesQuery.error
     || historicalQuery.error
   )
-  const hasAnyLoading = (kpisQuery.isLoading && !kpisQuery.data) || (historicalQuery.isLoading && !historicalQuery.data)
 
   const txRows = useMemo(
     () => buildTransactionRows({ sales: recentSales, expenses: expensesItems.length ? expensesItems : recentExpenses }),
@@ -536,16 +535,6 @@ export default function FinanzasApiSection({ inPanel = false }) {
     borderRadius: 12,
     padding: '20px 24px',
     marginBottom: 16,
-  }
-
-  if (hasAnyLoading) {
-    return (
-      <div className={inPanel ? undefined : styles.page}>
-        <div style={{ padding: 24, color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
-          Cargando finanzas...
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -1177,7 +1166,7 @@ export default function FinanzasApiSection({ inPanel = false }) {
               </div>
               <div className={styles.miniList}>
                 {recentSales.length > 0 ? recentSales.map((sale) => (
-                  <div key={sale.id ?? sale.folio} className={styles.miniItem}>
+                  <div key={sale.folio ?? sale.id} className={styles.miniItem}>
                     <div className={styles.miniAvatar}>{(sale.customerName || sale.customerEmail || 'V').charAt(0).toUpperCase()}</div>
                     <div>
                       <div className={styles.miniName}>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</div>

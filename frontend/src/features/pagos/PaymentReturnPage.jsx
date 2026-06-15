@@ -228,7 +228,13 @@ export default function PaymentReturnPage() {
               </div>
               <div style={{ padding: 12, borderRadius: 16, background: '#fff', border: '1px solid rgba(42, 26, 31, 0.08)' }}>
                 <div style={{ fontSize: 12, color: 'var(--muted)' }}>Créditos</div>
-                <div style={{ fontWeight: 600 }}>{paymentSummary.credits ?? 'N/A'}</div>
+                <div style={{ fontWeight: 600 }}>
+                  {paymentSummary.credits == null
+                    ? 'N/A'
+                    : paymentSummary.credits >= 999
+                      ? '∞'
+                      : paymentSummary.credits}
+                </div>
               </div>
               <div style={{ padding: 12, borderRadius: 16, background: '#fff', border: '1px solid rgba(42, 26, 31, 0.08)' }}>
                 <div style={{ fontSize: 12, color: 'var(--muted)' }}>Monto</div>

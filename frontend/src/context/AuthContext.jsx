@@ -1,4 +1,6 @@
 ﻿import { createContext, useContext, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuthStore } from '@/stores/authStore'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import { mockUsers } from '@/data/mockUsers'
@@ -43,6 +45,22 @@ export function AuthProvider({ children }) {
   const [loading, setLocalLoading] = useState(true)
   const loadFinancialState = useFinancialStateStore((s) => s.loadFinancialState)
   const clearFinancialState = useFinancialStateStore((s) => s.clearFinancialState)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!useApiAuth) return
+
+    const handleSessionExpired = () => {
+      clearToken()
+      clearFinancialState()
+      storeLogout()
+      toast.error('Tu sesión expiró. Inicia sesión de nuevo.')
+      navigate('/login', { replace: true })
+    }
+
+    window.addEventListener('auth:session-expired', handleSessionExpired)
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired)
+  }, [navigate, clearFinancialState, storeLogout])
 
   useEffect(() => {
     const bootstrap = async () => {

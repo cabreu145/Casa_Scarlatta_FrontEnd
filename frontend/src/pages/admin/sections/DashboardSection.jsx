@@ -386,7 +386,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
       sales: { count: 0, subtotalMxn: 0, taxMxn: 0, totalMxn: 0 },
       expenses: { count: 0, totalMxn: 0 },
       net: { totalMxn: 0 },
-      paymentMethods: { cashMxn: 0, cardMxn: 0, transferMxn: 0, otherMxn: 0 },
+      paymentMethods: { cashMxn: 0, cardMxn: 0, transferMxn: 0, mercadoPagoMxn: 0, otherMxn: 0 },
       cashClosing: { isClosed: false, lastClosingDate: null, todayClosingId: null },
       operations: { productsSold: 0, packagesSold: 0, activeClients: 0, reservationsCount: 0 },
     }
@@ -517,6 +517,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
                 ['Efectivo', kpis.paymentMethods.cashMxn],
                 ['Tarjeta', kpis.paymentMethods.cardMxn],
                 ['Transferencia', kpis.paymentMethods.transferMxn],
+                ['Mercado Pago', kpis.paymentMethods.mercadoPagoMxn],
                 ['Otro', kpis.paymentMethods.otherMxn],
               ].map(([label, amount]) => (
                 <div key={label} className={styles.miniItem}>
@@ -585,7 +586,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
             </div>
             <div className={styles.miniList}>
               {recentSales.length > 0 ? recentSales.map((sale) => (
-                <div key={sale.id ?? sale.folio} className={styles.miniItem}>
+                <div key={sale.folio ?? sale.id} className={styles.miniItem}>
                   <div className={styles.miniAvatar}>{(sale.customerName || sale.customerEmail || 'V').charAt(0).toUpperCase()}</div>
                   <div>
                     <div className={styles.miniName}>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</div>

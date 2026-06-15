@@ -11,8 +11,8 @@ import PageContentEditor from '@/components/admin/site/PageContentEditor'
 import FooterEditor from '@/components/admin/site/FooterEditor'
 
 const SITE_TABS = [
-  { id: 'suet', label: 'SUET / STRYDE X' },
-  { id: 'flow', label: 'FLOW / SLOW' },
+  { id: 'suet', label: 'STRYDE X' },
+  { id: 'flow', label: 'SLOW' },
   { id: 'yoga', label: 'YOGA' },
   { id: 'footer', label: 'Footer' },
 ]
@@ -189,14 +189,14 @@ export default function SiteConfigurationSection({ currentUser = null }) {
         <>
           <PageContentEditor
             pageKey="suet"
-            title="SUET / STRYDE X"
+            title="STRYDE X"
             value={draft.pages?.suet ?? createDefaultSuetConfig()}
             onChange={(next) => updatePage('suet', next)}
             onUploadFile={uploadMedia}
             canEdit={canEdit}
           />
           <button type="button" onClick={() => handleSave('suet')} disabled={!canEdit || !currentDirty} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#7B1E22', color: '#fff', cursor: canEdit ? 'pointer' : 'not-allowed' }}>
-            Guardar SUET
+            Guardar STRYDE X
           </button>
         </>
       )}
@@ -205,14 +205,14 @@ export default function SiteConfigurationSection({ currentUser = null }) {
         <>
           <PageContentEditor
             pageKey="flow"
-            title="FLOW / SLOW"
+            title="SLOW"
             value={draft.pages?.flow ?? createDefaultFlowConfig()}
             onChange={(next) => updatePage('flow', next)}
             onUploadFile={uploadMedia}
             canEdit={canEdit}
           />
           <button type="button" onClick={() => handleSave('flow')} disabled={!canEdit || !currentDirty} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#7B1E22', color: '#fff', cursor: canEdit ? 'pointer' : 'not-allowed' }}>
-            Guardar FLOW
+            Guardar SLOW
           </button>
         </>
       )}

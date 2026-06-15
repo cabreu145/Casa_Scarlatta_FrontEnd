@@ -73,10 +73,10 @@ export default function PricingSection() {
     }
   }, [])
 
-  const paquetes = useMemo(
-    () => (useApiPackages ? apiPackages : fallbackPackages),
-    [apiPackages, fallbackPackages]
-  )
+  const paquetes = useMemo(() => {
+    const source = useApiPackages ? apiPackages : fallbackPackages
+    return source.filter((pkg) => !/\(interno\)/i.test(pkg?.nombre ?? pkg?.name ?? ''))
+  }, [apiPackages, fallbackPackages])
 
   const handleOpenPayments = () => {
     const redirect = buildPackagePurchaseRedirect(null)

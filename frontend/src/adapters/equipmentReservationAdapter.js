@@ -56,10 +56,13 @@ export function mapSpotHoldResponseToFrontend(payload = {}) {
   }
 }
 
-export function mapReservationHoldPayload({ occurrenceId, spotId }) {
+export function mapReservationHoldPayload({ occurrenceId, spotId, userId }) {
   const payload = {
     occurrence_id: toNumberOrNull(occurrenceId),
     spot_id: toNumberOrNull(spotId),
+  }
+  if (userId !== undefined && userId !== null && userId !== '') {
+    payload.user_id = toNumberOrNull(userId)
   }
   return payload
 }
