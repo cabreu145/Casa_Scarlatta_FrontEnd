@@ -97,7 +97,7 @@ export default function Flow() {
           <div className={styles.panelQuoteOverlay} />
           <div className={styles.panelQuoteContent}>
             <span className={styles.bigQuoteMark}>&ldquo;</span>
-            <p className={styles.quoteText}>{quote.quote}</p>
+            <p className={styles.quoteText}>{quote.body}</p>
           </div>
         </div>
       </div>
