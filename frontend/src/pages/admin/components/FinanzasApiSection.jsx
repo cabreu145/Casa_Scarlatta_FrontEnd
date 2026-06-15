@@ -232,7 +232,7 @@ function formatHistoricalItem(item = {}) {
 
 function buildTransactionRows({ sales = [], expenses = [] }) {
   const salesRows = sales.map((sale) => ({
-    id: `sale-${sale.id ?? sale.folio}`,
+    id: `sale-${sale.folio ?? sale.id}`,
     fecha: sale.createdAt,
     concepto: sale.customerName || sale.customerEmail || 'Venta mostrador',
     tipo: 'venta',
@@ -1166,7 +1166,7 @@ export default function FinanzasApiSection({ inPanel = false }) {
               </div>
               <div className={styles.miniList}>
                 {recentSales.length > 0 ? recentSales.map((sale) => (
-                  <div key={sale.id ?? sale.folio} className={styles.miniItem}>
+                  <div key={sale.folio ?? sale.id} className={styles.miniItem}>
                     <div className={styles.miniAvatar}>{(sale.customerName || sale.customerEmail || 'V').charAt(0).toUpperCase()}</div>
                     <div>
                       <div className={styles.miniName}>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</div>

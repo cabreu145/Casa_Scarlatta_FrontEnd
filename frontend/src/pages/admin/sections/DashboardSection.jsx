@@ -585,7 +585,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
             </div>
             <div className={styles.miniList}>
               {recentSales.length > 0 ? recentSales.map((sale) => (
-                <div key={sale.id ?? sale.folio} className={styles.miniItem}>
+                <div key={sale.folio ?? sale.id} className={styles.miniItem}>
                   <div className={styles.miniAvatar}>{(sale.customerName || sale.customerEmail || 'V').charAt(0).toUpperCase()}</div>
                   <div>
                     <div className={styles.miniName}>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</div>
