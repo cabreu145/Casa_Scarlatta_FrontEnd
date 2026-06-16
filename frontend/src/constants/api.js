@@ -225,6 +225,8 @@ export const ENDPOINTS = {
     withQuery('/reportes/top-clases', { from, to, limit }),
   reportesOcupacionPorDisciplina: ({ from, to } = {}) =>
     withQuery('/reportes/ocupacion-por-disciplina', { from, to }),
+  reportesClasesReservas: ({ from, to } = {}) =>
+    withQuery('/reportes/clases-reservas', { from, to }),
 
   coaches: withPrefix('/coaches'),
   coachesPaginated: ({ page, pageSize, search, status }) =>

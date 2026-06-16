@@ -206,11 +206,11 @@ export default function UsuariosSection({
           </table>
         </div>
 
-        {useApiMode && totalPages > 1 && (
+        {useApiMode && (page > 1 || usuariosVisibles.length >= pageSize || totalPages > 1) && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 12 }}>
             <button className={`${styles.btn} ${styles.btnGhost}`} disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Anterior</button>
-            <span>Pagina {page} de {totalPages}</span>
-            <button className={`${styles.btn} ${styles.btnGhost}`} disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>Siguiente</button>
+            <span>Pagina {page}{totalPages > 1 ? ` de ${totalPages}` : ''}</span>
+            <button className={`${styles.btn} ${styles.btnGhost}`} disabled={page >= totalPages && usuariosVisibles.length < pageSize} onClick={() => onPageChange(page + 1)}>Siguiente</button>
           </div>
         )}
 
