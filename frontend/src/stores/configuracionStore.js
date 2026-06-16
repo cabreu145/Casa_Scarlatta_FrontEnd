@@ -73,9 +73,9 @@ const DEFAULTS = {
   // [BACKEND] → configuracion.imagenes (object)
   // Por ahora el admin pega URLs. Con backend: uploads reales.
   imagenBannerClases:  '/fotos/gym_banner_stryde.jpg',
-  imagenStryde:        'https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/stride-hero_zdajlh.jpg',
-  imagenSlow:          'https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/yoga_studio_d8ptjd.jpg',
-  imagenCoachesBanner: '/fotos/coaches_banner.jpg',
+  imagenStryde:        'https://res.cloudinary.com/dtj8woibw/image/upload/w_1600,f_auto,q_auto/v1781473010/stride-hero_zdajlh.jpg',
+  imagenSlow:          'https://res.cloudinary.com/dtj8woibw/image/upload/w_1600,f_auto,q_auto/v1781473010/yoga_studio_d8ptjd.jpg',
+  imagenCoachesBanner: 'https://res.cloudinary.com/dtj8woibw/image/upload/w_1600,f_auto,q_auto/v1781473010/stride-hero_zdajlh.jpg',
 }
 
 export const useConfiguracionStore = create(
