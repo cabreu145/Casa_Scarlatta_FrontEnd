@@ -82,6 +82,7 @@ export const ENDPOINTS = {
   adminClientById: (id) => withPrefix(`/clientes/${id}`),
   adminClientPackages: (id) => withPrefix(`/clientes/${id}/paquetes`),
   adminClientCredits: (id) => withPrefix(`/clientes/${id}/credits`),
+  clientMembershipExpiration: (clientId, membershipId) => withPrefix(`/clientes/${clientId}/memberships/${membershipId}/expiration`),
   adminClientMembershipBeneficiaries: (clientId, membershipId) =>
     withPrefix(`/clientes/${clientId}/memberships/${membershipId}/beneficiaries`),
   adminClientMembershipBeneficiaryById: (clientId, membershipId, beneficiaryId) =>

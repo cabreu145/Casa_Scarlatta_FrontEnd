@@ -94,6 +94,7 @@ import {
   deleteClientApi,
   getClientByIdApi,
   getClientsPaginatedApi,
+  updateClientMembershipExpirationApi,
   updateClientApi,
 } from '@/services/clientsApiService'
 import { getCoachesPaginatedApi, getPublicCoachesApi } from '@/services/coachesApiService'
@@ -1274,10 +1275,23 @@ export function useAdminClientDetailQuery(clientId, { enabled = false } = {}) {
 function invalidateAdminClients(queryClient, clientId) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
+    queryClient.invalidateQueries({ queryKey: ['clients'] }),
     clientId ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(clientId) }) : Promise.resolve(),
+    clientId ? queryClient.invalidateQueries({ queryKey: queryKeys.clients.detail(clientId) }) : Promise.resolve(),
     queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+    queryClient.invalidateQueries({ queryKey: ['activity'] }),
+  ])
+}
+
+function invalidateClientMembershipExpirationRelatedQueries(queryClient, clientId) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
+    queryClient.invalidateQueries({ queryKey: ['clients'] }),
+    clientId ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(clientId) }) : Promise.resolve(),
+    clientId ? queryClient.invalidateQueries({ queryKey: queryKeys.clients.detail(clientId) }) : Promise.resolve(),
+    queryClient.invalidateQueries({ queryKey: ['activity'] }),
   ])
 }
 
@@ -1327,6 +1341,19 @@ export function useAdjustClientCreditsMutation() {
     mutationFn: ({ id, amount, reason, notes }) => adjustClientCreditsApi(id, { amount, reason, notes }),
     onSuccess: async (_, variables) => {
       await invalidateAdminClients(queryClient, variables?.id)
+    },
+  })
+}
+
+export function useUpdateClientMembershipExpirationMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ clientId, membershipId, expiresAt, notes }) => updateClientMembershipExpirationApi(clientId, membershipId, {
+      expires_at: expiresAt,
+      notes,
+    }),
+    onSuccess: async (_data, variables) => {
+      await invalidateClientMembershipExpirationRelatedQueries(queryClient, variables?.clientId)
     },
   })
 }
