@@ -110,7 +110,10 @@ function resolveReservationErrorMessage(error) {
   if (code.includes('INSUFFICIENT_CREDITS')) return 'No tienes créditos suficientes.'
   if (code.includes('OCCURRENCE_FULL')) return 'La clase ya está llena.'
   if (code.includes('OCCURRENCE_NOT_RESERVABLE')) return 'Esta ocurrencia aún no tiene spots configurados.'
-  return 'No pudimos completar tu reserva.'
+  if (code.includes('ALREADY_RESERVED') || code.includes('YA TIENE')) return 'Este cliente ya tiene una reserva en esta clase.'
+  if (code.includes('NO_ACTIVE_MEMBERSHIP') || code.includes('SIN MEMBRESIA') || code.includes('SIN MEMBRESÍA')) return 'El cliente no tiene membresía activa.'
+  const rawMsg = error?.message ?? error?.details ?? ''
+  return rawMsg ? `Error: ${rawMsg}` : 'No pudimos completar tu reserva.'
 }
 
 function formatReservationError(error) {

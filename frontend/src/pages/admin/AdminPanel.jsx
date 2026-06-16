@@ -4176,7 +4176,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
           return (
             <EquipmentReservationPanel
               occurrenceId={occurrenceId}
-              classId={adminSeatSelector.cls.id}
+              classId={adminSeatSelector.cls.claseId ?? adminSeatSelector.cls.classId ?? adminSeatSelector.cls.id}
               userId={adminSeatSelector.userId}
               financialState={{
                 financialState: targetClient ?? null,

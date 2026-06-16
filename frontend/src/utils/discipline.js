@@ -1,7 +1,7 @@
 export function normalizeDiscipline(value) {
   const normalized = String(value ?? '').trim().toLowerCase()
-  if (normalized === 'stryde' || normalized === 'stride') return 'stryde'
-  if (normalized === 'slow') return 'slow'
+  if (normalized.includes('stryde') || normalized.includes('stride')) return 'stryde'
+  if (normalized === 'slow' || normalized.includes('slow')) return 'slow'
   return null
 }
 
