@@ -83,6 +83,7 @@ import {
   useDeleteProductMutation,
   useOccurrenceRosterQuery,
   useProductCategoriesQuery,
+  useUpdateClientMembershipExpirationMutation,
   useUpdateProductMutation,
 } from '@/hooks/useApiQueries'
 import { COACHES_SELECTOR_PAGE_SIZE } from './adminCoachesApiUtils'
@@ -507,6 +508,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const [compartirAdminData, setCompartirAdminData] = useState({ activo: false, participantes: [] })
   const [sharedMembershipEmails, setSharedMembershipEmails] = useState({})
   const [sharedMembershipActionKey, setSharedMembershipActionKey] = useState('')
+  const [membershipExpirationModal, setMembershipExpirationModal] = useState(null)
+  const [membershipExpirationForm, setMembershipExpirationForm] = useState({ expiresAt: '', notes: '' })
   const [cederClaseUserId, setCederClaseUserId] = useState('')
   // Asignación pendiente de pago: se aplica al procesar la venta en POS
   const [pendingAsignacion, setPendingAsignacion] = useState(null)
@@ -521,6 +524,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const createProductMutation = useCreateProductMutation()
   const updateProductMutation = useUpdateProductMutation()
   const deleteProductMutation = useDeleteProductMutation()
+  const updateClientMembershipExpirationMutation = useUpdateClientMembershipExpirationMutation()
   const productCategoriesQuery = useProductCategoriesQuery({
     page: 1,
     pageSize: 100,
@@ -626,6 +630,24 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     }
     setModalVerUsuario(client)
   }, [canReadUsers, denyPermission, useApiClients])
+
+  const openMembershipExpirationEditor = useCallback((client) => {
+    const membership = client?.activeMembership ?? null
+    if (!membership?.membershipId) {
+      toast.error('No hay membresía activa para editar.')
+      return
+    }
+    setMembershipExpirationModal({
+      clientId: client.id,
+      membershipId: membership.membershipId,
+      packageName: membership.packageName ?? client.paquete ?? 'Membresía',
+      expiresAt: membership.expiresAt ?? '',
+    })
+    setMembershipExpirationForm({
+      expiresAt: membership.expiresAt ?? '',
+      notes: '',
+    })
+  }, [])
 
   const refreshClientDetail = useCallback(async (clientId) => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(clientId) })
@@ -3382,6 +3404,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
         const reservasOrdenadas = reservasU.slice().reverse()
         const paginatedReservasModal = paginateArray(reservasOrdenadas, { page: reservasModalPage, pageSize: 8 })
         const paqActivo = packagesForClients.find(p => getPackageDisplayName(p) === u.paquete)
+        const activeMembership = u.activeMembership ?? null
         const restantes = Number(u.clasesPaquete ?? 0)
         const tag   = u.activo && u.paquete ? 'green' : !u.paquete ? 'red' : 'yellow'
         const label = u.activo && u.paquete ? 'Activo' : !u.paquete ? 'Sin paquete' : 'Inactivo'
@@ -3440,6 +3463,40 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       </div>
                     ))}
                 </div>
+                {activeMembership ? (
+                  <div style={{ marginTop: 18, padding: '16px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>
+                      Membresía activa
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Paquete</div>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{activeMembership.packageName ?? u.paquete ?? '—'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Créditos disponibles</div>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{activeMembership.creditsAvailable ?? restantes ?? 0}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Vigencia</div>
+                        <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{activeMembership.expiresAt ?? '—'}</div>
+                      </div>
+                      {useApiClients && (
+                        <button
+                          className={`${styles.btn} ${styles.btnPrimary}`}
+                          style={{ whiteSpace: 'nowrap' }}
+                          onClick={() => openMembershipExpirationEditor(u)}
+                        >
+                          Editar vigencia
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 18, padding: '14px 16px', borderRadius: 12, border: '1px dashed var(--muted-2)', color: 'var(--muted)', fontSize: 13 }}>
+                    No hay membresía activa para editar.
+                  </div>
+                )}
                 {useApiClients && (
                   <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <input className={styles.formInput} value={editClientForm.nombre} placeholder="Nombre"
@@ -3886,6 +3943,98 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       })()}
 
       {/* ── GESTIONAR DISCIPLINAS ── */}
+      {membershipExpirationModal && (
+        <div
+          className={`${styles.modalOverlay} ${styles.open}`}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setMembershipExpirationModal(null)
+          }}
+        >
+          <div className={styles.modal} style={{ maxWidth: 440 }}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Editar vigencia</div>
+              <button className={styles.modalClose} onClick={() => setMembershipExpirationModal(null)}>×</button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
+                {membershipExpirationModal.packageName ? (
+                  <span>
+                    Membresía: <strong style={{ color: 'rgba(255,255,255,0.9)' }}>{membershipExpirationModal.packageName}</strong>
+                  </span>
+                ) : null}
+              </div>
+              <div>
+                <label className={styles.formLabel}>Nueva fecha de vencimiento</label>
+                <input
+                  className={styles.formInput}
+                  type="date"
+                  value={membershipExpirationForm.expiresAt}
+                  onChange={(event) => setMembershipExpirationForm((form) => ({ ...form, expiresAt: event.target.value }))}
+                />
+              </div>
+              <div>
+                <label className={styles.formLabel}>Nota / motivo opcional</label>
+                <textarea
+                  className={styles.formInput}
+                  rows={3}
+                  value={membershipExpirationForm.notes}
+                  onChange={(event) => setMembershipExpirationForm((form) => ({ ...form, notes: event.target.value }))}
+                  placeholder="Extensión manual por cortesía"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+              <button className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setMembershipExpirationModal(null)}>
+                Cancelar
+              </button>
+              <button
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                disabled={updateClientMembershipExpirationMutation.isPending}
+                onClick={async () => {
+                  const clientId = membershipExpirationModal?.clientId
+                  const membershipId = membershipExpirationModal?.membershipId
+                  const expiresAt = String(membershipExpirationForm.expiresAt ?? '').trim()
+                  const notes = String(membershipExpirationForm.notes ?? '').trim()
+                  if (!clientId || !membershipId) {
+                    toast.error('No hay membresía activa para editar.')
+                    return
+                  }
+                  if (!/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) {
+                    toast.error('Ingresa una fecha válida en formato YYYY-MM-DD.')
+                    return
+                  }
+                  try {
+                    await updateClientMembershipExpirationMutation.mutateAsync({
+                      clientId,
+                      membershipId,
+                      expiresAt,
+                      notes,
+                    })
+                    toast.success('Vigencia actualizada')
+                    setMembershipExpirationModal(null)
+                  } catch (error) {
+                    const code = String(error?.code ?? '').trim()
+                    const mappedMessage = {
+                      CLIENT_NOT_FOUND: 'No se encontró el cliente.',
+                      CLIENT_NOT_CLIENT: 'El cliente no es válido.',
+                      MEMBERSHIP_NOT_FOUND: 'No se encontró la membresía.',
+                      MEMBERSHIP_CLIENT_MISMATCH: 'La membresía no pertenece a este cliente.',
+                      MEMBERSHIP_EXPIRATION_INVALID: 'La fecha de vigencia no es válida.',
+                      MEMBERSHIP_EXPIRATION_UPDATE_FORBIDDEN: 'No tienes permiso para editar la vigencia.',
+                    }[code]
+                    toast.error(mappedMessage ?? error?.message ?? 'No se pudo actualizar la vigencia.')
+                  }
+                }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalDisciplinas && (
         <div
           className={`${styles.modalOverlay} ${styles.open}`}

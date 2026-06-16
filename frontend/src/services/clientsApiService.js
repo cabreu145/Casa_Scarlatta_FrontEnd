@@ -1,6 +1,7 @@
 import { ENDPOINTS } from '@/constants/api'
-import { httpDelete, httpGet, httpPost, httpPut } from '@/lib/http'
+import { httpDelete, httpGet, httpPatch, httpPost, httpPut } from '@/lib/http'
 import { mapBackendClientToFrontend } from '@/adapters/clientAdapter'
+import { mapBackendMembershipToFrontend } from '@/adapters/membershipAdapter'
 import { normalizePaginatedResponse } from '@/adapters/paginationAdapter'
 import {
   ADMIN_CLIENTS_PAGE_SIZE,
@@ -65,4 +66,12 @@ export async function adjustClientCreditsApi(id, { amount, reason = 'manual_adju
     notes: String(notes ?? '').trim() || null,
   })
   return mapBackendClientToFrontend(response)
+}
+
+export async function updateClientMembershipExpirationApi(clientId, membershipId, payload = {}) {
+  const response = await httpPatch(ENDPOINTS.clientMembershipExpiration(clientId, membershipId), {
+    expires_at: String(payload.expires_at ?? payload.expiresAt ?? '').trim(),
+    notes: String(payload.notes ?? '').trim() || null,
+  })
+  return mapBackendMembershipToFrontend(response)
 }
