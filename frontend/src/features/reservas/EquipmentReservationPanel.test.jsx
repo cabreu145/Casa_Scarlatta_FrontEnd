@@ -23,6 +23,7 @@ vi.mock('@/stores/financialStateStore', () => ({
 }))
 
 function buildSlowResponse() {
+  const labels = ['01', '02', '03', '04', '06', '07', '08', '09', '10']
   return {
     occurrence_id: 5,
     discipline: 'slow',
@@ -32,9 +33,9 @@ function buildSlowResponse() {
     start_at: '2026-06-05T16:00:00',
     end_at: '2026-06-05T16:50:00',
     server_now: '2026-06-03T02:30:00',
-    spots: Array.from({ length: 10 }, (_, index) => ({
+    spots: labels.map((label, index) => ({
       spot_id: index + 1,
-      label: String(index + 1).padStart(2, '0'),
+      label,
       equipment_type: 'mat',
       row: index < 5 ? 1 : 2,
       col: (index % 5) + 1,
@@ -105,7 +106,7 @@ describe('EquipmentReservationPanel', () => {
     }
   })
 
-  test('slow renderiza 10 tapetes, coach no clicable y confirma reserva con hold', async () => {
+  test('slow renderiza 9 tapetes reservables, mantiene coach en 05 y confirma reserva con hold', async () => {
     const user = userEvent.setup()
     spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
     createSpotHoldMock.mockResolvedValue({
@@ -153,6 +154,7 @@ describe('EquipmentReservationPanel', () => {
     expect(slowGrid.children[2]).toHaveAttribute('data-testid', 'slow-coach-slot')
     expect(slowGrid.children[3]).toHaveAttribute('data-testid', 'slow-spot-07')
     expect(slowGrid.children[4]).toHaveAttribute('data-testid', 'slow-spot-09')
+    expect(screen.queryByTestId('slow-spot-05')).not.toBeInTheDocument()
     expect(screen.getByTestId('slow-spot-10')).toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('slow-coach-slot'))
@@ -160,14 +162,14 @@ describe('EquipmentReservationPanel', () => {
 
     await user.click(slowSpot01)
     await waitFor(() => {
-      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotId: 1 })
+      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotId: 1, userId: 3 })
       expect(slowSpot01).toHaveAttribute('aria-pressed', 'true')
     })
 
     await user.click(slowSpot02)
     await waitFor(() => {
       expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 123, occurrenceId: 5 })
-      expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 5, spotId: 2 })
+      expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 5, spotId: 2, userId: 3 })
     })
 
     await user.click(screen.getByRole('button', { name: /Confirmar reserva/i }))
@@ -230,7 +232,7 @@ describe('EquipmentReservationPanel', () => {
 
     await user.click(bench01)
     await waitFor(() => {
-      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 6, spotId: 1 })
+      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 6, spotId: 1, userId: 3 })
       expect(bench01).toHaveAttribute('aria-pressed', 'true')
     })
     expect(screen.getByText('ROTATION FLOW')).toBeInTheDocument()
@@ -238,7 +240,7 @@ describe('EquipmentReservationPanel', () => {
     await user.click(treadmill01)
     await waitFor(() => {
       expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 201, occurrenceId: 6 })
-      expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 6, spotId: 10 })
+      expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 6, spotId: 10, userId: 3 })
       expect(screen.getByTestId('stryde-spot-bench-01')).toHaveAttribute('aria-pressed', 'false')
       expect(screen.getByTestId('stryde-spot-treadmill-01')).toHaveAttribute('aria-pressed', 'true')
     })
@@ -287,7 +289,7 @@ describe('EquipmentReservationPanel', () => {
 
     await user.click(slowSpot01)
     await waitFor(() => {
-      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotId: 1 })
+      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotId: 1, userId: 3 })
       expect(slowSpot01).toHaveAttribute('aria-pressed', 'true')
     })
 
@@ -295,7 +297,7 @@ describe('EquipmentReservationPanel', () => {
     await waitFor(() => {
       expect(releaseSpotHoldMock).toHaveBeenCalledTimes(1)
       expect(releaseSpotHoldMock).toHaveBeenCalledWith({ holdId: 901, occurrenceId: 5 })
-      expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 5, spotId: 2 })
+      expect(createSpotHoldMock).toHaveBeenLastCalledWith({ occurrenceId: 5, spotId: 2, userId: 3 })
     })
 
     const closeButton = screen.getByRole('button', { name: /cerrar/i })

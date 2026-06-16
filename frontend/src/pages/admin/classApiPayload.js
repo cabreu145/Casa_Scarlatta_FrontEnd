@@ -1,3 +1,5 @@
+import { getMapCapacityByDiscipline } from '@/utils/classCapacity'
+
 function toNumber(value, fallback = null) {
   const n = Number(value)
   return Number.isFinite(n) ? n : fallback
@@ -33,13 +35,14 @@ export function buildClaseApiPayload({ form, coaches, fallbackCoachId = null }) 
   const durationMinutes = Number(form?.duracion) || 50
   const discipline = resolveDisciplineFromForm(form)
   const status = resolveApiClassStatus(form?.status ?? form?.estado ?? 'programada')
+  const derivedCapacity = getMapCapacityByDiscipline(discipline)
   return {
     name: form?.nombre ?? '',
     discipline,
     coach_id: coachId,
-    capacity_max: form?.cupoMax != null
-      ? Number(form?.cupoMax) || (discipline === 'slow' ? 9 : 15)
-      : (discipline === 'slow' ? 9 : 15),
+    capacity_max: derivedCapacity ?? (form?.cupoMax != null
+      ? Number(form?.cupoMax) || 15
+      : 15),
     duration_minutes: durationMinutes,
     description: form?.descripcion ?? '',
     status,
