@@ -53,6 +53,52 @@ describe('ActividadSection', () => {
               action: 'cancel_reservation',
               title: 'Actividad de cancelaciones',
               description: 'Se cancelo una reserva',
+              summary: 'Administrador Scarlatta canceló una reserva para Cliente Demo.',
+              actorName: 'Cliente Demo',
+              actorRole: 'cliente',
+              entityType: 'reservation',
+              entityId: 6,
+              entityLabel: 'Reserva #6 · Cliente Demo · SLOW · Lugar 10',
+              metadataDisplay: [
+                { key: 'target_user_id', label: 'Cliente', value: 'Cliente Demo', id: 3 },
+                { key: 'spot_id', label: 'Lugar', value: 'Tapete 10', id: 10 },
+              ],
+              metadata: {
+                reservation_id: 6,
+                role: 'cliente',
+                user_id: 3,
+              },
+              createdAt: '2026-06-09T19:52:07.371772',
+            },
+          ],
+        },
+      }),
+    )
+
+    render(<ActividadSection useApiMode />)
+
+    expect(screen.getByText('Actividad de cancelaciones')).toBeInTheDocument()
+    expect(screen.getByText('Administrador Scarlatta canceló una reserva para Cliente Demo.')).toBeInTheDocument()
+    expect(screen.getByText('Cliente Demo · cliente')).toBeInTheDocument()
+    expect(screen.getByText('Reserva #6 · Cliente Demo · SLOW · Lugar 10')).toBeInTheDocument()
+    expect(screen.getByText('Cliente: Cliente Demo')).toBeInTheDocument()
+    expect(screen.getByText('Lugar: Tapete 10')).toBeInTheDocument()
+    expect(screen.queryByText('reservation_id: 6')).not.toBeInTheDocument()
+    expect(useActividadStoreMock).not.toHaveBeenCalled()
+  })
+
+  it('mantiene fallback técnico cuando backend no manda campos humanos', () => {
+    useActivityQueryMock.mockReturnValue(
+      buildQuery({
+        data: {
+          total: 1,
+          items: [
+            {
+              id: 36,
+              category: 'cancelaciones',
+              action: 'cancel_reservation',
+              title: 'Actividad de cancelaciones',
+              description: 'Se cancelo una reserva',
               actorName: 'Cliente Demo',
               actorRole: 'cliente',
               entityType: 'reservation',
@@ -71,12 +117,9 @@ describe('ActividadSection', () => {
 
     render(<ActividadSection useApiMode />)
 
-    expect(screen.getByText('Actividad de cancelaciones')).toBeInTheDocument()
     expect(screen.getByText('Se cancelo una reserva')).toBeInTheDocument()
-    expect(screen.getByText('Cliente Demo · cliente')).toBeInTheDocument()
     expect(screen.getByText('reservation #6')).toBeInTheDocument()
     expect(screen.getByText('reservation_id: 6')).toBeInTheDocument()
-    expect(useActividadStoreMock).not.toHaveBeenCalled()
   })
 
   it('muestra loading, empty y error', () => {

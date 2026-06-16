@@ -8,6 +8,18 @@ function normalizeMetadata(value) {
   return value
 }
 
+function normalizeMetadataDisplay(value) {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item) => item && typeof item === 'object')
+    .map((item) => ({
+      key: item.key ?? null,
+      label: item.label ?? null,
+      value: item.value ?? '',
+      id: item.id ?? null,
+    }))
+}
+
 export function mapBackendActivityToFrontend(item = {}) {
   return {
     id: item.id ?? null,
@@ -20,6 +32,9 @@ export function mapBackendActivityToFrontend(item = {}) {
     actorRole: item.actor_role ?? item.actorRole ?? null,
     entityType: item.entity_type ?? item.entityType ?? null,
     entityId: item.entity_id ?? item.entityId ?? null,
+    entityLabel: item.entity_label ?? item.entityLabel ?? null,
+    summary: item.summary ?? null,
+    metadataDisplay: normalizeMetadataDisplay(item.metadata_display ?? item.metadataDisplay ?? []),
     metadata: normalizeMetadata(item.metadata ?? null),
     createdAt: item.created_at ?? item.createdAt ?? null,
   }

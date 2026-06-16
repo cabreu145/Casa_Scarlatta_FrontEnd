@@ -708,7 +708,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           border: '1px solid rgba(123,31,46,0.25)',
           borderRadius: 8,
         }}>
-          <span style={{ fontSize: 14 }}>??</span>
+          <span style={{ fontSize: 14 }}>📋</span>
           <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#E8A4AD' }}>
             Reportes en rango: <strong>{label}</strong>
           </span>
