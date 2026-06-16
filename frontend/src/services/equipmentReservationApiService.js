@@ -3,6 +3,7 @@ import { httpDelete, httpGet, httpPost } from '@/lib/http'
 import {
   mapOccurrenceSpotsResponseToFrontend,
   mapReservationHoldPayload,
+  mapSpotHoldBatchResponseToFrontend,
   mapSpotHoldResponseToFrontend,
 } from '@/adapters/equipmentReservationAdapter'
 
@@ -29,14 +30,14 @@ export async function getOccurrenceSpotsApi({ occurrenceId }) {
   return request
 }
 
-export async function createSpotHoldApi({ occurrenceId, spotId, userId }) {
+export async function createSpotHoldApi({ occurrenceId, spotId, spotIds, userId }) {
   const endpoint = ENDPOINTS.spotHolds
   if (!endpoint) {
     throw new Error('SPOT_HOLD_ENDPOINT_MISSING')
   }
 
-  const payload = await httpPost(endpoint, mapReservationHoldPayload({ occurrenceId, spotId, userId }))
-  return mapSpotHoldResponseToFrontend(payload ?? {})
+  const payload = await httpPost(endpoint, mapReservationHoldPayload({ occurrenceId, spotId, spotIds, userId }))
+  return mapSpotHoldBatchResponseToFrontend(payload ?? {})
 }
 
 export async function releaseSpotHoldApi({ holdId }) {

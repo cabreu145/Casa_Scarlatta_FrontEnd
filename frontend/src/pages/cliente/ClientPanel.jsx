@@ -142,7 +142,9 @@ function toClsShape(r) {
     displayTime: getClassDisplayTime(r),
     discipline: normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'slow' ? 'SLOW' : normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'stryde' ? 'STRYDE X' : null,
     status:     r.estado,
-    location:   '',
+    location:   r.location ?? '',
+    spotLabel:  r.spotLabel ?? r.spot_label ?? null,
+    equipmentLabel: r.equipmentLabel ?? r.equipment_label ?? r.equipmentType ?? r.equipment_type ?? null,
   }
 }
 
@@ -1287,15 +1289,18 @@ export default function ClientPanel() {
               const dayAvail = getDayAvail(day)
               return dayAvail.length > 0 ? (
                 <div className={s.pubList}>
-                  {dayAvail.map((av, index) => {
-                    const alreadyBooked = reservasUsuario.find((r) => {
-                      if (r.estado !== 'confirmada') return false
-                      if (useApiReservations && av.occurrenceId) return Number(r.occurrenceId) === Number(av.occurrenceId)
-                      return r.claseId === av.id
-                    })
-                    const isFull  = av.spots === 0
-                    const isLow   = av.spots > 0 && av.spots <= 3
-                    const coachFoto = av.coachAvatarUrl ?? av.avatarUrl ?? coachFotoById[String(av.coachId ?? av.coach_id ?? '')] ?? coachFotoByName[av.coach] ?? null
+                    {dayAvail.map((av, index) => {
+                      const alreadyBooked = reservasUsuario.find((r) => {
+                        if (r.estado !== 'confirmada') return false
+                        if (useApiReservations && av.occurrenceId) return Number(r.occurrenceId) === Number(av.occurrenceId)
+                        return r.claseId === av.id
+                      })
+                      const isSpotManagedOccurrence = ['slow', 'stryde'].includes(
+                        normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline)
+                      )
+                      const isFull  = av.spots === 0
+                      const isLow   = av.spots > 0 && av.spots <= 3
+                      const coachFoto = av.coachAvatarUrl ?? av.avatarUrl ?? coachFotoById[String(av.coachId ?? av.coach_id ?? '')] ?? coachFotoByName[av.coach] ?? null
                     return (
                       <div key={`${av.occurrenceId ?? av.id}-${av.time ?? 'sin-hora'}-${index}`} className={`${s.pubCard} ${isFull ? s.pubCardFull : ''}`}>
                         <div className={s.pubAvatarWrap}>
@@ -1322,15 +1327,28 @@ export default function ClientPanel() {
                             const classTimeToken = getClassTimeToken(av)
                             const classTime = classTimeToken ? new Date(day.isoDate + 'T' + classTimeToken + ':00') : null
                             const isPast = classTime ? classTime <= new Date() : false
-                            if (alreadyBooked) {
-                              if (isPast) return (
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
-                                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
-                                  Clase finalizada
-                                </span>
-                              )
-                              return <span className={`${s.statusPill} ${s.statusConfirmada}`}>Reservada</span>
-                            }
+                              if (alreadyBooked) {
+                                if (isPast) return (
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
+                                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
+                                    Clase finalizada
+                                  </span>
+                                )
+                                if (isSpotManagedOccurrence && !isFull) {
+                                  return (
+                                    <>
+                                      <span className={`${s.statusPill} ${s.statusConfirmada}`}>Ya tienes lugar</span>
+                                      <button
+                                        className={s.pubReservarBtn}
+                                        onClick={() => setSeatSelectorClass(av._raw ?? null)}
+                                      >
+                                        Reservar otro
+                                      </button>
+                                    </>
+                                  )
+                                }
+                                return <span className={`${s.statusPill} ${s.statusConfirmada}`}>Reservada</span>
+                              }
                             if (isPast) return (
                               <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                                 <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />

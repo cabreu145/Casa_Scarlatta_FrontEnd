@@ -7,6 +7,7 @@ import {
   useDeleteSpotHoldMutation,
   useCreateReservationMutation,
   useCancelReservationMutation,
+  useCancelMultipleReservationsMutation,
 } from './useApiQueries'
 
 vi.mock('@/services/equipmentReservationApiService', async () => {
@@ -25,6 +26,7 @@ vi.mock('@/services/reservasApiService', async () => {
     ...actual,
     crearReservaApi: vi.fn(),
     cancelarReservaApi: vi.fn(),
+    cancelarReservasMultipleApi: vi.fn(),
     getMisReservasPaginatedApi: vi.fn(),
     getOccurrenceRosterApi: vi.fn(),
   }
@@ -37,6 +39,7 @@ import {
 import {
   crearReservaApi,
   cancelarReservaApi,
+  cancelarReservasMultipleApi,
 } from '@/services/reservasApiService'
 
 const OCCURRENCE_ID = 5
@@ -142,6 +145,33 @@ describe('useApiQueries - asientos/holds/reservas (P0)', () => {
     expectAllInvalidated(queryClient, keys)
   })
 
+  it('useCreateReservationMutation soporta spot_ids y hold_ids', async () => {
+    crearReservaApi.mockResolvedValue({ occurrenceId: OCCURRENCE_ID, reservations: [{ id: 77, spotId: 1 }, { id: 78, spotId: 2 }] })
+
+    const { result } = renderHook(() => useCreateReservationMutation(), { wrapper: wrapper(queryClient) })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        claseId: CLASS_ID,
+        userId: 26,
+        occurrenceId: OCCURRENCE_ID,
+        spotIds: [1, 2],
+        holdIds: [123, 124],
+      })
+    })
+
+    expect(crearReservaApi).toHaveBeenCalledWith({
+      claseId: CLASS_ID,
+      userId: 26,
+      asiento: undefined,
+      occurrenceId: OCCURRENCE_ID,
+      spotId: undefined,
+      holdId: undefined,
+      spotIds: [1, 2],
+      holdIds: [123, 124],
+    })
+  })
+
   it('useCancelReservationMutation invalida reservas, créditos, notificaciones y spots sin necesitar reload', async () => {
     cancelarReservaApi.mockResolvedValue({ ok: true })
     const keys = seedInvalidatableQueries(queryClient)
@@ -157,6 +187,25 @@ describe('useApiQueries - asientos/holds/reservas (P0)', () => {
     })
 
     expect(cancelarReservaApi).toHaveBeenCalledWith(77)
+    expectAllInvalidated(queryClient, keys)
+  })
+
+  it('useCancelMultipleReservationsMutation invalida reservas, créditos y spots sin reload', async () => {
+    cancelarReservasMultipleApi.mockResolvedValue({ cancelledCount: 2, reservations: [] })
+    const keys = seedInvalidatableQueries(queryClient)
+
+    const { result } = renderHook(() => useCancelMultipleReservationsMutation(), { wrapper: wrapper(queryClient) })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        reservationIds: [77, 78],
+        occurrenceId: OCCURRENCE_ID,
+        classId: CLASS_ID,
+        userId: 26,
+      })
+    })
+
+    expect(cancelarReservasMultipleApi).toHaveBeenCalledWith({ reservationIds: [77, 78], userId: 26 })
     expectAllInvalidated(queryClient, keys)
   })
 

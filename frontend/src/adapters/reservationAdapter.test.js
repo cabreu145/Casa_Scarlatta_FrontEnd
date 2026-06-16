@@ -28,6 +28,23 @@ describe('reservationAdapter', () => {
     })
   })
 
+  test('mapCreateReservationPayload crea contrato backend multi con spot_ids y hold_ids', () => {
+    const payload = mapCreateReservationPayload({
+      claseId: 12,
+      userId: 7,
+      occurrenceId: 22,
+      spotIds: [8, 9],
+      holdIds: [123, 124],
+    })
+    expect(payload).toEqual({
+      clase_id: 12,
+      user_id: 7,
+      occurrence_id: 22,
+      spot_ids: [8, 9],
+      hold_ids: [123, 124],
+    })
+  })
+
   test('mapCreateReservationPayload exige hold cuando se usa spot_id', () => {
     expect(() => mapCreateReservationPayload({
       claseId: 12,
@@ -111,6 +128,25 @@ describe('reservationAdapter', () => {
     expect(result).toHaveLength(1)
     expect(result[0].occurrenceId).toBe(500)
     expect(result[0].claseNombre).toBe('Clase #50')
+  })
+
+  test('mapea reservation_id, spot_label y equipment label en respuesta multi', () => {
+    const mapped = mapBackendReservationToFrontend(
+      {
+        reservation_id: 30,
+        user_id: 7,
+        class_id: 2,
+        occurrence_id: 22,
+        status: 'confirmada',
+        spot_label: '03',
+        spot_equipment_type: 'treadmill',
+      },
+      {}
+    )
+
+    expect(mapped.id).toBe(30)
+    expect(mapped.spotLabel).toBe('03')
+    expect(mapped.equipmentLabel).toBe('Caminadora')
   })
 })
 

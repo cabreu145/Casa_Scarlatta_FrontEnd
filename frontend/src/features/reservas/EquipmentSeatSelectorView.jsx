@@ -42,16 +42,25 @@ function buildSlowRows(spots) {
   }
 }
 
-function getVisualState(spot, selectedSpotId) {
+function normalizeSelectedSpotIds(selectedSpotIds, selectedSpotId) {
+  if (Array.isArray(selectedSpotIds) && selectedSpotIds.length > 0) {
+    return selectedSpotIds.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+  }
+  if (selectedSpotId == null) return []
+  const normalized = Number(selectedSpotId)
+  return Number.isFinite(normalized) ? [normalized] : []
+}
+
+function getVisualState(spot, selectedSpotIds, selectedSpotId) {
   if (!spot) return 'occupied'
   const spotId = Number(spot.spotId)
-  const activeSelectedSpotId = selectedSpotId == null ? null : Number(selectedSpotId)
+  const activeSelectedSpotIds = normalizeSelectedSpotIds(selectedSpotIds, selectedSpotId)
 
-  if (activeSelectedSpotId != null && spotId === activeSelectedSpotId) {
+  if (activeSelectedSpotIds.includes(spotId)) {
     return 'selected'
   }
 
-  if (activeSelectedSpotId != null && (spot.heldByMe || spot.status === 'held_by_me')) {
+  if (activeSelectedSpotIds.length > 0 && (spot.heldByMe || spot.status === 'held_by_me')) {
     return 'available'
   }
 
@@ -83,8 +92,8 @@ function SpotStatusDot({ slow, state }) {
   return <span className={`${slow ? styles.statusIndicator : styles.strydeStatusDot} ${colorClass}`} />
 }
 
-function SlowMatButton({ spot, selectedSpotId, busy, onSelect }) {
-  const state = getVisualState(spot, selectedSpotId)
+function SlowMatButton({ spot, selectedSpotId, selectedSpotIds, busy, onSelect }) {
+  const state = getVisualState(spot, selectedSpotIds, selectedSpotId)
   const label = spot?.label ?? '--'
   const statusLabel = spot ? getEquipmentSpotStatusLabel(spot) : 'No disponible'
   const testId = spot ? `slow-spot-${normalizeSpotLabel(spot.label)}` : `slow-spot-${label}`
@@ -122,8 +131,8 @@ function SlowEmptySlot({ testId }) {
   )
 }
 
-function StrydeSpotButton({ visualEquipment, spot, selectedSpotId, busy, onSelect }) {
-  const state = getVisualState(spot, selectedSpotId)
+function StrydeSpotButton({ visualEquipment, spot, selectedSpotId, selectedSpotIds, busy, onSelect }) {
+  const state = getVisualState(spot, selectedSpotIds, selectedSpotId)
   const isBench = visualEquipment.type === 'bench'
   const statusLabel = spot ? getEquipmentSpotStatusLabel(spot) : 'No disponible'
 
@@ -234,6 +243,7 @@ function Legend({ slow }) {
 }
 
 function SuccessView({ slow, className, classDateTime, coachName, successSpotLabel, onClose }) {
+  const successLines = Array.isArray(successSpotLabel) ? successSpotLabel : [successSpotLabel]
   return (
     <div className={styles.successView}>
       <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar" style={{ position: 'absolute', top: 14, right: 14 }}>
@@ -245,7 +255,11 @@ function SuccessView({ slow, className, classDateTime, coachName, successSpotLab
         <strong>{className}</strong><br />
         {classDateTime} · Coach: {coachName}
       </p>
-      <p className={styles.successSeat}>{successSpotLabel}</p>
+      <div className={styles.successSeat}>
+        {successLines.filter(Boolean).map((line) => (
+          <div key={line}>{line}</div>
+        ))}
+      </div>
       <p className={styles.successCredits}>Tus créditos y reservas se actualizaron correctamente.</p>
       <button className={slow ? styles.slowConfirmBtn : styles.strydeConfirmBtn} onClick={onClose}>Cerrar</button>
     </div>
@@ -260,10 +274,13 @@ export default function EquipmentSeatSelectorView({
   coachAvatarUrl = null,
   classDateTime,
   selectedSpotId,
+  selectedSpotIds = [],
   activeHold,
   holdCountdown,
   creditsSummary,
   creditsBalance,
+  creditsToUse = 0,
+  maxSelectableSpots = 0,
   selectionError,
   isBusy,
   isConfirming,
@@ -276,8 +293,10 @@ export default function EquipmentSeatSelectorView({
   const slow = discipline === 'slow'
   const lookup = buildSpotLookup(spots)
   const backendSelectedSpot = (spots ?? []).find((spot) => spot.heldByMe || spot.status === 'held_by_me')
-  const effectiveSelectedSpotId = selectedSpotId ?? backendSelectedSpot?.spotId ?? null
+  const effectiveSelectedSpotIds = normalizeSelectedSpotIds(selectedSpotIds, selectedSpotId)
+  const effectiveSelectedSpotId = effectiveSelectedSpotIds[0] ?? backendSelectedSpot?.spotId ?? null
   const selectedSpot = (spots ?? []).find((spot) => Number(spot.spotId) === Number(effectiveSelectedSpotId)) ?? null
+  const selectedSpots = (spots ?? []).filter((spot) => effectiveSelectedSpotIds.includes(Number(spot.spotId)))
 
   if (reservationSuccess) {
     return (
@@ -328,6 +347,7 @@ export default function EquipmentSeatSelectorView({
                       key={`mat:${entry.label}`}
                       spot={entry}
                       selectedSpotId={effectiveSelectedSpotId}
+                      selectedSpotIds={effectiveSelectedSpotIds}
                       busy={isBusy}
                       onSelect={onSelectSpot}
                     />
@@ -341,6 +361,7 @@ export default function EquipmentSeatSelectorView({
                       key={`mat:${spot.label}`}
                       spot={spot}
                       selectedSpotId={effectiveSelectedSpotId}
+                      selectedSpotIds={effectiveSelectedSpotIds}
                       busy={isBusy}
                       onSelect={onSelectSpot}
                     />
@@ -366,12 +387,12 @@ export default function EquipmentSeatSelectorView({
               </div>
               <div className={styles.sbDivider} />
               <div className={styles.sbSelectionBlock}>
-                  {selectedSpot ? (
+                  {selectedSpots.length > 0 ? (
                   <>
-                    <div className={styles.sbSelLabel}>Tu lugar elegido</div>
-                    <div className={styles.sbSelMat}>{getEquipmentSpotLabel(selectedSpot)}</div>
+                    <div className={styles.sbSelLabel}>Lugares seleccionados: {selectedSpots.length}</div>
+                    <div className={styles.sbSelMat}>{selectedSpots.map((spot) => getEquipmentSpotLabel(spot)).join(', ')}</div>
                     <div className={styles.sbSelDetail}>
-                      {activeHold?.expiresAt && holdCountdown ? `Tienes ${holdCountdown} para confirmar tu lugar` : 'Preparando bloqueo temporal'}
+                      Créditos a usar: {creditsToUse} · Créditos disponibles: {maxSelectableSpots}
                     </div>
                   </>
                 ) : <div className={styles.sbSelHint}>Elige tu lugar<br />en el mapa</div>}
@@ -380,8 +401,8 @@ export default function EquipmentSeatSelectorView({
               <CreditsBlock creditsSummary={creditsSummary} creditsBalance={creditsBalance} />
               {selectionError ? <div style={{ color: '#b42318', fontSize: 13, marginBottom: 8 }}>{selectionError}</div> : null}
               <Policy />
-              <button className={styles.slowConfirmBtn} onClick={onConfirm} disabled={!selectedSpot || !activeHold?.holdId || isConfirming}>
-                {isConfirming ? 'Confirmando...' : selectedSpot ? 'Confirmar reserva →' : 'Selecciona un lugar'}
+              <button className={styles.slowConfirmBtn} onClick={onConfirm} disabled={selectedSpots.length === 0 || isConfirming}>
+                {isConfirming ? 'Confirmando...' : selectedSpots.length > 0 ? `Reservar ${selectedSpots.length} lugar${selectedSpots.length === 1 ? '' : 'es'}` : 'Selecciona un lugar'}
               </button>
             </aside>
           </div>
@@ -408,6 +429,7 @@ export default function EquipmentSeatSelectorView({
           visualEquipment={equipment}
           spot={getSpot(lookup, equipment.type, equipment.num)}
           selectedSpotId={effectiveSelectedSpotId}
+          selectedSpotIds={effectiveSelectedSpotIds}
           busy={isBusy}
           onSelect={onSelectSpot}
         />
@@ -449,11 +471,11 @@ export default function EquipmentSeatSelectorView({
             </div>
             <div className={styles.sbDivider} />
             <div className={styles.sbSelectionBlock}>
-              {selectedSpot && selectedEquipment ? (
+              {selectedSpots.length > 0 ? (
                 <>
-                  <div className={styles.sbSelLabel}>Tu equipo</div>
-                  <div className={styles.sbSelMat} style={{ fontSize: 18 }}>{getEquipmentSpotLabel(selectedSpot)}</div>
-                  {selectedEquipment.mode === 'rotation' ? (
+                  <div className={styles.sbSelLabel}>Lugares seleccionados: {selectedSpots.length}</div>
+                  <div className={styles.sbSelMat} style={{ fontSize: 18 }}>{selectedSpots.map((spot) => getEquipmentSpotLabel(spot)).join(', ')}</div>
+                  {selectedSpot && selectedEquipment?.mode === 'rotation' ? (
                     <div className={styles.rotationFlow}>
                       <p className={styles.rfTitle}>ROTATION FLOW</p>
                       <div className={styles.rfTimeline}>
@@ -472,14 +494,12 @@ export default function EquipmentSeatSelectorView({
                     <div className={styles.benchOnlyFlow}>
                       <BenchMini active />
                       <div>
-                        <p className={styles.bofTitle}>Bench Only</p>
-                        <p className={styles.bofSub}>No rota · Toda la clase</p>
+                        <p className={styles.bofTitle}>{selectedSpots.length > 1 ? 'Selección múltiple' : 'Bench Only'}</p>
+                        <p className={styles.bofSub}>Créditos a usar: {creditsToUse} · Disponibles: {maxSelectableSpots}</p>
                       </div>
                     </div>
                   )}
-                  <div className={styles.sbSelDetail}>
-                    {activeHold?.expiresAt && holdCountdown ? `Tienes ${holdCountdown} para confirmar tu lugar` : 'Preparando bloqueo temporal'}
-                  </div>
+                  <div className={styles.sbSelDetail}>Créditos a usar: {creditsToUse} · Créditos disponibles: {maxSelectableSpots}</div>
                 </>
               ) : <div className={styles.sbSelHint}>Elige tu equipo<br />en el mapa</div>}
             </div>
@@ -487,8 +507,8 @@ export default function EquipmentSeatSelectorView({
             <CreditsBlock creditsSummary={creditsSummary} creditsBalance={creditsBalance} />
             {selectionError ? <div style={{ color: '#fca5a5', fontSize: 13, marginBottom: 8 }}>{selectionError}</div> : null}
             <Policy />
-            <button className={styles.strydeConfirmBtn} onClick={onConfirm} disabled={!selectedSpot || !activeHold?.holdId || isConfirming}>
-              {isConfirming ? 'Confirmando...' : selectedSpot ? 'Confirmar reserva →' : 'Selecciona un lugar'}
+            <button className={styles.strydeConfirmBtn} onClick={onConfirm} disabled={selectedSpots.length === 0 || isConfirming}>
+              {isConfirming ? 'Confirmando...' : selectedSpots.length > 0 ? `Reservar ${selectedSpots.length} lugar${selectedSpots.length === 1 ? '' : 'es'}` : 'Selecciona un lugar'}
             </button>
           </aside>
         </div>

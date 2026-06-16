@@ -83,6 +83,7 @@ import {
 } from '@/services/rbacApiService'
 import {
   cancelarReservaApi,
+  cancelarReservasMultipleApi,
   crearReservaApi,
   getMisReservasPaginatedApi,
   getOccurrenceRosterApi,
@@ -1388,7 +1389,7 @@ function invalidateSpotsAndHolds(queryClient, occurrenceId) {
   ])
 }
 
-export function invalidateReservationSideEffects(queryClient, { occurrenceId, classId } = {}) {
+export function invalidateReservationSideEffects(queryClient, { occurrenceId, classId, userId } = {}) {
   return Promise.all([
     invalidateSpotsAndHolds(queryClient, occurrenceId),
     queryClient.invalidateQueries({ queryKey: queryKeys.reservations.me() }),
@@ -1402,10 +1403,13 @@ export function invalidateReservationSideEffects(queryClient, { occurrenceId, cl
     queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
     queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
+    userId ? queryClient.invalidateQueries({ queryKey: queryKeys.clients.detail(userId) }) : Promise.resolve(),
+    userId ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(userId) }) : Promise.resolve(),
     Promise.resolve(useClasesStore.getState().loadClasesFromApi({ force: true }).catch(() => {})),
   ])
 }
@@ -1413,7 +1417,7 @@ export function invalidateReservationSideEffects(queryClient, { occurrenceId, cl
 export function useCreateSpotHoldMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ occurrenceId, spotId, userId }) => createSpotHoldApi({ occurrenceId, spotId, userId }),
+    mutationFn: ({ occurrenceId, spotId, spotIds, userId }) => createSpotHoldApi({ occurrenceId, spotId, spotIds, userId }),
     onSuccess: async (_data, variables) => {
       await invalidateSpotsAndHolds(queryClient, variables?.occurrenceId)
     },
@@ -1433,10 +1437,10 @@ export function useDeleteSpotHoldMutation() {
 export function useCreateReservationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ claseId, userId, asiento, occurrenceId, spotId, holdId }) =>
-      crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId }),
+    mutationFn: ({ claseId, userId, asiento, occurrenceId, spotId, holdId, spotIds, holdIds }) =>
+      crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId, spotIds, holdIds }),
     onSuccess: async (_data, variables) => {
-      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.claseId })
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.claseId, userId: variables?.userId })
     },
   })
 }
@@ -1446,7 +1450,17 @@ export function useCancelReservationMutation() {
   return useMutation({
     mutationFn: ({ reservationId }) => cancelarReservaApi(reservationId),
     onSuccess: async (_data, variables) => {
-      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId })
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId, userId: variables?.userId })
+    },
+  })
+}
+
+export function useCancelMultipleReservationsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ reservationIds, userId }) => cancelarReservasMultipleApi({ reservationIds, userId }),
+    onSuccess: async (_data, variables) => {
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId, userId: variables?.userId })
     },
   })
 }
