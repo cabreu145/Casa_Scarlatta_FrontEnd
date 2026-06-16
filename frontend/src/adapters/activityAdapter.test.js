@@ -14,6 +14,11 @@ describe('activityAdapter', () => {
       actor_role: 'cliente',
       entity_type: 'reservation',
       entity_id: 6,
+      entity_label: 'Reserva #6 · Cliente Demo',
+      summary: 'Cliente Demo canceló su reserva.',
+      metadata_display: [
+        { key: 'target_user_id', label: 'Cliente', value: 'Cliente Demo', id: 3 },
+      ],
       metadata: { reservation_id: 6 },
       created_at: '2026-06-09T19:52:07.371772',
     })
@@ -23,6 +28,11 @@ describe('activityAdapter', () => {
     expect(row.actorRole).toBe('cliente')
     expect(row.entityType).toBe('reservation')
     expect(row.entityId).toBe(6)
+    expect(row.entityLabel).toBe('Reserva #6 · Cliente Demo')
+    expect(row.summary).toBe('Cliente Demo canceló su reserva.')
+    expect(row.metadataDisplay).toEqual([
+      { key: 'target_user_id', label: 'Cliente', value: 'Cliente Demo', id: 3 },
+    ])
     expect(row.metadata).toEqual({ reservation_id: 6 })
     expect(row.createdAt).toBe('2026-06-09T19:52:07.371772')
   })
@@ -52,6 +62,9 @@ describe('activityAdapter', () => {
 
     expect(row.entityType).toBeNull()
     expect(row.entityId).toBeNull()
+    expect(row.entityLabel).toBeNull()
+    expect(row.summary).toBeNull()
+    expect(row.metadataDisplay).toEqual([])
     expect(row.metadata).toBeNull()
   })
 })

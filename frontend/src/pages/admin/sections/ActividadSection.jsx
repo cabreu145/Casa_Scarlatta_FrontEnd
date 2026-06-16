@@ -81,6 +81,26 @@ function metadataPreview(metadata) {
     .map(([key, value]) => `${key}: ${formatMetadataValue(value)}`)
 }
 
+function getMetadataRows(item) {
+  if (Array.isArray(item?.metadataDisplay) && item.metadataDisplay.length > 0) {
+    return item.metadataDisplay
+      .filter((row) => row && row.value != null && row.value !== '')
+      .map((row) => ({
+        key: row.key ?? row.label ?? row.value,
+        id: row.id ?? null,
+        label: row.label ?? null,
+        value: String(row.value),
+      }))
+  }
+
+  return metadataPreview(item?.metadata).map((entry) => ({
+    key: entry,
+    id: null,
+    label: null,
+    value: entry,
+  }))
+}
+
 function getDateRange(filter) {
   const today = todayLocalDate()
   const current = new Date(`${today}T00:00:00`)
@@ -318,10 +338,11 @@ function LegacyActividadView() {
 }
 
 function ActivityEventCard({ item }) {
-  const metadata = metadataPreview(item.metadata)
   const categoryLabel = CATEGORY_LABELS[item.category] ?? item.category ?? 'Sistema'
   const icon = CATEGORY_ICONS[item.category] ?? '📌'
-  const entityLabel = formatEntityLabel(item)
+  const entityLabel = item.entityLabel || formatEntityLabel(item)
+  const description = item.summary || item.description || 'Sin descripciÃ³n'
+  const metadataRows = getMetadataRows(item)
   const actorRole = item.actorRole ? String(item.actorRole) : ''
 
   return (
@@ -369,7 +390,7 @@ function ActivityEventCard({ item }) {
         </div>
 
         <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4, lineHeight: 1.45 }}>
-          {item.description || 'Sin descripción'}
+          {description}
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
@@ -386,11 +407,11 @@ function ActivityEventCard({ item }) {
           ) : null}
         </div>
 
-        {metadata.length > 0 && (
+        {metadataRows.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-            {metadata.map((entry) => (
+            {metadataRows.map((row) => (
               <span
-                key={entry}
+                key={`${row.key ?? row.label ?? row.value}-${row.id ?? ''}`}
                 style={{
                   fontSize: 11,
                   color: 'var(--text-muted)',
@@ -400,7 +421,7 @@ function ActivityEventCard({ item }) {
                   border: '1px solid rgba(255,255,255,0.06)',
                 }}
               >
-                {entry}
+                {row.label ? `${row.label}: ${row.value}` : row.value}
               </span>
             ))}
           </div>
