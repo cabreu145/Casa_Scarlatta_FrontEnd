@@ -38,7 +38,7 @@ function getMonthLabel(days) {
   const a = days[0], b = days[days.length - 1]
   if (a.getMonth() === b.getMonth())
     return `${MONTHS_ES[a.getMonth()].toUpperCase()} ${b.getFullYear()}`
-  return `${MONTHS_ES[a.getMonth()].toUpperCase()} Ã¢â‚¬â€œ ${MONTHS_ES[b.getMonth()].toUpperCase()} ${b.getFullYear()}`
+  return `${MONTHS_ES[a.getMonth()].toUpperCase()} — ${MONTHS_ES[b.getMonth()].toUpperCase()} ${b.getFullYear()}`
 }
 
 function canCancelClass(date, hora) {

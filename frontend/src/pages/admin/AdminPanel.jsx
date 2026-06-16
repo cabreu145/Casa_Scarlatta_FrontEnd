@@ -54,6 +54,7 @@ import {
   updateCoachStatusApi,
 } from '@/services/coachesApiService'
 import { buildClaseApiPayload } from './classApiPayload'
+import { getMapCapacityByDiscipline, isMapDiscipline } from '@/utils/classCapacity'
 import { buildCoachApiPayload, validateCoachApiPayload } from './coachApiPayload'
 import { buildPackageApiPayload, validatePackageApiPayload } from './packageApiPayload'
 import { buildPosProductApiPayload, validatePosProductApiPayload } from './posApiPayload'
@@ -229,6 +230,21 @@ function resolveMembershipErrorMessage(error) {
     return 'El beneficiario debe ser un cliente registrado.'
   }
   return raw || 'No se pudo actualizar la membresía compartida.'
+}
+
+function resolveClass409Message(error) {
+  const code = String(error?.code ?? '').trim()
+  const raw = String(error?.message ?? '').trim()
+  if (code === 'CLASS_CAPACITY_BELOW_CURRENT_RESERVATIONS') {
+    return 'No se puede cambiar la disciplina porque una o más ocurrencias futuras ya tienen más reservas que el nuevo cupo.'
+  }
+  if (code === 'CLASS_HAS_ACTIVE_HOLDS') {
+    return 'No se puede cambiar la disciplina porque hay lugares apartados temporalmente. Espera a que expiren o libera los holds antes de editar.'
+  }
+  if (code === 'CLASS_SPOTS_NOT_CONFIGURED') {
+    return 'No hay lugares configurados para esta disciplina.'
+  }
+  return raw || 'No se pudo actualizar la clase.'
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
@@ -1943,6 +1959,17 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 )}
               </div>
               <div className={styles.formGroup}>
+              {isMapDiscipline(claseForm.tipo) && (
+                <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                  <label className={styles.formLabel}>Cupo automático</label>
+                  <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.88)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
+                    {getMapCapacityByDiscipline(claseForm.tipo) ?? '?'} lugares
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
+                    El cupo se calcula automáticamente según el mapa de equipo.
+                  </p>
+                </div>
+              )}
                 <label className={styles.formLabel}>Hora de inicio</label>
                 <input className={styles.formInput} type="time" value={claseForm.hora}
                   onChange={e => setClaseForm(f => ({ ...f, hora: e.target.value }))} />
@@ -1988,6 +2015,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   if (!claseForm.nombre.trim()) return
                   const payload = buildClaseApiPayload({ form: claseForm, coaches: coachesForClassForms })
                   if (useApiClasses) {
+                    try {
                     if (!Array.isArray(coachesForClassForms) || coachesForClassForms.length === 0) {
                       toast.error('No hay coaches registrados en backend. Sincroniza coaches antes de crear clases.')
                       return
@@ -2028,6 +2056,16 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       coachId: createdClase?.coachId ?? createdClase?.coach_id ?? payload.coach_id,
                     })
                     await loadClasesFromApi({ force: true, status: 'programada' })
+                    } catch (error) {
+                      const code = String(error?.code ?? '').trim()
+                      const mapped = {
+                        CLASS_CAPACITY_BELOW_CURRENT_RESERVATIONS: 'No se puede crear la clase porque el cupo derivado es menor que las reservas actuales.',
+                        CLASS_HAS_ACTIVE_HOLDS: 'No se puede crear o editar la clase porque hay lugares apartados temporalmente.',
+                        CLASS_SPOTS_NOT_CONFIGURED: 'No hay lugares configurados para esta disciplina.',
+                      }[code]
+                      toast.error(mapped ?? error?.message ?? 'No se pudo crear la clase.')
+                      return
+                    }
                   } else {
                     const coachObj = coaches.find(c => c.nombre === claseForm.coach)
                     agregarClase({
@@ -2038,7 +2076,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       dia:         claseForm.dia,
                       hora:        claseForm.hora,
                       duracion:    Number(claseForm.duracion) || 50,
-                      cupoMax:     claseForm.tipo === 'Slow' ? 10 : 14,
+                      cupoMax:     getMapCapacityByDiscipline(claseForm.tipo) ?? 15,
                       cupoActual:  0,
                       descripcion: claseForm.descripcion,
                       publicarEn:  claseForm.publicarEn || null,
@@ -2640,6 +2678,17 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 </select>
               </div>
               <div className={styles.formGroup}>
+              {isMapDiscipline(editClaseForm.tipo) && (
+                <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
+                  <label className={styles.formLabel}>Cupo automático</label>
+                  <div style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.88)', fontFamily: 'var(--font-body)', fontSize: 14 }}>
+                    {getMapCapacityByDiscipline(editClaseForm.tipo) ?? '?'} lugares
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
+                    El cupo se calcula automáticamente según el mapa de equipo.
+                  </p>
+                </div>
+              )}
                 <label className={styles.formLabel}>Hora de inicio</label>
                 <input className={styles.formInput} type="time" value={editClaseForm.hora}
                   onChange={e => setEditClaseForm(f => ({ ...f, hora: e.target.value }))} />
@@ -2694,6 +2743,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     fallbackCoachId: modalEditClase?.coachId,
                   })
                   if (useApiClasses) {
+                    try {
                     if (!Array.isArray(coachesForClassForms) || coachesForClassForms.length === 0) {
                       toast.error('No hay coaches registrados en backend. Sincroniza coaches antes de editar clases.')
                       return
@@ -2706,7 +2756,13 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     try {
                       updatedClase = await updateClaseApi(modalEditClase.id, payload)
                     } catch (updateErr) {
-                      const msg = updateErr?.message ?? JSON.stringify(updateErr) ?? 'Error desconocido'
+                      const code = String(updateErr?.code ?? '').trim()
+                      const mapped = {
+                        CLASS_CAPACITY_BELOW_CURRENT_RESERVATIONS: 'No se puede cambiar la disciplina porque una o más ocurrencias futuras ya tienen más reservas que el nuevo cupo.',
+                        CLASS_HAS_ACTIVE_HOLDS: 'No se puede cambiar la disciplina porque hay lugares apartados temporalmente. Espera a que expiren o libera los holds antes de editar.',
+                        CLASS_SPOTS_NOT_CONFIGURED: 'No hay lugares configurados para esta disciplina.',
+                      }[code]
+                      const msg = mapped ?? updateErr?.message ?? JSON.stringify(updateErr) ?? 'Error desconocido'
                       toast.error(`No se pudo guardar la clase: ${msg}`)
                       return
                     }
@@ -2736,6 +2792,16 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       coachId: updatedClase?.coachId ?? updatedClase?.coach_id ?? payload.coach_id,
                     })
                     await loadClasesFromApi({ force: true, status: 'programada' })
+                    } catch (error) {
+                      const code = String(error?.code ?? '').trim()
+                      const mapped = {
+                        CLASS_CAPACITY_BELOW_CURRENT_RESERVATIONS: 'No se puede cambiar la disciplina porque una o m?s ocurrencias futuras ya tienen m?s reservas que el nuevo cupo.',
+                        CLASS_HAS_ACTIVE_HOLDS: 'No se puede cambiar la disciplina porque hay lugares apartados temporalmente. Espera a que expiren o libera los holds antes de editar.',
+                        CLASS_SPOTS_NOT_CONFIGURED: 'No hay lugares configurados para esta disciplina.',
+                      }[code]
+                      toast.error(mapped ?? error?.message ?? 'No se pudo guardar la clase.')
+                      return
+                    }
                   } else {
                     const coachObj = coaches.find(c => c.nombre === editClaseForm.coach)
                     editarClase(modalEditClase.id, {
@@ -2746,7 +2812,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       dia:         editClaseForm.dia,
                       hora:        editClaseForm.hora,
                       duracion:    Number(editClaseForm.duracion) || 50,
-                      cupoMax:     editClaseForm.tipo === 'Slow' ? 9 : 15,
+                      cupoMax:     getMapCapacityByDiscipline(editClaseForm.tipo) ?? 15,
                       descripcion: editClaseForm.descripcion,
                       publicarEn:  editClaseForm.publicarEn || null,
                       fecha:       editClaseForm.fecha || null,
