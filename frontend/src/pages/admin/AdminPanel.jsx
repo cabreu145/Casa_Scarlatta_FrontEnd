@@ -2851,10 +2851,19 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
             usuarios.find((u) => u.id === (r.userId ?? r.user_id))?.nombre ??
             `Usuario #${r.userId ?? r.user_id}`,
         }))
-        const idsInscritos = new Set(inscritos.map((r) => Number(r.userId ?? r.user_id)))
-        const disponibles = useApiClients
-          ? (enrollableClients ?? []).filter((u) => !idsInscritos.has(Number(u.id)) && String(u.status ?? u.estado ?? 'active') === 'active')
-          : usuarios.filter((u) => !idsInscritos.has(u.id) && u.rol === 'cliente')
+          const idsInscritos = new Set(inscritos.map((r) => Number(r.userId ?? r.user_id)))
+          const isSpotManagedClass = isMapDiscipline(cls.tipo ?? cls.discipline ?? cls._raw?.discipline)
+          const disponibles = useApiClients
+            ? (enrollableClients ?? []).filter((u) => {
+                if (String(u.status ?? u.estado ?? 'active') !== 'active') return false
+                if (isSpotManagedClass) return true
+                return !idsInscritos.has(Number(u.id))
+              })
+            : usuarios.filter((u) => {
+                if (u.rol !== 'cliente') return false
+                if (isSpotManagedClass) return true
+                return !idsInscritos.has(u.id)
+              })
         const rosterLoading = useApiClasses ? occurrenceRosterQuery.isLoading : false
         const rosterError = useApiClasses ? occurrenceRosterQuery.error : null
         const rosterErrorMessage = !canReadClassRoster
@@ -2890,21 +2899,25 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
           else toast.error(res.error)
         }
 
-        async function handleAgregar() {
-          if (!canManageReservations) {
-            toast.error('No tienes permisos para inscribir alumnos.')
-            return
-          }
+          async function handleAgregar() {
+            if (!canManageReservations) {
+              toast.error('No tienes permisos para inscribir alumnos.')
+              return
+            }
           if (!alumnoAgregarId) return
           const userId = Number(alumnoAgregarId)
           const usuario = useApiClients
             ? (clientsForAdmin ?? []).find((u) => Number(u.id) === userId)
             : usuarios.find(u => u.id === userId)
-          if (useApiClasses && !occurrenceId) {
-            toast.error('Selecciona una fecha de ocurrencia para inscribir alumno')
-            return
-          }
-          const res = await reservarClaseService(userId, cls.id, null, occurrenceId)
+            if (useApiClasses && !occurrenceId) {
+              toast.error('Selecciona una fecha de ocurrencia para inscribir alumno')
+              return
+            }
+            if (isSpotManagedClass && idsInscritos.has(userId)) {
+              toast.error('Este alumno ya tiene un lugar en esta ocurrencia. Usa "Elegir asiento" o "Agregar otro asiento" para reservar otro spot.')
+              return
+            }
+            const res = await reservarClaseService(userId, cls.id, null, occurrenceId)
           if (res.ok) {
             toast.success(`${usuario?.nombre ?? usuario?.name ?? 'Cliente'} inscrito en ${cls.nombre}`)
             setAlumnoAgregarId('')
@@ -3042,11 +3055,27 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                                   Marcar ausente
                                 </button>
                               )}
-                              {String(r.status ?? r.estado ?? '').toLowerCase() === 'confirmada' && (
-                                <button
-                                  className={`${styles.btn} ${styles.btnGhost}`}
-                                  style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
-                                  disabled={!canManageReservations}
+                                {String(r.status ?? r.estado ?? '').toLowerCase() === 'confirmada' && (
+                                  isSpotManagedClass && occurrenceId ? (
+                                    <button
+                                      className={`${styles.btn} ${styles.btnGhost}`}
+                                      style={{ fontSize: 11, padding: '4px 10px' }}
+                                      disabled={!canManageReservations}
+                                      title={canManageReservations ? 'Agregar otro asiento' : 'No tienes permisos para reservar otro asiento'}
+                                      onClick={() => setAdminSeatSelector({
+                                        cls,
+                                        userId: Number(r.userId ?? r.user_id),
+                                      })}
+                                    >
+                                      Agregar otro asiento
+                                    </button>
+                                  ) : null
+                                )}
+                                {String(r.status ?? r.estado ?? '').toLowerCase() === 'confirmada' && (
+                                  <button
+                                    className={`${styles.btn} ${styles.btnGhost}`}
+                                    style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
+                                    disabled={!canManageReservations}
                                   title={canManageReservations ? 'Cancelar reserva' : 'No tienes permisos para cancelar reservas'}
                                   onClick={() => handleCancelar({
                                     ...r,

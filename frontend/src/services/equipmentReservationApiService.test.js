@@ -58,6 +58,26 @@ describe('equipmentReservationApiService', () => {
     expect(result.holdId).toBe(123)
   })
 
+  test('createSpotHoldApi soporta spot_ids multiples', async () => {
+    httpPost.mockResolvedValue({
+      occurrence_id: 5,
+      user_id: 26,
+      holds: [
+        { hold_id: 123, spot_id: 1, status: 'held' },
+        { hold_id: 124, spot_id: 2, status: 'held' },
+      ],
+      server_now: '2026-06-03T02:30:00',
+    })
+    const { createSpotHoldApi } = await import('./equipmentReservationApiService')
+    const result = await createSpotHoldApi({ occurrenceId: 5, spotIds: [1, 2], userId: 26 })
+    expect(httpPost).toHaveBeenCalledWith('/api/v1/reservas/holds', {
+      occurrence_id: 5,
+      spot_ids: [1, 2],
+      user_id: 26,
+    })
+    expect(result.holds).toHaveLength(2)
+  })
+
   test('releaseSpotHoldApi llama DELETE correcto', async () => {
     httpDelete.mockResolvedValue({
       hold_id: 123,

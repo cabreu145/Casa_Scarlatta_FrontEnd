@@ -41,6 +41,7 @@ export const ENDPOINTS = {
     withQuery('/reservas/me', { page, page_size: pageSize, status, from, to }),
   reservaById: (id) => withPrefix(`/reservas/${id}`),
   crearReserva: withPrefix('/reservas'),
+  cancelarReservasMultiple: withPrefix('/reservas/cancelar-multiple'),
   completarReserva: (id) => withPrefix(`/reservas/${id}/completar`),
   cancelarReserva: (id) => withPrefix(`/reservas/${id}/cancelar`),
   marcarNoAsistio: (id) => withPrefix(`/reservas/${id}/no-asistio`),
