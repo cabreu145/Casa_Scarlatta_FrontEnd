@@ -14,6 +14,9 @@ import {
   usePosReportQuery,
   useTopClassesReportQuery,
   useUsersReportQuery,
+  usePosSalesQuery,
+  useSiteConfigurationQuery,
+  useAdminClientsQuery,
 } from '@/hooks/useApiQueries'
 import { useAuth } from '@/context/AuthContext'
 import { hasPermission } from '@/auth/permissions'
@@ -352,6 +355,9 @@ export default function ReportesApiSection({ inPanel = false }) {
   const occupancyQuery = useOccupancyByDisciplineReportQuery({ from, to, enabled: true })
   const coachPaymentsQuery = useCoachPaymentsReportQuery({ from, to, enabled: true })
   const payTableQuery = usePayTableQuery({ enabled: canReadPayTable })
+  const salesQuery = usePosSalesQuery({ from, to, pageSize: 100, page: 1, enabled: true })
+  const allClientsQuery = useAdminClientsQuery({ pageSize: 100, page: 1, enabled: true })
+  const siteConfigQuery = useSiteConfigurationQuery({ enabled: true })
   const createPayTableMutation = useCreatePayTableMutation()
   const updatePayTableMutation = useUpdatePayTableMutation()
   const deletePayTableMutation = useDeletePayTableMutation()
@@ -423,6 +429,123 @@ export default function ReportesApiSection({ inPanel = false }) {
   const coachPaymentsRows = useMemo(() => coachPaymentsRowsFromReport(coachPayments), [coachPayments])
   const payTableRows = useMemo(() => payTableRowsFromReport(payTableItems), [payTableItems])
 
+  const siteConfig = siteConfigQuery.data ?? {}
+  const siteInfo = {
+    nombre:    siteConfig.nombreEstudio || 'Casa Scarlatta',
+    telefono:  siteConfig.telefono      || '',
+    email:     siteConfig.email         || '',
+    direccion: siteConfig.direccion     || '',
+    ciudad:    siteConfig.ciudad        || '',
+  }
+
+  const salesItems = salesQuery.data?.items ?? []
+  const financeTransactionRows = useMemo(() => {
+    if (!salesItems.length) return financeRows
+    return salesItems.map((sale) => {
+      const raw = String(sale.createdAt ?? sale.created_at ?? '')
+      const dateObj = raw ? new Date(raw) : null
+      const fecha = dateObj && !Number.isNaN(dateObj.getTime())
+        ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' })
+        : '—'
+      const hora = dateObj && !Number.isNaN(dateObj.getTime())
+        ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' })
+        : '—'
+      const metodosLabel = {
+        cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia',
+        mercado_pago: 'Mercado Pago', mercadopago: 'Mercado Pago',
+      }
+      const metodo = metodosLabel[sale.paymentMethod?.toLowerCase?.()] || sale.paymentMethod || '—'
+      const cliente = sale.customerName || sale.customer_name || '—'
+      const conceptos = Array.isArray(sale.items) && sale.items.length
+        ? sale.items.map((i) => i.name || i.nombre || i.displayName || i.description || '').filter(Boolean).join(', ')
+        : (sale.folio || '—')
+      return {
+        Fecha:   fecha,
+        Hora:    hora,
+        Folio:   sale.folio || '—',
+        Cliente: cliente,
+        Concepto: conceptos,
+        Método:  metodo,
+        Monto:   sale.totalMxn ?? sale.total_mxn ?? 0,
+      }
+    })
+  }, [salesItems, financeRows])
+
+  const allClients = allClientsQuery.data?.items ?? []
+
+  const packagesDetailRows = useMemo(() => {
+    const clientMap = new Map(allClients.map((c) => [String(c.id), c]))
+
+    // Ventas de paquetes siempre tienen un cliente identificado
+    const packageSales = salesItems.filter((sale) => !!(sale.customerId || sale.customer_id))
+
+    const transactionRows = packageSales.map((sale) => {
+      const raw     = String(sale.createdAt ?? sale.created_at ?? '')
+      const dateObj = raw ? new Date(raw) : null
+      const valid   = dateObj && !Number.isNaN(dateObj.getTime())
+      const fecha   = valid ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' }) : '—'
+      const hora    = valid ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' }) : '—'
+      const cliente = sale.customerName || sale.customer_name || '—'
+      const clientId = String(sale.customerId ?? sale.customer_id ?? '')
+      const clientData = clientMap.get(clientId)
+      const itemName = Array.isArray(sale.items) && sale.items.length
+        ? sale.items.map((i) => i.name || i.nombre || i.displayName || '').filter((n) => n && n !== 'Item').join(', ')
+        : ''
+      const paquete = itemName || clientData?.paquete || '—'
+      return { Fecha: fecha, Hora: hora, Cliente: cliente, Paquete: paquete, Monto: sale.totalMxn ?? sale.total_mxn ?? 0 }
+    })
+
+    if (!transactionRows.length) return packagesRows
+
+    // Resumen debajo del TOTAL — Fecha vacía = no se suma, aparece después del TOTAL
+    const topPkg = packagesReport.topPackage
+    const summaryRows = [
+      { Fecha: '', Hora: '', Cliente: 'Paquetes vendidos', Paquete: '', Monto: String(packagesReport.packagesSold ?? 0) },
+      ...(topPkg ? [{ Fecha: '', Hora: '', Cliente: 'Paquete más vendido', Paquete: '', Monto: topPkg.name || '—' }] : []),
+    ]
+
+    return [...transactionRows, ...summaryRows]
+  }, [salesItems, packagesRows, packagesReport, allClients])
+
+  const posDetailRows = useMemo(() => {
+    if (!salesItems.length) return posRows
+    return salesItems.map((sale) => {
+      const raw     = String(sale.createdAt ?? sale.created_at ?? '')
+      const dateObj = raw ? new Date(raw) : null
+      const valid   = dateObj && !Number.isNaN(dateObj.getTime())
+      const fecha   = valid ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' }) : '—'
+      const hora    = valid ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' }) : '—'
+      const items   = Array.isArray(sale.items) ? sale.items : []
+      const producto = items.map((i) => i.name || i.nombre || i.displayName || '').filter(Boolean).join(', ') || '—'
+      const cantidad = items.reduce((sum, i) => sum + (i.quantity ?? 1), 0) || 1
+      return {
+        Fecha:    fecha,
+        Hora:     hora,
+        Producto: producto,
+        Cantidad: cantidad,
+        Monto:    sale.totalMxn ?? sale.total_mxn ?? 0,
+      }
+    })
+  }, [salesItems, posRows])
+  const usersDetailRows = useMemo(() => {
+    if (!allClients.length) return usersRows
+    const estadoLabel = (client) => {
+      if (!client.activo) return 'Vencido'
+      if (client.paquete) return 'Activo'
+      return 'Sin paquete'
+    }
+    return allClients
+      .filter((c) => c.rol !== 'coach' && c.rol !== 'admin')
+      .map((c) => ({
+        Cliente:     c.nombre ?? '—',
+        Email:       c.email ?? '—',
+        Paquete:     c.paquete || '—',
+        Estado:      estadoLabel(c),
+        Vencimiento: c.activeMembership?.expiresAt ?? c.paqueteInfo?.fechaVencimiento ?? '—',
+        Créditos:    c.creditsBalance ?? c.clasesPaquete ?? 0,
+      }))
+  }, [allClients, usersRows])
+
   const exportCsv = (prefix, rows, headers) => {
     downloadCsvFromRows({
       rows,
@@ -434,7 +557,7 @@ export default function ReportesApiSection({ inPanel = false }) {
 
   const exportPdf = (tipo, titulo, rows, landscape = false) => {
     if (!rows.length) {
-      toast('PDF vacío generado con encabezados.', { icon: '??' })
+      toast('PDF vacío generado con encabezados.', { icon: '📋' })
     }
     abrirReportePDF({
       tipo,
@@ -442,6 +565,7 @@ export default function ReportesApiSection({ inPanel = false }) {
       datos: rows,
       periodo: `${formatDateMx(from)} a ${formatDateMx(to)}`,
       landscape,
+      siteInfo,
     })
   }
 
@@ -641,29 +765,29 @@ export default function ReportesApiSection({ inPanel = false }) {
           icono="💰"
           titulo="Reporte financiero"
           descripcion="Ingresos, gastos, utilidad neta y métodos de pago."
-          onCsv={() => exportCsv('reporte-financiero', financeRows, ['Concepto', 'Monto', 'Detalle'])}
-          onPdf={() => exportPdf('financiero', 'Reporte Financiero operativo', financeRows)}
+          onCsv={() => exportCsv('reporte-financiero', financeTransactionRows, ['Fecha', 'Hora', 'Folio', 'Cliente', 'Concepto', 'Método', 'Monto'])}
+          onPdf={() => exportPdf('financiero', 'Reporte Financiero operativo', financeTransactionRows)}
         />
         <ReportCard
           icono="👥"
           titulo="Reporte de usuarios"
           descripcion="Estado de clientes y membresías activas."
-          onCsv={() => exportCsv('reporte-usuarios', usersRows, ['Indicador', 'Valor', 'Detalle'])}
-          onPdf={() => exportPdf('usuarios', 'Reporte de Usuarios operativo', usersRows)}
+          onCsv={() => exportCsv('reporte-usuarios', usersDetailRows, ['Cliente', 'Email', 'Paquete', 'Estado', 'Vencimiento', 'Créditos'])}
+          onPdf={() => exportPdf('usuarios', 'Reporte de Usuarios operativo', usersDetailRows)}
         />
         <ReportCard
           icono="📦"
           titulo="Reporte de paquetes"
           descripcion="Ventas de membresías y paquetes compartibles."
-          onCsv={() => exportCsv('reporte-paquetes', packagesRows, ['Indicador', 'Valor', 'Detalle'])}
-          onPdf={() => exportPdf('paquetes', 'Reporte de Paquetes operativo', packagesRows)}
+          onCsv={() => exportCsv('reporte-paquetes', packagesDetailRows, ['Fecha', 'Hora', 'Cliente', 'Paquete', 'Monto'])}
+          onPdf={() => exportPdf('paquetes', 'Reporte de Paquetes operativo', packagesDetailRows)}
         />
         <ReportCard
           icono="🛒"
           titulo="Reporte POS"
           descripcion="Ventas operativas, productos y categorías."
-          onCsv={() => exportCsv('reporte-pos', posRows, ['Concepto', 'Monto', 'Detalle'])}
-          onPdf={() => exportPdf('pdv', 'Reporte POS operativo', posRows, true)}
+          onCsv={() => exportCsv('reporte-pos', posDetailRows, ['Fecha', 'Hora', 'Producto', 'Cantidad', 'Monto'])}
+          onPdf={() => exportPdf('pdv', 'Reporte POS operativo', posDetailRows, true)}
         />
         <ReportCard
           icono="👩‍🏫"

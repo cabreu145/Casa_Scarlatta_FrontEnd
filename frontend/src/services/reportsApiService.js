@@ -68,3 +68,26 @@ export async function getOccupancyByDisciplineReport(params = {}) {
   const payload = await httpGet(ENDPOINTS.reportesOcupacionPorDisciplina(normalizeRange(params)))
   return mapBackendOccupancyByDisciplineReportToFrontend(payload)
 }
+
+export async function getClassesReservationsReport(params = {}) {
+  const payload = await httpGet(ENDPOINTS.reportesClasesReservas(normalizeRange(params)))
+  const items = Array.isArray(payload?.items) ? payload.items : Array.isArray(payload) ? payload : []
+  return {
+    items: items.map((cls) => ({
+      classId: cls.class_id ?? cls.classId ?? null,
+      className: cls.class_name ?? cls.className ?? '—',
+      discipline: cls.discipline ?? '—',
+      occurrenceId: cls.occurrence_id ?? cls.occurrenceId ?? null,
+      date: cls.occurrence_date ?? cls.date ?? '—',
+      time: cls.occurrence_time ?? cls.time ?? '—',
+      coachName: cls.coach_name ?? cls.coachName ?? '—',
+      capacity: cls.capacity ?? 0,
+      reservationsCount: cls.reservations_count ?? cls.reservationsCount ?? 0,
+      attendees: (cls.attendees ?? []).map((a) => ({
+        name: a.name ?? a.nombre ?? '—',
+        email: a.email ?? '—',
+        status: a.status ?? a.estado ?? 'confirmed',
+      })),
+    })),
+  }
+}
