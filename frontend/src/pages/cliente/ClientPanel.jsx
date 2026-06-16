@@ -221,7 +221,9 @@ export default function ClientPanel() {
     ? (apiFinancialState?.transactions ?? [])
     : (usuario?.id ? getTransaccionesByUsuario(usuario.id) : [])
   const historialMovimientosCredito = useApiFinancialState ? (apiFinancialState?.creditMovements ?? []) : []
-  const paquetesDisponibles = useApiFinancialState ? apiMembershipPackages : paquetes
+  const paquetesDisponibles = (useApiFinancialState ? apiMembershipPackages : paquetes).filter(
+    (p) => p.isPublic !== false && !/\(interno\)/i.test(p?.nombre ?? p?.name ?? '')
+  )
   const useApiCoachAvatars = useApiClasses || useApiReservations
   const publicCoachesQuery = usePublicCoachesQuery({ enabled: useApiCoachAvatars })
   const coachSource = useApiCoachAvatars ? (publicCoachesQuery.data ?? []) : coaches
