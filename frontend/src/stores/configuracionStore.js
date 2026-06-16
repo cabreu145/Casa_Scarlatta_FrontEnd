@@ -63,18 +63,18 @@ const DEFAULTS = {
   // Cuando haya backend con storage: cambiar a uploads reales.
   carouselHero: [
     { tipo: 'video',  url: '',    videoId: 'djp5ZQQ7WXA', start: 14 },
-    { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1600&q=80' },
-    { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1600&q=80' },
-    { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=1600&q=80' },
-    { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1600&q=80' },
+    { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1400&q=75' },
+    { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=1400&q=75' },
+    { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=1400&q=75' },
+    { tipo: 'imagen', url: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1400&q=75' },
   ],
 
   // ── Imágenes de secciones ────────────────────────────
   // [BACKEND] → configuracion.imagenes (object)
   // Por ahora el admin pega URLs. Con backend: uploads reales.
   imagenBannerClases:  '/fotos/gym_banner_stryde.jpg',
-  imagenStryde:        'https://res.cloudinary.com/dtj8woibw/image/upload/w_1600,f_auto,q_auto/v1781473010/stride-hero_zdajlh.jpg',
-  imagenSlow:          'https://res.cloudinary.com/dtj8woibw/image/upload/w_1600,f_auto,q_auto/v1781473010/yoga_studio_d8ptjd.jpg',
+  imagenStryde:        'https://res.cloudinary.com/dtj8woibw/image/upload/w_800,f_auto,q_auto/v1781473010/stride-hero_zdajlh.jpg',
+  imagenSlow:          'https://res.cloudinary.com/dtj8woibw/image/upload/w_800,f_auto,q_auto/v1781473010/yoga_studio_d8ptjd.jpg',
   imagenCoachesBanner: 'https://res.cloudinary.com/dtj8woibw/image/upload/w_1600,f_auto,q_auto/v1781473010/stride-hero_zdajlh.jpg',
 }
 
