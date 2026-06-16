@@ -26,6 +26,7 @@ function buildSlowResponse() {
   const labels = ['01', '02', '03', '04', '06', '07', '08', '09', '10']
   return {
     occurrence_id: 5,
+    class_id: 9,
     discipline: 'slow',
     class_name: 'Clase Demo Reservable API',
     coach_name: 'Coach Demo',
@@ -306,5 +307,41 @@ describe('EquipmentReservationPanel', () => {
         holdIds: [123],
       })
     })
+  })
+
+  test('bloquea confirmación si occurrence pertenece a otra clase', async () => {
+    const user = userEvent.setup()
+    spotsQueryState = {
+      data: {
+        ...buildSlowResponse(),
+        class_id: 77,
+      },
+      isLoading: false,
+      error: null,
+      refetch: refetchMock,
+    }
+
+    const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
+    render(
+      <EquipmentReservationPanel
+        occurrenceId={5}
+        classId={9}
+        userId={3}
+        financialState={{
+          financialState: {},
+          creditsBalance: 2,
+          activeMembership: { creditsAvailable: 2 },
+          isLoading: false,
+          error: null,
+        }}
+      />
+    )
+
+    await user.click(await screen.findByTestId('slow-spot-01'))
+    await user.click(screen.getByRole('button', { name: 'Reservar 1 lugar' }))
+
+    expect(await screen.findByText('La ocurrencia seleccionada no pertenece a esta clase. Actualiza la vista e intenta de nuevo.')).toBeInTheDocument()
+    expect(createSpotHoldMock).not.toHaveBeenCalled()
+    expect(createReservationMock).not.toHaveBeenCalled()
   })
 })

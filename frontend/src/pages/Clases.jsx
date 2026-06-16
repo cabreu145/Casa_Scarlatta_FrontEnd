@@ -118,7 +118,7 @@ export default function Clases() {
   // Uses slow-based detection: anything that doesn't contain 'slow' is Stryde.
   // This handles 'Stryde X', 'Slow', and any custom variant.
   const isSlow = (tipo) => normalizeDiscipline(tipo) === 'slow'
-  const resolveDiscipline = (value) => normalizeDiscipline(value)
+  const resolveDiscipline = (value, fallbackText = '') => normalizeDiscipline(value, fallbackText)
 
   const occurrenceSessions = useMemo(() => {
     if (!useApiClasses) return []
@@ -128,6 +128,9 @@ export default function Clases() {
       for (const occ of occs) {
         sessions.push({
           ...cls,
+          classId: cls.id,
+          claseId: cls.id,
+          discipline: resolveDiscipline(occ.discipline ?? cls.discipline ?? cls.tipo, occ.claseNombre ?? cls.nombre),
           occurrenceId: occ.occurrenceId,
           fecha: occ.fecha,
           hora: getClassTimeToken(occ) ?? getClassTimeToken(cls) ?? null,
@@ -491,7 +494,7 @@ export default function Clases() {
         useApiReservations && selectedClass.occurrenceId ? (
           <EquipmentReservationPanel
             occurrenceId={selectedClass.occurrenceId}
-            classId={selectedClass.id}
+            classId={selectedClass.classId ?? selectedClass.claseId ?? selectedClass.id}
             userId={usuario?.id}
             coachAvatarUrl={selectedClass.coachAvatarUrl ?? coachFotoById[String(selectedClass.coachId ?? selectedClass.coach_id ?? '')] ?? coachFotoByName[String(selectedClass.coachNombre ?? selectedClass.coach ?? '')] ?? null}
             onClose={() => setSelectedClass(null)}

@@ -74,6 +74,7 @@ export function buildAdminClassOccurrenceRows(classes = [], occurrencesByClass =
         occurrenceId,
         occurrence_id: occurrenceId,
         claseId: baseClass.id,
+        classId: baseClass.id,
         fecha,
         hora,
         displayTime: occurrence.displayTime ?? getClassDisplayTime(occurrence),
@@ -85,6 +86,7 @@ export function buildAdminClassOccurrenceRows(classes = [], occurrencesByClass =
         ),
         estado: occurrence.estado ?? occurrence.status ?? baseClass.estado ?? baseClass.status ?? 'programada',
         status: occurrence.status ?? occurrence.estado ?? baseClass.status ?? baseClass.estado ?? 'programada',
+        discipline: occurrence.discipline ?? baseClass.discipline ?? null,
         coachId: occurrence.coachId ?? baseClass.coachId ?? null,
         coachNombre: baseClass.coachNombre ?? occurrence.coachNombre ?? baseClass.coach_name ?? `Coach #${baseClass.coachId ?? 'N/A'}`,
       })

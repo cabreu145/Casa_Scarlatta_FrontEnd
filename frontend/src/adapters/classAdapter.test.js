@@ -24,6 +24,7 @@ describe('classAdapter', () => {
 
     expect(result).toMatchObject({
       id: 5,
+      classId: 5,
       nombre: 'Stryde AM',
       coachId: 3,
       cupoMax: 20,
@@ -76,6 +77,17 @@ describe('classAdapter', () => {
       description: 'Clase calma',
       descripcion: 'Clase calma',
     })
+  })
+
+  test('deriva discipline desde nombre visual STRYDE X cuando backend no manda canónico', () => {
+    const result = mapBackendClassToFrontendClass({
+      id: 11,
+      name: 'STRYDE X - COMMUNITY',
+      discipline: null,
+    })
+
+    expect(result.discipline).toBe('stryde')
+    expect(result.tipo).toBe('Stryde X')
   })
 
   test('mapea cancelada y finalizada a display correcto', () => {

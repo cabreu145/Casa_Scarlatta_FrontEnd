@@ -122,6 +122,10 @@ function resolveMembershipErrorMessage(error) {
 // Mapea una reserva al shape interno usado por MisClasesCard / ClassCard
 function toClsShape(r) {
   const timeToken = getClassTimeToken(r)
+  const disciplineDisplay = normalizeDiscipline(
+    r.discipline ?? r.classDiscipline ?? r.tipo,
+    r.claseNombre ?? r.title
+  )
   const displayDate = formatClassDate(getClassDisplayDate({
     classDate: r.classDate ?? r.class_date ?? r.fecha ?? null,
     occurrenceDate: r.occurrenceDate ?? r.occurrence_date ?? r.fecha ?? null,
@@ -140,7 +144,7 @@ function toClsShape(r) {
     displayDate,
     time:       timeToken ?? r.claseHora ?? null,
     displayTime: getClassDisplayTime(r),
-    discipline: normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'slow' ? 'SLOW' : normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'stryde' ? 'STRYDE X' : null,
+    discipline: disciplineDisplay === 'slow' ? 'SLOW' : disciplineDisplay === 'stryde' ? 'STRYDE X' : null,
     status:     r.estado,
     location:   r.location ?? '',
     spotLabel:  r.spotLabel ?? r.spot_label ?? null,
@@ -585,7 +589,8 @@ export default function ClientPanel() {
 
   const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
   const getReservationDiscipline = (item) => normalizeDiscipline(
-    item?.discipline ?? item?.classDiscipline ?? item?.tipo ?? item?._raw?.discipline
+    item?.discipline ?? item?.classDiscipline ?? item?.tipo ?? item?._raw?.discipline,
+    item?.claseNombre ?? item?.title ?? item?.nombre ?? item?._raw?.nombre ?? item?._raw?.name
   )
 
   const esMesActual = (r) => {
@@ -633,8 +638,17 @@ export default function ClientPanel() {
           if (occ.fecha !== day.isoDate) continue
           const occurrenceTime = getClassTimeToken(occ) ?? getClassTimeToken(c) ?? null
           sessions.push({
-            _raw: { ...c, occurrenceId: occ.occurrenceId, fecha: occ.fecha, hora: occurrenceTime ?? c.hora ?? null },
+            _raw: {
+              ...c,
+              classId: c.id,
+              claseId: c.id,
+              occurrenceId: occ.occurrenceId,
+              fecha: occ.fecha,
+              hora: occurrenceTime ?? c.hora ?? null,
+            },
             id: c.id,
+            classId: c.id,
+            claseId: c.id,
             occurrenceId: occ.occurrenceId,
             title: occ.claseNombre ?? c.nombre,
             coach: c.coachNombre,
@@ -1970,7 +1984,7 @@ export default function ClientPanel() {
         useApiReservations && seatSelectorClass?.occurrenceId ? (
           <EquipmentReservationPanel
             occurrenceId={seatSelectorClass.occurrenceId}
-            classId={seatSelectorClass.id}
+            classId={seatSelectorClass.classId ?? seatSelectorClass.claseId ?? seatSelectorClass.id}
             userId={usuario?.id}
             financialState={{
               financialState: effectiveFinancialState,

@@ -350,7 +350,7 @@ export default function Reservar() {
         useApiReservations && selectedClass.occurrenceId && isClient ? (
           <EquipmentReservationPanel
             occurrenceId={selectedClass.occurrenceId}
-            classId={selectedClass.id}
+            classId={selectedClass.classId ?? selectedClass.claseId ?? selectedClass.id}
             userId={usuario?.id}
             onReservationCreated={() => {
               setShowReservationPanel(false)

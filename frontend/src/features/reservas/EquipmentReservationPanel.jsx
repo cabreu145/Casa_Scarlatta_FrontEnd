@@ -58,6 +58,7 @@ function resolveReservationErrorMessage(error) {
   if (code.includes('DUPLICATE_SPOT_SELECTION')) return 'La selección contiene lugares duplicados.'
   if (code.includes('OCCURRENCE_FULL')) return 'La clase ya está llena.'
   if (code.includes('OCCURRENCE_NOT_RESERVABLE')) return 'Esta ocurrencia aún no tiene spots configurados.'
+  if (code.includes('CLASS_NOT_AVAILABLE')) return 'La ocurrencia seleccionada no pertenece a esta clase. Actualiza la vista e intenta de nuevo.'
   return 'No pudimos completar tu reserva.'
 }
 
@@ -136,7 +137,12 @@ export default function EquipmentReservationPanel({
     [occurrenceSpotsQuery.data]
   )
 
-  const layoutKind = normalizeDiscipline(layoutData?.discipline ?? layoutData?.raw?.discipline)
+  const layoutKind = normalizeDiscipline(
+    layoutData?.discipline ?? layoutData?.raw?.discipline,
+    layoutData?.className ?? layoutData?.class_name ?? layoutData?.raw?.class_name
+  )
+  const layoutClassId = Number(layoutData?.classId ?? layoutData?.claseId ?? layoutData?.raw?.class_id ?? layoutData?.raw?.classId ?? NaN)
+  const selectedClassId = Number(classId)
   const currentSpots = layoutData?.spots ?? []
   const maxSelectableSpots = useMemo(() => getMaxSelectableSpots({
     creditsBalance: resolvedCreditsBalance,
@@ -198,6 +204,10 @@ export default function EquipmentReservationPanel({
     }
     if (selectedSpotIds.length === 0) {
       setSelectionError('Selecciona uno o más lugares antes de reservar.')
+      return
+    }
+    if (Number.isFinite(layoutClassId) && Number.isFinite(selectedClassId) && layoutClassId !== selectedClassId) {
+      setSelectionError('La ocurrencia seleccionada no pertenece a esta clase. Actualiza la vista e intenta de nuevo.')
       return
     }
     if (Number.isFinite(maxSelectableSpots) && selectedSpotIds.length > maxSelectableSpots) {
