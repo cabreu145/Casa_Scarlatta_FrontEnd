@@ -23,6 +23,7 @@ export default function Suet() {
   const site = useEffectiveSiteConfiguration()
   const page = getPublicPageConfig(site.config, 'suet')
   const hero = page.hero ?? {}
+  const KNOWN_SUET_IDS = new Set(['concept', 'experience', 'quote', 'methodology', 'benefits', 'ideal'])
   const sections = Object.fromEntries((page.sections ?? []).map((section) => [section.id, section]))
   const concept = sections.concept ?? {}
   const experience = sections.experience ?? {}
@@ -30,6 +31,7 @@ export default function Suet() {
   const methodology = sections.methodology ?? {}
   const benefits = sections.benefits ?? {}
   const ideal = sections.ideal ?? {}
+  const extraSections = (page.sections ?? []).filter((s) => !KNOWN_SUET_IDS.has(s.id) && s.isActive !== false)
   const heroImage = resolveSiteMediaUrl(hero.image)
   const heroLogo = resolveSiteMediaUrl(hero.logo)
   const conceptImage = resolveSiteMediaUrl(concept.media)
@@ -165,6 +167,28 @@ export default function Suet() {
           ))}
         </ul>
       </div>
+
+      {extraSections.length > 0 && (
+        <div className={styles.extraSectionsGrid}>
+          {extraSections.map((sec) => (
+            <div key={sec.id} className={styles.extraSection}>
+              {sec.title && <p className={styles.extraSectionLabel}>{sec.title}</p>}
+              {sec.heading && <h2 className={styles.extraSectionTitle}>{sec.heading}</h2>}
+              {sec.body && <p className={styles.extraSectionBody}>{sec.body}</p>}
+              {(sec.items ?? []).length > 0 && (
+                <ul className={styles.extraSectionItems}>
+                  {sec.items.filter((i) => i.isActive !== false).map((item, idx) => (
+                    <li key={idx} className={styles.extraSectionItem}>
+                      {item.title && <strong>{item.title}{item.description ? ': ' : ''}</strong>}
+                      {item.description || item.text || ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

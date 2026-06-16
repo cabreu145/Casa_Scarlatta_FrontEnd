@@ -170,6 +170,59 @@
   50%       { transform: translateY(-6px); }
 }
 
+/* ── SECCIÓN REGLAMENTO ── */
+.reglamentoSec {
+  background: #f9f5f3;
+  padding: var(--space-3xl) var(--space-3xl);
+}
+
+.reglamentoInner {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.reglamentoLabel {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-wine, #7B1E2E);
+  margin-bottom: 12px;
+}
+
+.reglamentoTitle {
+  font-family: var(--font-heading);
+  font-size: clamp(28px, 3.5vw, 44px);
+  font-weight: 700;
+  color: #1a0a0e;
+  margin-bottom: 28px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.reglamentoDivider {
+  width: 48px;
+  height: 3px;
+  background: var(--brand-wine, #7B1E2E);
+  margin-bottom: 32px;
+  border-radius: 2px;
+}
+
+.reglamentoBody {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.85;
+  color: #4a3035;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+  .reglamentoSec {
+    padding: 40px 24px;
+  }
+}
+
 /* ── SECCIÓN 2 — COACHES ── */
 .coachesSec {
   background: #1a0a0e;

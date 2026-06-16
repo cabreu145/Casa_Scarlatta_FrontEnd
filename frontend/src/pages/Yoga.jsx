@@ -20,6 +20,7 @@ export default function Yoga() {
   const site = useEffectiveSiteConfiguration()
   const page = getPublicPageConfig(site.config, 'yoga')
   const hero = page.hero ?? {}
+  const KNOWN_YOGA_IDS = new Set(['concept', 'philosophy', 'quote', 'methodology', 'benefits', 'ideal'])
   const sections = Object.fromEntries((page.sections ?? []).map((section) => [section.id, section]))
   const concept = sections.concept ?? {}
   const philosophy = sections.philosophy ?? {}
@@ -27,6 +28,7 @@ export default function Yoga() {
   const methodology = sections.methodology ?? {}
   const benefits = sections.benefits ?? {}
   const ideal = sections.ideal ?? {}
+  const extraSections = (page.sections ?? []).filter((s) => !KNOWN_YOGA_IDS.has(s.id) && s.isActive !== false)
 
   return (
     <div className={styles.page}>
@@ -153,6 +155,28 @@ export default function Yoga() {
           ))}
         </ul>
       </div>
+
+      {extraSections.length > 0 && (
+        <div className={styles.extraSectionsGrid}>
+          {extraSections.map((sec) => (
+            <div key={sec.id} className={styles.extraSection}>
+              {sec.title && <p className={styles.extraSectionLabel}>{sec.title}</p>}
+              {sec.heading && <h2 className={styles.extraSectionTitle}>{sec.heading}</h2>}
+              {sec.body && <p className={styles.extraSectionBody}>{sec.body}</p>}
+              {(sec.items ?? []).length > 0 && (
+                <ul className={styles.extraSectionItems}>
+                  {sec.items.filter((i) => i.isActive !== false).map((item, idx) => (
+                    <li key={idx} className={styles.extraSectionItem}>
+                      {item.title && <strong>{item.title}{item.description ? ': ' : ''}</strong>}
+                      {item.description || item.text || ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

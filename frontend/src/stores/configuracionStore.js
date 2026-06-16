@@ -43,6 +43,7 @@ const DEFAULTS = {
   // [BACKEND] → configuracion.nosotros (object)
   nosotrosTexto1: 'Creemos en el equilibrio entre fluidez y fuerza, entre disciplina y presencia.',
   nosotrosTexto2: 'Arrive. Breathe. Move. Connect. Transform.',
+  nosotrosReglamento: '',
 
   // ── Carrusel de Nosotros (URLs de imágenes) ──────────
   // [BACKEND] → configuracion.carouselNosotros (string[])

@@ -254,6 +254,7 @@ function TabTextos({ cfg, actualizar, canEdit = true }) {
   const [form, setForm] = useState({
     nosotrosTexto1: cfg.get('nosotrosTexto1'),
     nosotrosTexto2: cfg.get('nosotrosTexto2'),
+    nosotrosReglamento: cfg.get('nosotrosReglamento') ?? '',
   })
   const [guardando, setGuardando] = useState(false)
 
@@ -268,14 +269,15 @@ function TabTextos({ cfg, actualizar, canEdit = true }) {
       payload: {
         nosotrosTexto1: form.nosotrosTexto1.trim(),
         nosotrosTexto2: form.nosotrosTexto2.trim(),
+        nosotrosReglamento: form.nosotrosReglamento.trim(),
       },
     })
   }
 
   async function handleRestaurar() {
     if (!window.confirm('¿Restaurar los textos a los valores predeterminados?')) return
-    const keys = ['nosotrosTexto1', 'nosotrosTexto2']
-    const defaults = Object.fromEntries(keys.map(k => [k, CONFIG_DEFAULTS[k]]))
+    const keys = ['nosotrosTexto1', 'nosotrosTexto2', 'nosotrosReglamento']
+    const defaults = Object.fromEntries(keys.map(k => [k, CONFIG_DEFAULTS[k] ?? '']))
     const saved = await persistConfiguration({
       actualizar,
       payload: defaults,
@@ -295,6 +297,9 @@ function TabTextos({ cfg, actualizar, canEdit = true }) {
           </Field>
           <Field label="Palabras clave / subtítulo" hint="Aparece debajo de la frase principal. [BACKEND] → configuracion.nosotrosTexto2">
             <textarea rows={2} value={form.nosotrosTexto2} onChange={f('nosotrosTexto2')} className={styles.formInput} style={{ resize: 'vertical' }} />
+          </Field>
+          <Field label="Reglamento" hint="Se muestra como sección de reglamento en la página Nosotros. [BACKEND] → configuracion.nosotrosReglamento">
+            <textarea rows={8} value={form.nosotrosReglamento} onChange={f('nosotrosReglamento')} className={styles.formInput} style={{ resize: 'vertical' }} placeholder="Escribe aquí el reglamento del estudio…" />
           </Field>
         </div>
       </div>

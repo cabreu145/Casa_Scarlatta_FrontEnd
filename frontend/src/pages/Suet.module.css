@@ -453,6 +453,78 @@
   flex-shrink: 0;
 }
 
+/* ── SECCIONES EXTRA (agregadas desde admin) ── */
+.extraSectionsGrid {
+  border-top: 1px solid rgba(204,26,26,0.18);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.extraSectionsGrid > .extraSection:nth-child(odd) {
+  border-right: 1px solid rgba(204,26,26,0.18);
+}
+
+.extraSectionsGrid > .extraSection:nth-child(n+3) {
+  border-top: 1px solid rgba(204,26,26,0.18);
+}
+
+.extraSection {
+  padding: var(--space-3xl) var(--space-2xl);
+  box-sizing: border-box;
+}
+
+.extraSectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--suet-red, #CC1A1A);
+  margin-bottom: 12px;
+}
+
+.extraSectionTitle {
+  font-family: var(--font-heading);
+  font-size: clamp(24px, 3vw, 38px);
+  font-weight: 700;
+  color: #f5ede8;
+  margin-bottom: 20px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.extraSectionBody {
+  font-size: 15px;
+  line-height: 1.85;
+  color: rgba(245,237,232,0.75);
+  white-space: pre-wrap;
+}
+
+.extraSectionItems {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.extraSectionItem {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: rgba(245,237,232,0.75);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.extraSectionItem::before {
+  content: '—';
+  color: var(--suet-red, #CC1A1A);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 900px) {
   .gridRow1 { grid-template-columns: 1fr; }
@@ -466,4 +538,7 @@
   .statsBar { gap: var(--space-xl); flex-wrap: wrap; }
   .idealSection { flex-direction: column; align-items: flex-start; gap: var(--space-lg); }
   .idealList { flex-direction: column; gap: var(--space-md); }
+  .extraSectionsGrid { grid-template-columns: 1fr; }
+  .extraSectionsGrid > .extraSection:nth-child(odd) { border-right: none; }
+  .extraSectionsGrid > .extraSection:nth-child(n+2) { border-top: 1px solid rgba(204,26,26,0.18); }
 }
