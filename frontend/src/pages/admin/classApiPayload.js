@@ -38,8 +38,8 @@ export function buildClaseApiPayload({ form, coaches, fallbackCoachId = null }) 
     discipline,
     coach_id: coachId,
     capacity_max: form?.cupoMax != null
-      ? Number(form?.cupoMax) || (discipline === 'slow' ? 10 : 14)
-      : (discipline === 'slow' ? 10 : 14),
+      ? Number(form?.cupoMax) || (discipline === 'slow' ? 9 : 15)
+      : (discipline === 'slow' ? 9 : 15),
     duration_minutes: durationMinutes,
     description: form?.descripcion ?? '',
     status,

@@ -75,8 +75,8 @@ const SECTION_META = {
 
 // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function DisciplinePill({ d }) {
-  return d === 'STRYDE'
-    ? <span className={`${s.pill} ${s.pillStride}`}>STRYDE</span>
+  return d === 'STRYDE' || d === 'STRYDE X'
+    ? <span className={`${s.pill} ${s.pillStride}`}>STRYDE X</span>
     : <span className={`${s.pill} ${s.pillSlow}`}>SLOW</span>
 }
 
@@ -140,7 +140,7 @@ function toClsShape(r) {
     displayDate,
     time:       timeToken ?? r.claseHora ?? null,
     displayTime: getClassDisplayTime(r),
-    discipline: normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'slow' ? 'SLOW' : normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'stryde' ? 'STRYDE' : null,
+    discipline: normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'slow' ? 'SLOW' : normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'stryde' ? 'STRYDE X' : null,
     status:     r.estado,
     location:   '',
   }
@@ -638,7 +638,7 @@ export default function ClientPanel() {
             fecha: occ.fecha,
             time: occurrenceTime ?? c.hora ?? null,
             displayTime: getClassDisplayTime(occ),
-            discipline: getReservationDiscipline(c) === 'slow' ? 'SLOW' : getReservationDiscipline(c) === 'stryde' ? 'STRYDE' : null,
+            discipline: getReservationDiscipline(c) === 'slow' ? 'SLOW' : getReservationDiscipline(c) === 'stryde' ? 'STRYDE X' : null,
             spots: Math.max(0, (occ.cupoMax ?? c.cupoMax) - (occ.cupoActual ?? c.cupoActual)),
             capacity: occ.cupoMax ?? c.cupoMax,
           })
@@ -662,7 +662,7 @@ export default function ClientPanel() {
       fecha:      c.fecha ?? null,
       time:       getClassTimeToken(c) ?? c.hora ?? null,
       displayTime: getClassDisplayTime(c),
-      discipline: getReservationDiscipline(c) === 'slow' ? 'SLOW' : getReservationDiscipline(c) === 'stryde' ? 'STRYDE' : null,
+      discipline: getReservationDiscipline(c) === 'slow' ? 'SLOW' : getReservationDiscipline(c) === 'stryde' ? 'STRYDE X' : null,
       spots:      Math.max(0, c.cupoMax - c.cupoActual),
       capacity:   c.cupoMax,
     }))
@@ -1093,7 +1093,7 @@ export default function ClientPanel() {
                       }}>
                         {strideEsteMes}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>STRYDE</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>STRYDE X</div>
                     </div>
                     <div className={s.miniGridItem}>
                       <div style={{
@@ -1308,7 +1308,7 @@ export default function ClientPanel() {
                           <div className={s.pubTitleRow}>
                             <span className={s.pubClassName}>{av.title}</span>
                             <span className={`${s.pubTypeBadge} ${normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'stryde' ? s.pubBadgeStride : normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'slow' ? s.pubBadgeSlow : ''}`}>
-                              {normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'slow' ? 'SLOW' : normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'stryde' ? 'STRYDE' : 'Sin tipo'}
+                              {normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'slow' ? 'SLOW' : normalizeDiscipline(av.discipline ?? av.tipo ?? av._raw?.discipline) === 'stryde' ? 'STRYDE X' : 'Sin tipo'}
                             </span>
                           </div>
                           <div className={s.pubMeta}>

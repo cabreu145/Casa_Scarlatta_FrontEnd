@@ -219,7 +219,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
         const fecha   = parsearFecha(get('fecha','date','dia','fechaespecifica'))
         const hora    = parsearHora(get('hora','time','horario','horainicio'))
         const duracion  = Number(get('duracion','duration','duracionmin','minutos')) || 50
-        const cupoMax   = tipo === 'Slow' ? 10 : 14
+        const cupoMax   = tipo === 'Slow' ? 9 : 15
         const descripcion = String(get('descripcion','descripcion','description','desc')).trim()
 
         if (!nombre) errs.push(`Fila ${i+2}: Nombre vacío — se omitirá`)

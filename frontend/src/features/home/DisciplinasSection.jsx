@@ -10,7 +10,7 @@ export default function DisciplinasSection() {
   const disciplinas = [
     {
       key: 'stride',
-      logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/STRYDE_X_T_bsgwov.png',
+      logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/w_800,f_auto,q_auto/v1781472997/STRYDE_X_T_bsgwov.png',
       logoAlt: 'STRYDE X',
       subtexto: 'Alta intensidad',
       ruta: '/clases?tipo=Stride',
@@ -20,7 +20,7 @@ export default function DisciplinasSection() {
     },
     {
       key: 'slow',
-      logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/LOGO_SLOW_rvm3cv.png',
+      logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/w_800,f_auto,q_auto/v1781472997/LOGO_SLOW_rvm3cv.png',
       logoAlt: 'slow.',
       subtexto: 'Movimiento consciente',
       ruta: '/clases?tipo=Slow',
@@ -59,6 +59,8 @@ export default function DisciplinasSection() {
               <img
                 src={logo}
                 alt={logoAlt}
+                width={360}
+                height={240}
                 className={styles.cardLogo}
                 draggable="false"
               />

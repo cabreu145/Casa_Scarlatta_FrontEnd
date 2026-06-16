@@ -7,7 +7,7 @@ import s from './ClientPanel.module.css'
 
 function DisciplinePill({ d }) {
   const normalized = normalizeDiscipline(d)
-  if (normalized === 'stryde') return <span className={`${s.pill} ${s.pillStride}`}>STRYDE</span>
+  if (normalized === 'stryde') return <span className={`${s.pill} ${s.pillStride}`}>STRYDE X</span>
   if (normalized === 'slow') return <span className={`${s.pill} ${s.pillSlow}`}>SLOW</span>
   return <span className={s.pill}>Sin tipo</span>
 }

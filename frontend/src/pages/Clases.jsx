@@ -61,6 +61,7 @@ export default function Clases() {
   const [weekOffset, setWeekOffset] = useState(0)
   const [filter, setFilter] = useState('')
   const [selectedClass, setSelectedClass] = useState(null)
+  const [viewMode, setViewMode] = useState('day') // 'day' | 'week'
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
@@ -164,6 +165,19 @@ export default function Clases() {
       : forDay
   }, [selectedDate, filter, allClasses, occurrenceSessions, useApiClasses])
 
+  // Classes for every day of the current week (used by week view)
+  const weekClasses = useMemo(() => {
+    return days.map((date) => {
+      const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      const forDay = useApiClasses
+        ? occurrenceSessions.filter((c) => c.fecha === iso)
+        : getPublicClassesByDate(allClasses, date)
+      return filter
+        ? forDay.filter((c) => isSlow(filter) ? resolveDiscipline(c.discipline ?? c.tipo) === 'slow' : resolveDiscipline(c.discipline ?? c.tipo) === 'stryde')
+        : forDay
+    })
+  }, [days, allClasses, occurrenceSessions, filter, useApiClasses])
+
   const handlePrevWeek = () => {
     if (weekOffset === 0) return
     const n = weekOffset - 1
@@ -191,16 +205,34 @@ export default function Clases() {
         </div>
       </section>
 
-      {/* Discipline toggle */}
+      {/* Discipline toggle + view mode */}
       <div className={styles.filterWrap}>
         <ClassTypeFilter active={filter} onChange={setFilter} />
+        <button
+          className={`${styles.weekViewBtn} ${viewMode === 'week' ? styles.weekViewBtnActive : ''}`}
+          onClick={() => setViewMode(v => v === 'week' ? 'day' : 'week')}
+          title="Vista semanal"
+        >
+          <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
+            <rect x="0" y="0" width="6" height="5" rx="1.5" fill="currentColor" opacity="0.5"/>
+            <rect x="8" y="0" width="6" height="5" rx="1.5" fill="currentColor" opacity="0.5"/>
+            <rect x="16" y="0" width="6" height="5" rx="1.5" fill="currentColor" opacity="0.5"/>
+            <rect x="0" y="7" width="6" height="5" rx="1.5" fill="currentColor"/>
+            <rect x="8" y="7" width="6" height="5" rx="1.5" fill="currentColor"/>
+            <rect x="16" y="7" width="6" height="5" rx="1.5" fill="currentColor"/>
+            <rect x="0" y="14" width="6" height="4" rx="1.5" fill="currentColor" opacity="0.4"/>
+            <rect x="8" y="14" width="6" height="4" rx="1.5" fill="currentColor" opacity="0.4"/>
+            <rect x="16" y="14" width="6" height="4" rx="1.5" fill="currentColor" opacity="0.4"/>
+          </svg>
+          <span>Semana</span>
+        </button>
       </div>
 
       {/*  Booking timeline*/}
       <div className={styles.bookingWrap}>
 
-        {/* Day navigation */}
-        <div className={styles.dayNav}>
+        {/* Day navigation — solo en vista diaria */}
+        <div className={styles.dayNav} style={viewMode === 'week' ? { display: 'none' } : {}}>
           <button
             className={`${styles.navBtn} ${weekOffset === 0 ? styles.navBtnOff : ''}`}
             onClick={handlePrevWeek}
@@ -244,11 +276,88 @@ export default function Clases() {
           </button>
         </div>
 
-        {/* Month label */}
-        <p className={styles.monthLabel}>{monthLabel}</p>
+        {/* Month label — solo en vista diaria */}
+        {viewMode === 'day' && <p className={styles.monthLabel}>{monthLabel}</p>}
 
-        {/* Class list */}
-        <div className={styles.classList}>
+        {/* ── WEEK VIEW ── */}
+        {viewMode === 'week' && (
+          <>
+            {/* Navegación de semana */}
+            <div className={styles.weekNav}>
+              <button
+                className={`${styles.navBtn} ${weekOffset === 0 ? styles.navBtnOff : ''}`}
+                onClick={handlePrevWeek}
+                disabled={weekOffset === 0}
+                aria-label="Semana anterior"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span className={styles.monthLabel} style={{ margin: 0 }}>{monthLabel}</span>
+              <button
+                className={styles.navBtn}
+                onClick={handleNextWeek}
+                aria-label="Siguiente semana"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          <div className={styles.weekGrid}>
+            {days.map((date, di) => {
+              const today = isSameDay(date, new Date())
+              const classes = weekClasses[di] ?? []
+              return (
+                <div key={di} className={styles.weekCol}>
+                  <div className={`${styles.weekColHeader} ${today ? styles.weekColHeaderToday : ''}`}>
+                    <span className={styles.weekColAbbr}>{DAYS_ABBR[date.getDay()]}</span>
+                    <span className={styles.weekColNum}>{date.getDate()}</span>
+                  </div>
+                  <div className={styles.weekColBody}>
+                    {classes.length === 0 ? (
+                      <div className={styles.weekEmpty}>—</div>
+                    ) : classes.map((cls, ci) => {
+                      const classTime = getClassTimeToken(cls)
+                      const { available, status } = getPublicAvailability(cls)
+                      const isFull = status === 'full'
+                      const classDiscipline = resolveDiscipline(cls.discipline ?? cls.tipo)
+                      const coachFoto = cls.coachAvatarUrl
+                        ?? coachFotoById[String(cls.coachId ?? cls.coach_id ?? '')]
+                        ?? coachFotoByName[String(cls.coachNombre ?? cls.coach ?? '')]
+                        ?? null
+                      return (
+                        <button
+                          key={ci}
+                          className={`${styles.weekCard} ${isFull ? styles.weekCardFull : ''}`}
+                          onClick={() => {
+                            if (isFull) return
+                            if (!isAuthenticated) { navigate(ROUTES.login, { state: { selectedClass: cls } }); return }
+                            setSelectedDate(date)
+                            setSelectedClass(cls)
+                          }}
+                          disabled={isFull}
+                        >
+                          <div className={styles.weekCardTime}>{formatHour(classTime)}</div>
+                          <div className={styles.weekCardAvail}>{isFull ? 'LLENO' : `${available} lugar${available === 1 ? '' : 'es'}`}</div>
+                          <div className={styles.weekCardCoach}>
+                            <CoachAvatar name={cls.coachNombre ?? cls.coach ?? ''} avatarUrl={coachFoto} size={18} />
+                            <span>{cls.coachNombre}</span>
+                          </div>
+                          <span className={`${styles.weekCardBadge} ${classDiscipline === 'stryde' ? styles.weekCardBadgeStride : styles.weekCardBadgeSlow}`}>
+                            {classDiscipline === 'stryde' ? 'STRYDE X' : 'SLOW'}
+                          </span>
+                          <div className={styles.weekCardName}>{cls.nombre}</div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          </>
+        )}
+
+        {/* ── DAY VIEW ── */}
+        {viewMode === 'day' && <div className={styles.classList}>
           {dayClasses.length === 0 ? (
             <div className={styles.emptyState}>
               <span className={styles.emptyIcon}>📅</span>
@@ -302,22 +411,25 @@ export default function Clases() {
 
                   {/* CENTER — class info */}
                   <div className={styles.classBody}>
-                    <div className={styles.classTitleRow}>
-                      <span className={styles.className}>{cls.nombre}</span>
+                    <div className={styles.classMeta}>
+                      <span className={styles.coachName}>
+                        {cls.coachNombre}
+                      </span>
                       {(() => {
                         const classDiscipline = resolveDiscipline(cls.discipline ?? cls.tipo)
                         return (
                           <span className={`${styles.typeBadge} ${classDiscipline === 'stryde' ? styles.typeBadgeStride : classDiscipline === 'slow' ? styles.typeBadgeSlow : ''}`}>
-                            {classDiscipline === 'slow' ? 'SLOW' : classDiscipline === 'stryde' ? 'STRYDE' : 'Sin tipo'}
+                            {classDiscipline === 'slow' ? 'SLOW' : classDiscipline === 'stryde' ? 'STRYDE X' : 'Sin tipo'}
                           </span>
                         )
                       })()}
                     </div>
-                    <div className={styles.classMeta}>
-                      <span className={styles.metaItem}>
-                        {cls.coachNombre}
-                      </span>
+                    <div className={styles.classTitleRow}>
+                      <span className={styles.className}>{cls.nombre}</span>
                     </div>
+                    {(cls.descripcion || cls.description) && (
+                      <div className={styles.classDesc}>{cls.descripcion ?? cls.description}</div>
+                    )}
                   </div>
 
                   {/* RIGHT — availability + button */}
@@ -371,7 +483,7 @@ export default function Clases() {
               )
             })
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Ã¢â€â‚¬Ã¢â€â‚¬ Seat selector modal Ã¢â€â‚¬Ã¢â€â‚¬ */}

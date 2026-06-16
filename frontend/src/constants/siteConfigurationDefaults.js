@@ -361,7 +361,7 @@ export function createDefaultFooterConfig() {
     brand: {
       logo: media(
         'image',
-        'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/CASA_SCARLATTA_ISOTIPO_mz2cxr.png',
+        'https://res.cloudinary.com/dtj8woibw/image/upload/w_200,f_auto,q_auto/v1781472997/CASA_SCARLATTA_ISOTIPO_mz2cxr.png',
         'Casa Scarlatta'
       ),
       tagline: 'Estudio de movimiento enfocado en el bienestar integral.\nMind · Body · Flow',

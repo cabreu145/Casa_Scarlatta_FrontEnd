@@ -51,9 +51,193 @@
 /* ── Discipline filter ───────────────────────────────────────────────────────── */
 .filterWrap {
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 10px;
   padding: 20px 24px 0;
   background: linear-gradient(to bottom right, #FAF5F2, #F5EDE8, #EFE3DC);
+}
+
+/* Week view toggle button */
+.weekViewBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 52px;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(123, 31, 46, 0.2);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(123, 31, 46, 0.06);
+}
+.weekViewBtn:hover {
+  border-color: rgba(123, 31, 46, 0.4);
+  box-shadow: 0 4px 14px rgba(123, 31, 46, 0.12);
+}
+.weekViewBtnActive {
+  background: var(--brand-wine);
+  border-color: var(--brand-wine);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(123, 31, 46, 0.35);
+}
+
+/* ── Week navigation bar ────────────────────────────────────────────────────── */
+.weekNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* ── Week grid ───────────────────────────────────────────────────────────────── */
+.weekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+
+.weekCol {
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weekColHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px 8px;
+  border-bottom: 1.5px solid rgba(123,31,46,0.1);
+}
+
+.weekColHeaderToday {
+  border-bottom-color: var(--brand-wine);
+}
+
+.weekColAbbr {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.weekColHeaderToday .weekColAbbr { color: var(--brand-wine); }
+
+.weekColNum {
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.weekColHeaderToday .weekColNum { color: var(--brand-wine); }
+
+.weekColBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.weekEmpty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 18px;
+  padding: 16px 0;
+}
+
+.weekCard {
+  width: 100%;
+  text-align: left;
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(123,31,46,0.1);
+  border-radius: 12px;
+  padding: 10px 10px 8px;
+  cursor: pointer;
+  transition: box-shadow 0.15s, transform 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(123,31,46,0.06);
+}
+.weekCard:hover:not(:disabled) {
+  box-shadow: 0 4px 14px rgba(123,31,46,0.14);
+  transform: translateY(-1px);
+}
+.weekCardFull {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.weekCardTime {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.weekCardAvail {
+  font-family: var(--font-body);
+  font-size: 10px;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(123,31,46,0.08);
+  padding-bottom: 5px;
+  margin-bottom: 2px;
+}
+
+.weekCardCoach {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: #000;
+}
+
+.weekCardBadge {
+  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: 40px;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+.weekCardBadgeStride {
+  background: rgba(204,26,26,0.12);
+  color: #CC1A1A;
+}
+
+.weekCardBadgeSlow {
+  background: rgba(37,99,235,0.1);
+  color: #2563EB;
+}
+
+.weekCardName {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 /* ── Booking timeline wrapper ────────────────────────────────────────────────── */
@@ -295,8 +479,8 @@
 
 .className {
   font-family: var(--font-body);
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 400;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -315,13 +499,13 @@
 }
 
 .typeBadgeStride {
-  background: rgba(204,26,26,0.1);
+  background: rgba(204,26,26,0.12);
   color: #CC1A1A;
 }
 
 .typeBadgeSlow {
-  background: rgba(123,31,46,0.1);
-  color: var(--brand-wine);
+  background: rgba(37,99,235,0.1);
+  color: #2563EB;
 }
 
 .classMeta {
@@ -329,6 +513,20 @@
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
+}
+
+.coachName {
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 700;
+  color: #000 !important;
+}
+
+.classDesc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  line-height: 1.4;
 }
 
 .metaItem {

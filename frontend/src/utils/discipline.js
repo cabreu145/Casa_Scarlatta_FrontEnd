@@ -8,6 +8,6 @@ export function normalizeDiscipline(value) {
 export function getDisciplineBadgeLabel(value) {
   const normalized = normalizeDiscipline(value)
   if (normalized === 'slow') return 'SLOW'
-  if (normalized === 'stryde') return 'STRYDE'
+  if (normalized === 'stryde') return 'STRYDE X'
   return null
 }

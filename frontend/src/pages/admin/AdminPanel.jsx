@@ -2676,15 +2676,18 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       toast.error('No hay coaches registrados en backend. Sincroniza coaches antes de editar clases.')
                       return
                     }
-                    if (!Number.isInteger(payload.coach_id)) {
-                      toast.error('Selecciona un coach válido para guardar en API mode')
-                      return
-                    }
                     if (editClaseForm.publicarEn) {
                       toast.error('Programar publicación no está soportado todavía por backend')
                       return
                     }
-                    const updatedClase = await updateClaseApi(modalEditClase.id, payload)
+                    let updatedClase
+                    try {
+                      updatedClase = await updateClaseApi(modalEditClase.id, payload)
+                    } catch (updateErr) {
+                      const msg = updateErr?.message ?? JSON.stringify(updateErr) ?? 'Error desconocido'
+                      toast.error(`No se pudo guardar la clase: ${msg}`)
+                      return
+                    }
                     let editedOccurrence = null
                     let occurrenceFailed = false
                     if (editClaseForm.fecha && !modalEditClase?.occurrenceId) {
@@ -2721,7 +2724,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       dia:         editClaseForm.dia,
                       hora:        editClaseForm.hora,
                       duracion:    Number(editClaseForm.duracion) || 50,
-                      cupoMax:     editClaseForm.tipo === 'Slow' ? 10 : 14,
+                      cupoMax:     editClaseForm.tipo === 'Slow' ? 9 : 15,
                       descripcion: editClaseForm.descripcion,
                       publicarEn:  editClaseForm.publicarEn || null,
                       fecha:       editClaseForm.fecha || null,

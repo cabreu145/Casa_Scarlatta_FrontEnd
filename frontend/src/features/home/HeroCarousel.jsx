@@ -103,7 +103,13 @@ export default function HeroCarousel() {
               style={{ objectFit: 'cover' }}
             />
           ) : (
-            <img src={slide.url} alt="" className={styles.bg} />
+            <img
+              src={slide.url}
+              alt=""
+              className={styles.bg}
+              fetchPriority={i === 0 ? 'high' : undefined}
+              loading={i === 0 ? 'eager' : 'lazy'}
+            />
           )}
         </div>
       ))}
