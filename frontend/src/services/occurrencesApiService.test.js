@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('@/constants/api', () => ({
   ENDPOINTS: {
@@ -47,5 +47,23 @@ describe('occurrencesApiService', () => {
     expect(r2[0].occurrenceId).toBe(11)
     clearOccurrencesInflightCache()
   })
-})
 
+  test('getOccurrencesForDateRangeApi limita concurrencia masiva', async () => {
+    const { getOccurrencesForDateRangeApi, OCCURRENCES_CONCURRENCY_LIMIT } = await import('./occurrencesApiService')
+    let active = 0
+    let maxActive = 0
+
+    httpGet.mockImplementation(async () => {
+      active += 1
+      maxActive = Math.max(maxActive, active)
+      await new Promise((resolve) => setTimeout(resolve, 10))
+      active -= 1
+      return []
+    })
+
+    await getOccurrencesForDateRangeApi([1, 2, 3, 4, 5, 6], { from: '2026-05-29', to: '2026-06-04' })
+
+    expect(maxActive).toBeLessThanOrEqual(OCCURRENCES_CONCURRENCY_LIMIT)
+    expect(httpGet).toHaveBeenCalledTimes(6)
+  })
+})

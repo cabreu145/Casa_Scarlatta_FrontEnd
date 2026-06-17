@@ -29,8 +29,8 @@ function buildPackageBenefits(pkg) {
   if (benefits.length) return benefits
 
   const credits = getPackageCredits(pkg)
-  const creditsDisplay = credits >= 999 ? '∞' : credits
-  const fallback = [credits > 0 ? `${creditsDisplay} ${credits === 1 ? 'clase' : credits >= 999 ? 'clases ilimitadas' : 'clases'}` : 'Paquete finito']
+  const creditsDisplay = credits >= 450 ? '∞' : credits
+  const fallback = [credits > 0 ? `${creditsDisplay} ${credits === 1 ? 'clase' : credits >= 450 ? 'clases ilimitadas' : 'clases'}` : 'Paquete finito']
   const validity = formatPackageValidityLabel(pkg)
   if (validity) fallback.push(validity)
   const shareable = formatPackageShareabilityLabel(pkg)
@@ -163,6 +163,14 @@ export default function PricingSection() {
             Ver todos los paquetes →
           </button>
         </div>
+        <div className="mt-4 flex justify-center">
+          <button
+            className="text-xs text-[#A08878] underline underline-offset-4 transition-opacity hover:opacity-70"
+            onClick={() => navigate('/terminos-y-condiciones')}
+          >
+            Términos y condiciones
+          </button>
+        </div>
       </div>
     </section>
   )
@@ -261,7 +269,7 @@ function PromoBanner({ meta, featured }) {
 function PaqueteCard({ p, onComprar }) {
   const esFeatured = Boolean(p?.destacado)
   const clases = getPackageCredits(p)
-  const esUnlimited = clases >= 999
+  const esUnlimited = clases >= 450
   const clasesDisplay = esUnlimited ? '∞' : clases > 0 ? clases : '—'
   const clasesLabel = esUnlimited ? 'Ilimitado' : formatPackageCreditsLabel(clases)
   const benefits = buildPackageBenefits(p)

@@ -125,8 +125,10 @@ export default function Navbar() {
         <div className={styles.inner}>
           <Link to="/" className={styles.logo}>
             <img
-              src="https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/CASA_SCARLATTA_ISOTIPO_mz2cxr.png"
+              src="https://res.cloudinary.com/dtj8woibw/image/upload/w_200,f_auto,q_auto/v1781472997/CASA_SCARLATTA_ISOTIPO_mz2cxr.png"
               alt="Casa Scarlatta"
+              width={78}
+              height={52}
               draggable="false"
               className={styles.navLogo}
             />

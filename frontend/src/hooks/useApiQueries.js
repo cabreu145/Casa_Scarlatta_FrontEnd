@@ -83,6 +83,7 @@ import {
 } from '@/services/rbacApiService'
 import {
   cancelarReservaApi,
+  cancelarReservasMultipleApi,
   crearReservaApi,
   getMisReservasPaginatedApi,
   getOccurrenceRosterApi,
@@ -135,31 +136,45 @@ const shortDefaults = {
   refetchOnWindowFocus: false,
 }
 
-export function useMyFinancialStateQuery({ enabled = false } = {}) {
+const softRealtimeDefaults = {
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+  refetchIntervalInBackground: false,
+}
+
+export function useMyFinancialStateQuery({ enabled = false, refetchInterval = 12_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.myFinancialState,
     queryFn: getMyFinancialStateApi,
     enabled,
+    placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
-export function useMyMembershipsQuery({ enabled = false } = {}) {
+export function useMyMembershipsQuery({ enabled = false, refetchInterval = 15_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.myMemberships,
     queryFn: getMyMembershipsApi,
     enabled,
+    placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
-export function useMyCreditMovementsQuery({ page = 1, pageSize = 8, enabled = false } = {}) {
+export function useMyCreditMovementsQuery({ page = 1, pageSize = 8, enabled = false, refetchInterval = 15_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.myCreditMovements({ page, pageSize }),
     queryFn: () => getMyCreditMovementsPaginatedApi({ page, pageSize }),
     enabled,
     placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
@@ -233,16 +248,20 @@ export function useClassOccurrencesQuery(classId, { from, to, enabled = false } 
     queryKey: queryKeys.classes.occurrences(classId, { from: from || '', to: to || '' }),
     queryFn: () => getOccurrencesByClassApi(classId, { from, to }),
     enabled: Boolean(enabled && classId),
+    placeholderData: (previousData) => previousData,
     ...shortDefaults,
   })
 }
 
-export function useOccurrenceRosterQuery(occurrenceId, { includeCanceled = false, enabled = false } = {}) {
+export function useOccurrenceRosterQuery(occurrenceId, { includeCanceled = false, enabled = false, refetchInterval = false } = {}) {
   return useQuery({
     queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, includeCanceled),
     queryFn: () => getOccurrenceRosterApi(occurrenceId, { includeCanceled }),
     enabled: Boolean(enabled && occurrenceId),
+    placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
@@ -375,13 +394,15 @@ export function useTodayCashClosingQuery({ enabled = false } = {}) {
   })
 }
 
-export function useReservationsMeQuery({ page = 1, pageSize = 20, status, from, to, enabled = false } = {}) {
+export function useReservationsMeQuery({ page = 1, pageSize = 20, status, from, to, enabled = false, refetchInterval = 12_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.reservations.me({ page, pageSize, status: status || 'all', from: from || '', to: to || '' }),
     queryFn: () => getMisReservasPaginatedApi({ page, pageSize, status, from, to }),
     enabled,
     placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
@@ -963,12 +984,15 @@ export function useWaitlistByOccurrenceQuery(occurrenceId, { enabled = false } =
   })
 }
 
-export function useOccurrenceSpotsQuery(occurrenceId, { enabled = false } = {}) {
+export function useOccurrenceSpotsQuery(occurrenceId, { enabled = false, refetchInterval = 7_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.spots.byOccurrence(occurrenceId),
     queryFn: () => getOccurrenceSpotsApi({ occurrenceId }),
     enabled: Boolean(enabled && occurrenceId),
+    placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
@@ -1388,7 +1412,7 @@ function invalidateSpotsAndHolds(queryClient, occurrenceId) {
   ])
 }
 
-export function invalidateReservationSideEffects(queryClient, { occurrenceId, classId } = {}) {
+export function invalidateReservationSideEffects(queryClient, { occurrenceId, classId, userId } = {}) {
   return Promise.all([
     invalidateSpotsAndHolds(queryClient, occurrenceId),
     queryClient.invalidateQueries({ queryKey: queryKeys.reservations.me() }),
@@ -1402,10 +1426,13 @@ export function invalidateReservationSideEffects(queryClient, { occurrenceId, cl
     queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
     queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
+    userId ? queryClient.invalidateQueries({ queryKey: queryKeys.clients.detail(userId) }) : Promise.resolve(),
+    userId ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(userId) }) : Promise.resolve(),
     Promise.resolve(useClasesStore.getState().loadClasesFromApi({ force: true }).catch(() => {})),
   ])
 }
@@ -1413,7 +1440,7 @@ export function invalidateReservationSideEffects(queryClient, { occurrenceId, cl
 export function useCreateSpotHoldMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ occurrenceId, spotId, userId }) => createSpotHoldApi({ occurrenceId, spotId, userId }),
+    mutationFn: ({ occurrenceId, spotId, spotIds, userId }) => createSpotHoldApi({ occurrenceId, spotId, spotIds, userId }),
     onSuccess: async (_data, variables) => {
       await invalidateSpotsAndHolds(queryClient, variables?.occurrenceId)
     },
@@ -1433,10 +1460,10 @@ export function useDeleteSpotHoldMutation() {
 export function useCreateReservationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ claseId, userId, asiento, occurrenceId, spotId, holdId }) =>
-      crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId }),
+    mutationFn: ({ claseId, userId, asiento, occurrenceId, spotId, holdId, spotIds, holdIds }) =>
+      crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId, spotIds, holdIds }),
     onSuccess: async (_data, variables) => {
-      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.claseId })
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.claseId, userId: variables?.userId })
     },
   })
 }
@@ -1446,7 +1473,17 @@ export function useCancelReservationMutation() {
   return useMutation({
     mutationFn: ({ reservationId }) => cancelarReservaApi(reservationId),
     onSuccess: async (_data, variables) => {
-      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId })
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId, userId: variables?.userId })
+    },
+  })
+}
+
+export function useCancelMultipleReservationsMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ reservationIds, userId }) => cancelarReservasMultipleApi({ reservationIds, userId }),
+    onSuccess: async (_data, variables) => {
+      await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId, userId: variables?.userId })
     },
   })
 }

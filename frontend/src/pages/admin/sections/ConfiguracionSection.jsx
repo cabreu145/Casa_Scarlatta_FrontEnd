@@ -226,20 +226,20 @@ function TabContacto({ cfg, actualizar, canEdit = true }) {
         <div style={sectionTitle}>📞 Información de contacto</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div style={grid2}>
-            <Field label="Teléfono" hint="Aparece en la página de Contacto. [BACKEND] → configuracion.telefono">
+            <Field label="Teléfono" hint="Aparece en la página de Contacto.">
               <input type="text" value={form.telefono} onChange={f('telefono')} className={styles.formInput} placeholder="+52 (999) 000-0000" />
             </Field>
-            <Field label="Handle de Instagram" hint='El texto visible del link (ej: @casa.scarlatta). [BACKEND] → configuracion.instagramHandle'>
+            <Field label="Handle de Instagram" hint='El texto visible del link (ej: @casa.scarlatta).'>
               <input type="text" value={form.instagramHandle} onChange={f('instagramHandle')} className={styles.formInput} placeholder="@cuenta" />
             </Field>
           </div>
-          <Field label="URL de Instagram" hint="[BACKEND] → configuracion.instagram">
+          <Field label="URL de Instagram" hint="configuracion.instagram">
             <input type="text" value={form.instagram} onChange={f('instagram')} className={styles.formInput} placeholder="https://instagram.com/..." />
           </Field>
-          <Field label="WhatsApp" hint="Solo números. Se usa para el botón de WhatsApp directo. Dejar vacío para no mostrar. [BACKEND] → configuracion.whatsapp">
+          <Field label="WhatsApp" hint="Solo números. Se usa para el botón de WhatsApp directo. Dejar vacío para no mostrar.">
             <input type="text" value={form.whatsapp} onChange={f('whatsapp')} className={styles.formInput} placeholder="+52 999 000 0000" />
           </Field>
-          <Field label="Dirección completa" hint="Aparece en la página de Contacto. [BACKEND] → configuracion.direccion">
+          <Field label="Dirección completa" hint="Aparece en la página de Contacto. ">
             <textarea rows={2} value={form.direccion} onChange={f('direccion')} className={styles.formInput} placeholder="Calle 00 #00, Col. Centro..." style={{ resize: 'vertical' }} />
           </Field>
         </div>
@@ -254,6 +254,7 @@ function TabTextos({ cfg, actualizar, canEdit = true }) {
   const [form, setForm] = useState({
     nosotrosTexto1: cfg.get('nosotrosTexto1'),
     nosotrosTexto2: cfg.get('nosotrosTexto2'),
+    nosotrosReglamento: cfg.get('nosotrosReglamento') ?? '',
   })
   const [guardando, setGuardando] = useState(false)
 
@@ -268,14 +269,15 @@ function TabTextos({ cfg, actualizar, canEdit = true }) {
       payload: {
         nosotrosTexto1: form.nosotrosTexto1.trim(),
         nosotrosTexto2: form.nosotrosTexto2.trim(),
+        nosotrosReglamento: form.nosotrosReglamento.trim(),
       },
     })
   }
 
   async function handleRestaurar() {
     if (!window.confirm('¿Restaurar los textos a los valores predeterminados?')) return
-    const keys = ['nosotrosTexto1', 'nosotrosTexto2']
-    const defaults = Object.fromEntries(keys.map(k => [k, CONFIG_DEFAULTS[k]]))
+    const keys = ['nosotrosTexto1', 'nosotrosTexto2', 'nosotrosReglamento']
+    const defaults = Object.fromEntries(keys.map(k => [k, CONFIG_DEFAULTS[k] ?? '']))
     const saved = await persistConfiguration({
       actualizar,
       payload: defaults,
@@ -290,11 +292,14 @@ function TabTextos({ cfg, actualizar, canEdit = true }) {
       <div style={panel}>
         <div style={sectionTitle}>📝 Textos de la página Nosotros</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <Field label="Frase principal" hint="Aparece como título en la página Nosotros. [BACKEND] → configuracion.nosotrosTexto1">
+          <Field label="Frase principal" hint="Aparece como título en la página Nosotros. ">
             <textarea rows={3} value={form.nosotrosTexto1} onChange={f('nosotrosTexto1')} className={styles.formInput} style={{ resize: 'vertical' }} />
           </Field>
-          <Field label="Palabras clave / subtítulo" hint="Aparece debajo de la frase principal. [BACKEND] → configuracion.nosotrosTexto2">
+          <Field label="Palabras clave / subtítulo" hint="Aparece debajo de la frase principal. ">
             <textarea rows={2} value={form.nosotrosTexto2} onChange={f('nosotrosTexto2')} className={styles.formInput} style={{ resize: 'vertical' }} />
+          </Field>
+          <Field label="Reglamento" hint="Se muestra como sección de reglamento en la página Nosotros.">
+            <textarea rows={8} value={form.nosotrosReglamento} onChange={f('nosotrosReglamento')} className={styles.formInput} style={{ resize: 'vertical' }} placeholder="Escribe aquí el reglamento del estudio…" />
           </Field>
         </div>
       </div>
@@ -594,10 +599,10 @@ function TabImagenes({ cfg, actualizar, uploadMedia, apiMode, canEdit = true }) 
       <div style={panel}>
         <div style={sectionTitle}>Imágenes de sección</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {imgField('imagenBannerClases',  'Banner página Clases',       'Fondo hero de la página Clases. [BACKEND] → configuracion.imagenBannerClases')}
-          {imgField('imagenStryde',        'Imagen disciplina Stryde X', 'Fondo del botón Stryde X en Inicio. [BACKEND] → configuracion.imagenStryde')}
-          {imgField('imagenSlow',          'Imagen disciplina Slow',     'Fondo del botón Slow en Inicio. [BACKEND] → configuracion.imagenSlow')}
-          {imgField('imagenCoachesBanner', 'Banner coaches',             "Fondo de la sección 'Conoce a nuestro equipo'. [BACKEND] → configuracion.imagenCoachesBanner")}
+          {imgField('imagenBannerClases',  'Banner página Clases',       'Fondo hero de la página Clases.')}
+          {imgField('imagenStryde',        'Imagen disciplina Stryde X', 'Fondo del botón Stryde X en Inicio. ')}
+          {imgField('imagenSlow',          'Imagen disciplina Slow',     'Fondo del botón Slow en Inicio. ')}
+          {imgField('imagenCoachesBanner', 'Banner coaches',             "Fondo de la sección 'Conoce a nuestro equipo'. ")}
         </div>
       </div>
 
@@ -667,7 +672,7 @@ function TabReservas({ cfg, actualizar, canEdit = true }) {
             <p style={hint}>
               El cliente NO podrá cancelar si faltan menos de estas horas.
               Valor actual: <strong>{cfg.get('horasCancelacion')}h</strong>. Default: {CONFIG_DEFAULTS.horasCancelacion}h.
-              [BACKEND] → configuracion.horasCancelacion
+             
             </p>
           </div>
           <div>
@@ -682,7 +687,7 @@ function TabReservas({ cfg, actualizar, canEdit = true }) {
               />
               <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>personas (0 = sin límite)</span>
             </div>
-            <p style={hint}>Default: {CONFIG_DEFAULTS.maxListaEspera}. [BACKEND] → configuracion.maxListaEspera</p>
+            <p style={hint}>Default: {CONFIG_DEFAULTS.maxListaEspera}. </p>
           </div>
         </div>
         <div style={{ marginTop: 20, padding: '10px 14px', background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: 8, fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(59,130,246,0.8)', lineHeight: 1.6 }}>
@@ -733,10 +738,10 @@ function TabEstudio({ cfg, actualizar, canEdit = true }) {
       <div style={panel}>
         <div style={sectionTitle}>🏢 Información del estudio</div>
         <div style={grid2}>
-          <Field label="Nombre del estudio" hint="Aparece en encabezados de PDFs y reportes. [BACKEND] → configuracion.nombreEstudio">
+          <Field label="Nombre del estudio" hint="Aparece en encabezados de PDFs y reportes.">
             <input type="text" value={form.nombreEstudio} onChange={e => setForm(f => ({ ...f, nombreEstudio: e.target.value }))} className={styles.formInput} placeholder="Casa Scarlatta" />
           </Field>
-          <Field label="Ciudad / Ubicación" hint="Aparece en el pie de página de los reportes PDF. [BACKEND] → configuracion.ciudad">
+          <Field label="Ciudad / Ubicación" hint="Aparece en el pie de página de los reportes PDF. ">
             <input type="text" value={form.ciudad} onChange={e => setForm(f => ({ ...f, ciudad: e.target.value }))} className={styles.formInput} placeholder="Ciudad de México, México" />
           </Field>
         </div>

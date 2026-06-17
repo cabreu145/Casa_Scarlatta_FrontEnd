@@ -128,6 +128,18 @@ export default function Nosotros() {
         </div>
       </section>
 
+      {/* SECCIÓN REGLAMENTO */}
+      {cfg.get('nosotrosReglamento') && (
+        <section className={styles.reglamentoSec}>
+          <div className={styles.reglamentoInner}>
+            <p className={styles.reglamentoLabel}>Reglamento</p>
+            <h2 className={styles.reglamentoTitle}>Nuestras reglas</h2>
+            <div className={styles.reglamentoDivider} />
+            <p className={styles.reglamentoBody}>{cfg.get('nosotrosReglamento')}</p>
+          </div>
+        </section>
+      )}
+
       {/* SECCIÓN 2 — COACHES */}
       <section className={styles.coachesSec}>
         <div className={styles.coachesHeader}>

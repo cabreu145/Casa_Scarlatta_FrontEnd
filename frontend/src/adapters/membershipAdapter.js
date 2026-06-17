@@ -35,6 +35,11 @@ export function mapBackendMembershipToFrontend(item = {}) {
     allocatedCredits: Number(item.allocated_credits ?? item.allocatedCredits ?? item.credits_allocated ?? 0),
     expiresAt: item.expires_at ?? item.expiresAt ?? null,
     status: item.status ?? item.estado ?? null,
+    limitOneSpotPerOccurrence: Boolean(
+      item.limitOneSpotPerOccurrence ??
+      item.limit_one_spot_per_occurrence ??
+      false
+    ),
     isShareable: Boolean(item.is_shareable ?? item.isShareable ?? false),
     maxBeneficiaries: Number(item.max_beneficiaries ?? item.maxBeneficiaries ?? 0),
     beneficiaries,

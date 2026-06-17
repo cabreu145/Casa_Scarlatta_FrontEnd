@@ -140,22 +140,36 @@
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(245, 237, 232, 0.40);
+  background: transparent;
   border: none;
   cursor: pointer;
   transition: background var(--duration-fast) var(--ease-out),
               transform var(--duration-fast) var(--ease-out);
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.dot:hover {
+.dot::after {
+  content: '';
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(245, 237, 232, 0.40);
+  transition: background var(--duration-fast) var(--ease-out),
+              transform var(--duration-fast) var(--ease-out);
+}
+
+.dot:hover::after {
   background: rgba(245, 237, 232, 0.70);
 }
 
-.dotActive {
+.dotActive::after {
   background: var(--bg-base);
   transform: scale(1.25);
 }

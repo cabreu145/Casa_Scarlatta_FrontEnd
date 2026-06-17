@@ -26,6 +26,7 @@ import { useTransaccionesStore } from '@/stores/transaccionesStore'
 import { useTabuladorStore }   from '@/stores/tabuladorStore'
 import { usePaquetesStore }    from '@/stores/paquetesStore'
 import { useUsuariosStore }    from '@/stores/usuariosStore'
+import { useAdminClientsQuery } from '@/hooks/useApiQueries'
 import { getReporteCoaches }   from '@/services/finanzasService'
 import { getClassDisplayTime } from '@/utils/classSchedule'
 import { mockUsers }           from '@/data/mockUsers'
@@ -132,7 +133,9 @@ function useReporteData(periodoReporte = { tipo: 'todos' }) {
   const { transacciones }      = useTransaccionesStore()
   const { paquetes: catalogo } = usePaquetesStore()
   const { usuarios: todos }    = useUsuariosStore()
-  const clientes               = mockUsers.filter(u => u.rol === 'cliente')
+  const apiClientsQuery        = useAdminClientsQuery({ pageSize: 200, page: 1, enabled: useApiMode })
+  const apiClientes            = apiClientsQuery.data?.items ?? []
+  const clientes               = useApiMode ? apiClientes : mockUsers.filter(u => u.rol === 'cliente')
 
   const hoy    = new Date().toISOString().split('T')[0]
   const semana = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
@@ -163,22 +166,22 @@ function useReporteData(periodoReporte = { tipo: 'todos' }) {
   })), [txFiltradas])
 
   const usuarios = useMemo(() => clientes.map(u => {
-    const txPaquetes = transacciones
-      .filter(tx => tx.userId === u.id && tx.tipo === 'paquete')
-      .sort((a, b) => (a.fecha ?? '').localeCompare(b.fecha ?? ''))
-    const renovaciones    = txPaquetes.length > 1 ? txPaquetes.length - 1 : 0
-    const ultimaRenovacion = renovaciones > 0 ? txPaquetes[txPaquetes.length - 1].fecha : '—'
+    const nombre     = u.nombre ?? u.name ?? '—'
+    const paquete    = u.paquete ?? u.packageName ?? '—'
+    const activo     = u.activo ?? (u.status === 'active')
+    const estado     = paquete !== '—' ? 'Con paquete' : 'Sin paquete'
+    const vencimiento = u.activeMembership?.expiresAt ?? u.paqueteInfo?.fechaVencimiento ?? '—'
+    const creditos   = u.creditsBalance ?? u.clasesPaquete ?? 0
     return {
-      Nombre:              u.nombre ?? u.name,
-      Email:               u.email,
-      Activo:              u.activo ? 'Sí' : 'No',
-      Paquete:             u.paquete ?? '—',
-      'Renovó paquete':    renovaciones > 0 ? 'Sí' : 'No',
-      'Veces renovado':    renovaciones > 0 ? renovaciones : '—',
-      'Última renovación': ultimaRenovacion,
-      Registro:            u.fechaRegistro ?? '—',
+      Cliente:     nombre,
+      Email:       u.email ?? '—',
+      Paquete:     paquete,
+      Estado:      estado,
+      Vencimiento: vencimiento,
+      Créditos:    creditos,
+      Activo:      activo ? 'Sí' : 'No',
     }
-  }), [clientes, transacciones])
+  }), [clientes])
 
   const clasesData = useMemo(() => clases.map(c => ({
     Fecha:       c.fecha ?? fechaDesdeDia(c.dia),

@@ -1,38 +1,51 @@
-import { render, screen, waitFor } from '@testing-library/react'
+﻿import { render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { fechaLocal } from '@/utils/fecha'
 
 const mockLoadClasesFromApi = vi.fn().mockResolvedValue(undefined)
+const mockLoadMisReservasFromApi = vi.fn().mockResolvedValue(undefined)
 const mockGetOccurrencesForDateRangeApi = vi.fn()
 const mockCancelReserva = vi.fn()
 const mockUsePublicCoachesQuery = vi.fn()
 const todayIso = fechaLocal(new Date())
 const customBannerUrl = 'https://cdn.example.com/custom-classes-mobile.jpg'
 const originalInnerWidth = window.innerWidth
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+})
+
+let authState = {
+  isAuthenticated: false,
+  usuario: null,
+}
+
+let reservasState = []
+let financialStateData = { activeMembership: null }
+
+const clasesState = [
+  {
+    id: 3,
+    nombre: 'Clase Demo STRYDE Semana QA',
+    coachId: 1,
+    coachNombre: 'Coach Demo',
+    discipline: 'stryde',
+    duracion: 50,
+    cupoMax: 15,
+    cupoActual: 0,
+    estado: 'programada',
+  },
+]
 
 vi.mock('@/context/AuthContext', () => ({
-  useAuth: () => ({
-    isAuthenticated: false,
-    usuario: null,
-  }),
+  useAuth: () => authState,
 }))
 
 vi.mock('@/stores/clasesStore', () => ({
   useClasesStore: () => ({
-    clases: [
-      {
-        id: 3,
-        nombre: 'Clase Demo STRYDE Semana QA',
-        coachId: 1,
-        coachNombre: 'Coach Demo',
-        discipline: 'stryde',
-        duracion: 50,
-        cupoMax: 15,
-        cupoActual: 0,
-        estado: 'programada',
-      },
-    ],
+    clases: clasesState,
     loadClasesFromApi: mockLoadClasesFromApi,
   }),
 }))
@@ -45,7 +58,8 @@ vi.mock('@/stores/coachesStore', () => ({
 
 vi.mock('@/stores/reservasStore', () => ({
   useReservasStore: () => ({
-    reservas: [],
+    reservas: reservasState,
+    loadMisReservasFromApi: mockLoadMisReservasFromApi,
   }),
 }))
 
@@ -66,6 +80,11 @@ vi.mock('@/hooks/useSiteConfiguration', () => ({
 
 vi.mock('@/hooks/useApiQueries', () => ({
   usePublicCoachesQuery: (...args) => mockUsePublicCoachesQuery(...args),
+  useMyFinancialStateQuery: () => ({
+    data: financialStateData,
+    isLoading: false,
+    error: null,
+  }),
 }))
 
 vi.mock('@/services/classService', async () => {
@@ -74,7 +93,7 @@ vi.mock('@/services/classService', async () => {
     ...actual,
     getPublicClassesByDate: vi.fn().mockReturnValue([]),
     getPublicAvailability: vi.fn().mockReturnValue({ available: 15, status: 'ok' }),
-    getReservationOccurrenceDate: vi.fn().mockReturnValue(null),
+    getReservationOccurrenceDate: vi.fn().mockImplementation((reservation) => reservation?.occurrenceDate ?? null),
   }
 })
 
@@ -92,7 +111,15 @@ vi.mock('@/features/clases/SeatSelector', () => ({
 }))
 
 vi.mock('@/features/reservas/EquipmentReservationPanel', () => ({
-  default: () => <div>EquipmentReservationPanel Mock</div>,
+  default: ({ occurrenceId, classId, onReservationCreated }) => (
+    <div>
+      <div>EquipmentReservationPanel Mock</div>
+      <div data-testid="equipment-props">{`${classId}:${occurrenceId}`}</div>
+      <button type="button" onClick={() => onReservationCreated?.({ ok: true })}>
+        Confirmar mock
+      </button>
+    </div>
+  ),
 }))
 
 vi.mock('@/features/clases/ClassTypeFilter', () => ({
@@ -123,9 +150,16 @@ vi.mock('@/utils/formatters', async () => {
 
 describe('Clases public avatar regression', () => {
   beforeEach(() => {
+    queryClient.clear()
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 })
     vi.stubEnv('VITE_USE_API_CLASSES', 'true')
     vi.stubEnv('VITE_USE_API_RESERVATIONS', 'true')
+    authState = { isAuthenticated: false, usuario: null }
+    reservasState = []
+    financialStateData = { activeMembership: null }
+    mockLoadClasesFromApi.mockClear()
+    mockLoadMisReservasFromApi.mockClear()
+    mockCancelReserva.mockClear()
     mockUsePublicCoachesQuery.mockReturnValue({
       data: [
         {
@@ -135,9 +169,10 @@ describe('Clases public avatar regression', () => {
         },
       ],
     })
+    mockGetOccurrencesForDateRangeApi.mockClear()
     mockGetOccurrencesForDateRangeApi.mockResolvedValue({
       3: [
-      {
+        {
           occurrenceId: 10,
           fecha: todayIso,
           cupoMax: 15,
@@ -152,23 +187,26 @@ describe('Clases public avatar regression', () => {
 
   afterEach(() => {
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
+    vi.useRealTimers()
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
   })
 
-  test('renderiza sin ReferenceError y usa avatar pÃºblico por coach_id', async () => {
+  test('renderiza sin ReferenceError y usa avatar público por coach_id', async () => {
     const { default: Clases } = await import('./Clases')
 
     render(
-      <MemoryRouter initialEntries={['/clases']}>
-        <Clases />
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/clases']}>
+          <Clases />
+        </MemoryRouter>
+      </QueryClientProvider>
     )
 
     expect(await screen.findByText('Clase Demo STRYDE Semana QA')).toBeInTheDocument()
     await waitFor(() => {
       expect(mockUsePublicCoachesQuery).toHaveBeenCalled()
-      expect(mockGetOccurrencesForDateRangeApi).toHaveBeenCalled()
+      expect(mockGetOccurrencesForDateRangeApi.mock.calls.length).toBeGreaterThan(0)
     })
 
     const avatar = screen.getByRole('img', { name: 'Coach Demo' })
@@ -176,5 +214,109 @@ describe('Clases public avatar regression', () => {
     expect(avatar.getAttribute('src')).toContain('/media/coaches/coach-demo.png')
     expect(avatar.getAttribute('src')).not.toContain('localhost:5173')
     expect(document.querySelector('section').style.getPropertyValue('--hero-image')).toContain(customBannerUrl)
+  })
+
+  test('no hace polling de ocurrencias por intervalo en /clases', async () => {
+    vi.useFakeTimers()
+    const { default: Clases } = await import('./Clases')
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/clases']}>
+          <Clases />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    await vi.runOnlyPendingTimersAsync()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const baselineCalls = mockGetOccurrencesForDateRangeApi.mock.calls.length
+    expect(baselineCalls).toBeGreaterThan(0)
+
+    await vi.advanceTimersByTimeAsync(36_000)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(mockLoadClasesFromApi.mock.calls.length).toBeGreaterThan(1)
+    expect(mockGetOccurrencesForDateRangeApi).toHaveBeenCalledTimes(baselineCalls)
+  }, 10000)
+
+  test('map class con reserva existente muestra Reservar otro y abre panel con occurrence real', async () => {
+    authState = {
+      isAuthenticated: true,
+      usuario: { id: 1, nombre: 'Cliente Demo' },
+    }
+    financialStateData = {
+      activeMembership: {
+        limitOneSpotPerOccurrence: false,
+      },
+    }
+    reservasState = [
+      {
+        id: 501,
+        userId: 1,
+        estado: 'confirmada',
+        occurrenceId: 10,
+        occurrenceDate: todayIso,
+        claseId: 3,
+        spotLabel: '01',
+      },
+    ]
+
+    const { default: Clases } = await import('./Clases')
+    const user = userEvent.setup()
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/clases']}>
+          <Clases />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    expect(await screen.findByText('Reservar otro')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Reservar otro' }))
+
+    expect(await screen.findByText('EquipmentReservationPanel Mock')).toBeInTheDocument()
+    expect(screen.getByTestId('equipment-props')).toHaveTextContent('3:10')
+  })
+
+  test('map class con paquete restringido oculta Reservar otro', async () => {
+    authState = {
+      isAuthenticated: true,
+      usuario: { id: 1, nombre: 'Cliente Demo' },
+    }
+    financialStateData = {
+      activeMembership: {
+        limitOneSpotPerOccurrence: true,
+      },
+    }
+    reservasState = [
+      {
+        id: 501,
+        userId: 1,
+        estado: 'confirmada',
+        occurrenceId: 10,
+        occurrenceDate: todayIso,
+        claseId: 3,
+        spotLabel: '01',
+      },
+    ]
+
+    const { default: Clases } = await import('./Clases')
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/clases']}>
+          <Clases />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    expect(await screen.findByText('CONFIRMADA')).toBeInTheDocument()
+    expect(screen.queryByText('Reservar otro')).not.toBeInTheDocument()
+    expect(screen.getByText('Tu paquete permite solo un lugar por clase.')).toBeInTheDocument()
   })
 })

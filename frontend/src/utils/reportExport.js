@@ -23,7 +23,8 @@ export function downloadCsvFromRows({ rows, headers = [], filename = 'reporte.cs
     : XLSX.utils.aoa_to_sheet([headers])
 
   const csv = XLSX.utils.sheet_to_csv(worksheet)
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  // BOM (0xFEFF) tells Excel to open the file as UTF-8, preventing garbled accents
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
 

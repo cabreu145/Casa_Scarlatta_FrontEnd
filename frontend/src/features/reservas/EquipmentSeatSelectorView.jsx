@@ -42,16 +42,25 @@ function buildSlowRows(spots) {
   }
 }
 
-function getVisualState(spot, selectedSpotId) {
+function normalizeSelectedSpotIds(selectedSpotIds, selectedSpotId) {
+  if (Array.isArray(selectedSpotIds) && selectedSpotIds.length > 0) {
+    return selectedSpotIds.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+  }
+  if (selectedSpotId == null) return []
+  const normalized = Number(selectedSpotId)
+  return Number.isFinite(normalized) ? [normalized] : []
+}
+
+function getVisualState(spot, selectedSpotIds, selectedSpotId) {
   if (!spot) return 'occupied'
   const spotId = Number(spot.spotId)
-  const activeSelectedSpotId = selectedSpotId == null ? null : Number(selectedSpotId)
+  const activeSelectedSpotIds = normalizeSelectedSpotIds(selectedSpotIds, selectedSpotId)
 
-  if (activeSelectedSpotId != null && spotId === activeSelectedSpotId) {
+  if (activeSelectedSpotIds.includes(spotId)) {
     return 'selected'
   }
 
-  if (activeSelectedSpotId != null && (spot.heldByMe || spot.status === 'held_by_me')) {
+  if (activeSelectedSpotIds.length > 0 && (spot.heldByMe || spot.status === 'held_by_me')) {
     return 'available'
   }
 
@@ -63,6 +72,14 @@ function getVisualState(spot, selectedSpotId) {
 function isSpotDisabled(spot, busy) {
   if (!spot || busy) return true
   return spot.status === 'held' || spot.status === 'reserved' || spot.status === 'inactive'
+}
+
+// Helper para formatear valores numéricos o nulos con soporte de infinito continuo
+function formatCreditValue(val) {
+  if (val == null) return 'N/A'
+  const num = Number(val)
+  if (Number.isNaN(num)) return val // Si es un string como '...' o '!', lo deja pasar intacto
+  return num >= 450 ? '∞' : num
 }
 
 function buildSpotLookup(spots) {
@@ -83,8 +100,8 @@ function SpotStatusDot({ slow, state }) {
   return <span className={`${slow ? styles.statusIndicator : styles.strydeStatusDot} ${colorClass}`} />
 }
 
-function SlowMatButton({ spot, selectedSpotId, busy, onSelect }) {
-  const state = getVisualState(spot, selectedSpotId)
+function SlowMatButton({ spot, selectedSpotId, selectedSpotIds, busy, onSelect }) {
+  const state = getVisualState(spot, selectedSpotIds, selectedSpotId)
   const label = spot?.label ?? '--'
   const statusLabel = spot ? getEquipmentSpotStatusLabel(spot) : 'No disponible'
   const testId = spot ? `slow-spot-${normalizeSpotLabel(spot.label)}` : `slow-spot-${label}`
@@ -122,8 +139,8 @@ function SlowEmptySlot({ testId }) {
   )
 }
 
-function StrydeSpotButton({ visualEquipment, spot, selectedSpotId, busy, onSelect }) {
-  const state = getVisualState(spot, selectedSpotId)
+function StrydeSpotButton({ visualEquipment, spot, selectedSpotId, selectedSpotIds, busy, onSelect }) {
+  const state = getVisualState(spot, selectedSpotIds, selectedSpotId)
   const isBench = visualEquipment.type === 'bench'
   const statusLabel = spot ? getEquipmentSpotStatusLabel(spot) : 'No disponible'
 
@@ -172,7 +189,7 @@ function CoachBadge({ coachName, coachAvatarUrl = null, dark = false }) {
         name={coachName}
         avatarUrl={coachAvatarUrl}
         size={dark ? 38 : 34}
-        className={dark ? styles.instructorAvatar : styles.slowInstructorAvatar}
+        className={dark ? styles.instructorBadge : styles.slowInstructorAvatar}
         objectPosition="center 15%"
       />
       <span className={dark ? styles.instructorName : styles.slowInstructorName}>{coachName ?? 'Coach'}</span>
@@ -200,8 +217,10 @@ function CreditsBlock({ creditsSummary, creditsBalance }) {
 
   return (
     <div className={styles.sbCreditsBlock}>
-      <span className={styles.sbCreditsNum}>{value}</span>
-      <span className={styles.sbCreditsLabel}>{creditsSummary.label}</span>
+      <span className={styles.sbCreditsNum}>
+        {formatCreditValue(value)}
+      </span>
+      <span className={styles.sbCreditsLabel}>créditos restantes</span>
     </div>
   )
 }
@@ -234,6 +253,7 @@ function Legend({ slow }) {
 }
 
 function SuccessView({ slow, className, classDateTime, coachName, successSpotLabel, onClose }) {
+  const successLines = Array.isArray(successSpotLabel) ? successSpotLabel : [successSpotLabel]
   return (
     <div className={styles.successView}>
       <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar" style={{ position: 'absolute', top: 14, right: 14 }}>
@@ -245,7 +265,11 @@ function SuccessView({ slow, className, classDateTime, coachName, successSpotLab
         <strong>{className}</strong><br />
         {classDateTime} · Coach: {coachName}
       </p>
-      <p className={styles.successSeat}>{successSpotLabel}</p>
+      <div className={styles.successSeat}>
+        {successLines.filter(Boolean).map((line) => (
+          <div key={line}>{line}</div>
+        ))}
+      </div>
       <p className={styles.successCredits}>Tus créditos y reservas se actualizaron correctamente.</p>
       <button className={slow ? styles.slowConfirmBtn : styles.strydeConfirmBtn} onClick={onClose}>Cerrar</button>
     </div>
@@ -260,11 +284,15 @@ export default function EquipmentSeatSelectorView({
   coachAvatarUrl = null,
   classDateTime,
   selectedSpotId,
+  selectedSpotIds = [],
   activeHold,
   holdCountdown,
   creditsSummary,
   creditsBalance,
+  creditsToUse = 0,
+  maxSelectableSpots = 0,
   selectionError,
+  isRefreshing = false,
   isBusy,
   isConfirming,
   reservationSuccess,
@@ -276,8 +304,12 @@ export default function EquipmentSeatSelectorView({
   const slow = discipline === 'slow'
   const lookup = buildSpotLookup(spots)
   const backendSelectedSpot = (spots ?? []).find((spot) => spot.heldByMe || spot.status === 'held_by_me')
-  const effectiveSelectedSpotId = selectedSpotId ?? backendSelectedSpot?.spotId ?? null
+  const effectiveSelectedSpotIds = normalizeSelectedSpotIds(selectedSpotIds, selectedSpotId)
+  const effectiveSelectedSpotId = effectiveSelectedSpotIds[0] ?? backendSelectedSpot?.spotId ?? null
   const selectedSpot = (spots ?? []).find((spot) => Number(spot.spotId) === Number(effectiveSelectedSpotId)) ?? null
+
+  // Transformación limpia de la variable para usar de manera segura en todo el componente
+  const formattedMaxSpots = formatCreditValue(maxSelectableSpots)
 
   if (reservationSuccess) {
     return (
@@ -328,6 +360,7 @@ export default function EquipmentSeatSelectorView({
                       key={`mat:${entry.label}`}
                       spot={entry}
                       selectedSpotId={effectiveSelectedSpotId}
+                      selectedSpotIds={effectiveSelectedSpotIds}
                       busy={isBusy}
                       onSelect={onSelectSpot}
                     />
@@ -341,6 +374,7 @@ export default function EquipmentSeatSelectorView({
                       key={`mat:${spot.label}`}
                       spot={spot}
                       selectedSpotId={effectiveSelectedSpotId}
+                      selectedSpotIds={effectiveSelectedSpotIds}
                       busy={isBusy}
                       onSelect={onSelectSpot}
                     />
@@ -366,22 +400,23 @@ export default function EquipmentSeatSelectorView({
               </div>
               <div className={styles.sbDivider} />
               <div className={styles.sbSelectionBlock}>
-                  {selectedSpot ? (
+                {selectedSpot ? (
                   <>
-                    <div className={styles.sbSelLabel}>Tu lugar elegido</div>
+                    <div className={styles.sbSelLabel}>Lugar seleccionado</div>
                     <div className={styles.sbSelMat}>{getEquipmentSpotLabel(selectedSpot)}</div>
                     <div className={styles.sbSelDetail}>
-                      {activeHold?.expiresAt && holdCountdown ? `Tienes ${holdCountdown} para confirmar tu lugar` : 'Preparando bloqueo temporal'}
+                      Crédito a usar: {creditsToUse || 1} · Créditos disponibles: {formattedMaxSpots}
                     </div>
                   </>
                 ) : <div className={styles.sbSelHint}>Elige tu lugar<br />en el mapa</div>}
               </div>
               <div className={styles.sbDivider} />
               <CreditsBlock creditsSummary={creditsSummary} creditsBalance={creditsBalance} />
+              {isRefreshing ? <div style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 8 }}>Actualizando lugares...</div> : null}
               {selectionError ? <div style={{ color: '#b42318', fontSize: 13, marginBottom: 8 }}>{selectionError}</div> : null}
               <Policy />
-              <button className={styles.slowConfirmBtn} onClick={onConfirm} disabled={!selectedSpot || !activeHold?.holdId || isConfirming}>
-                {isConfirming ? 'Confirmando...' : selectedSpot ? 'Confirmar reserva →' : 'Selecciona un lugar'}
+              <button className={styles.slowConfirmBtn} onClick={onConfirm} disabled={!selectedSpot || isConfirming}>
+                {isConfirming ? 'Confirmando...' : selectedSpot ? 'Reservar lugar' : 'Selecciona un lugar'}
               </button>
             </aside>
           </div>
@@ -408,6 +443,7 @@ export default function EquipmentSeatSelectorView({
           visualEquipment={equipment}
           spot={getSpot(lookup, equipment.type, equipment.num)}
           selectedSpotId={effectiveSelectedSpotId}
+          selectedSpotIds={effectiveSelectedSpotIds}
           busy={isBusy}
           onSelect={onSelectSpot}
         />
@@ -449,11 +485,11 @@ export default function EquipmentSeatSelectorView({
             </div>
             <div className={styles.sbDivider} />
             <div className={styles.sbSelectionBlock}>
-              {selectedSpot && selectedEquipment ? (
+              {selectedSpot ? (
                 <>
-                  <div className={styles.sbSelLabel}>Tu equipo</div>
+                  <div className={styles.sbSelLabel}>Lugar seleccionado</div>
                   <div className={styles.sbSelMat} style={{ fontSize: 18 }}>{getEquipmentSpotLabel(selectedSpot)}</div>
-                  {selectedEquipment.mode === 'rotation' ? (
+                  {selectedSpot && selectedEquipment?.mode === 'rotation' ? (
                     <div className={styles.rotationFlow}>
                       <p className={styles.rfTitle}>ROTATION FLOW</p>
                       <div className={styles.rfTimeline}>
@@ -473,22 +509,21 @@ export default function EquipmentSeatSelectorView({
                       <BenchMini active />
                       <div>
                         <p className={styles.bofTitle}>Bench Only</p>
-                        <p className={styles.bofSub}>No rota · Toda la clase</p>
+                        <p className={styles.bofSub}>Crédito a usar: {creditsToUse || 1} · Disponibles: {formattedMaxSpots}</p>
                       </div>
                     </div>
                   )}
-                  <div className={styles.sbSelDetail}>
-                    {activeHold?.expiresAt && holdCountdown ? `Tienes ${holdCountdown} para confirmar tu lugar` : 'Preparando bloqueo temporal'}
-                  </div>
+                  <div className={styles.sbSelDetail}>Crédito a usar: {creditsToUse || 1} · Créditos disponibles: {formattedMaxSpots}</div>
                 </>
               ) : <div className={styles.sbSelHint}>Elige tu equipo<br />en el mapa</div>}
             </div>
             <div className={styles.sbDivider} />
             <CreditsBlock creditsSummary={creditsSummary} creditsBalance={creditsBalance} />
+            {isRefreshing ? <div style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 8 }}>Actualizando lugares...</div> : null}
             {selectionError ? <div style={{ color: '#fca5a5', fontSize: 13, marginBottom: 8 }}>{selectionError}</div> : null}
             <Policy />
-            <button className={styles.strydeConfirmBtn} onClick={onConfirm} disabled={!selectedSpot || !activeHold?.holdId || isConfirming}>
-              {isConfirming ? 'Confirmando...' : selectedSpot ? 'Confirmar reserva →' : 'Selecciona un lugar'}
+            <button className={styles.strydeConfirmBtn} onClick={onConfirm} disabled={!selectedSpot || isConfirming}>
+              {isConfirming ? 'Confirmando...' : selectedSpot ? 'Reservar lugar' : 'Selecciona un lugar'}
             </button>
           </aside>
         </div>

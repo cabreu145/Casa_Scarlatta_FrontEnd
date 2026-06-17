@@ -231,7 +231,7 @@ export default function PaymentReturnPage() {
                 <div style={{ fontWeight: 600 }}>
                   {paymentSummary.credits == null
                     ? 'N/A'
-                    : paymentSummary.credits >= 999
+                    : paymentSummary.credits >= 450
                       ? '∞'
                       : paymentSummary.credits}
                 </div>

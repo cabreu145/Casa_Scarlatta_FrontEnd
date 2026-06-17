@@ -9,6 +9,7 @@ describe('packageApiPayload', () => {
       precio: '2100',
       vigencia: '30',
       destacado: true,
+      limitOneSpotPerOccurrence: true,
       descripcion: 'Acceso a clases\nReserva prioritaria',
       compartible: true,
       maxParticipantes: '1',
@@ -24,6 +25,8 @@ describe('packageApiPayload', () => {
       benefits: ['Acceso a clases', 'Reserva prioritaria'],
       is_shareable: true,
       max_beneficiaries: 1,
+      limit_one_spot_per_occurrence: true,
+      purchase_once_per_user: false,
     })
     expect(validatePackageApiPayload(payload)).toBeNull()
   })
@@ -68,6 +71,8 @@ describe('packageApiPayload', () => {
     expect(payload.name).toBeNull()
     expect(payload.is_shareable).toBe(false)
     expect(payload.max_beneficiaries).toBe(0)
+    expect(payload.limit_one_spot_per_occurrence).toBe(false)
+    expect(payload.purchase_once_per_user).toBe(false)
     expect(validatePackageApiPayload(payload)).toBeNull()
   })
 
@@ -82,5 +87,40 @@ describe('packageApiPayload', () => {
     })
 
     expect(validatePackageApiPayload(payload)).toContain('beneficiarios')
+  })
+
+  test('acepta snake_case para límite de un lugar por clase', () => {
+    const payload = buildPackageApiPayload({
+      nombre: 'Ilimitado controlado',
+      clases: '30',
+      precio: '2500',
+      vigencia: '30',
+      limit_one_spot_per_occurrence: true,
+    })
+
+    expect(payload.limit_one_spot_per_occurrence).toBe(true)
+    expect(validatePackageApiPayload(payload)).toBeNull()
+  })
+
+  test('mapea purchaseOncePerUser en create y edit', () => {
+    const payloadTrue = buildPackageApiPayload({
+      nombre: 'First Class',
+      clases: '1',
+      precio: '300',
+      vigencia: '7',
+      purchaseOncePerUser: true,
+    })
+    const payloadFalse = buildPackageApiPayload({
+      nombre: 'Mensual',
+      clases: '12',
+      precio: '2100',
+      vigencia: '30',
+      purchase_once_per_user: false,
+    })
+
+    expect(payloadTrue.purchase_once_per_user).toBe(true)
+    expect(payloadFalse.purchase_once_per_user).toBe(false)
+    expect(validatePackageApiPayload(payloadTrue)).toBeNull()
+    expect(validatePackageApiPayload(payloadFalse)).toBeNull()
   })
 })

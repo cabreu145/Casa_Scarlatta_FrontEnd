@@ -48,7 +48,7 @@
 
 .colLinks a {
   font-size: 14px;
-  color: rgba(245, 237, 232, 0.65);
+  color: rgba(245, 237, 232, 0.78);
   text-decoration: none;
   transition: color var(--duration-fast);
 }
@@ -69,11 +69,11 @@
   flex-wrap: nowrap;
   white-space: nowrap;
   font-size: 11px;
-  color: rgba(245, 237, 232, 0.65);
+  color: rgba(245, 237, 232, 0.78);
 }
 
 .scheduleRow span:first-child {
-  color: rgba(245, 237, 232, 0.45);
+  color: rgba(245, 237, 232, 0.78);
   font-size: 11px;
   flex-shrink: 0;
 }
@@ -87,7 +87,7 @@
 
 .copy {
   font-size: 12px;
-  color: rgba(245, 237, 232, 0.35);
+  color: rgba(245, 237, 232, 0.72);
 }
 
 .social {

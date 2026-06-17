@@ -27,8 +27,17 @@ describe('classApiPayload', () => {
     })
     expect(payload.coach_id).toBe(12)
     expect(payload.discipline).toBe('slow')
-    expect(payload.capacity_max).toBe(10)
+    expect(payload.capacity_max).toBe(9)
     expect(payload.duration_minutes).toBe(60)
+  })
+
+  test('build payload API deriva cupo de mapa para Stryde', () => {
+    const payload = buildClaseApiPayload({
+      form: { nombre: 'Clase 3', tipo: 'Stryde', coach: 'Coach API', cupoMax: '99' },
+      coaches: [{ id: 7, nombre: 'Coach API' }],
+    })
+    expect(payload.discipline).toBe('stryde')
+    expect(payload.capacity_max).toBe(15)
   })
 
   test('resolveApiClassStatus traduce activa a programada', () => {

@@ -9,19 +9,20 @@ import PageWrapper from '@/components/layout/PageWrapper'
 
 import ScrollToTop from '@/components/layout/ScrollToTop'
 import Home from '@/pages/Home'
-import Clases from '@/pages/Clases'
-import Suet from '@/pages/Suet'
-import Flow from '@/pages/Flow'
-import Yoga from '@/pages/Yoga'
-import Nosotros from '@/pages/Nosotros'
-import Contacto from '@/pages/Contacto'
-import Login from '@/pages/Login'
-import Registro from '@/pages/Registro'
-import RecuperarContrasena from '@/pages/RecuperarContrasena'
-import NuevaContrasena from '@/pages/NuevaContrasena'
-import Reservar from '@/pages/Reservar'
-
 import NotFound from '@/pages/NotFound'
+
+const Clases      = lazy(() => import('@/pages/Clases'))
+const Suet        = lazy(() => import('@/pages/Suet'))
+const Flow        = lazy(() => import('@/pages/Flow'))
+const Yoga        = lazy(() => import('@/pages/Yoga'))
+const Nosotros    = lazy(() => import('@/pages/Nosotros'))
+const Contacto    = lazy(() => import('@/pages/Contacto'))
+const Login       = lazy(() => import('@/pages/Login'))
+const Registro    = lazy(() => import('@/pages/Registro'))
+const RecuperarContrasena = lazy(() => import('@/pages/RecuperarContrasena'))
+const NuevaContrasena     = lazy(() => import('@/pages/NuevaContrasena'))
+const Reservar    = lazy(() => import('@/pages/Reservar'))
+const TerminosCondiciones = lazy(() => import('@/pages/TerminosCondiciones'))
 
 const ClientPanel = lazy(() => import('@/pages/cliente/ClientPanel'))
 const CoachPanel  = lazy(() => import('@/pages/coach/CoachPanel'))
@@ -86,7 +87,7 @@ function AnimatedRoutes() {
   return (
     <>
       <Navbar />
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="sync">
         <Suspense fallback={
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -104,6 +105,7 @@ function AnimatedRoutes() {
             <Route path="/yoga" element={<PageWrapper><Yoga /></PageWrapper>} />
             <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
             <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
+            <Route path="/terminos-y-condiciones" element={<PageWrapper><TerminosCondiciones /></PageWrapper>} />
             <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
             <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
             <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />

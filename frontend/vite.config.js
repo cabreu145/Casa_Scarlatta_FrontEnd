@@ -68,6 +68,23 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/') || id.includes('node_modules/react-router')) {
+              return 'vendor'
+            }
+            if (id.includes('node_modules/framer-motion')) {
+              return 'motion'
+            }
+            if (id.includes('node_modules/@tanstack')) {
+              return 'query'
+            }
+          },
+        },
+      },
+    },
     test: {
       environment: 'jsdom',
       setupFiles: './src/test/setupTests.js',

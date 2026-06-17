@@ -230,11 +230,30 @@ function formatHistoricalItem(item = {}) {
   }
 }
 
+function extractProductoFromSale(sale) {
+  const raw = sale.raw ?? {}
+  // Intentar obtener nombres de items del raw
+  const rawItems = Array.isArray(raw.items) ? raw.items : []
+  if (rawItems.length) {
+    const names = rawItems
+      .map((i) => i.name ?? i.nombre ?? i.display_name ?? i.displayName ?? i.description ?? '')
+      .filter((n) => n && n !== 'Item')
+    if (names.length) return names.join(', ')
+  }
+  // Fallback: campos de paquete o producto en el raw
+  const pkg = raw.package_name ?? raw.packageName ?? raw.membership_name ?? raw.membershipName ?? ''
+  if (pkg) return pkg
+  const prod = raw.product_name ?? raw.productName ?? ''
+  if (prod) return prod
+  return '—'
+}
+
 function buildTransactionRows({ sales = [], expenses = [] }) {
   const salesRows = sales.map((sale) => ({
     id: `sale-${sale.folio ?? sale.id}`,
     fecha: sale.createdAt,
     concepto: sale.customerName || sale.customerEmail || 'Venta mostrador',
+    producto: extractProductoFromSale(sale),
     tipo: 'venta',
     metodoPago: sale.paymentMethod,
     monto: Number(sale.totalMxn ?? 0),
@@ -244,6 +263,7 @@ function buildTransactionRows({ sales = [], expenses = [] }) {
     id: `expense-${expense.id ?? expense.expenseId}`,
     fecha: expense.createdAt ?? expense.expenseDate ?? null,
     concepto: expense.description || expense.category,
+    producto: expense.description || expense.category || '—',
     tipo: 'gasto',
     metodoPago: expense.paymentMethod,
     monto: -Math.abs(Number(expense.amountMxn ?? expense.amount ?? 0)),
@@ -260,6 +280,7 @@ function formatTxExport(rows = []) {
   return rows.map((row) => ({
     Fecha: formatDateTimeMx(row.fecha),
     Concepto: row.concepto,
+    Producto: row.producto ?? '—',
     Tipo: row.tipo,
     Metodo: paymentMethodLabel(row.metodoPago),
     Monto: row.monto,
@@ -778,6 +799,7 @@ export default function FinanzasApiSection({ inPanel = false }) {
               <tr>
                 <th>Fecha</th>
                 <th>Concepto</th>
+                <th>Producto</th>
                 <th>Tipo</th>
                 <th>Método</th>
                 <th>Total</th>
@@ -786,7 +808,7 @@ export default function FinanzasApiSection({ inPanel = false }) {
             <tbody>
               {txFiltered.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>
+                  <td colSpan={6}>
                     <EmptyState>Sin transacciones en este período</EmptyState>
                   </td>
                 </tr>
@@ -794,6 +816,7 @@ export default function FinanzasApiSection({ inPanel = false }) {
                 <tr key={row.id}>
                   <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatDateTimeMx(row.fecha)}</td>
                   <td style={{ fontWeight: 500 }}>{row.concepto}</td>
+                  <td style={{ fontSize: 13, color: row.producto === '—' ? 'var(--text-muted)' : 'var(--text-primary)' }}>{row.producto}</td>
                   <td>
                     <span className={`${styles.badge} ${row.tipo === 'venta' ? styles.badgeCompletada : styles.badgeCancelada}`}>
                       {row.tipo}
@@ -1165,11 +1188,27 @@ export default function FinanzasApiSection({ inPanel = false }) {
                 Ventas recientes
               </div>
               <div className={styles.miniList}>
-                {recentSales.length > 0 ? recentSales.map((sale) => (
+                {recentSales.length > 0 ? recentSales.map((sale) => {
+                  const rawItems = Array.isArray(sale.raw?.items) ? sale.raw.items : []
+                  const productoNombre = (() => {
+                    if (rawItems.length) {
+                      const names = rawItems
+                        .map((i) => i.name ?? i.nombre ?? i.display_name ?? i.displayName ?? '')
+                        .filter((n) => n && n !== 'Item')
+                      if (names.length) return names.join(', ')
+                    }
+                    return sale.raw?.package_name ?? sale.raw?.packageName ?? sale.raw?.product_name ?? sale.raw?.productName ?? ''
+                  })()
+                  return (
                   <div key={sale.folio ?? sale.id} className={styles.miniItem}>
                     <div className={styles.miniAvatar}>{(sale.customerName || sale.customerEmail || 'V').charAt(0).toUpperCase()}</div>
                     <div>
                       <div className={styles.miniName}>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</div>
+                      {productoNombre && (
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#E8A4AD', marginBottom: 2 }}>
+                          {productoNombre}
+                        </div>
+                      )}
                       <div className={styles.miniSub}>{sale.folio} · {paymentMethodLabel(sale.paymentMethod)} · {formatDateTimeMx(sale.createdAt)}</div>
                     </div>
                     <div className={styles.miniRight}>
@@ -1177,7 +1216,8 @@ export default function FinanzasApiSection({ inPanel = false }) {
                       <Badge color="green">Pagado</Badge>
                     </div>
                   </div>
-                )) : (
+                  )
+                }) : (
                   <EmptyState>Sin ventas registradas</EmptyState>
                 )}
               </div>

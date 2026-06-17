@@ -14,6 +14,7 @@ describe('financialStateAdapter', () => {
         credits_total: 10,
         credits_used: 2,
         credits_available: 8,
+        limit_one_spot_per_occurrence: true,
       },
       credit_movements: [{ id: 1, type: 'reservation_debit', amount: -1, balance_after: 8 }],
       transactions: [],
@@ -22,6 +23,7 @@ describe('financialStateAdapter', () => {
     expect(mapped.userId).toBe(3)
     expect(mapped.creditsBalance).toBe(8)
     expect(mapped.activeMembership?.packageName).toBe('Paquete 10 clases')
+    expect(mapped.activeMembership?.limitOneSpotPerOccurrence).toBe(true)
     expect(mapped.creditMovements).toHaveLength(1)
     expect(mapped.transactions).toHaveLength(0)
   })

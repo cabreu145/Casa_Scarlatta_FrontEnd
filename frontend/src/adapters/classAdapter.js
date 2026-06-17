@@ -23,7 +23,7 @@ function resolveUiStatus(value) {
 }
 
 function resolveTipoFromDiscipline(discipline, fallbackTipo) {
-  const normalized = normalizeDiscipline(discipline ?? fallbackTipo)
+  const normalized = normalizeDiscipline(discipline, fallbackTipo)
   if (normalized === 'slow') return 'Slow'
   if (normalized === 'stryde') return 'Stryde X'
   const fallback = String(fallbackTipo ?? '').trim()
@@ -34,9 +34,13 @@ function resolveTipoFromDiscipline(discipline, fallbackTipo) {
 export function mapBackendClassToFrontendClass(item = {}) {
   const cupoMax = safeNumber(item.capacity_max, 0)
   const cupoActual = safeNumber(item.capacity_current, 0)
-  const discipline = normalizeDiscipline(item.discipline ?? item.class_discipline ?? item.classType ?? item.tipo)
+  const discipline = normalizeDiscipline(
+    item.discipline ?? item.class_discipline ?? item.classType ?? item.tipo,
+    item.name ?? item.nombre ?? item.class_name ?? item.title
+  )
   return {
     id: item.id,
+    classId: item.id ?? item.class_id ?? item.clase_id ?? null,
     nombre: item.name ?? item.nombre ?? 'Clase',
     name: item.name ?? item.nombre ?? 'Clase',
     tipo: resolveTipoFromDiscipline(discipline, item.tipo),

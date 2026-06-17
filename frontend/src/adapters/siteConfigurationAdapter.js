@@ -208,6 +208,7 @@ function normalizeLegacyTopLevelFields(item = {}, fallback = CONFIG_DEFAULTS) {
     direccion: item.direccion ?? fallback.direccion,
     nosotrosTexto1: valueOf(item, 'nosotrosTexto1', 'nosotros_texto_1') ?? fallback.nosotrosTexto1,
     nosotrosTexto2: valueOf(item, 'nosotrosTexto2', 'nosotros_texto_2') ?? fallback.nosotrosTexto2,
+    nosotrosReglamento: valueOf(item, 'nosotrosReglamento', 'nosotros_reglamento') ?? fallback.nosotrosReglamento ?? '',
     nombreEstudio: valueOf(item, 'nombreEstudio', 'nombre_estudio') ?? fallback.nombreEstudio,
     ciudad: item.ciudad ?? fallback.ciudad,
     updatedAt: valueOf(item, 'updatedAt', 'updated_at') ?? fallback.updatedAt,

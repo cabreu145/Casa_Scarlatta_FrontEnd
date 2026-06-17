@@ -35,6 +35,16 @@ export function mapBackendPackageToFrontend(payload = {}) {
     isFeatured: payload.is_featured ?? payload.isFeatured ?? false,
     featured: payload.is_featured ?? payload.isFeatured ?? false,
     destacado: payload.is_featured ?? payload.isFeatured ?? false,
+    limitOneSpotPerOccurrence: Boolean(
+      payload.limitOneSpotPerOccurrence ??
+      payload.limit_one_spot_per_occurrence ??
+      false
+    ),
+    purchaseOncePerUser: Boolean(
+      payload.purchaseOncePerUser ??
+      payload.purchase_once_per_user ??
+      false
+    ),
     isShareable,
     is_shareable: isShareable,
     maxBeneficiaries: Number.isFinite(maxBeneficiaries) ? maxBeneficiaries : 0,

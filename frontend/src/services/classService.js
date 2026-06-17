@@ -108,6 +108,9 @@ export function getReservationOccurrenceDate(reservation) {
   if (reservation.classDate && /^\d{4}-\d{2}-\d{2}$/.test(reservation.classDate)) {
     return reservation.classDate
   }
+  if (reservation.occurrenceDate && /^\d{4}-\d{2}-\d{2}$/.test(reservation.occurrenceDate)) {
+    return reservation.occurrenceDate
+  }
   if (reservation.classStartAt) {
     const d = new Date(reservation.classStartAt)
     if (!Number.isNaN(d.getTime())) return d.toISOString().split('T')[0]

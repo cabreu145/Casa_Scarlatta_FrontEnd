@@ -25,6 +25,7 @@ import {
 } from '@/hooks/useApiQueries'
 import { useAuthStore } from '@/stores/authStore'
 import { hasAnyPermission, hasPermission } from '@/auth/permissions'
+import { resolvePackagePurchaseErrorMessage } from '@/utils/packagePurchasePolicy'
 
 function FilterChips({ options, active, onChange }) {
   return (
@@ -344,7 +345,12 @@ export default function PuntoDeVentaSection({
         CUSTOMER_REQUIRED_FOR_PACKAGE: 'Selecciona cliente para vender paquete.',
         VALIDATION_ERROR: raw || 'No pudimos completar la venta.',
       }
-      toast.error(messageByCode[code] || raw || 'No pudimos completar la venta.')
+      toast.error(
+        resolvePackagePurchaseErrorMessage(error, { admin: true }) ||
+        messageByCode[code] ||
+        raw ||
+        'No pudimos completar la venta.'
+      )
     }
   }
 

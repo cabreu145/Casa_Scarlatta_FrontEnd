@@ -1,13 +1,14 @@
-export function normalizeDiscipline(value) {
-  const normalized = String(value ?? '').trim().toLowerCase()
-  if (normalized === 'stryde' || normalized === 'stride') return 'stryde'
-  if (normalized === 'slow') return 'slow'
+export function normalizeDiscipline(value, fallbackText = '') {
+  const source = value ?? fallbackText ?? ''
+  const normalized = String(source).trim().toLowerCase()
+  if (normalized.includes('stryde') || normalized.includes('stride')) return 'stryde'
+  if (normalized === 'slow' || normalized.includes('slow')) return 'slow'
   return null
 }
 
-export function getDisciplineBadgeLabel(value) {
-  const normalized = normalizeDiscipline(value)
+export function getDisciplineBadgeLabel(value, fallbackText = '') {
+  const normalized = normalizeDiscipline(value, fallbackText)
   if (normalized === 'slow') return 'SLOW'
-  if (normalized === 'stryde') return 'STRYDE'
+  if (normalized === 'stryde') return 'STRYDE X'
   return null
 }

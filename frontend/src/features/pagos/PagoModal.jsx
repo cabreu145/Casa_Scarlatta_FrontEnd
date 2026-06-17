@@ -6,6 +6,7 @@ import { asignarPaqueteService } from '@/services/usuariosService'
 import { createCheckoutPreferenceApi } from '@/services/paymentsApiService'
 import { logPaqueteVendido } from '@/services/actividadService'
 import { saveLastPaymentExternalReference, upsertRecentPaymentReference } from './paymentTracking'
+import { resolvePackagePurchaseErrorMessage } from '@/utils/packagePurchasePolicy'
 import s from './PagoModal.module.css'
 
 function readEnvFlag(name) {
@@ -77,8 +78,9 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
 
         window.location.href = checkoutUrl
       } catch (err) {
-        setError(err?.message ?? 'No se pudo crear checkout')
-        toast.error(err?.message ?? 'No se pudo crear checkout')
+        const mapped = resolvePackagePurchaseErrorMessage(err, { admin: false })
+        setError(mapped ?? err?.message ?? 'No se pudo crear checkout')
+        toast.error(mapped ?? err?.message ?? 'No se pudo crear checkout')
       } finally {
         setLoadingCheckout(false)
       }
@@ -157,7 +159,7 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
                 <div className={s.paqueteDetalle}>
                   {(() => {
                     const creditos = paquete?.creditos ?? paquete?.clases ?? 0
-                    return creditos >= 999 ? '∞ créditos' : `${creditos} créditos`
+                    return creditos >= 450 ? '∞ créditos' : `${creditos} créditos`
                   })()} · {paquete?.vigencia ?? 'Sin vigencia'}
                 </div>
                 {paquete?.descripcion ? <div className={s.paqueteBeneficios}>{paquete.descripcion}</div> : null}

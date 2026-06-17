@@ -32,9 +32,29 @@ export async function getReservaByIdApi(id) {
   return mapBackendReservationToFrontend(payload ?? {}, buildClassesById())
 }
 
-export async function crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId }) {
-  const requestPayload = mapCreateReservationPayload({ claseId, userId, asiento, occurrenceId, spotId, holdId })
+export async function crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId, spotIds, holdIds }) {
+  const requestPayload = mapCreateReservationPayload({ claseId, userId, asiento, occurrenceId, spotId, holdId, spotIds, holdIds })
   const payload = await httpPost(ENDPOINTS.crearReserva, requestPayload)
+  if (Array.isArray(payload?.reservations)) {
+    const classesById = buildClassesById()
+    const reservations = payload.reservations.map((row) => mapBackendReservationToFrontend({
+      ...row,
+      class_id: row?.class_id ?? payload?.class_id ?? claseId,
+      class_name: row?.class_name ?? payload?.class_name ?? null,
+      occurrence_id: row?.occurrence_id ?? payload?.occurrence_id ?? occurrenceId,
+    }, classesById))
+    const firstReservation = reservations[0] ?? null
+    return {
+      occurrenceId: payload?.occurrence_id ?? occurrenceId ?? null,
+      userId: payload?.user_id ?? userId ?? null,
+      creditsCharged: payload?.credits_charged ?? payload?.creditsCharged ?? reservations.length,
+      reservations,
+      id: firstReservation?.id ?? null,
+      spotId: firstReservation?.spotId ?? null,
+      holdId: firstReservation?.holdId ?? null,
+      status: firstReservation?.estado ?? null,
+    }
+  }
   return mapBackendReservationToFrontend(payload ?? {}, buildClassesById())
 }
 
@@ -49,6 +69,22 @@ export async function getOccurrenceRosterApi(occurrenceId, { includeCanceled = f
 export async function cancelarReservaApi(id) {
   const payload = await httpPost(ENDPOINTS.cancelarReserva(id), {})
   return mapBackendReservationToFrontend(payload ?? {}, buildClassesById())
+}
+
+export async function cancelarReservasMultipleApi({ reservationIds, userId }) {
+  const payload = await httpPost(ENDPOINTS.cancelarReservasMultiple, {
+    reservation_ids: Array.isArray(reservationIds) ? reservationIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)) : [],
+    ...(userId !== undefined && userId !== null && userId !== '' ? { user_id: Number(userId) } : {}),
+  })
+
+  return {
+    cancelledCount: payload?.cancelled_count ?? payload?.cancelledCount ?? 0,
+    creditsRefunded: payload?.credits_refunded ?? payload?.creditsRefunded ?? 0,
+    reservations: Array.isArray(payload?.reservations)
+      ? payload.reservations.map((row) => mapBackendReservationToFrontend(row ?? {}, buildClassesById()))
+      : [],
+    raw: payload ?? {},
+  }
 }
 
 export async function marcarNoAsistioApi(id) {

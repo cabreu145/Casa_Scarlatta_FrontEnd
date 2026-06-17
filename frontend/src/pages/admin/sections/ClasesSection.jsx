@@ -219,7 +219,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
         const fecha   = parsearFecha(get('fecha','date','dia','fechaespecifica'))
         const hora    = parsearHora(get('hora','time','horario','horainicio'))
         const duracion  = Number(get('duracion','duration','duracionmin','minutos')) || 50
-        const cupoMax   = tipo === 'Slow' ? 10 : 14
+        const cupoMax   = tipo === 'Slow' ? 9 : 15
         const descripcion = String(get('descripcion','descripcion','description','desc')).trim()
 
         if (!nombre) errs.push(`Fila ${i+2}: Nombre vacío — se omitirá`)
@@ -290,7 +290,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
 
         {cargando && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, marginBottom: 14, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>
-            <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>Ã¢ÂÂ³</span> Procesando archivo…
+            <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span> Procesando archivo…
           </div>
         )}
 
@@ -422,7 +422,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
         {/* Tabla de clases parseadas */}
         {clasesParseadas.length > 0 && (
           <>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 8 }}>
               {clasesParseadas.length} clase{clasesParseadas.length !== 1 ? 's' : ''} detectadas:
             </div>
             <div style={{ overflowX: 'auto', marginBottom: 18 }}>
@@ -430,26 +430,26 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
                 <thead>
                   <tr>
                     {['Nombre','Tipo','Coach','Fecha','Hora'].map(h => (
-                      <th key={h} style={{ padding: '7px 10px', borderBottom: '1px solid var(--neutral-border)', color: 'var(--text-muted)', textAlign: 'left', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '7px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)', textAlign: 'left', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {clasesParseadas.slice(0, 20).map((c, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
-                      <td style={{ padding: '7px 10px', color: 'var(--text-primary)', fontWeight: 500 }}>{c.nombre}</td>
+                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                      <td style={{ padding: '7px 10px', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{c.nombre}</td>
                       <td style={{ padding: '7px 10px' }}>
-                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: c.tipo === 'Stryde X' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)', color: c.tipo === 'Stryde X' ? '#ef4444' : '#3b82f6' }}>{c.tipo}</span>
+                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: c.tipo === 'Stryde X' ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)', color: c.tipo === 'Stryde X' ? '#f87171' : '#60a5fa' }}>{c.tipo}</span>
                       </td>
-                      <td style={{ padding: '7px 10px', color: c.coachId ? 'var(--text-secondary)' : '#eab308' }}>{c.coachNombre || '—'}{!c.coachId && c.coachNombre ? ' ⚠' : ''}</td>
-                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{c.fecha}</td>
-                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)' }}>{getClassDisplayTime(c)}</td>
+                      <td style={{ padding: '7px 10px', color: c.coachId ? 'rgba(255,255,255,0.85)' : '#fbbf24' }}>{c.coachNombre || '—'}{!c.coachId && c.coachNombre ? ' ⚠' : ''}</td>
+                      <td style={{ padding: '7px 10px', color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap' }}>{c.fecha}</td>
+                      <td style={{ padding: '7px 10px', color: 'rgba(255,255,255,0.85)' }}>{getClassDisplayTime(c)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {clasesParseadas.length > 20 && (
-                <div style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>… y {clasesParseadas.length - 20} más</div>
+                <div style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(255,255,255,0.45)', textAlign: 'center' }}>… y {clasesParseadas.length - 20} más</div>
               )}
             </div>
           </>
@@ -620,7 +620,7 @@ export default function ClasesSection({
     }
 
     clases.forEach(c => agregarClase(c))
-    logClaseCreada({ nombre: `ImportaciÃƒÂ³n masiva: ${clases.length} clases` })
+    logClaseCreada({ nombre: `Importación masiva: ${clases.length} clases` })
     toast.success(`${clases.length} clase${clases.length !== 1 ? 's' : ''} importadas correctamente`)
   }
 
@@ -810,7 +810,7 @@ export default function ClasesSection({
                 setSelectMode(false)
               }}
             >
-               ðŸ—‘ Eliminar ({selectedIds.size})
+               🗑 Eliminar ({selectedIds.size})
             </button>
           )}
           <button
@@ -981,7 +981,7 @@ export default function ClasesSection({
                       <span className={styles.dayNum}>
                         {(() => {
                           if (c.fecha) return new Date(c.fecha + 'T12:00:00').getDate()
-                          const idx = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado'].indexOf(c.dia)
+                          const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(c.dia)
                           const hoy = new Date()
                           const diff = idx - hoy.getDay()
                           const fecha = new Date(hoy)
@@ -1021,7 +1021,7 @@ export default function ClasesSection({
                           fontFamily: 'var(--font-body)',
                           marginLeft: 4,
                         }}>
-                          â³ {enEspera.length} en espera
+                          ⏳ {enEspera.length} en espera
                         </span>
                       )
                     })()}
@@ -1147,7 +1147,7 @@ export default function ClasesSection({
             )}
             {useBackendPaginationInList && apiListState.error && (
               <div style={{ padding: '10px 16px', fontSize: 12, color: '#ef4444' }}>
-                No se pudo cargar pÃ¡gina de clases.
+                No se pudo cargar página de clases.
               </div>
             )}
             <table style={{
@@ -1243,7 +1243,7 @@ export default function ClasesSection({
                               background: 'rgba(245,158,11,0.12)', color: '#F59E0B',
                               border: '1px solid rgba(245,158,11,0.25)',
                             }}>
-                              â³ {enEspera.length}
+                              ⏳ {enEspera.length}
                             </span>
                           )}
                         </div>

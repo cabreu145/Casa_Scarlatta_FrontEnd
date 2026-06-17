@@ -7,7 +7,7 @@ import s from './ClientPanel.module.css'
 
 function DisciplinePill({ d }) {
   const normalized = normalizeDiscipline(d)
-  if (normalized === 'stryde') return <span className={`${s.pill} ${s.pillStride}`}>STRYDE</span>
+  if (normalized === 'stryde') return <span className={`${s.pill} ${s.pillStride}`}>STRYDE X</span>
   if (normalized === 'slow') return <span className={`${s.pill} ${s.pillSlow}`}>SLOW</span>
   return <span className={s.pill}>Sin tipo</span>
 }
@@ -32,6 +32,9 @@ function StatusPill({ status }) {
 
 export default function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) {
   const resolvedCoachFoto = coachFoto ?? cls?.coachAvatarUrl ?? cls?.avatarUrl ?? null
+  const spotDisplay = cls?.equipmentLabel
+    ? `${cls.equipmentLabel}${cls?.spotLabel ? ` ${cls.spotLabel}` : ''}`
+    : (cls?.spotLabel ?? null)
   const timeToken = getClassTimeToken({
     time: cls?.time ?? null,
     displayTime: cls?.displayTime ?? null,
@@ -50,6 +53,7 @@ export default function MisClasesCard({ cls, dayIsoDate, onCancel, coachFoto }) 
       <div className={s.mcBody}>
         <div className={s.mcTitle}>{cls.title}</div>
         <div className={s.mcMeta}>{cls.coach} · {cls.location || 'Sala Principal'}</div>
+        {spotDisplay ? <div className={s.mcMeta}>Lugar: {spotDisplay}</div> : null}
         <div style={{ marginTop: 6 }}><DisciplinePill d={cls.discipline} /></div>
       </div>
       <div className={s.mcActions}>

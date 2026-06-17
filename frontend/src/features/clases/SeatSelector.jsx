@@ -14,7 +14,7 @@ import CoachAvatar from '@/components/common/CoachAvatar'
 import styles from './SeatSelector.module.css'
 
 // ── Slow room layout (fixed) ──────────────────────────────────────────────────
-// 10 mats in 2 rows of 5, numbered column-first (odd → row 1, even → row 2)
+// 9 mats: 4 in row 1 (01,03,07,09) + 5 in row 2 (02,04,06,08,10); position 05 is the coach spot
 export const SLOW_MATS = [
   { id: 'R1-S1', num: '01', row: 1 },
   { id: 'R1-S2', num: '03', row: 1 },

@@ -14,6 +14,7 @@ vi.mock('@/constants/api', () => ({
     },
     reservaById: (id) => `/api/v1/reservas/${id}`,
     crearReserva: '/api/v1/reservas',
+    cancelarReservasMultiple: '/api/v1/reservas/cancelar-multiple',
     cancelarReserva: (id) => `/api/v1/reservas/${id}/cancelar`,
     marcarNoAsistio: (id) => `/api/v1/reservas/${id}/no-asistio`,
     completarReserva: (id) => `/api/v1/reservas/${id}/completar`,
@@ -77,12 +78,57 @@ describe('reservasApiService', () => {
     })
   })
 
+  test('crearReservaApi envia payload multi con spot_ids y hold_ids', async () => {
+    httpPost.mockResolvedValue({
+      occurrence_id: 70,
+      user_id: 5,
+      credits_charged: 2,
+      reservations: [
+        { reservation_id: 30, class_id: 7, occurrence_id: 70, spot_id: 8, spot_label: '08', spot_equipment_type: 'bench', status: 'confirmada' },
+        { reservation_id: 31, class_id: 7, occurrence_id: 70, spot_id: 9, spot_label: '09', spot_equipment_type: 'bench', status: 'confirmada' },
+      ],
+    })
+    const { crearReservaApi } = await import('./reservasApiService')
+    const result = await crearReservaApi({ claseId: 7, userId: 5, occurrenceId: 70, spotIds: [8, 9], holdIds: [123, 124] })
+
+    expect(httpPost).toHaveBeenCalledWith('/api/v1/reservas', {
+      clase_id: 7,
+      user_id: 5,
+      occurrence_id: 70,
+      spot_ids: [8, 9],
+      hold_ids: [123, 124],
+    })
+    expect(result.creditsCharged).toBe(2)
+    expect(result.reservations).toHaveLength(2)
+    expect(result.reservations[0].id).toBe(30)
+  })
+
   test('cancelarReservaApi usa endpoint cancelar alias', async () => {
     httpPost.mockResolvedValue({ id: 10, user_id: 5, class_id: 7, status: 'cancelada' })
     const { cancelarReservaApi } = await import('./reservasApiService')
     await cancelarReservaApi(10)
 
     expect(httpPost).toHaveBeenCalledWith('/api/v1/reservas/10/cancelar', {})
+  })
+
+  test('cancelarReservasMultipleApi usa endpoint bulk con reservation_ids', async () => {
+    httpPost.mockResolvedValue({
+      cancelled_count: 2,
+      credits_refunded: 2,
+      reservations: [
+        { reservation_id: 30, class_id: 7, occurrence_id: 70, status: 'cancelada', spot_label: '08', spot_equipment_type: 'bench' },
+        { reservation_id: 31, class_id: 7, occurrence_id: 70, status: 'cancelada', spot_label: '09', spot_equipment_type: 'bench' },
+      ],
+    })
+    const { cancelarReservasMultipleApi } = await import('./reservasApiService')
+    const result = await cancelarReservasMultipleApi({ reservationIds: [30, 31], userId: 26 })
+
+    expect(httpPost).toHaveBeenCalledWith('/api/v1/reservas/cancelar-multiple', {
+      reservation_ids: [30, 31],
+      user_id: 26,
+    })
+    expect(result.cancelledCount).toBe(2)
+    expect(result.reservations[0].id).toBe(30)
   })
 
   test('getMisReservasPaginatedApi llama endpoint con filtros', async () => {

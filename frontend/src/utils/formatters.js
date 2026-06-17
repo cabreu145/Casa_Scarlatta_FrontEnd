@@ -139,26 +139,26 @@ export function buildWeek(off = 0) {
 
 /**
  * Etiqueta de rango mensual para un resultado de buildWeek.
- * Ejemplo: "Abril 2026" o "Abril â€“ Mayo 2026"
+ * Ejemplo: "Abril 2026" o "Abril  –  Mayo 2026"
  * @param {{ month: number, year: number }[]} days - resultado de buildWeek
  */
 export function weekRangeLabel(days) {
   const f = days[0], l = days[6]
   return f.month === l.month
     ? `${MONTHS_ES[f.month]} ${f.year}`
-    : `${MONTHS_ES[f.month]} â€“ ${MONTHS_ES[l.month]} ${l.year}`
+    : `${MONTHS_ES[f.month]}  –  ${MONTHS_ES[l.month]} ${l.year}`
 }
 
 /**
  * Etiqueta de rango mensual para un arreglo de Date objects.
- * Ejemplo: "ABRIL 2026" o "ABRIL â€“ MAYO 2026"
+ * Ejemplo: "ABRIL 2026" o "ABRIL  –  MAYO 2026"
  * @param {Date[]} days - resultado de getWeekDays
  */
 export function getMonthLabel(days) {
   const a = days[0], b = days[days.length - 1]
   if (a.getMonth() === b.getMonth())
     return `${MONTHS_ES[a.getMonth()]} ${b.getFullYear()}`
-  return `${MONTHS_ES[a.getMonth()]} â€“ ${MONTHS_ES[b.getMonth()]} ${b.getFullYear()}`
+  return `${MONTHS_ES[a.getMonth()]}  –  ${MONTHS_ES[b.getMonth()]} ${b.getFullYear()}`
 }
 
 // â”€â”€ ComparaciÃ³n de fechas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

@@ -5,6 +5,24 @@ import styles from './HeroCarousel.module.css'
 
 const INTERVAL = 4000
 
+const HERO_WIDTHS = [412, 768, 1335, 1600]
+
+function buildHeroSrcset(url) {
+  if (!url) return undefined
+  if (url.includes('res.cloudinary.com')) {
+    return HERO_WIDTHS.map(w => `${url.replace(/\/w_\d+,/, `/w_${w},`)} ${w}w`).join(', ')
+  }
+  if (url.includes('images.unsplash.com')) {
+    return HERO_WIDTHS.map(w => {
+      const u = new URL(url)
+      u.searchParams.set('w', String(w))
+      u.searchParams.set('q', '75')
+      return `${u.toString()} ${w}w`
+    }).join(', ')
+  }
+  return undefined
+}
+
 export default function HeroCarousel() {
   const cfg    = useEffectiveSiteConfiguration()
   const slides = cfg.get('carouselHero')
@@ -103,7 +121,15 @@ export default function HeroCarousel() {
               style={{ objectFit: 'cover' }}
             />
           ) : (
-            <img src={slide.url} alt="" className={styles.bg} />
+            <img
+              src={slide.url}
+              srcSet={buildHeroSrcset(slide.url)}
+              sizes="100vw"
+              alt=""
+              className={styles.bg}
+              fetchPriority={i === 0 ? 'high' : undefined}
+              loading={i === 0 ? 'eager' : 'lazy'}
+            />
           )}
         </div>
       ))}

@@ -3,6 +3,11 @@ import MotionButton from '@/components/ui/MotionButton'
 import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
 import styles from './DisciplinasSection.module.css'
 
+function buildCloudinarySrcset(url, widths) {
+  if (!url?.includes('res.cloudinary.com')) return undefined
+  return widths.map(w => `${url.replace(/\/w_\d+,/, `/w_${w},`)} ${w}w`).join(', ')
+}
+
 export default function DisciplinasSection() {
   const navigate = useNavigate()
   const cfg = useEffectiveSiteConfiguration()
@@ -10,7 +15,7 @@ export default function DisciplinasSection() {
   const disciplinas = [
     {
       key: 'stride',
-      logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/STRYDE_X_T_bsgwov.png',
+      logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/w_800,f_auto,q_auto/v1781472997/STRYDE_X_T_bsgwov.png',
       logoAlt: 'STRYDE X',
       subtexto: 'Alta intensidad',
       ruta: '/clases?tipo=Stride',
@@ -20,7 +25,7 @@ export default function DisciplinasSection() {
     },
     {
       key: 'slow',
-      logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/LOGO_SLOW_rvm3cv.png',
+      logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/w_800,f_auto,q_auto/v1781472997/LOGO_SLOW_rvm3cv.png',
       logoAlt: 'slow.',
       subtexto: 'Movimiento consciente',
       ruta: '/clases?tipo=Slow',
@@ -47,9 +52,17 @@ export default function DisciplinasSection() {
             role="link"
             tabIndex={0}
             onKeyDown={e => e.key === 'Enter' && navigate(ruta)}
-            aria-label={`Ir a clases de ${logoAlt}`}
+            aria-label={`Conocer más sobre ${logoAlt} — ${subtexto}`}
           >
-            <img src={img} alt={alt} className={styles.cardImg} loading="eager" fetchPriority="high" />
+            <img
+              src={img}
+              srcSet={buildCloudinarySrcset(img, [412, 768, 1335])}
+              sizes="(max-width: 768px) 100vw, 50vw"
+              alt={alt}
+              className={styles.cardImg}
+              loading="eager"
+              fetchPriority="high"
+            />
             <div className={styles.cardOverlay} aria-hidden="true" />
             <div className={styles.cardMotionBtn} onClick={e => { e.stopPropagation(); navigate(rutaInfo) }}>
               <MotionButton label="Conocer más" onClick={() => navigate(rutaInfo)} />
@@ -59,6 +72,8 @@ export default function DisciplinasSection() {
               <img
                 src={logo}
                 alt={logoAlt}
+                width={360}
+                height={240}
                 className={styles.cardLogo}
                 draggable="false"
               />

@@ -87,6 +87,8 @@ export default function Footer() {
               <img
                 src={brandLogo}
                 alt="Casa Scarlatta"
+                width={70}
+                height={47}
                 draggable="false"
                 className={styles.footerLogo}
               />

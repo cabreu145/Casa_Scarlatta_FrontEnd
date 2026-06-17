@@ -7,6 +7,9 @@ import {
   useDeleteSpotHoldMutation,
   useCreateReservationMutation,
   useCancelReservationMutation,
+  useCancelMultipleReservationsMutation,
+  useOccurrenceSpotsQuery,
+  useReservationsMeQuery,
 } from './useApiQueries'
 
 vi.mock('@/services/equipmentReservationApiService', async () => {
@@ -25,6 +28,7 @@ vi.mock('@/services/reservasApiService', async () => {
     ...actual,
     crearReservaApi: vi.fn(),
     cancelarReservaApi: vi.fn(),
+    cancelarReservasMultipleApi: vi.fn(),
     getMisReservasPaginatedApi: vi.fn(),
     getOccurrenceRosterApi: vi.fn(),
   }
@@ -33,10 +37,13 @@ vi.mock('@/services/reservasApiService', async () => {
 import {
   createSpotHoldApi,
   releaseSpotHoldApi,
+  getOccurrenceSpotsApi,
 } from '@/services/equipmentReservationApiService'
 import {
   crearReservaApi,
   cancelarReservaApi,
+  cancelarReservasMultipleApi,
+  getMisReservasPaginatedApi,
 } from '@/services/reservasApiService'
 
 const OCCURRENCE_ID = 5
@@ -78,6 +85,7 @@ describe('useApiQueries - asientos/holds/reservas (P0)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     })
@@ -142,6 +150,33 @@ describe('useApiQueries - asientos/holds/reservas (P0)', () => {
     expectAllInvalidated(queryClient, keys)
   })
 
+  it('useCreateReservationMutation soporta spot_ids y hold_ids', async () => {
+    crearReservaApi.mockResolvedValue({ occurrenceId: OCCURRENCE_ID, reservations: [{ id: 77, spotId: 1 }, { id: 78, spotId: 2 }] })
+
+    const { result } = renderHook(() => useCreateReservationMutation(), { wrapper: wrapper(queryClient) })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        claseId: CLASS_ID,
+        userId: 26,
+        occurrenceId: OCCURRENCE_ID,
+        spotIds: [1, 2],
+        holdIds: [123, 124],
+      })
+    })
+
+    expect(crearReservaApi).toHaveBeenCalledWith({
+      claseId: CLASS_ID,
+      userId: 26,
+      asiento: undefined,
+      occurrenceId: OCCURRENCE_ID,
+      spotId: undefined,
+      holdId: undefined,
+      spotIds: [1, 2],
+      holdIds: [123, 124],
+    })
+  })
+
   it('useCancelReservationMutation invalida reservas, créditos, notificaciones y spots sin necesitar reload', async () => {
     cancelarReservaApi.mockResolvedValue({ ok: true })
     const keys = seedInvalidatableQueries(queryClient)
@@ -157,6 +192,25 @@ describe('useApiQueries - asientos/holds/reservas (P0)', () => {
     })
 
     expect(cancelarReservaApi).toHaveBeenCalledWith(77)
+    expectAllInvalidated(queryClient, keys)
+  })
+
+  it('useCancelMultipleReservationsMutation invalida reservas, créditos y spots sin reload', async () => {
+    cancelarReservasMultipleApi.mockResolvedValue({ cancelledCount: 2, reservations: [] })
+    const keys = seedInvalidatableQueries(queryClient)
+
+    const { result } = renderHook(() => useCancelMultipleReservationsMutation(), { wrapper: wrapper(queryClient) })
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        reservationIds: [77, 78],
+        occurrenceId: OCCURRENCE_ID,
+        classId: CLASS_ID,
+        userId: 26,
+      })
+    })
+
+    expect(cancelarReservasMultipleApi).toHaveBeenCalledWith({ reservationIds: [77, 78], userId: 26 })
     expectAllInvalidated(queryClient, keys)
   })
 
@@ -181,5 +235,55 @@ describe('useApiQueries - asientos/holds/reservas (P0)', () => {
       expect(queryClient.getQueryState(queryKeys.myFinancialState)?.isInvalidated).toBe(true)
       expect(queryClient.getQueryState(queryKeys.myCreditMovements())?.isInvalidated).toBe(true)
     })
+  })
+
+  it('useOccurrenceSpotsQuery hace polling cada 7 segundos sin vaciar data previa', async () => {
+    getOccurrenceSpotsApi.mockResolvedValue({
+      occurrenceId: OCCURRENCE_ID,
+      spots: [{ spotId: 1, label: '01' }],
+    })
+
+    const { result } = renderHook(
+      () => useOccurrenceSpotsQuery(OCCURRENCE_ID, { enabled: true, refetchInterval: 150 }),
+      { wrapper: wrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(result.current.data?.spots).toHaveLength(1)
+    })
+
+    expect(getOccurrenceSpotsApi).toHaveBeenCalled()
+
+    await waitFor(() => {
+      expect(getOccurrenceSpotsApi.mock.calls.length).toBeGreaterThan(1)
+    })
+
+    expect(result.current.data?.spots).toHaveLength(1)
+  })
+
+  it('useReservationsMeQuery hace polling cada 12 segundos', async () => {
+    getMisReservasPaginatedApi.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    })
+
+    const { result } = renderHook(
+      () => useReservationsMeQuery({ enabled: true, refetchInterval: 180 }),
+      { wrapper: wrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(result.current.data?.items).toEqual([])
+    })
+
+    expect(getMisReservasPaginatedApi).toHaveBeenCalled()
+
+    await waitFor(() => {
+      expect(getMisReservasPaginatedApi.mock.calls.length).toBeGreaterThan(1)
+    })
+
+    expect(result.current.data?.items).toEqual([])
   })
 })
