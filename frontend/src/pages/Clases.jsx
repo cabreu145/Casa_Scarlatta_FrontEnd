@@ -30,8 +30,9 @@ import { getWeekDays, isSameDay, formatHour, DAYS_ABBR, MONTHS_ES } from '@/util
 import { getClassTimeToken } from '@/utils/classSchedule'
 import { normalizeDiscipline } from '@/utils/discipline'
 import CoachAvatar from '@/components/common/CoachAvatar'
-import { usePublicCoachesQuery } from '@/hooks/useApiQueries'
+import { useMyFinancialStateQuery, usePublicCoachesQuery } from '@/hooks/useApiQueries'
 import { queryKeys } from '@/api/queryKeys'
+import { canReserveAnotherSpotInOccurrence, getOneSpotPerOccurrenceMessage, resolveLimitOneSpotPerOccurrence } from '@/utils/reservationPolicy'
 import styles from './Clases.module.css'
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Date helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -68,8 +69,13 @@ export default function Clases() {
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
+  const useApiAuth = import.meta.env.VITE_USE_API_AUTH === 'true'
   const siteConfig = useEffectiveSiteConfiguration()
   const useApiCoachAvatars = useApiClasses || useApiReservations
+  const financialStateQuery = useMyFinancialStateQuery({
+    enabled: useApiAuth && isAuthenticated && usuario?.rol === 'cliente',
+  })
+  const activeMembership = useApiAuth ? (financialStateQuery.data?.activeMembership ?? null) : null
   const publicCoachesQuery = usePublicCoachesQuery({ enabled: useApiCoachAvatars })
   const coachSource = useApiCoachAvatars ? (publicCoachesQuery.data ?? []) : coaches
   const coachFotoById = useMemo(
@@ -210,6 +216,23 @@ export default function Clases() {
         : forDay
     })
   }, [days, allClasses, occurrenceSessions, filter, useApiClasses])
+
+  const selectedClassExistingReservations = useMemo(() => {
+    if (!selectedClass) return []
+    const selectedOccurrenceId = selectedClass.occurrenceId ?? selectedClass.occurrence_id ?? null
+    const selectedOccurrenceDate = getReservationOccurrenceDate(selectedClass)
+    return (reservas ?? []).filter((reservation) => {
+      const status = String(reservation.estado ?? reservation.status ?? '').toLowerCase()
+      if (!['confirmada', 'confirmed', 'programada', 'active', 'activa'].includes(status)) return false
+      const sameOccurrence = Number(reservation.occurrenceId ?? reservation.occurrence_id ?? 0) === Number(selectedOccurrenceId ?? 0)
+      if (sameOccurrence) return true
+      if (!selectedOccurrenceDate) return false
+      return (
+        Number(reservation.claseId ?? reservation.classId ?? reservation.class_id ?? 0) === Number(selectedClass.classId ?? selectedClass.claseId ?? selectedClass.id ?? 0) &&
+        getReservationOccurrenceDate(reservation) === selectedOccurrenceDate
+      )
+    })
+  }, [reservas, selectedClass])
 
   const handlePrevWeek = () => {
     if (weekOffset === 0) return
@@ -425,6 +448,12 @@ export default function Clases() {
                   })
                 : []
               const miReserva = misReservasClase[0] ?? null
+              const canReserveAnother = canReserveAnotherSpotInOccurrence({
+                isMapClass,
+                hasActiveReservationInOccurrence: Boolean(miReserva),
+                activeMembership,
+              })
+              const isSingleSpotLimited = isMapClass && Boolean(miReserva) && resolveLimitOneSpotPerOccurrence(activeMembership)
               const cancelAllowed = miReserva && classTime ? canCancelClass(selectedDate, classTime) : false
               const clasePasada = classTime ? new Date(selectedDateISO + 'T' + classTime + ':00') <= new Date() : false
 
@@ -498,7 +527,7 @@ export default function Clases() {
                         ) : (
                           <span className={styles.cancelarVencido}>Sin cancelación disponible</span>
                         )}
-                        {isMapClass ? (
+                        {canReserveAnother ? (
                           <button
                             className={styles.reservarBtn}
                             onClick={() => setSelectedClass(cls)}
@@ -506,6 +535,10 @@ export default function Clases() {
                           >
                             Reservar otro
                           </button>
+                        ) : isSingleSpotLimited ? (
+                          <span className={styles.cancelarVencido}>
+                            {getOneSpotPerOccurrenceMessage()}
+                          </span>
                         ) : null}
                       </div>
                     ) : (
@@ -540,6 +573,8 @@ export default function Clases() {
             occurrenceId={selectedClass.occurrenceId}
             classId={selectedClass.classId ?? selectedClass.claseId ?? selectedClass.id}
             userId={usuario?.id}
+            hasExistingReservationInOccurrence={selectedClassExistingReservations.length > 0}
+            limitErrorMessage={getOneSpotPerOccurrenceMessage()}
             coachAvatarUrl={selectedClass.coachAvatarUrl ?? coachFotoById[String(selectedClass.coachId ?? selectedClass.coach_id ?? '')] ?? coachFotoByName[String(selectedClass.coachNombre ?? selectedClass.coach ?? '')] ?? null}
             onReservationCreated={async () => {
               await Promise.allSettled([

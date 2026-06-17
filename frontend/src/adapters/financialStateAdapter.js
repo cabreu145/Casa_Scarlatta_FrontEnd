@@ -10,6 +10,11 @@ function mapMembership(membership) {
     creditsTotal: membership.credits_total ?? membership.creditsTotal ?? 0,
     creditsUsed: membership.credits_used ?? membership.creditsUsed ?? 0,
     creditsAvailable: membership.credits_available ?? membership.creditsAvailable ?? 0,
+    limitOneSpotPerOccurrence: Boolean(
+      membership.limitOneSpotPerOccurrence ??
+      membership.limit_one_spot_per_occurrence ??
+      false
+    ),
   }
 }
 

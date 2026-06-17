@@ -8,12 +8,14 @@ import SeatSelector from '@/features/clases/SeatSelector'
 import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationPanel'
 import { useAuth } from '@/context/AuthContext'
 import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
+import { useMyFinancialStateQuery, useReservationsMeQuery } from '@/hooks/useApiQueries'
 import { resolveSiteMediaUrl } from '@/adapters/siteConfigurationAdapter'
 import { useClasesStore } from '@/stores/clasesStore'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { formatOccurrenceDateTime } from '@/features/reservas/equipmentLayoutConfig'
 import { formatHour } from '@/utils/formatters'
 import { getClassTimeToken } from '@/utils/classSchedule'
+import { canReserveAnotherSpotInOccurrence, getOneSpotPerOccurrenceMessage, resolveLimitOneSpotPerOccurrence } from '@/utils/reservationPolicy'
 import styles from './Reservar.module.css'
 
 const SALAS = [
@@ -23,7 +25,7 @@ const SALAS = [
     logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/STRYDE_X_T_bsgwov.png',
     subtexto: 'Alta intensidad',
     img: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781473010/stride-hero_zdajlh.jpg',
-    alt: 'Sala STRYDE — alta intensidad',
+    alt: 'Sala STRYDE â€” alta intensidad',
   },
   {
     key: 'slow',
@@ -31,7 +33,7 @@ const SALAS = [
     logo: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781472997/LOGO_SLOW_rvm3cv.png',
     subtexto: 'Movimiento consciente',
     img: 'https://res.cloudinary.com/dtj8woibw/image/upload/v1781473009/slow-hero_ja55dd.jpg',
-    alt: 'Sala Slow — movimiento consciente',
+    alt: 'Sala Slow â€” movimiento consciente',
   },
 ]
 
@@ -72,7 +74,18 @@ export default function Reservar() {
 
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
+  const useApiAuth = import.meta.env.VITE_USE_API_AUTH === 'true'
   const isClient = isAuthenticated && usuario?.rol === 'cliente'
+  const financialStateQuery = useMyFinancialStateQuery({
+    enabled: useApiAuth && isClient,
+  })
+  const reservationsMeQuery = useReservationsMeQuery({
+    enabled: useApiReservations && isClient,
+    page: 1,
+    pageSize: 20,
+  })
+  const activeMembership = useApiAuth ? (financialStateQuery.data?.activeMembership ?? null) : null
+  const reservationsMe = reservationsMeQuery.data?.items ?? []
   const salas = useMemo(() => SALAS.map((sala) => ({
     ...sala,
     img: resolveSiteMediaUrl(
@@ -154,11 +167,32 @@ export default function Reservar() {
 
   const selectedClassDisplayDate = selectedClassDateTime.fullLabel === 'Sin fecha'
     ? (selectedClass?.dia && selectedClassTimeToken
-      ? `${selectedClass.dia} · ${formatHour(selectedClassTimeToken)}`
+      ? `${selectedClass.dia} Â· ${formatHour(selectedClassTimeToken)}`
       : selectedClassTimeToken
         ? formatHour(selectedClassTimeToken)
         : 'Sin fecha')
     : selectedClassDateTime.fullLabel
+  const selectedClassHasActiveReservation = useMemo(() => {
+    if (!selectedClass) return false
+    const selectedOccurrenceId = selectedClass.occurrenceId ?? selectedClass.occurrence_id ?? null
+    return reservationsMe.some((reservation) =>
+      Number(reservation.occurrenceId ?? reservation.occurrence_id ?? 0) === Number(selectedOccurrenceId ?? 0) &&
+      String(reservation.estado ?? reservation.status ?? '').toLowerCase() === 'confirmada'
+    )
+  }, [reservationsMe, selectedClass])
+  const selectedClassDiscipline = normalizeDiscipline(
+    selectedClass?.discipline ?? selectedClass?.tipo,
+    selectedClass?.nombre ?? selectedClass?.name
+  )
+  const selectedClassIsMapClass = selectedClassDiscipline === 'slow' || selectedClassDiscipline === 'stryde'
+  const canReserveAnotherSelectedClass = canReserveAnotherSpotInOccurrence({
+    isMapClass: selectedClassIsMapClass,
+    hasActiveReservationInOccurrence: selectedClassHasActiveReservation,
+    activeMembership,
+  })
+  const selectedClassHasSingleSpotLimit = selectedClassIsMapClass &&
+    selectedClassHasActiveReservation &&
+    resolveLimitOneSpotPerOccurrence(activeMembership)
 
   const handleSelectSala = (salaKey) => {
     setSelectedSalaKey(salaKey)
@@ -192,7 +226,7 @@ export default function Reservar() {
     }
 
     if (!isClient) {
-      toast.error('Inicia sesiÃ³n con una cuenta de cliente para reservar.')
+      toast.error('Inicia sesión con una cuenta de cliente para reservar.')
       return
     }
 
@@ -212,7 +246,7 @@ export default function Reservar() {
         <SectionHeader
           label="Reservar"
           title="Asegura tu lugar"
-          subtitle="Cupos limitados. Cancelación gratuita hasta 6 horas antes."
+          subtitle="Cupos limitados. CancelaciÃ³n gratuita hasta 6 horas antes."
           size="lg"
           titleStyle={{
             fontFamily: 'var(--font-body)',
@@ -241,7 +275,7 @@ export default function Reservar() {
           <div className={styles.stepLine} />
           <div className={`${styles.step} ${showReservationPanel ? styles.active : ''}`}>
             <span className={styles.stepNum}>4</span>
-            <span>Confirmación</span>
+            <span>ConfirmaciÃ³n</span>
           </div>
         </div>
 
@@ -276,7 +310,7 @@ export default function Reservar() {
                 onClick={handleBackToSala}
                 type="button"
               >
-                ← Cambiar sala
+                â† Cambiar sala
               </button>
               <span className={styles.calendarType}>
                 {selectedSala?.label ?? (selectedSalaKey === 'slow' ? 'SLOW' : 'STRYDE X')}
@@ -341,16 +375,20 @@ export default function Reservar() {
 
             <p className={styles.successText} style={{ marginBottom: 0 }}>
               {isAuthenticated
-                ? 'Continúa para elegir spot y confirmar tu reserva.'
-                : 'Inicia sesión para continuar con la reserva segura de tu lugar.'}
+                ? selectedClassHasSingleSpotLimit
+                  ? getOneSpotPerOccurrenceMessage()
+                  : selectedClassHasActiveReservation && canReserveAnotherSelectedClass
+                    ? 'Ya tienes un lugar reservado. Puedes reservar otro lugar disponible.'
+                    : 'ContinÃºa para elegir spot y confirmar tu reserva.'
+                : 'Inicia sesiÃ³n para continuar con la reserva segura de tu lugar.'}
             </p>
 
             <div className={styles.navBtns}>
               <button className={styles.backBtn} type="button" onClick={() => setSelectedClass(null)}>
-                ← Volver a clases
+                â† Volver a clases
               </button>
-              <button className={styles.nextBtn} type="button" onClick={handleContinue}>
-                {isAuthenticated ? 'Elegir lugar →' : 'Iniciar Sesión para reservar'}
+              <button className={styles.nextBtn} type="button" onClick={handleContinue} disabled={selectedClassHasSingleSpotLimit}>
+                {isAuthenticated ? 'Elegir lugar â†’' : 'Iniciar SesiÃ³n para reservar'}
               </button>
             </div>
           </div>
@@ -363,6 +401,8 @@ export default function Reservar() {
             occurrenceId={selectedClass.occurrenceId}
             classId={selectedClass.classId ?? selectedClass.claseId ?? selectedClass.id}
             userId={usuario?.id}
+            hasExistingReservationInOccurrence={selectedClassHasActiveReservation}
+            limitErrorMessage={getOneSpotPerOccurrenceMessage()}
             onReservationCreated={() => {
               setShowReservationPanel(false)
               setSelectedClass(null)

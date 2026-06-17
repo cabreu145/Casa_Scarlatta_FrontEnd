@@ -73,6 +73,11 @@ import {
   getPackageDisplayName,
   getPackageCredits,
 } from '@/utils/packageDisplay'
+import {
+  canReserveAnotherSpotInOccurrence,
+  getOneSpotPerOccurrenceMessage,
+  resolveLimitOneSpotPerOccurrence,
+} from '@/utils/reservationPolicy'
 import { queryKeys } from '@/api/queryKeys'
 import {
   useAdminClientDetailQuery,
@@ -2925,12 +2930,17 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
           const usuario = useApiClients
             ? (clientsForAdmin ?? []).find((u) => Number(u.id) === userId)
             : usuarios.find(u => u.id === userId)
+            const limitOneSpotPerOccurrence = resolveLimitOneSpotPerOccurrence(usuario?.activeMembership)
             if (useApiClasses && !occurrenceId) {
               toast.error('Selecciona una fecha de ocurrencia para inscribir alumno')
               return
             }
             if (isSpotManagedClass && idsInscritos.has(userId)) {
-              toast.error('Este alumno ya tiene un lugar en esta ocurrencia. Usa "Elegir asiento" o "Agregar otro asiento" para reservar otro spot.')
+              toast.error(
+                limitOneSpotPerOccurrence
+                  ? getOneSpotPerOccurrenceMessage({ admin: true })
+                  : 'Este alumno ya tiene un lugar en esta ocurrencia. Usa "Elegir asiento" o "Agregar otro asiento" para reservar otro spot.'
+              )
               return
             }
             const classId = resolveSelectedClassId(cls)
@@ -3073,7 +3083,15 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                                 </button>
                               )}
                                 {String(r.status ?? r.estado ?? '').toLowerCase() === 'confirmada' && (
-                                  isSpotManagedClass && occurrenceId ? (
+                                  isSpotManagedClass && occurrenceId && (() => {
+                                    const reservedClient = (clientsForAdmin ?? []).find((client) => Number(client.id) === Number(r.userId ?? r.user_id))
+                                      ?? usuarios.find((client) => Number(client.id) === Number(r.userId ?? r.user_id))
+                                    return canReserveAnotherSpotInOccurrence({
+                                      isMapClass: true,
+                                      hasActiveReservationInOccurrence: true,
+                                      activeMembership: reservedClient?.activeMembership ?? null,
+                                    })
+                                  })() ? (
                                     <button
                                       className={`${styles.btn} ${styles.btnGhost}`}
                                       style={{ fontSize: 11, padding: '4px 10px' }}
@@ -4224,6 +4242,9 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               occurrenceId={occurrenceId}
               classId={resolveSelectedClassId(adminSeatSelector.cls)}
               userId={adminSeatSelector.userId}
+              hasExistingReservationInOccurrence
+              limitErrorMessage={getOneSpotPerOccurrenceMessage({ admin: true })}
+              isAdminBooking
               financialState={{
                 financialState: targetClient ?? null,
                 creditsBalance: targetClient?.creditsBalance ?? null,

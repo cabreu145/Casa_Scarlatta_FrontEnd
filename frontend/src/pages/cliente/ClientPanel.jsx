@@ -64,6 +64,11 @@ import {
   useReservationsMeQuery,
   invalidateReservationSideEffects,
 } from '@/hooks/useApiQueries'
+import {
+  canReserveAnotherSpotInOccurrence,
+  getOneSpotPerOccurrenceMessage,
+  resolveLimitOneSpotPerOccurrence,
+} from '@/utils/reservationPolicy'
 
 const SECTION_META = {
   inicio:   { title: 'Inicio',             sub: 'Jueves, 24 de abril · Casa Scarlatta' },
@@ -1383,13 +1388,19 @@ export default function ClientPanel() {
                             const classTime = classTimeToken ? new Date(day.isoDate + 'T' + classTimeToken + ':00') : null
                             const isPast = classTime ? classTime <= new Date() : false
                               if (alreadyBooked) {
+                                const canReserveAnother = canReserveAnotherSpotInOccurrence({
+                                  isMapClass: isSpotManagedOccurrence,
+                                  hasActiveReservationInOccurrence: true,
+                                  activeMembership: effectiveActiveMembership,
+                                })
+                                const isSingleSpotLimited = isSpotManagedOccurrence && resolveLimitOneSpotPerOccurrence(effectiveActiveMembership)
                                 if (isPast) return (
                                   <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap' }}>
                                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
                                     Clase finalizada
                                   </span>
                                 )
-                                if (isSpotManagedOccurrence && !isFull) {
+                                if (canReserveAnother && !isFull) {
                                   return (
                                     <>
                                       <span className={`${s.statusPill} ${s.statusConfirmada}`}>Ya tienes lugar</span>
@@ -1399,6 +1410,16 @@ export default function ClientPanel() {
                                       >
                                         Reservar otro
                                       </button>
+                                    </>
+                                  )
+                                }
+                                if (isSingleSpotLimited) {
+                                  return (
+                                    <>
+                                      <span className={`${s.statusPill} ${s.statusConfirmada}`}>Ya tienes lugar</span>
+                                      <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                        {getOneSpotPerOccurrenceMessage()}
+                                      </span>
                                     </>
                                   )
                                 }
@@ -1422,7 +1443,7 @@ export default function ClientPanel() {
                                     fontSize: 11, color: '#F59E0B', fontWeight: 600,
                                     fontFamily: 'var(--font-body)',
                                   }}>
-                                    â³ Lista de espera #{posicion}
+                                    ⏳ Lista de espera #{posicion}
                                   </span>
                                   <button
                                     onClick={() => handleSalirListaEspera(av)}
@@ -1450,7 +1471,7 @@ export default function ClientPanel() {
                                         cursor: 'pointer', whiteSpace: 'nowrap',
                                       }}
                                     >
-                                      â³ Unirse a lista de espera
+                                      ⏳ Unirse a lista de espera
                                     </button>
                                   )}
                                 </div>
@@ -2027,6 +2048,13 @@ export default function ClientPanel() {
             occurrenceId={seatSelectorClass.occurrenceId}
             classId={seatSelectorClass.classId ?? seatSelectorClass.claseId ?? seatSelectorClass.id}
             userId={usuario?.id}
+            hasExistingReservationInOccurrence={Boolean(
+              (reservasUsuario ?? []).some((reservation) =>
+                Number(reservation.occurrenceId ?? reservation.occurrence_id ?? 0) === Number(seatSelectorClass.occurrenceId ?? seatSelectorClass.occurrence_id ?? 0) &&
+                String(reservation.estado ?? reservation.status ?? '').toLowerCase() === 'confirmada'
+              )
+            )}
+            limitErrorMessage={getOneSpotPerOccurrenceMessage()}
             financialState={{
               financialState: effectiveFinancialState,
               creditsBalance: effectiveCreditsBalance,

@@ -60,6 +60,7 @@ const mockNotificationsQueryData = {
     },
   ],
 }
+let mockApiFinancialStateData = {}
 const testQueryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: false, refetchOnWindowFocus: false },
@@ -216,7 +217,7 @@ vi.mock('@/hooks/useApiQueries', async () => {
     }),
     useMembershipPackagesQuery: () => ({ data: membershipPackagesData, isLoading: false, error: null }),
     useMyCreditMovementsQuery: () => ({ data: { items: [], total: 0, page: 1, pageSize: 8, totalPages: 1 }, isLoading: false, error: null }),
-    useMyFinancialStateQuery: () => ({ data: {}, isLoading: false, error: null }),
+    useMyFinancialStateQuery: () => ({ data: mockApiFinancialStateData, isLoading: false, error: null }),
     useMyMembershipsQuery: () => ({ data: membershipsData, isLoading: false, error: null }),
     useAddMyMembershipBeneficiaryMutation: () => ({ mutateAsync: vi.fn().mockResolvedValue({}) }),
     usePublicCoachesQuery: (...args) => mockUsePublicCoachesQuery(...args),
@@ -250,6 +251,7 @@ describe('ClientPanel payments section', () => {
     mockGetMyMembershipsApi.mockResolvedValue([])
     mockGetMyFinancialStateApi.mockReset()
     mockGetMyFinancialStateApi.mockResolvedValue({})
+    mockApiFinancialStateData = {}
     mockGetOccurrencesForDateRangeApi.mockReset()
     mockGetOccurrencesForDateRangeApi.mockResolvedValue([])
     membershipPackagesData = []
@@ -418,5 +420,56 @@ describe('ClientPanel payments section', () => {
       expect(mockLoadClasesFromApi.mock.calls.length).toBeGreaterThan(baselineClassLoads)
       expect(mockGetOccurrencesForDateRangeApi.mock.calls.length).toBeGreaterThan(baselineOccurrenceCalls)
     })
+  })
+
+  test('oculta Reservar otro en Reservar Clase si membresía limita un lugar por clase', async () => {
+    const visibleWeek = buildWeek(0)
+    mockClases.splice(0, mockClases.length, {
+      id: 3,
+      nombre: 'Clase Demo API',
+      coachNombre: 'Coach Demo',
+      dia: 'Lunes',
+      hora: '16:00',
+      tipo: 'STRYDE',
+      discipline: 'stryde',
+      cupoMax: 12,
+      cupoActual: 0,
+      publicado: true,
+    })
+    mockReservas.splice(0, mockReservas.length, {
+      id: 9001,
+      estado: 'confirmada',
+      occurrenceId: 301,
+      claseId: 3,
+      fecha: visibleWeek[0]?.isoDate,
+      discipline: 'stryde',
+      spotLabel: '01',
+      userId: 1,
+    })
+    mockApiFinancialStateData = {
+      activeMembership: {
+        limitOneSpotPerOccurrence: true,
+        creditsAvailable: 3,
+      },
+    }
+
+    mockGetOccurrencesForDateRangeApi.mockResolvedValue({
+      3: [
+        {
+          occurrenceId: 301,
+          fecha: visibleWeek[0]?.isoDate,
+          inicio: `${visibleWeek[0]?.isoDate}T16:00:00`,
+          cupoMax: 12,
+          cupoActual: 1,
+          claseNombre: 'Clase Demo API',
+          discipline: 'stryde',
+        },
+      ],
+    })
+
+    await renderPanel('/cliente/dashboard?section=reservar')
+
+    expect(await screen.findByText('Clase Demo API')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /reservar otro/i })).not.toBeInTheDocument()
   })
 })

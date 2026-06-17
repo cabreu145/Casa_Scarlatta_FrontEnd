@@ -23,6 +23,7 @@ let authState = {
 }
 
 let reservasState = []
+let financialStateData = { activeMembership: null }
 
 const clasesState = [
   {
@@ -79,6 +80,11 @@ vi.mock('@/hooks/useSiteConfiguration', () => ({
 
 vi.mock('@/hooks/useApiQueries', () => ({
   usePublicCoachesQuery: (...args) => mockUsePublicCoachesQuery(...args),
+  useMyFinancialStateQuery: () => ({
+    data: financialStateData,
+    isLoading: false,
+    error: null,
+  }),
 }))
 
 vi.mock('@/services/classService', async () => {
@@ -150,6 +156,7 @@ describe('Clases public avatar regression', () => {
     vi.stubEnv('VITE_USE_API_RESERVATIONS', 'true')
     authState = { isAuthenticated: false, usuario: null }
     reservasState = []
+    financialStateData = { activeMembership: null }
     mockLoadClasesFromApi.mockClear()
     mockLoadMisReservasFromApi.mockClear()
     mockCancelReserva.mockClear()
@@ -241,6 +248,11 @@ describe('Clases public avatar regression', () => {
       isAuthenticated: true,
       usuario: { id: 1, nombre: 'Cliente Demo' },
     }
+    financialStateData = {
+      activeMembership: {
+        limitOneSpotPerOccurrence: false,
+      },
+    }
     reservasState = [
       {
         id: 501,
@@ -269,5 +281,42 @@ describe('Clases public avatar regression', () => {
 
     expect(await screen.findByText('EquipmentReservationPanel Mock')).toBeInTheDocument()
     expect(screen.getByTestId('equipment-props')).toHaveTextContent('3:10')
+  })
+
+  test('map class con paquete restringido oculta Reservar otro', async () => {
+    authState = {
+      isAuthenticated: true,
+      usuario: { id: 1, nombre: 'Cliente Demo' },
+    }
+    financialStateData = {
+      activeMembership: {
+        limitOneSpotPerOccurrence: true,
+      },
+    }
+    reservasState = [
+      {
+        id: 501,
+        userId: 1,
+        estado: 'confirmada',
+        occurrenceId: 10,
+        occurrenceDate: todayIso,
+        claseId: 3,
+        spotLabel: '01',
+      },
+    ]
+
+    const { default: Clases } = await import('./Clases')
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/clases']}>
+          <Clases />
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    expect(await screen.findByText('CONFIRMADA')).toBeInTheDocument()
+    expect(screen.queryByText('Reservar otro')).not.toBeInTheDocument()
+    expect(screen.getByText('Tu paquete permite solo un lugar por clase.')).toBeInTheDocument()
   })
 })
