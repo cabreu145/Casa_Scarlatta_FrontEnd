@@ -1,14 +1,7 @@
-export function normalizeDiscipline(value, fallbackText = '') {
-  const raw = String(value ?? fallbackText ?? '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-
-  const compact = raw.replace(/[^a-z0-9]/g, '')
-
-  if (compact.includes('stryde') || compact.includes('stride')) return 'stryde'
-  if (compact.includes('slow')) return 'slow'
+export function normalizeDiscipline(value) {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  if (normalized.includes('stryde') || normalized.includes('stride')) return 'stryde'
+  if (normalized === 'slow' || normalized.includes('slow')) return 'slow'
   return null
 }
 

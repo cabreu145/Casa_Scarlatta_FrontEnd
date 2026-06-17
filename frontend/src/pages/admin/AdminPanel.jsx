@@ -4240,7 +4240,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
           return (
             <EquipmentReservationPanel
               occurrenceId={occurrenceId}
-              classId={resolveSelectedClassId(adminSeatSelector.cls)}
+              classId={adminSeatSelector.cls.claseId ?? adminSeatSelector.cls.classId ?? adminSeatSelector.cls.id}
               userId={adminSeatSelector.userId}
               hasExistingReservationInOccurrence
               limitErrorMessage={getOneSpotPerOccurrenceMessage({ admin: true })}
