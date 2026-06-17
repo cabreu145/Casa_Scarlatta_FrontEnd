@@ -102,6 +102,22 @@ describe('reservationAdapter', () => {
     expect(mapped.classStatus).toBe('programada')
   })
 
+  test('deriva discipline desde class_name cuando backend no manda discipline canónico', () => {
+    const mapped = mapBackendReservationToFrontend(
+      {
+        id: 102,
+        user_id: 9,
+        class_id: 4,
+        occurrence_id: 44,
+        status: 'confirmada',
+        class_name: 'STRYDE X - COMMUNITY',
+      },
+      {}
+    )
+
+    expect(mapped.discipline).toBe('stryde')
+  })
+
   test('usa class_start_at para fecha de sesión cuando existe', () => {
     const mapped = mapBackendReservationToFrontend(
       {

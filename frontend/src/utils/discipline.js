@@ -5,8 +5,8 @@ export function normalizeDiscipline(value) {
   return null
 }
 
-export function getDisciplineBadgeLabel(value) {
-  const normalized = normalizeDiscipline(value)
+export function getDisciplineBadgeLabel(value, fallbackText = '') {
+  const normalized = normalizeDiscipline(value, fallbackText)
   if (normalized === 'slow') return 'SLOW'
   if (normalized === 'stryde') return 'STRYDE X'
   return null

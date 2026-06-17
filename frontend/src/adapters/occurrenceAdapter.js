@@ -1,3 +1,4 @@
+import { normalizeDiscipline } from '@/utils/discipline'
 import { formatClassDate, getClassDisplayDate, getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 
 function safeNumber(value, fallback = 0) {
@@ -12,6 +13,11 @@ export function mapBackendOccurrenceToFrontend(item = {}) {
     occurrenceId: item.id ?? item.occurrence_id ?? null,
     id: item.id ?? item.occurrence_id ?? null,
     claseId: item.class_id ?? item.clase_id ?? null,
+    classId: item.class_id ?? item.clase_id ?? item.classId ?? null,
+    discipline: normalizeDiscipline(
+      item.discipline ?? item.class_discipline ?? item.classDiscipline,
+      item.class_name ?? item.claseNombre ?? item.name ?? item.nombre
+    ),
     fecha: item.occurrence_date ?? item.class_date ?? null,
     displayDate: formatClassDate(getClassDisplayDate(item)),
     inicio: item.start_at ?? item.class_start_at ?? null,
@@ -26,6 +32,7 @@ export function mapBackendOccurrenceToFrontend(item = {}) {
     coachAvatarUrl: item.coach_avatar_url ?? item.coachAvatarUrl ?? item.avatar_url ?? item.avatarUrl ?? item.coach_foto ?? null,
     estado: item.status ?? 'programada',
     claseNombre: item.class_name ?? item.claseNombre ?? null,
+    className: item.class_name ?? item.claseNombre ?? null,
   }
 }
 

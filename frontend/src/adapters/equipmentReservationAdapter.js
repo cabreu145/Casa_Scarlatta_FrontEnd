@@ -32,6 +32,8 @@ export function mapOccurrenceSpotsResponseToFrontend(payload = {}) {
   const spots = Array.isArray(payload.spots) ? payload.spots.map((item) => mapEquipmentSpotToFrontend(item ?? {})) : []
   return {
     occurrenceId: payload.occurrence_id ?? payload.occurrenceId ?? null,
+    classId: payload.class_id ?? payload.classId ?? payload.clase_id ?? null,
+    claseId: payload.class_id ?? payload.classId ?? payload.clase_id ?? null,
     discipline: payload.discipline ?? null,
     className: payload.class_name ?? payload.className ?? null,
     coachName: payload.coach_name ?? payload.coachName ?? null,

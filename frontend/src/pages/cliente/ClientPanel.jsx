@@ -122,6 +122,10 @@ function resolveMembershipErrorMessage(error) {
 // Mapea una reserva al shape interno usado por MisClasesCard / ClassCard
 function toClsShape(r) {
   const timeToken = getClassTimeToken(r)
+  const disciplineDisplay = normalizeDiscipline(
+    r.discipline ?? r.classDiscipline ?? r.tipo,
+    r.claseNombre ?? r.title
+  )
   const displayDate = formatClassDate(getClassDisplayDate({
     classDate: r.classDate ?? r.class_date ?? r.fecha ?? null,
     occurrenceDate: r.occurrenceDate ?? r.occurrence_date ?? r.fecha ?? null,
@@ -140,7 +144,7 @@ function toClsShape(r) {
     displayDate,
     time:       timeToken ?? r.claseHora ?? null,
     displayTime: getClassDisplayTime(r),
-    discipline: normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'slow' ? 'SLOW' : normalizeDiscipline(r.discipline ?? r.classDiscipline ?? r.tipo) === 'stryde' ? 'STRYDE X' : null,
+    discipline: disciplineDisplay === 'slow' ? 'SLOW' : disciplineDisplay === 'stryde' ? 'STRYDE X' : null,
     status:     r.estado,
     location:   r.location ?? '',
     spotLabel:  r.spotLabel ?? r.spot_label ?? null,
@@ -311,6 +315,15 @@ export default function ClientPanel() {
       .join('|'),
     [clases]
   )
+  const refreshReservarSection = useCallback(async () => {
+    if (!useApiClasses || activeSection !== 'reservar' || !clases.length) return
+    const from = resWeekDays[0]?.isoDate
+    const to = resWeekDays[resWeekDays.length - 1]?.isoDate
+    if (!from || !to) return
+    const classIds = Array.from(new Set(clases.map((c) => c.id)))
+    const data = await getOccurrencesForDateRangeApi(classIds, { from, to })
+    setOccurrencesByClass(data ?? {})
+  }, [activeSection, clases, resWeekDays, useApiClasses])
 
   useEffect(() => {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
@@ -325,20 +338,46 @@ export default function ClientPanel() {
 
   useEffect(() => {
     if (!useApiClasses) return
-    loadClasesFromApi().catch((err) => {
-      if (import.meta.env.DEV) {
-        console.error('[ClientPanel] No se pudo cargar clases API, fallback cache/store', err)
+    let active = true
+    const fetchClasses = async () => {
+      try {
+        await loadClasesFromApi()
+      } catch (err) {
+        if (active && import.meta.env.DEV) {
+          console.error('[ClientPanel] No se pudo cargar clases API, fallback cache/store', err)
+        }
       }
-    })
+    }
+    fetchClasses()
+    const intervalId = window.setInterval(() => {
+      fetchClasses().catch(() => {})
+    }, 18_000)
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
   }, [loadClasesFromApi, useApiClasses])
 
   useEffect(() => {
     if (!useApiReservations) return
-    loadMisReservasFromApi().catch((err) => {
-      if (import.meta.env.DEV) {
-        console.error('[ClientPanel] No se pudo cargar reservas API, fallback cache/store', err)
+    let active = true
+    const fetchReservations = async () => {
+      try {
+        await loadMisReservasFromApi()
+      } catch (err) {
+        if (active && import.meta.env.DEV) {
+          console.error('[ClientPanel] No se pudo cargar reservas API, fallback cache/store', err)
+        }
       }
-    })
+    }
+    fetchReservations()
+    const intervalId = window.setInterval(() => {
+      fetchReservations().catch(() => {})
+    }, 12_000)
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
   }, [loadMisReservasFromApi, useApiReservations])
   useEffect(() => {
     if (useApiFinancialState || usuario?.rol !== 'cliente') return
@@ -368,27 +407,33 @@ export default function ClientPanel() {
   }, [packageIdQuery])
 
   useEffect(() => {
-    if (!useApiClasses || !clases.length) return
+    if (!useApiClasses || activeSection !== 'reservar' || !clases.length) {
+      if (activeSection !== 'reservar') setOccurrencesByClass({})
+      return
+    }
     const from = resWeekDays[0]?.isoDate
     const to = resWeekDays[resWeekDays.length - 1]?.isoDate
     if (!from || !to) return
-    const controller = new AbortController()
     let active = true
+    let controller = new AbortController()
     const classIds = Array.from(new Set(clases.map((c) => c.id)))
-    getOccurrencesForDateRangeApi(classIds, { from, to, signal: controller.signal })
-      .then((data) => {
+    const fetchOccurrences = async () => {
+      controller.abort()
+      controller = new AbortController()
+      try {
+        const data = await getOccurrencesForDateRangeApi(classIds, { from, to, signal: controller.signal })
         if (active) setOccurrencesByClass(data)
-      })
-      .catch((err) => {
+      } catch (err) {
         if (err?.name === 'AbortError') return
-        if (active) setOccurrencesByClass({})
-      })
+      }
+    }
+    fetchOccurrences().catch(() => {})
     return () => {
       active = false
       controller.abort()
       clearOccurrencesInflightCache()
     }
-  }, [apiClassIdsSignature, resWeekDays[0]?.isoDate, resWeekDays[resWeekDays.length - 1]?.isoDate, useApiClasses])
+  }, [activeSection, apiClassIdsSignature, resWeekDays[0]?.isoDate, resWeekDays[resWeekDays.length - 1]?.isoDate, useApiClasses])
 
   // â”€â”€ Datos del usuario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const userName = usuario?.nombre ?? 'Cliente'
@@ -463,7 +508,7 @@ export default function ClientPanel() {
   }
   const clasesRestantes = financialUiState.clasesRestantes
   const clasesUsadas = financialUiState.clasesUsadas
-  const esUnlimited = typeof clasesRestantes === 'number' && clasesRestantes >= 999
+  const esUnlimited = typeof clasesRestantes === 'number' && clasesRestantes >= 450
   const displayClases = esUnlimited ? '∞' : clasesRestantes
 
   const meta = SECTION_META[activeSection]
@@ -585,7 +630,8 @@ export default function ClientPanel() {
 
   const mesActual = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`
   const getReservationDiscipline = (item) => normalizeDiscipline(
-    item?.discipline ?? item?.classDiscipline ?? item?.tipo ?? item?._raw?.discipline
+    item?.discipline ?? item?.classDiscipline ?? item?.tipo ?? item?._raw?.discipline,
+    item?.claseNombre ?? item?.title ?? item?.nombre ?? item?._raw?.nombre ?? item?._raw?.name
   )
 
   const esMesActual = (r) => {
@@ -633,8 +679,17 @@ export default function ClientPanel() {
           if (occ.fecha !== day.isoDate) continue
           const occurrenceTime = getClassTimeToken(occ) ?? getClassTimeToken(c) ?? null
           sessions.push({
-            _raw: { ...c, occurrenceId: occ.occurrenceId, fecha: occ.fecha, hora: occurrenceTime ?? c.hora ?? null },
+            _raw: {
+              ...c,
+              classId: c.id,
+              claseId: c.id,
+              occurrenceId: occ.occurrenceId,
+              fecha: occ.fecha,
+              hora: occurrenceTime ?? c.hora ?? null,
+            },
             id: c.id,
+            classId: c.id,
+            claseId: c.id,
             occurrenceId: occ.occurrenceId,
             title: occ.claseNombre ?? c.nombre,
             coach: c.coachNombre,
@@ -756,7 +811,7 @@ export default function ClientPanel() {
       label: 'Principal',
       links: [
         { key: 'inicio',   icon: Home,        label: 'Inicio'        },
-        { key: 'clases',   icon: CalendarDays, label: 'Mis Clases', badge: upcoming.length },
+        { key: 'clases',   icon: CalendarDays, label: 'Mis Clases', badge: misClasesPageState.total},
         { key: 'reservar', icon: PlusCircle,   label: 'Reservar Clase' },
       ],
     },
@@ -1053,7 +1108,7 @@ export default function ClientPanel() {
                     <div className={s.progressWrap}>
                       <div className={s.progressLabel}>
                         <span>
-                          {clasesTomadasEsteMes} de {metaMensual >= 999 ? '∞' : metaMensual}{' '}
+                          {clasesTomadasEsteMes} de {metaMensual >= 450 ? '∞' : metaMensual}{' '}
                           <strong>meta mensual</strong>
                         </span>
                         <strong>{pctProgreso}%</strong>
@@ -1076,7 +1131,7 @@ export default function ClientPanel() {
                       <div className={s.progressWrap}>
                         <div className={s.progressLabel}>
                           <span>
-                            {clasesUsadas} de {clasesTotal >= 999 ? '∞' : clasesTotal}{' '}
+                            {clasesUsadas} de {clasesTotal >= 450 ? '∞' : clasesTotal}{' '}
                             <strong>clases usadas</strong>
                           </span>
                           <strong>{pctPaquete}%</strong>
@@ -1597,7 +1652,7 @@ export default function ClientPanel() {
                     />
                   </div>
                   <div className={s.planProgressLabel}>
-                    {clasesUsadas} de {clasesTotal >= 999 ? '∞' : clasesTotal} clases usadas
+                    {clasesUsadas} de {clasesTotal >= 450 ? '∞' : clasesTotal} clases usadas
                     {usuario?.paqueteInfo?.fechaVencimiento
                       ? ` · Vence ${formatFechaISO(usuario.paqueteInfo.fechaVencimiento)}`
                       : ''}
@@ -1652,7 +1707,7 @@ export default function ClientPanel() {
                                   {membership.displayName ?? membership.packageName ?? 'Paquete'}
                                 </div>
                                 <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-                                  {(membership.creditsAvailable ?? 0) >= 999 ? '∞' : (membership.creditsAvailable ?? 0)} créditos disponibles
+                                  {(membership.creditsAvailable ?? 0) >= 450 ? '∞' : (membership.creditsAvailable ?? 0)} créditos disponibles
                                   {membership.expiresAt ? ` · Vence ${formatFechaISO(membership.expiresAt)}` : ''}
                                 </div>
                                 {/* <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
@@ -1827,7 +1882,7 @@ export default function ClientPanel() {
                           <div className={s.historyDate}>{mv.createdAt ? formatFechaISO(mv.createdAt.slice(0, 10)) : 'Sin fecha'}</div>
                         </div>
                         <div className={s.historyAmount} style={mv.amount < 0 ? { color: '#e53e3e' } : { color: '#16a34a' }}>
-                          {mv.amount >= 999 ? '+∞' : mv.amount <= -999 ? '-∞' : `${mv.amount > 0 ? '+' : ''}${mv.amount}`}
+                          {mv.amount >= 450 ? '+∞' : mv.amount <= -999 ? '-∞' : `${mv.amount > 0 ? '+' : ''}${mv.amount}`}
                         </div>
                       </div>
                     ))
@@ -1970,7 +2025,7 @@ export default function ClientPanel() {
         useApiReservations && seatSelectorClass?.occurrenceId ? (
           <EquipmentReservationPanel
             occurrenceId={seatSelectorClass.occurrenceId}
-            classId={seatSelectorClass.id}
+            classId={seatSelectorClass.classId ?? seatSelectorClass.claseId ?? seatSelectorClass.id}
             userId={usuario?.id}
             financialState={{
               financialState: effectiveFinancialState,
@@ -1978,6 +2033,22 @@ export default function ClientPanel() {
               activeMembership: effectiveActiveMembership,
               isLoading: effectiveFinancialStateLoading,
               error: effectiveFinancialStateError,
+            }}
+            onReservationCreated={async () => {
+              await Promise.allSettled([
+                loadMisReservasFromApi?.(),
+                loadClasesFromApi?.(),
+                refreshReservarSection(),
+                invalidateReservationSideEffects(queryClient, {
+                  occurrenceId: seatSelectorClass.occurrenceId,
+                  classId: seatSelectorClass.classId ?? seatSelectorClass.claseId ?? seatSelectorClass.id,
+                  userId: usuario?.id,
+                }),
+              ])
+
+              if (!useApiFinancialState) {
+                await loadFinancialState({ enabled: true, force: true }).catch(() => {})
+              }
             }}
             onClose={() => setSeatSelectorClass(null)}
           />

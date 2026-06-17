@@ -134,7 +134,12 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
       reservation.class_discipline ??
       classData?.discipline ??
       classData?.classDiscipline ??
-      classData?.tipo
+      classData?.tipo,
+      classNameSnapshot ??
+      classData?.nombre ??
+      classData?.name ??
+      reservation.title ??
+      reservation.nombre
     ),
     spotLabel,
     spotEquipmentType,

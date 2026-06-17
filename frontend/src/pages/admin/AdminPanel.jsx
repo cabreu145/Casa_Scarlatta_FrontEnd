@@ -145,6 +145,10 @@ function buildOccurrencePayloadFromClassForm(form, classPayload = {}) {
   }
 }
 
+function resolveSelectedClassId(value = {}) {
+  return value?.classId ?? value?.claseId ?? value?.class_id ?? value?.clase_id ?? value?.id ?? null
+}
+
 // ── adminLinks export (used by other admin pages) ────────────────────────────
 import { LayoutDashboard, Users, UserCheck, CalendarDays, Package, BarChart2, DollarSign, Menu, X } from 'lucide-react'
 export const adminLinks = [
@@ -518,6 +522,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const occurrenceRosterQuery = useOccurrenceRosterQuery(modalAlumnosOccurrenceId, {
     includeCanceled: false,
     enabled: useApiClasses && canReadClassRoster && Boolean(modalAlumnosOccurrenceId && modalAlumnosClase),
+    refetchInterval: modalAlumnosOccurrenceId ? 10_000 : false,
   })
   // Usuario — asignar paquete desde modal Ver
   const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
@@ -879,10 +884,21 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   useEffect(() => {
     if (!useApiClasses) return
     let active = true
-    loadClasesFromApi({ status: 'programada' }).catch(() => {
-      if (!active) return
-    })
-    return () => { active = false }
+    const fetchClasses = async () => {
+      try {
+        await loadClasesFromApi({ status: 'programada' })
+      } catch {
+        if (!active) return
+      }
+    }
+    fetchClasses()
+    const intervalId = window.setInterval(() => {
+      fetchClasses().catch(() => {})
+    }, 15_000)
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
   }, [loadClasesFromApi, useApiClasses])
 
   useEffect(() => {
@@ -2917,7 +2933,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               toast.error('Este alumno ya tiene un lugar en esta ocurrencia. Usa "Elegir asiento" o "Agregar otro asiento" para reservar otro spot.')
               return
             }
-            const res = await reservarClaseService(userId, cls.id, null, occurrenceId)
+            const classId = resolveSelectedClassId(cls)
+            const res = await reservarClaseService(userId, classId, null, occurrenceId)
           if (res.ok) {
             toast.success(`${usuario?.nombre ?? usuario?.name ?? 'Cliente'} inscrito en ${cls.nombre}`)
             setAlumnoAgregarId('')
@@ -2930,7 +2947,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
             const { actualizarCupo } = useClasesStore.getState()
             agregarReserva({
               userId,
-              claseId:     cls.id,
+              claseId:     classId,
               occurrenceId,
               claseNombre: cls.nombre,
               claseHora:   getClassDisplayTime(cls),

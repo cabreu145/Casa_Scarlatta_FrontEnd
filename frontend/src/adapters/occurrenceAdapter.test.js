@@ -21,6 +21,8 @@ describe('occurrenceAdapter', () => {
     expect(mapped).toMatchObject({
       occurrenceId: 10,
       claseId: 5,
+      classId: 5,
+      discipline: 'stryde',
       fecha: '2026-05-30',
       displayDate: expect.any(String),
       cupoMax: 20,
