@@ -267,6 +267,11 @@ describe('ClientPanel payments section', () => {
     expect(await screen.findByText(/Estado de pagos recientes/i)).toBeInTheDocument()
   })
 
+  test('refresca reservas API con force true para no depender de cache local persistida', async () => {
+    await renderPanel('/cliente/dashboard')
+    expect(mockLoadMisReservasFromApi).toHaveBeenCalledWith({ force: true })
+  })
+
   test('resalta packageId desde query en Paquetes & Pagos', async () => {
     membershipPackagesData = [
       {

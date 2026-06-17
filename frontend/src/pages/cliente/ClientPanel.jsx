@@ -368,7 +368,7 @@ export default function ClientPanel() {
     let active = true
     const fetchReservations = async () => {
       try {
-        await loadMisReservasFromApi()
+        await loadMisReservasFromApi({ force: true })
       } catch (err) {
         if (active && import.meta.env.DEV) {
           console.error('[ClientPanel] No se pudo cargar reservas API, fallback cache/store', err)
@@ -1300,7 +1300,7 @@ export default function ClientPanel() {
 	                      : 'No tienes clases en este estado.'}
 	                  </p>
                   {useApiReservations && reservasSinFechaSesion.length > 0 && (
-                    <p className={s.emptyDaySub}>Reserva sin fecha de sesiÃ³n disponible</p>
+                    <p className={s.emptyDaySub}>Reserva sin fecha de sesión disponible</p>
                   )}
                   <button className={`${s.btn} ${s.btnPrimary}`} style={{ marginTop: 16 }} onClick={() => goTo('reservar')}>
                     Reservar clase
@@ -2064,7 +2064,7 @@ export default function ClientPanel() {
             }}
             onReservationCreated={async () => {
               await Promise.allSettled([
-                loadMisReservasFromApi?.(),
+                loadMisReservasFromApi?.({ force: true }),
                 loadClasesFromApi?.(),
                 refreshReservarSection(),
                 invalidateReservationSideEffects(queryClient, {

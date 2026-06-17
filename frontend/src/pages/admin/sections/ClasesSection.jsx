@@ -810,7 +810,7 @@ export default function ClasesSection({
                 setSelectMode(false)
               }}
             >
-               ðŸ—‘ Eliminar ({selectedIds.size})
+               🗑 Eliminar ({selectedIds.size})
             </button>
           )}
           <button
@@ -981,7 +981,7 @@ export default function ClasesSection({
                       <span className={styles.dayNum}>
                         {(() => {
                           if (c.fecha) return new Date(c.fecha + 'T12:00:00').getDate()
-                          const idx = ['Domingo','Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado'].indexOf(c.dia)
+                          const idx = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'].indexOf(c.dia)
                           const hoy = new Date()
                           const diff = idx - hoy.getDay()
                           const fecha = new Date(hoy)
@@ -1147,7 +1147,7 @@ export default function ClasesSection({
             )}
             {useBackendPaginationInList && apiListState.error && (
               <div style={{ padding: '10px 16px', fontSize: 12, color: '#ef4444' }}>
-                No se pudo cargar pÃ¡gina de clases.
+                No se pudo cargar página de clases.
               </div>
             )}
             <table style={{

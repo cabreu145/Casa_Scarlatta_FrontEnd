@@ -110,7 +110,7 @@ describe('EquipmentReservationPanel', () => {
 
     expect(screen.getByText('Lugar seleccionado')).toBeInTheDocument()
     expect(screen.getByText('Tapete 02')).toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'Seleccionar lugar' })).toHaveTextContent(/Crédito a usar:\s*1/i)
+    expect(screen.getByRole('dialog', { name: 'Seleccionar lugar' })).toHaveTextContent('Crédito a usar: 1')
 
     await user.click(screen.getByRole('button', { name: 'Reservar lugar' }))
 
@@ -156,7 +156,7 @@ describe('EquipmentReservationPanel', () => {
     expect(screen.queryByText('Lugar seleccionado')).not.toBeInTheDocument()
   })
 
-  test('si no tiene créditos disponibles no deja seleccionar lugar', async () => {
+  test('si no tiene crÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©ditos disponibles no deja seleccionar lugar', async () => {
     const user = userEvent.setup()
     spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
 
@@ -178,7 +178,7 @@ describe('EquipmentReservationPanel', () => {
 
     await user.click(await screen.findByTestId('slow-spot-01'))
 
-    expect(screen.getByText('No tienes créditos suficientes para estos lugares.')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Seleccionar lugar' })).toHaveTextContent(/cr.ditos suficientes para estos lugares/i)
     expect(screen.queryByText('Lugar seleccionado')).not.toBeInTheDocument()
     expect(createSpotHoldMock).not.toHaveBeenCalled()
     expect(releaseSpotHoldMock).not.toHaveBeenCalled()
@@ -254,10 +254,10 @@ describe('EquipmentReservationPanel', () => {
     await user.click(await screen.findByTestId('slow-spot-01'))
     await user.click(screen.getByRole('button', { name: 'Reservar lugar' }))
 
-    expect(await screen.findByText('No tienes créditos suficientes para estos lugares.')).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Seleccionar lugar' })).toHaveTextContent(/cr.ditos suficientes para estos lugares/i)
   })
 
-  test('acepta hold singular legacy sin romper confirmaciÃ³n', async () => {
+  test('acepta hold singular legacy sin romper confirmaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n', async () => {
     const user = userEvent.setup()
     spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
     createSpotHoldMock.mockResolvedValue({
@@ -305,7 +305,7 @@ describe('EquipmentReservationPanel', () => {
     })
   })
 
-  test('bloquea confirmaciÃ³n si occurrence pertenece a otra clase', async () => {
+  test('bloquea confirmaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n si occurrence pertenece a otra clase', async () => {
     const user = userEvent.setup()
     spotsQueryState = {
       data: {
@@ -365,7 +365,7 @@ describe('EquipmentReservationPanel', () => {
     expect(screen.queryByText('Cargando mapa...')).not.toBeInTheDocument()
   })
 
-  test('bloquea confirmaciÃ³n cuando membresÃ­a limita un lugar por clase', async () => {
+  test('bloquea confirmaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n cuando membresÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­a limita un lugar por clase', async () => {
     const user = userEvent.setup()
     spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
 
@@ -394,6 +394,52 @@ describe('EquipmentReservationPanel', () => {
     expect(createReservationMock).not.toHaveBeenCalled()
   })
 
+  test('permite reservar otra occurrence distinta si no hay reserva activa en esta occurrence', async () => {
+    const user = userEvent.setup()
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
+    createSpotHoldMock.mockResolvedValue({
+      occurrenceId: 5,
+      userId: 26,
+      holds: [{ holdId: 123, spotId: 1, status: 'held' }],
+    })
+    createReservationMock.mockResolvedValue({
+      occurrenceId: 5,
+      userId: 26,
+      reservations: [{ reservationId: 30, spotId: 1, spotLabel: '01', equipmentType: 'mat', status: 'confirmada' }],
+    })
+
+    const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
+    render(
+      <EquipmentReservationPanel
+        occurrenceId={5}
+        classId={9}
+        userId={26}
+        isAdminBooking
+        hasExistingReservationInOccurrence={false}
+        financialState={{
+          financialState: {},
+          creditsBalance: 2,
+          activeMembership: { creditsAvailable: 2, limitOneSpotPerOccurrence: true },
+          isLoading: false,
+          error: null,
+        }}
+      />
+    )
+
+    await user.click(await screen.findByTestId('slow-spot-01'))
+    await user.click(screen.getByRole('button', { name: 'Reservar lugar' }))
+
+    await waitFor(() => {
+      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotIds: [1], userId: 26 })
+      expect(createReservationMock).toHaveBeenCalledWith({
+        claseId: 9,
+        occurrenceId: 5,
+        spotIds: [1],
+        holdIds: [123],
+        userId: 26,
+      })
+    })
+  })
   test('mapea ONE_SPOT_PER_OCCURRENCE_LIMIT con mensaje admin', async () => {
     const user = userEvent.setup()
     spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }

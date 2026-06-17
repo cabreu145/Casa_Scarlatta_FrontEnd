@@ -81,10 +81,11 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
   const classData = classesById?.[claseId] ?? null
 
   const fechaCreacionReserva = toIsoDateFromDateTime(reservation.reserved_at)
-  const classStartAt = reservation.class_start_at ?? reservation.classStartAt ?? null
+  const startAt = reservation.start_at ?? reservation.startAt ?? null
+  const classStartAt = reservation.class_start_at ?? reservation.classStartAt ?? startAt ?? null
   const occurrenceDate = reservation.occurrence_date ?? reservation.occurrenceDate ?? null
   const classDateRaw = reservation.class_date ?? reservation.classDate ?? null
-  const classDate = toIsoDateSafe(classDateRaw)
+  const classDate = toIsoDateSafe(classDateRaw) ?? toIsoDateSafe(occurrenceDate)
   const classStartTime = getClassTimeToken({
     startTime: reservation.class_start_time ?? reservation.classStartTime ?? null,
     startAt: classStartAt,
@@ -99,12 +100,12 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
   const spotEquipmentType = reservation.spot_equipment_type ?? reservation.spotEquipmentType ?? reservation.equipment_type ?? reservation.equipmentType ?? null
   const equipmentLabel = buildEquipmentLabel(spotEquipmentType)
 
-  const fechaSesion = classDate ?? toIsoDateFromDateTime(classStartAt) ?? classData?.fecha ?? null
+  const fechaSesion = classDate ?? toIsoDateFromDateTime(classStartAt) ?? toIsoDateFromDateTime(startAt) ?? classData?.fecha ?? null
   const displayDate = formatClassDate(getClassDisplayDate({
     classDate,
     occurrenceDate,
     classStartAt,
-    startAt: reservation.start_at ?? reservation.startAt ?? null,
+    startAt,
     fecha: fechaSesion,
   }))
 
@@ -149,6 +150,7 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
     estado: reservation.status ?? ESTADOS_RESERVA.CONFIRMADA,
     fecha: fechaSesion,
     fechaSesion,
+    occurrenceDate,
     classStartAt,
     classDate,
     classStartTime,

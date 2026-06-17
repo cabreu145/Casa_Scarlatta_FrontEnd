@@ -1,9 +1,17 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
+import toast from 'react-hot-toast'
 
 const assignarPaqueteServiceMock = vi.fn()
 const createCheckoutPreferenceMock = vi.fn()
+const toastError = vi.fn()
+
+vi.mock('react-hot-toast', () => ({
+  default: {
+    error: (...args) => toastError(...args),
+  },
+}))
 
 vi.mock('@/services/usuariosService', () => ({
   asignarPaqueteService: (...args) => assignarPaqueteServiceMock(...args),
@@ -37,6 +45,7 @@ describe('PagoModal', () => {
     vi.resetModules()
     assignarPaqueteServiceMock.mockReset()
     createCheckoutPreferenceMock.mockReset()
+    toastError.mockReset()
     sessionStorage.clear()
   })
 
@@ -86,8 +95,27 @@ describe('PagoModal', () => {
     await userEvent.click(screen.getByRole('button', { name: /Pagar \$1,500 MXN/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/Número de tarjeta inválido/i)).toBeInTheDocument()
+      expect(screen.getByText((_, node) => String(node?.className || '').includes('errorMsg') && /tarjeta/i.test(node?.textContent || '') && /inv/i.test(node?.textContent || ''))).toBeInTheDocument()
       expect(createCheckoutPreferenceMock).not.toHaveBeenCalled()
+    })
+  })
+
+  test('mapea PACKAGE_ALREADY_PURCHASED_ONCE con mensaje cliente', async () => {
+    vi.stubEnv('VITE_USE_API_AUTH', 'true')
+    vi.stubEnv('VITE_USE_API_RESERVATIONS', 'true')
+    createCheckoutPreferenceMock.mockRejectedValue({
+      code: 'PACKAGE_ALREADY_PURCHASED_ONCE',
+      message: 'PACKAGE_ALREADY_PURCHASED_ONCE',
+    })
+
+    const { default: PagoModal } = await import('./PagoModal')
+    render(<PagoModal paquete={paquete} onClose={vi.fn()} onSuccess={vi.fn()} />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Continuar a Mercado Pago/i }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('Este paquete solo puede adquirirse una vez por cliente.')
+      expect(screen.getByText(/Este paquete solo puede adquirirse una vez por cliente\./i)).toBeInTheDocument()
     })
   })
 })

@@ -246,7 +246,7 @@ export default function Reservar() {
         <SectionHeader
           label="Reservar"
           title="Asegura tu lugar"
-          subtitle="Cupos limitados. CancelaciÃ³n gratuita hasta 6 horas antes."
+          subtitle="Cupos limitados. Cancelación gratuita hasta 6 horas antes."
           size="lg"
           titleStyle={{
             fontFamily: 'var(--font-body)',
@@ -275,7 +275,7 @@ export default function Reservar() {
           <div className={styles.stepLine} />
           <div className={`${styles.step} ${showReservationPanel ? styles.active : ''}`}>
             <span className={styles.stepNum}>4</span>
-            <span>ConfirmaciÃ³n</span>
+            <span>Confirmación</span>
           </div>
         </div>
 
@@ -379,8 +379,8 @@ export default function Reservar() {
                   ? getOneSpotPerOccurrenceMessage()
                   : selectedClassHasActiveReservation && canReserveAnotherSelectedClass
                     ? 'Ya tienes un lugar reservado. Puedes reservar otro lugar disponible.'
-                    : 'ContinÃºa para elegir spot y confirmar tu reserva.'
-                : 'Inicia sesiÃ³n para continuar con la reserva segura de tu lugar.'}
+                    : 'Continúa para elegir spot y confirmar tu reserva.'
+                : 'Inicia sesión para continuar con la reserva segura de tu lugar.'}
             </p>
 
             <div className={styles.navBtns}>
@@ -388,7 +388,7 @@ export default function Reservar() {
                 â† Volver a clases
               </button>
               <button className={styles.nextBtn} type="button" onClick={handleContinue} disabled={selectedClassHasSingleSpotLimit}>
-                {isAuthenticated ? 'Elegir lugar â†’' : 'Iniciar SesiÃ³n para reservar'}
+                {isAuthenticated ? 'Elegir lugar â†’' : 'Iniciar Sesión para reservar'}
               </button>
             </div>
           </div>

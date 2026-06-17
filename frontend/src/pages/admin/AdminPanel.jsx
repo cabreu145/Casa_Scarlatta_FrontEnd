@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useMemo, useEffect } from 'react'
+﻿import { useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PasswordInput from '@/components/ui/PasswordInput'
 import DashboardSection from './sections/DashboardSection'
@@ -76,8 +76,10 @@ import {
 import {
   canReserveAnotherSpotInOccurrence,
   getOneSpotPerOccurrenceMessage,
+  hasActiveReservationInOccurrenceForUser,
   resolveLimitOneSpotPerOccurrence,
 } from '@/utils/reservationPolicy'
+import { resolvePackagePurchaseErrorMessage } from '@/utils/packagePurchasePolicy'
 import { queryKeys } from '@/api/queryKeys'
 import {
   useAdminClientDetailQuery,
@@ -216,21 +218,25 @@ function Tag({ color, children }) {
   return <span className={`${styles.miniTag} ${cls}`}>{children}</span>
 }
 
-// ── Category emoji fallback ──────────────────────────────────────────────────
+// Category emoji fallback
 function categoryEmoji(categoria) {
-  return { Accesorios: '🎽', Nutrición: '🧴', Equipo: '🏋️', Ropa: '👕' }[categoria] || '📦'
+  const normalized = String(categoria ?? '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase()
+  if (normalized === 'accesorios') return '\uD83C\uDFBD'
+  if (normalized.startsWith('nutric')) return '\uD83E\uDD64'
+  if (normalized === 'equipo') return '\uD83C\uDFCB\uFE0F'
+  if (normalized === 'ropa') return '\uD83D\uDC55'
+  return '\uD83D\uDCE6'
 }
-
 function resolveMembershipErrorMessage(error) {
   const raw = String(error?.message ?? '').trim()
   if (raw === 'SHARED_CREDITS_NOT_DIVISIBLE') {
     return 'Este paquete no se puede dividir exactamente entre los beneficiarios seleccionados.'
   }
   if (raw === 'SHARED_BENEFICIARY_CHANGE_ADMIN_ONLY') {
-    return 'Los cambios posteriores deben solicitarse a administración.'
+    return 'Los cambios posteriores deben solicitarse a administraci?n.'
   }
   if (raw === 'SHARED_MEMBERSHIP_HAS_CONSUMPTION') {
-    return 'No se pueden modificar beneficiarios porque ya hay consumo de créditos.'
+    return 'No se pueden modificar beneficiarios porque ya hay consumo de cr?ditos.'
   }
   if (raw === 'BENEFICIARY_NOT_FOUND') {
     return 'No encontramos un cliente con ese correo.'
@@ -238,7 +244,7 @@ function resolveMembershipErrorMessage(error) {
   if (raw === 'BENEFICIARY_ROLE_INVALID') {
     return 'El beneficiario debe ser un cliente registrado.'
   }
-  return raw || 'No se pudo actualizar la membresía compartida.'
+  return raw || 'No se pudo actualizar la membres?a compartida.'
 }
 
 function resolveClass409Message(error) {
@@ -494,6 +500,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     vigencia: '',
     descripcion: '',
     destacado: false,
+    limitOneSpotPerOccurrence: false,
+    purchaseOncePerUser: false,
     isShareable: false,
     maxBeneficiaries: 0,
   })
@@ -505,6 +513,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     clases: '',
     vigencia: '',
     destacado: false,
+    limitOneSpotPerOccurrence: false,
+    purchaseOncePerUser: false,
     beneficios: [],
     isShareable: false,
     maxBeneficiaries: 0,
@@ -737,6 +747,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
             vigencia: '',
             descripcion: '',
             destacado: false,
+            purchaseOncePerUser: false,
             isShareable: false,
             maxBeneficiaries: 0,
           })
@@ -750,16 +761,18 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     }
 
     if (isEdit) {
-      editarPaquete(modalEditPaquete.id, {
-        nombre:     editPaqueteForm.nombre || null,
-        precio:     Number(editPaqueteForm.precio) || 0,
-        clases:     Number(editPaqueteForm.clases) || 0,
-        vigencia:   editPaqueteForm.vigencia,
-        destacado:  editPaqueteForm.destacado,
-        beneficios: editPaqueteForm.beneficios,
-        isShareable: Boolean(editPaqueteForm.isShareable),
-        maxBeneficiaries: Number(editPaqueteForm.maxBeneficiaries) || 0,
-      })
+        editarPaquete(modalEditPaquete.id, {
+          nombre:     editPaqueteForm.nombre || null,
+          precio:     Number(editPaqueteForm.precio) || 0,
+          clases:     Number(editPaqueteForm.clases) || 0,
+          vigencia:   editPaqueteForm.vigencia,
+          destacado:  editPaqueteForm.destacado,
+          limitOneSpotPerOccurrence: Boolean(editPaqueteForm.limitOneSpotPerOccurrence),
+          purchaseOncePerUser: Boolean(editPaqueteForm.purchaseOncePerUser),
+          beneficios: editPaqueteForm.beneficios,
+          isShareable: Boolean(editPaqueteForm.isShareable),
+          maxBeneficiaries: Number(editPaqueteForm.maxBeneficiaries) || 0,
+        })
       toast.success(`Paquete "${editPaqueteForm.nombre || 'Paquete'}" actualizado`)
       setModalEditPaquete(null)
       setNuevoBeneficio('')
@@ -773,6 +786,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       vigencia:   Number(paqueteForm.vigencia) || 0,
       beneficios: paqueteForm.descripcion ? [paqueteForm.descripcion] : [],
       destacado:  paqueteForm.destacado,
+      limitOneSpotPerOccurrence: Boolean(paqueteForm.limitOneSpotPerOccurrence),
+      purchaseOncePerUser: Boolean(paqueteForm.purchaseOncePerUser),
       isShareable: Boolean(paqueteForm.isShareable),
       maxBeneficiaries: Number(paqueteForm.isShareable ? paqueteForm.maxBeneficiaries : 0) || 0,
     })
@@ -784,6 +799,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       vigencia: '',
       descripcion: '',
       destacado: false,
+      limitOneSpotPerOccurrence: false,
+      purchaseOncePerUser: false,
       isShareable: false,
       maxBeneficiaries: 0,
     })
@@ -1170,6 +1187,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       vigencia: '',
       descripcion: '',
       destacado: false,
+      limitOneSpotPerOccurrence: false,
+      purchaseOncePerUser: false,
       isShareable: false,
       maxBeneficiaries: 0,
     })
@@ -1385,11 +1404,11 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   function handleCerrarDia() {
     const now = new Date()
     const mes = now.toLocaleString('es-MX', { month: 'long' })
-    const año = now.getFullYear()
+    const ano = now.getFullYear()
     const ingresosCat = getIncomeByCategory('dia')
     ejecutarCorte({
       fecha:              finHoy,
-      periodo:            `${mes.charAt(0).toUpperCase() + mes.slice(1)} ${año}`,
+      periodo:            `${mes.charAt(0).toUpperCase() + mes.slice(1)} ${ano}`,
       tipo:               'diario',
       ingresosPaquetes:   ingresosCat.paquetes,
       ingresosProductos:  ingresosCat.productos,
@@ -2193,7 +2212,43 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 </label>
               </div>
 
-              {/* <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 20 }}>
+              <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input
+                    type="checkbox"
+                    id="limitOneSpotPerOccurrence"
+                    checked={Boolean(paqueteForm.limitOneSpotPerOccurrence)}
+                    onChange={(event) => setPaqueteForm((form) => ({ ...form, limitOneSpotPerOccurrence: event.target.checked }))}
+                    style={{ width: 16, height: 16, accentColor: 'var(--wine)', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="limitOneSpotPerOccurrence" className={styles.formLabel} style={{ margin: 0, cursor: 'pointer' }}>
+                    Limitar a 1 lugar por clase
+                  </label>
+                </div>
+                <small style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
+                  Actívalo para paquetes tipo ilimitado. El cliente podrá reservar muchas clases, pero solo un lugar por cada clase/horario.
+                </small>
+              </div>
+
+
+              <div className={styles.formGroup} style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input
+                    type="checkbox"
+                    id="purchaseOncePerUser"
+                    checked={Boolean(paqueteForm.purchaseOncePerUser)}
+                    onChange={(event) => setPaqueteForm((form) => ({ ...form, purchaseOncePerUser: event.target.checked }))}
+                    style={{ width: 16, height: 16, accentColor: 'var(--wine)', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="purchaseOncePerUser" className={styles.formLabel} style={{ margin: 0, cursor: 'pointer' }}>
+                    Solo se puede comprar una vez por cliente
+                  </label>
+                </div>
+                <small style={{ color: 'var(--muted)', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
+                  Útil para paquetes tipo First Class. Si el cliente ya lo adquirió antes, no podrá volver a comprarlo ni recibirlo por asignación admin.
+                </small>
+              </div>
+             {/* <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 20 }}>
                 <input
                   type="checkbox"
                   id="shareable"
@@ -2340,7 +2395,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       setUsuarioForm({ nombre: '', email: '', telefono: '', nacimiento: '', password: '', paquete: 'ninguno', metodoPago: 'efectivo', notas: '' })
                       closeModal()
                     } catch (error) {
-                      toast.error(error?.message ?? 'No se pudo crear el cliente')
+                      toast.error(resolvePackagePurchaseErrorMessage(error, { admin: true }) ?? error?.message ?? 'No se pudo crear el cliente')
                     }
                     return
                   }
@@ -2874,6 +2929,11 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
         }))
           const idsInscritos = new Set(inscritos.map((r) => Number(r.userId ?? r.user_id)))
           const isSpotManagedClass = isMapDiscipline(cls.tipo ?? cls.discipline ?? cls._raw?.discipline)
+          const hasActiveReservationInCurrentOccurrence = (userId) => hasActiveReservationInOccurrenceForUser({
+            reservations: inscritos,
+            userId,
+            occurrenceId,
+          })
           const disponibles = useApiClients
             ? (enrollableClients ?? []).filter((u) => {
                 if (String(u.status ?? u.estado ?? 'active') !== 'active') return false
@@ -2935,7 +2995,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               toast.error('Selecciona una fecha de ocurrencia para inscribir alumno')
               return
             }
-            if (isSpotManagedClass && idsInscritos.has(userId)) {
+            if (isSpotManagedClass && hasActiveReservationInCurrentOccurrence(userId)) {
               toast.error(
                 limitOneSpotPerOccurrence
                   ? getOneSpotPerOccurrenceMessage({ admin: true })
@@ -3100,6 +3160,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                                       onClick={() => setAdminSeatSelector({
                                         cls,
                                         userId: Number(r.userId ?? r.user_id),
+                                        hasExistingReservationInOccurrence: true,
                                       })}
                                     >
                                       Agregar otro asiento
@@ -3294,7 +3355,11 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   <button
                     className={`${styles.btn} ${styles.btnPrimary}`}
                     style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
-                    onClick={() => alumnoAgregarId && setAdminSeatSelector({ cls, userId: Number(alumnoAgregarId) })}
+                    onClick={() => alumnoAgregarId && setAdminSeatSelector({
+                      cls,
+                      userId: Number(alumnoAgregarId),
+                      hasExistingReservationInOccurrence: hasActiveReservationInCurrentOccurrence(Number(alumnoAgregarId)),
+                    })}
                     disabled={!alumnoAgregarId || (useApiClasses && !occurrenceId) || !canManageReservations}
                   >
                     🪑 Elegir asiento
@@ -3311,7 +3376,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       {useApiClients
                         ? (Number(u.clasesPaquete ?? u.creditsBalance ?? u.creditos ?? 0) > 0
                           ? `${Number(u.clasesPaquete ?? u.creditsBalance ?? u.creditos ?? 0)} crédito(s) disponibles`
-                          : '⚠️ Sin créditos — backend validará la reserva')
+                          : '⚠️ Sin créditos — se validará la reserva')
                         : (u.clasesPaquete > 0 ? `${u.clasesPaquete} crédito(s) disponibles` : '⚠️ Sin créditos — se inscribirá sin descontar')}
                     </p>
                   )
@@ -3442,6 +3507,42 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 <label htmlFor="destEdit" className={styles.formLabel} style={{ margin: 0 }}>Marcar como popular</label>
               </div>
 
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input
+                    type="checkbox"
+                    id="limitOneSpotPerOccurrenceEdit"
+                    checked={Boolean(editPaqueteForm.limitOneSpotPerOccurrence)}
+                    onChange={e => setEditPaqueteForm(f => ({ ...f, limitOneSpotPerOccurrence: e.target.checked }))}
+                  />
+                  <label htmlFor="limitOneSpotPerOccurrenceEdit" className={styles.formLabel} style={{ margin: 0 }}>
+                    Limitar a 1 lugar por clase
+                  </label>
+                </div>
+
+                <small style={{ color: '#fbbf24', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
+                  Actívalo para paquetes tipo ilimitado. El cliente podrá reservar muchas clases, pero solo un lugar por cada clase/horario.
+                </small>
+              </div>
+
+
+              <div className={styles.formGroup} style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input
+                    type="checkbox"
+                    id="purchaseOncePerUserEdit"
+                    checked={Boolean(editPaqueteForm.purchaseOncePerUser)}
+                    onChange={e => setEditPaqueteForm(f => ({ ...f, purchaseOncePerUser: e.target.checked }))}
+                  />
+                  <label htmlFor="purchaseOncePerUserEdit" className={styles.formLabel} style={{ margin: 0 }}>
+                    Solo se puede comprar una vez por cliente
+                  </label>
+                </div>
+
+                <small style={{ color: '#fbbf24', fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
+                  Este cambio aplicará a nuevas ventas/asignaciones del paquete. Las membresías ya vendidas conservan su configuración actual.
+                </small>
+              </div>
              {/*  <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <input
                   type="checkbox"
@@ -3863,7 +3964,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                             await refreshClientDetail(u.id)
                             toast.success('Paquete asignado')
                           } catch (error) {
-                            toast.error(error?.message ?? 'No se pudo asignar el paquete')
+                            toast.error(resolvePackagePurchaseErrorMessage(error, { admin: true }) ?? error?.message ?? 'No se pudo asignar el paquete')
                           }
                           return
                         }
@@ -4242,7 +4343,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               occurrenceId={occurrenceId}
               classId={adminSeatSelector.cls.claseId ?? adminSeatSelector.cls.classId ?? adminSeatSelector.cls.id}
               userId={adminSeatSelector.userId}
-              hasExistingReservationInOccurrence
+              hasExistingReservationInOccurrence={Boolean(adminSeatSelector.hasExistingReservationInOccurrence)}
               limitErrorMessage={getOneSpotPerOccurrenceMessage({ admin: true })}
               isAdminBooking
               financialState={{
