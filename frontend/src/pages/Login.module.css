@@ -253,7 +253,24 @@
   overflow-y: auto;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .formRow { grid-template-columns: 1fr; }
   .inner { padding-top: 36px; }
+}
+
+@media (max-width: 375px) {
+  .inner {
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+  }
+
+  .headerTitle,
+  .headerTitleRegister {
+    font-size: clamp(26px, 8vw, 36px);
+  }
+
+  .submitBtn {
+    min-width: unset;
+    width: 100%;
+  }
 }

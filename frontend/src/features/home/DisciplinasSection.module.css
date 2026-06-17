@@ -152,6 +152,25 @@
   transform: translateY(0);
 }
 
+@media (max-width: 375px) {
+  .cardsRow {
+    padding: 0 12px 48px;
+    gap: 16px;
+  }
+
+  .card {
+    min-height: 320px;
+  }
+
+  .cardLogo {
+    height: 180px;
+  }
+
+  .cardContent {
+    padding-left: var(--space-lg);
+  }
+}
+
 @media (max-width: 768px) {
   .introTitle {
     font-size: 40px;

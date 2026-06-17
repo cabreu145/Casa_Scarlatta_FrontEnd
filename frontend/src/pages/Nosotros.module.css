@@ -1,6 +1,6 @@
 .page {
   background: #1a0a0e;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 @keyframes fadeIn {
@@ -494,4 +494,12 @@
   .historiaTitle {
     font-size: clamp(22px, 6.5vw, 32px);
   }
+}
+
+@media (max-width: 375px) {
+  .coachesGrid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .coachCard { height: 260px; }
+  .historiaContent { padding: 32px 16px 40px; }
+  .reglamentoSec { padding: 32px 16px; }
+  .coachesHeader { padding: var(--space-2xl) var(--space-md) var(--space-lg); }
 }

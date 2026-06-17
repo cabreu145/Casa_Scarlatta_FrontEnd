@@ -1,7 +1,7 @@
 /* ── Page shell ─────────────────────────────────────────────────────────────── */
 .main {
   background: linear-gradient(to bottom, #FAF5F2, #F5EDE8 60%, #EFE3DC);
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ── Hero — unchanged ────────────────────────────────────────────────────────── */
@@ -719,7 +719,51 @@
 }
 
 /* ── Mobile ──────────────────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
+@media (max-width: 640px) {
+  .filterWrap {
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    padding: 16px 16px 0;
+    gap: 8px;
+  }
+
+  .weekViewBtn {
+    height: 46px;
+    padding: 0 12px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 375px) {
+  .filterWrap {
+    padding: 14px 12px 0;
+    gap: 6px;
+  }
+
+  .weekViewBtn {
+    height: 42px;
+    padding: 0 10px;
+    font-size: 10px;
+  }
+
+  .bookingWrap {
+    padding: 16px 12px 60px;
+  }
+
+  .heroTitle {
+    letter-spacing: 0.15em;
+    font-size: clamp(20px, 5.5vw, 26px);
+  }
+
+  .dayBtn {
+    min-width: 38px;
+  }
+
+  .dayNum { font-size: 15px; }
+}
+
+@media (max-width: 640px) {
   .bookingWrap {
     padding: 20px 16px 60px;
   }

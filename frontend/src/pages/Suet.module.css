@@ -1,6 +1,6 @@
 .page {
   background: var(--suet-bg);
-  min-height: 100vh;
+  min-height: 100dvh;
   color: var(--text-on-dark);
 }
 
@@ -541,4 +541,23 @@
   .extraSectionsGrid { grid-template-columns: 1fr; }
   .extraSectionsGrid > .extraSection:nth-child(odd) { border-right: none; }
   .extraSectionsGrid > .extraSection:nth-child(n+2) { border-top: 1px solid rgba(204,26,26,0.18); }
+}
+
+@media (max-width: 640px) {
+  .panelConcepto,
+  .panelExperiencia,
+  .panelQuote,
+  .panelMetodologia { padding: var(--space-xl) var(--space-lg); min-height: unset; }
+  .statsBar { flex-direction: column; align-items: flex-start; gap: var(--space-md); }
+  .heroContent { padding: var(--space-2xl) var(--space-lg); }
+}
+
+@media (max-width: 375px) {
+  .panelConcepto,
+  .panelExperiencia,
+  .panelQuote,
+  .panelMetodologia { padding: var(--space-lg) var(--space-md); }
+  .heroContent { padding: var(--space-xl) var(--space-md); }
+  .heroSub { font-size: 15px; }
+  .statNum { font-size: 38px; }
 }

@@ -1465,7 +1465,8 @@
 }
 
 /* Text overrides for dark strydeModal success screen */
-.strydeModal .successView { min-height: 420px; justify-content: center; }
+.strydeModal .successView { min-height: 420px; justify-content: center; flex: 1; height: 100%; }
+.slowModal .successView   { min-height: 420px; justify-content: center; flex: 1; height: 100%; }
 .strydeModal .successTitle  { color: #ffffff; }
 .strydeModal .successSub    { color: rgba(255,255,255,0.72); }
 .strydeModal .successSub strong { color: #ffffff; }
@@ -1654,9 +1655,10 @@
 
   /* ── SLOW modal ── */
   .slowModal {
-    border-radius: 22px 22px 0 0;
-    max-height: 90vh;
-    margin-top: auto;
+    border-radius: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin-top: 0;
     width: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -1705,14 +1707,26 @@
   .sbDivider { display: none; }
   .sbSelectionBlock { min-height: unset; text-align: center; width: 100%; }
   .sbCreditsBlock { justify-content: center; }
-  .sbPolicy { font-size: 9.5px; width: 100%; text-align: left; }
-  .slowConfirmBtn { width: 100%; margin-top: 2px; }
+  .sbPolicy { font-size: 9px; width: 100%; text-align: left; line-height: 1.4; }
+  .slowConfirmBtn { width: 100%; margin-top: 2px; padding: 11px 16px; font-size: 13px; }
+
+  .reservationSidebar .sbTitle     { font-size: 14px; }
+  .reservationSidebar .sbCoach     { font-size: 11px; }
+  .reservationSidebar .sbTime      { font-size: 10px; }
+  .reservationSidebar .sbDesc      { font-size: 9.5px; }
+  .reservationSidebar .sbSelLabel  { font-size: 8px; letter-spacing: 0.1em; }
+  .reservationSidebar .sbSelMat    { font-size: 14px; }
+  .reservationSidebar .sbSelDetail { font-size: 9px; }
+  .reservationSidebar .sbSelHint   { font-size: 11px; }
+  .reservationSidebar .sbCreditsNum   { font-size: 13px; }
+  .reservationSidebar .sbCreditsLabel { font-size: 9px; line-height: 1.2; }
 
   /* ── STRYDE X modal ── */
   .strydeModal {
-    border-radius: 22px 22px 0 0;
-    max-height: 90vh;
-    margin-top: auto;
+    border-radius: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin-top: 0;
     width: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -1766,25 +1780,71 @@
 
   .strydeLegend { padding: 2px 12px 6px; gap: 14px; margin-top: -4px; }
 
+  .strydeHeader {
+    padding: 16px 16px 10px;
+    gap: 10px;
+  }
+
+  .strydeHdrTitle { font-size: 16px; }
+  .strydeHdrCoach { font-size: 12px; }
+  .strydeHdrDesc  { font-size: 10px; margin-top: 3px; }
+
   .strydeSidebar {
     width: 100%;
     border-radius: 0;
     border-left: none;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 16px 16px 20px;
+    padding: 12px 16px 16px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    gap: 10px;
+    gap: 8px;
   }
 
   .strydeSidebar .sbBlock { width: 100%; text-align: center; }
   .strydeSidebar .sbDivider { display: none; }
   .strydeSidebar .sbSelectionBlock { min-height: unset; text-align: center; width: 100%; }
   .strydeSidebar .sbCreditsBlock { display: none; }
-  .strydeSidebar .sbPolicy { font-size: 9.5px; flex: 1 1 100%; }
-  .strydeConfirmBtn { width: 100%; text-align: center; margin-top: 2px; }
+  .strydeSidebar .sbTitle  { font-size: 14px; }
+  .strydeSidebar .sbCoach  { font-size: 11px; }
+  .strydeSidebar .sbTime   { font-size: 10px; }
+  .strydeSidebar .sbDesc   { font-size: 9.5px; }
+  .strydeSidebar .sbSelLabel { font-size: 8px; letter-spacing: 0.1em; }
+  .strydeSidebar .sbSelMat   { font-size: 14px; }
+  .strydeSidebar .sbSelDetail { font-size: 9px; }
+  .strydeSidebar .sbSelHint  { font-size: 11px; }
+  .strydeSidebar .sbPolicy { font-size: 9px; flex: 1 1 100%; line-height: 1.4; }
+  .strydeConfirmBtn { width: 100%; text-align: center; margin-top: 2px; padding: 11px 22px; font-size: 13px; }
+
+  /* Rotation flow compacto en mobile */
+  .rotationFlow {
+    padding: 7px 10px;
+    gap: 5px;
+    margin-top: 0;
+  }
+
+  .rfTitle { font-size: 7px; }
+
+  .rfIcon {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+  }
+
+  .rfBlock { font-size: 6.5px; }
+
+  .rfArrow { font-size: 11px; }
+
+  /* Credits row — mostrar compacto en lugar de ocultar */
+  .sbCreditsBlock {
+    display: flex;
+    gap: 4px;
+    align-items: baseline;
+  }
+
+  .sbCreditsNum   { font-size: 13px; }
+  .sbCreditsLabel { font-size: 9px; line-height: 1.2; }
 
   /* ── Rotation flow: keep compact and centered on mobile ── */
   .rotationFlow {

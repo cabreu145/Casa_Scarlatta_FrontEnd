@@ -266,7 +266,7 @@
   transform: translateY(-1px);
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .page {
     padding: 100px var(--space-lg) var(--space-2xl);
   }
@@ -277,5 +277,15 @@
 
   .card {
     padding: var(--space-xl) var(--space-lg);
+  }
+}
+
+@media (max-width: 375px) {
+  .page {
+    padding: 90px var(--space-md) var(--space-xl);
+  }
+
+  .card {
+    padding: var(--space-lg) var(--space-md);
   }
 }

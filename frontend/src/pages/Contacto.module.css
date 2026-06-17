@@ -1,6 +1,6 @@
 .page {
   background: #1a0a0e;
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -128,5 +128,15 @@
 
   .divider {
     width: 80%;
+  }
+}
+
+@media (max-width: 375px) {
+  .page {
+    padding: var(--space-3xl) var(--space-md);
+  }
+
+  .contactLabel {
+    font-size: 15px;
   }
 }

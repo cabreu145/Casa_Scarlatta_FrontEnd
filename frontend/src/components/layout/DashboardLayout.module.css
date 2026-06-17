@@ -1,6 +1,6 @@
 .root {
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding-top: 72px; /* navbar height */
   background: var(--bg-base);
 }
@@ -10,7 +10,7 @@
   flex-shrink: 0;
   position: sticky;
   top: 72px; /* stick below navbar */
-  height: calc(100vh - 72px);
+  height: calc(100dvh - 72px);
   overflow-y: auto;
 }
 
@@ -57,7 +57,7 @@
     position: fixed;
     top: 72px;
     left: 0;
-    height: calc(100vh - 72px);
+    height: calc(100dvh - 72px);
     z-index: 98; /* below navbar (z-index 100) */
     transform: translateX(-100%);
     transition: transform var(--duration-normal) var(--ease-out);
