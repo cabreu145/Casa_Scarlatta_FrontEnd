@@ -810,7 +810,7 @@ export default function ClasesSection({
                 setSelectMode(false)
               }}
             >
-               ðŸ—‘ Eliminar ({selectedIds.size})
+               🗑 Eliminar ({selectedIds.size})
             </button>
           )}
           <button
