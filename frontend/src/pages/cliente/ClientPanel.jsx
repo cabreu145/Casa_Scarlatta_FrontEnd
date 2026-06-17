@@ -368,7 +368,7 @@ export default function ClientPanel() {
     let active = true
     const fetchReservations = async () => {
       try {
-        await loadMisReservasFromApi()
+        await loadMisReservasFromApi({ force: true })
       } catch (err) {
         if (active && import.meta.env.DEV) {
           console.error('[ClientPanel] No se pudo cargar reservas API, fallback cache/store', err)
@@ -2064,7 +2064,7 @@ export default function ClientPanel() {
             }}
             onReservationCreated={async () => {
               await Promise.allSettled([
-                loadMisReservasFromApi?.(),
+                loadMisReservasFromApi?.({ force: true }),
                 loadClasesFromApi?.(),
                 refreshReservarSection(),
                 invalidateReservationSideEffects(queryClient, {

@@ -1,5 +1,6 @@
-export function normalizeDiscipline(value) {
-  const normalized = String(value ?? '').trim().toLowerCase()
+export function normalizeDiscipline(value, fallbackText = '') {
+  const source = value ?? fallbackText ?? ''
+  const normalized = String(source).trim().toLowerCase()
   if (normalized.includes('stryde') || normalized.includes('stride')) return 'stryde'
   if (normalized === 'slow' || normalized.includes('slow')) return 'slow'
   return null

@@ -136,6 +136,26 @@ describe('reservationAdapter', () => {
     expect(mapped.displayDate).toMatch(/30|may/i)
   })
 
+  test('usa occurrence_date cuando backend no manda class_date ni class_start_at', () => {
+    const mapped = mapBackendReservationToFrontend(
+      {
+        id: 103,
+        user_id: 9,
+        class_id: 4,
+        occurrence_id: 45,
+        occurrence_date: '2026-06-22',
+        status: 'confirmada',
+        class_name: 'STRYDE X - COMMUNITY',
+      },
+      {}
+    )
+
+    expect(mapped.occurrenceDate).toBe('2026-06-22')
+    expect(mapped.classDate).toBe('2026-06-22')
+    expect(mapped.fechaSesion).toBe('2026-06-22')
+    expect(mapped.fecha).toBe('2026-06-22')
+  })
+
   test('mapBackendReservationsToFrontend transforma lista', () => {
     const result = mapBackendReservationsToFrontend(
       [{ id: 1, user_id: 3, class_id: 50, occurrence_id: 500, status: 'cancelada' }],
