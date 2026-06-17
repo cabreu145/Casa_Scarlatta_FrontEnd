@@ -422,7 +422,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
         {/* Tabla de clases parseadas */}
         {clasesParseadas.length > 0 && (
           <>
-            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
+            <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 8 }}>
               {clasesParseadas.length} clase{clasesParseadas.length !== 1 ? 's' : ''} detectadas:
             </div>
             <div style={{ overflowX: 'auto', marginBottom: 18 }}>
@@ -430,26 +430,26 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
                 <thead>
                   <tr>
                     {['Nombre','Tipo','Coach','Fecha','Hora'].map(h => (
-                      <th key={h} style={{ padding: '7px 10px', borderBottom: '1px solid var(--neutral-border)', color: 'var(--text-muted)', textAlign: 'left', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} style={{ padding: '7px 10px', borderBottom: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.45)', textAlign: 'left', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {clasesParseadas.slice(0, 20).map((c, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
-                      <td style={{ padding: '7px 10px', color: 'var(--text-primary)', fontWeight: 500 }}>{c.nombre}</td>
+                    <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                      <td style={{ padding: '7px 10px', color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>{c.nombre}</td>
                       <td style={{ padding: '7px 10px' }}>
-                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: c.tipo === 'Stryde X' ? 'rgba(239,68,68,0.15)' : 'rgba(59,130,246,0.15)', color: c.tipo === 'Stryde X' ? '#ef4444' : '#3b82f6' }}>{c.tipo}</span>
+                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: c.tipo === 'Stryde X' ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)', color: c.tipo === 'Stryde X' ? '#f87171' : '#60a5fa' }}>{c.tipo}</span>
                       </td>
-                      <td style={{ padding: '7px 10px', color: c.coachId ? 'var(--text-secondary)' : '#eab308' }}>{c.coachNombre || '—'}{!c.coachId && c.coachNombre ? ' ⚠' : ''}</td>
-                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{c.fecha}</td>
-                      <td style={{ padding: '7px 10px', color: 'var(--text-muted)' }}>{getClassDisplayTime(c)}</td>
+                      <td style={{ padding: '7px 10px', color: c.coachId ? 'rgba(255,255,255,0.85)' : '#fbbf24' }}>{c.coachNombre || '—'}{!c.coachId && c.coachNombre ? ' ⚠' : ''}</td>
+                      <td style={{ padding: '7px 10px', color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap' }}>{c.fecha}</td>
+                      <td style={{ padding: '7px 10px', color: 'rgba(255,255,255,0.85)' }}>{getClassDisplayTime(c)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {clasesParseadas.length > 20 && (
-                <div style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>… y {clasesParseadas.length - 20} más</div>
+                <div style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(255,255,255,0.45)', textAlign: 'center' }}>… y {clasesParseadas.length - 20} más</div>
               )}
             </div>
           </>

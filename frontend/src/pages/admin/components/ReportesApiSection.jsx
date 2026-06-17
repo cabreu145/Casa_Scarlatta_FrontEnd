@@ -17,11 +17,14 @@ import {
   usePosSalesQuery,
   useSiteConfigurationQuery,
   useAdminClientsQuery,
+  useExpensesQuery,
+  useCashClosingsQuery,
 } from '@/hooks/useApiQueries'
 import { useAuth } from '@/context/AuthContext'
 import { hasPermission } from '@/auth/permissions'
 import { abrirReportePDF } from '@/utils/reportePDF'
 import { buildReportFilename, downloadCsvFromRows } from '@/utils/reportExport'
+import { exportFinanceCsv } from '@/services/financeApiService'
 import styles from '@/styles/dashboard.module.css'
 
 function formatMeridaDate(date = new Date()) {
@@ -280,15 +283,20 @@ function posRowsFromReport(pos) {
 }
 
 function coachesRowsFromReport(coaches) {
-  return coaches.map((coach) => ({
-    Coach: coach.name,
-    Clases: coach.classesCount ?? 0,
-    Reservas: coach.reservationsCount ?? 0,
-    Asistencias: coach.attendanceCount ?? 0,
-    'No shows': coach.noShowCount ?? 0,
-    'Ocupación %': coach.averageOccupancyPct ?? 0,
-    Disciplina: coach.primaryDiscipline || '—',
-  }))
+  return coaches.flatMap((coach) => {
+    const disciplines = Array.isArray(coach.disciplines) && coach.disciplines.length
+      ? coach.disciplines
+      : [{ discipline: coach.primaryDiscipline || '—', classes_count: coach.classesCount ?? 0 }]
+    return disciplines.map((d, idx) => ({
+      Coach: idx === 0 ? coach.name : '↳',
+      Disciplina: d.discipline || '—',
+      Clases: d.classes_count ?? 0,
+      Reservas: d.reservations_count ?? (idx === 0 ? (coach.reservationsCount ?? 0) : '—'),
+      Asistencias: d.attendance_count ?? (idx === 0 ? (coach.attendanceCount ?? 0) : '—'),
+      'No shows': d.no_show_count ?? (idx === 0 ? (coach.noShowCount ?? 0) : '—'),
+      'Ocupación %': d.average_occupancy_pct ?? (idx === 0 ? (coach.averageOccupancyPct ?? 0) : '—'),
+    }))
+  })
 }
 
 function topClassesRowsFromReport(topClasses) {
@@ -357,6 +365,8 @@ export default function ReportesApiSection({ inPanel = false }) {
   const payTableQuery = usePayTableQuery({ enabled: canReadPayTable })
   const salesQuery = usePosSalesQuery({ from, to, pageSize: 100, page: 1, enabled: true })
   const allClientsQuery = useAdminClientsQuery({ pageSize: 100, page: 1, enabled: true })
+  const expensesQuery = useExpensesQuery({ from, to, pageSize: 100, page: 1, enabled: true })
+  const cashClosingsQuery = useCashClosingsQuery({ from, to, pageSize: 100, page: 1, enabled: true })
   const siteConfigQuery = useSiteConfigurationQuery({ enabled: true })
   const createPayTableMutation = useCreatePayTableMutation()
   const updatePayTableMutation = useUpdatePayTableMutation()
@@ -371,6 +381,19 @@ export default function ReportesApiSection({ inPanel = false }) {
     isActive: true,
   })
   const [coachPaymentsExpandedId, setCoachPaymentsExpandedId] = useState(null)
+  const [exportingFinanceType, setExportingFinanceType] = useState(null)
+
+  const handleExportFinanceCsv = async (type) => {
+    setExportingFinanceType(type)
+    try {
+      await exportFinanceCsv({ from, to, type })
+      toast.success('Archivo CSV descargado.')
+    } catch {
+      toast.error('No se pudo exportar el archivo.')
+    } finally {
+      setExportingFinanceType(null)
+    }
+  }
 
   const hasError = [financeQuery, usersQuery, packagesQuery, posQuery, coachesQuery, topClassesQuery, occupancyQuery, coachPaymentsQuery, payTableQuery]
     .some((query) => Boolean(query.error))
@@ -440,8 +463,12 @@ export default function ReportesApiSection({ inPanel = false }) {
 
   const salesItems = salesQuery.data?.items ?? []
   const financeTransactionRows = useMemo(() => {
-    if (!salesItems.length) return financeRows
-    return salesItems.map((sale) => {
+    const metodosLabel = {
+      cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia',
+      mercado_pago: 'Mercado Pago', mercadopago: 'Mercado Pago',
+    }
+
+    const posRows = salesItems.map((sale) => {
       const raw = String(sale.createdAt ?? sale.created_at ?? '')
       const dateObj = raw ? new Date(raw) : null
       const fecha = dateObj && !Number.isNaN(dateObj.getTime())
@@ -450,26 +477,63 @@ export default function ReportesApiSection({ inPanel = false }) {
       const hora = dateObj && !Number.isNaN(dateObj.getTime())
         ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' })
         : '—'
-      const metodosLabel = {
-        cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia',
-        mercado_pago: 'Mercado Pago', mercadopago: 'Mercado Pago',
-      }
-      const metodo = metodosLabel[sale.paymentMethod?.toLowerCase?.()] || sale.paymentMethod || '—'
-      const cliente = sale.customerName || sale.customer_name || '—'
-      const conceptos = Array.isArray(sale.items) && sale.items.length
-        ? sale.items.map((i) => i.name || i.nombre || i.displayName || i.description || '').filter(Boolean).join(', ')
-        : (sale.folio || '—')
+      const payMethod = sale.paymentMethod?.toLowerCase?.() ?? ''
+      const metodo = metodosLabel[payMethod] || sale.paymentMethod || '—'
+      const clienteNombre = sale.customerName || sale.customer_name || ''
+      const esMercadoPago = payMethod === 'mercado_pago' || payMethod === 'mercadopago'
+
+      // Concepto: describe el tipo/origen de la venta
+      const concepto = (() => {
+        if (!clienteNombre) return 'Venta mostrador'
+        if (esMercadoPago) return clienteNombre
+        return clienteNombre
+      })()
+
+      // Producto: qué se compró (nombre del item/paquete)
+      const producto = (() => {
+        if (Array.isArray(sale.items) && sale.items.length) {
+          const names = sale.items
+            .map((i) => i.name || i.nombre || i.displayName || i.description || '')
+            .filter((n) => n && n !== 'Item')
+          if (names.length) return names.join(', ')
+        }
+        return '—'
+      })()
+
       return {
-        Fecha:   fecha,
-        Hora:    hora,
-        Folio:   sale.folio || '—',
-        Cliente: cliente,
-        Concepto: conceptos,
-        Método:  metodo,
-        Monto:   sale.totalMxn ?? sale.total_mxn ?? 0,
+        Fecha:    fecha,
+        Hora:     hora,
+        Folio:    sale.folio || '—',
+        Concepto: concepto,
+        Producto: producto,
+        Método:   metodo,
+        Monto:    sale.totalMxn ?? sale.total_mxn ?? 0,
       }
     })
-  }, [salesItems, financeRows])
+
+    // Cuando no hay ventas POS, construir filas resumen desde finance.summary
+    // (Mercado Pago no viene del endpoint /ventas)
+    if (posRows.length === 0) {
+      const summary = finance?.summary ?? {}
+      const dateLabel = from ?? '—'
+      const syntheticRows = []
+      const posMxn = Number(summary.posSalesTotalMxn ?? 0)
+      const mpMxn = Number(summary.mercadoPagoTotalMxn ?? 0)
+      const expMxn = Number(summary.expensesTotalMxn ?? 0)
+      if (posMxn > 0) {
+        syntheticRows.push({ Fecha: dateLabel, Hora: '—', Folio: '—', Concepto: 'Ventas POS', Producto: '—', Método: 'POS', Monto: posMxn })
+      }
+      if (mpMxn > 0) {
+        syntheticRows.push({ Fecha: dateLabel, Hora: '—', Folio: '—', Concepto: 'Ventas en línea', Producto: 'Paquetes / Membresías', Método: 'Mercado Pago', Monto: mpMxn })
+      }
+      if (expMxn > 0) {
+        syntheticRows.push({ Fecha: dateLabel, Hora: '—', Folio: '—', Concepto: 'Gastos', Producto: '—', Método: '—', Monto: -expMxn })
+      }
+      return syntheticRows
+    }
+
+    return posRows
+  }, [salesItems, finance, from])
 
   const allClients = allClientsQuery.data?.items ?? []
 
@@ -518,11 +582,16 @@ export default function ReportesApiSection({ inPanel = false }) {
       const items   = Array.isArray(sale.items) ? sale.items : []
       const producto = items.map((i) => i.name || i.nombre || i.displayName || '').filter(Boolean).join(', ') || '—'
       const cantidad = items.reduce((sum, i) => sum + (i.quantity ?? 1), 0) || 1
+      const metodosLabel = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', mercado_pago: 'Mercado Pago' }
+      const metodo = metodosLabel[(sale.paymentMethod ?? sale.payment_method ?? '').toLowerCase()] || sale.paymentMethod || '—'
+      const cliente = sale.customerName || sale.customer_name || '—'
       return {
         Fecha:    fecha,
         Hora:     hora,
+        Cliente:  cliente,
         Producto: producto,
         Cantidad: cantidad,
+        Método:   metodo,
         Monto:    sale.totalMxn ?? sale.total_mxn ?? 0,
       }
     })
@@ -545,6 +614,36 @@ export default function ReportesApiSection({ inPanel = false }) {
         Créditos:    c.creditsBalance ?? c.clasesPaquete ?? 0,
       }))
   }, [allClients, usersRows])
+
+  const expenseItems = expensesQuery.data?.items ?? []
+  const cashClosingItems = cashClosingsQuery.data?.items ?? []
+
+  const gastosDetailRows = useMemo(() => {
+    if (!expenseItems.length) return []
+    const ml = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', mercado_pago: 'Mercado Pago' }
+    return expenseItems.map((e) => ({
+      Fecha:       e.expenseDate ?? '—',
+      Categoría:   e.category || '—',
+      Descripción: e.description || '—',
+      Método:      ml[(e.paymentMethod ?? '').toLowerCase()] || e.paymentMethod || '—',
+      Monto:       e.amountMxn ?? 0,
+    }))
+  }, [expenseItems])
+
+  const cortesDetailRows = useMemo(() => {
+    if (!cashClosingItems.length) return []
+    return cashClosingItems.map((c) => ({
+      Fecha:            c.date ?? '—',
+      'Ventas':         c.salesCount ?? 0,
+      'Total ingresos': c.totalMxn ?? 0,
+      Efectivo:         c.cashTotalMxn ?? 0,
+      Tarjeta:          c.cardTotalMxn ?? 0,
+      Transferencia:    c.transferTotalMxn ?? 0,
+      Gastos:           c.expensesTotalMxn ?? 0,
+      Neto:             c.netTotalMxn ?? 0,
+      Notas:            c.notes || '—',
+    }))
+  }, [cashClosingItems])
 
   const exportCsv = (prefix, rows, headers) => {
     downloadCsvFromRows({
@@ -765,7 +864,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           icono="💰"
           titulo="Reporte financiero"
           descripcion="Ingresos, gastos, utilidad neta y métodos de pago."
-          onCsv={() => exportCsv('reporte-financiero', financeTransactionRows, ['Fecha', 'Hora', 'Folio', 'Cliente', 'Concepto', 'Método', 'Monto'])}
+          onCsv={() => exportCsv('reporte-financiero', financeTransactionRows, ['Fecha', 'Hora', 'Folio', 'Concepto', 'Producto', 'Método', 'Monto'])}
           onPdf={() => exportPdf('financiero', 'Reporte Financiero operativo', financeTransactionRows)}
         />
         <ReportCard
@@ -786,7 +885,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           icono="🛒"
           titulo="Reporte POS"
           descripcion="Ventas operativas, productos y categorías."
-          onCsv={() => exportCsv('reporte-pos', posDetailRows, ['Fecha', 'Hora', 'Producto', 'Cantidad', 'Monto'])}
+          onCsv={() => exportCsv('reporte-pos', posDetailRows, ['Fecha', 'Hora', 'Cliente', 'Producto', 'Cantidad', 'Método', 'Monto'])}
           onPdf={() => exportPdf('pdv', 'Reporte POS operativo', posDetailRows, true)}
         />
         <ReportCard
@@ -811,11 +910,18 @@ export default function ReportesApiSection({ inPanel = false }) {
           onPdf={() => exportPdf('clases', 'Top Clases operativo', topClassesRows, true)}
         />
         <ReportCard
-          icono="📈"
-          titulo="Ocupación por disciplina"
-          descripcion="Reservas, capacidad y ocupación por disciplina."
-          onCsv={() => exportCsv('reporte-ocupacion', occupancyRows, ['Disciplina', 'Ocurrencias', 'Reservas', 'Capacidad', 'Ocupación %'])}
-          onPdf={() => exportPdf('clases', 'Ocupación por disciplina', occupancyRows, true)}
+          icono="🧾"
+          titulo="Exportar gastos"
+          descripcion="Detalle de gastos del rango: categoría, descripción, método y monto."
+          onCsv={() => exportCsv('reporte-gastos', gastosDetailRows, ['Fecha', 'Categoría', 'Descripción', 'Método', 'Monto'])}
+          onPdf={() => exportPdf('gastos', 'Reporte de Gastos', gastosDetailRows)}
+        />
+        <ReportCard
+          icono="✂️"
+          titulo="Exportar cortes"
+          descripcion="Historial de cortes de caja: ingresos, gastos y neto por corte."
+          onCsv={() => exportCsv('reporte-cortes', cortesDetailRows, ['Fecha', 'Ventas', 'Total ingresos', 'Efectivo', 'Tarjeta', 'Transferencia', 'Gastos', 'Neto', 'Notas'])}
+          onPdf={() => exportPdf('cortes', 'Reporte de Cortes de Caja', cortesDetailRows)}
         />
       </div>
 
@@ -831,8 +937,9 @@ export default function ReportesApiSection({ inPanel = false }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12, marginBottom: 16 }}>
         <SectionCard title="Reporte de usuarios" subtitle="Estado de clientes">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <MetricCard label="Activos" value={String(users.activeClients)} helper={`Inactivos ${users.inactiveClients}`} accent="#22c55e" />
-            <MetricCard label="Nuevos" value={String(users.newClients)} helper={`Con membresía ${users.clientsWithActiveMembership}`} accent="#3b82f6" />
+            <MetricCard label="Total clientes" value={String(users.totalClients ?? users.activeClients ?? 0)} helper={`Inactivos ${users.inactiveClients ?? 0}`} accent="#22c55e" />
+            <MetricCard label="Con paquete" value={String(users.clientsWithActiveMembership ?? 0)} helper={`Sin paquete ${(users.totalClients ?? users.activeClients ?? 0) - (users.clientsWithActiveMembership ?? 0)}`} accent="#a855f7" />
+            <MetricCard label="Nuevos" value={String(users.newClients)} helper={`Con membresía ${users.clientsWithActiveMembership ?? 0}`} accent="#3b82f6" />
             <MetricCard label="Sin membresía" value={String(users.clientsWithoutMembership)} helper={`Con créditos ${users.clientsWithCredits}`} accent="#eab308" />
             <MetricCard label="Sin créditos" value={String(users.clientsWithoutCredits)} helper="Clientes activos sin saldo" accent="#ef4444" />
           </div>
@@ -842,7 +949,6 @@ export default function ReportesApiSection({ inPanel = false }) {
           {packagesReport.topPackage ? (
             <div style={{ display: 'grid', gap: 10 }}>
               <MetricCard label="Paquetes vendidos" value={String(packagesReport.packagesSold)} helper={`Ingresos ${formatMoneyMx(packagesReport.packagesRevenueMxn)}`} accent="#22c55e" />
-              <MetricCard label="Compartibles vendidos" value={String(packagesReport.shareablePackagesSold)} helper={`Beneficiarios ${packagesReport.beneficiariesAssigned}`} accent="#3b82f6" />
               <div style={{
                 background: 'rgba(255,255,255,0.02)',
                 border: '1px solid rgba(123,31,46,0.2)',

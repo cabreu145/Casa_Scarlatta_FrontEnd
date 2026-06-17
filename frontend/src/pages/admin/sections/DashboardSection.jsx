@@ -354,12 +354,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
     limit: 10,
     enabled: useApiMode,
   })
-  const exportTypes = [
-    { type: 'summary', label: 'Exportar resumen' },
-    { type: 'sales', label: 'Exportar ventas' },
-    { type: 'expenses', label: 'Exportar gastos' },
-    { type: 'cash_closings', label: 'Exportar cortes' },
-  ]
+  const exportTypes = []
 
   const handleExportFinanceCsv = async (type) => {
     if (!useApiMode) return
@@ -585,11 +580,27 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
               <div className={styles.cardTitle}>Ventas recientes</div>
             </div>
             <div className={styles.miniList}>
-              {recentSales.length > 0 ? recentSales.map((sale) => (
+              {recentSales.length > 0 ? recentSales.map((sale) => {
+                const rawItems = Array.isArray(sale.raw?.items) ? sale.raw.items : Array.isArray(sale.items) ? sale.items : []
+                const productoNombre = (() => {
+                  if (rawItems.length) {
+                    const names = rawItems
+                      .map((i) => i.name ?? i.nombre ?? i.display_name ?? i.displayName ?? '')
+                      .filter((n) => n && n !== 'Item')
+                    if (names.length) return names.join(', ')
+                  }
+                  return sale.raw?.package_name ?? sale.raw?.packageName ?? sale.raw?.product_name ?? sale.raw?.productName ?? ''
+                })()
+                return (
                 <div key={sale.folio ?? sale.id} className={styles.miniItem}>
                   <div className={styles.miniAvatar}>{(sale.customerName || sale.customerEmail || 'V').charAt(0).toUpperCase()}</div>
                   <div>
                     <div className={styles.miniName}>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</div>
+                    {productoNombre && (
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#E8A4AD', marginBottom: 2 }}>
+                        {productoNombre}
+                      </div>
+                    )}
                     <div className={styles.miniSub}>{sale.folio} · {paymentMethodLabel(sale.paymentMethod)} · {formatDateTimeMx(sale.createdAt)}</div>
                   </div>
                   <div className={styles.miniRight}>
@@ -597,7 +608,8 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
                     <Tag color="green">Pagado</Tag>
                   </div>
                 </div>
-              )) : (
+                )
+              }) : (
                 <div style={{ textAlign: 'center', padding: '20px 0', color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
                   Sin ventas registradas
                 </div>

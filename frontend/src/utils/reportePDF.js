@@ -6,14 +6,15 @@
 import { hoyLocal } from './fecha'
 
 const ICONO_TIPO = {
-  financiero: '💰',
-  cortes:     '🏧',
-  usuarios:   '👥',
-  clases:     '🏃',
-  paquetes:   '📦',
-  pdv:        '🛒',
-  coaches:    '👩‍🏫',
+  financiero:    '💰',
+  cortes:        '🏧',
+  usuarios:      '👥',
+  clases:        '🏃',
+  paquetes:      '📦',
+  pdv:           '🛒',
+  coaches:       '👩‍🏫',
   coaches_pagos: '💸',
+  gastos:        '🧾',
 }
 
 function fmtFecha(iso) {
@@ -124,14 +125,13 @@ export function calcularStats(tipo, datos) {
   }
 
   if (tipo === 'usuarios') {
-    const activos   = datos.filter(u => u.Activo === 'Sí').length
-    const inactivos = datos.filter(u => u.Activo === 'No').length
     const conPaq    = datos.filter(u => u.Paquete && u.Paquete !== '—').length
+    const sinPaq    = datos.length - conPaq
     const tasa      = datos.length ? Math.round((conPaq / datos.length) * 100) : 0
     return [
       { valor: datos.length.toLocaleString('es-MX'), etiqueta: 'Total de clientes' },
-      { valor: activos.toLocaleString('es-MX'),       etiqueta: 'Clientes activos' },
-      { valor: inactivos.toLocaleString('es-MX'),     etiqueta: 'Clientes inactivos' },
+      { valor: conPaq.toLocaleString('es-MX'),        etiqueta: 'Con paquete' },
+      { valor: sinPaq.toLocaleString('es-MX'),        etiqueta: 'Sin paquete' },
       { valor: tasa + '%',                            etiqueta: 'Tasa de renovación' },
     ]
   }
@@ -172,6 +172,16 @@ export function calcularStats(tipo, datos) {
     ]
   }
 
+  if (tipo === 'gastos') {
+    const total = datos.reduce((a, r) => a + parseMonto(r.Monto ?? 0), 0)
+    const cats  = new Set(datos.map(r => r.Categoría).filter(Boolean)).size
+    return [
+      { valor: datos.length.toLocaleString('es-MX'),  etiqueta: 'Total de gastos' },
+      { valor: '$' + total.toLocaleString('es-MX'),   etiqueta: 'Monto total' },
+      { valor: cats.toLocaleString('es-MX'),           etiqueta: 'Categorías' },
+    ]
+  }
+
   return [{ valor: datos.length.toLocaleString('es-MX'), etiqueta: 'Total de registros' }]
 }
 
@@ -190,7 +200,8 @@ function construirFilasTablaChunk(rows) {
   if (!rows?.length) return ''
   const cols     = Object.keys(rows[0])
   const colMonto = cols.find(c => /^monto$/i.test(c))
-  return rows.filter(esFilaTransaccion).map(r => {
+  const tieneFecha = cols.some(c => /^fecha$/i.test(c))
+  return (tieneFecha ? rows.filter(esFilaTransaccion) : rows).map(r => {
     const monto   = colMonto ? parseMonto(r[colMonto] ?? 0) : 0
     const esGasto = monto < 0
     const celdas  = cols.map((c, ci) => {
@@ -251,8 +262,9 @@ export function construirFilasTabla(datos, tipo) {
   const cols     = Object.keys(datos[0])
   const colMonto = cols.find(c => /^monto$/i.test(c))
   const hayTotal = !!colMonto
+  const tieneFecha = cols.some(c => /^fecha$/i.test(c))
 
-  const filas = datos.filter(esFilaTransaccion).map(r => {
+  const filas = (tieneFecha ? datos.filter(esFilaTransaccion) : datos).map(r => {
     const monto     = colMonto ? parseMonto(r[colMonto] ?? 0) : 0
     const esGasto   = monto < 0
     const celdas = cols.map((c, ci) => {

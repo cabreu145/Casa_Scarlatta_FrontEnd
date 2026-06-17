@@ -103,7 +103,7 @@ export default function UsuariosSection({
               value={usersSearch}
               onChange={(event) => setUsersSearch(event.target.value)}
             />
-            {['Todos', 'Activos', 'Con paquete', 'Sin paquete', 'Por vencer'].map((filter) => (
+            {['Todos', 'Con paquete', 'Sin paquete', 'Por vencer'].map((filter) => (
               <button
                 key={filter}
                 className={`${styles.filterChip}${usersFilter === filter ? ` ${styles.active}` : ''}`}
@@ -160,8 +160,8 @@ export default function UsuariosSection({
               )}
               {usuariosVisibles.map((client) => {
                 const selected = userSelectedIds.has(client.id)
-                const statusColor = client.activo ? (client.paquete ? 'green' : 'yellow') : 'red'
-                const statusLabel = client.activo ? (client.paquete ? 'Activo' : 'Sin paquete') : 'Inactivo'
+                const statusColor = client.paquete ? 'green' : 'yellow'
+                const statusLabel = client.paquete ? 'Con paquete' : 'Sin paquete'
                 return (
                   <tr key={client.id} style={{ background: selected ? 'rgba(239,68,68,0.08)' : undefined }}>
                     {userSelectMode && (
@@ -206,11 +206,11 @@ export default function UsuariosSection({
           </table>
         </div>
 
-        {useApiMode && (page > 1 || usuariosVisibles.length >= pageSize || totalPages > 1) && (
+        {useApiMode && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 12 }}>
             <button className={`${styles.btn} ${styles.btnGhost}`} disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Anterior</button>
-            <span>Pagina {page}{totalPages > 1 ? ` de ${totalPages}` : ''}</span>
-            <button className={`${styles.btn} ${styles.btnGhost}`} disabled={page >= totalPages && usuariosVisibles.length < pageSize} onClick={() => onPageChange(page + 1)}>Siguiente</button>
+            <span>Pagina {page} de {totalPages}</span>
+            <button className={`${styles.btn} ${styles.btnGhost}`} disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>Siguiente</button>
           </div>
         )}
 

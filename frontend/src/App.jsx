@@ -22,6 +22,7 @@ const Registro    = lazy(() => import('@/pages/Registro'))
 const RecuperarContrasena = lazy(() => import('@/pages/RecuperarContrasena'))
 const NuevaContrasena     = lazy(() => import('@/pages/NuevaContrasena'))
 const Reservar    = lazy(() => import('@/pages/Reservar'))
+const TerminosCondiciones = lazy(() => import('@/pages/TerminosCondiciones'))
 
 const ClientPanel = lazy(() => import('@/pages/cliente/ClientPanel'))
 const CoachPanel  = lazy(() => import('@/pages/coach/CoachPanel'))
@@ -104,6 +105,7 @@ function AnimatedRoutes() {
             <Route path="/yoga" element={<PageWrapper><Yoga /></PageWrapper>} />
             <Route path="/nosotros" element={<PageWrapper><Nosotros /></PageWrapper>} />
             <Route path="/contacto" element={<PageWrapper><Contacto /></PageWrapper>} />
+            <Route path="/terminos-y-condiciones" element={<PageWrapper><TerminosCondiciones /></PageWrapper>} />
             <Route path="/reservar" element={<PageWrapper><Reservar /></PageWrapper>} />
             <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
             <Route path="/registro" element={<PageWrapper><Registro /></PageWrapper>} />

@@ -163,6 +163,14 @@ export default function PricingSection() {
             Ver todos los paquetes →
           </button>
         </div>
+        <div className="mt-4 flex justify-center">
+          <button
+            className="text-xs text-[#A08878] underline underline-offset-4 transition-opacity hover:opacity-70"
+            onClick={() => navigate('/terminos-y-condiciones')}
+          >
+            Términos y condiciones
+          </button>
+        </div>
       </div>
     </section>
   )
