@@ -97,20 +97,31 @@ export default function Reservar() {
     if (!useApiClasses) return
 
     let active = true
-    setIsLoadingClasses(true)
-    setClassesError('')
+    const fetchClasses = async ({ silent = false } = {}) => {
+      if (!silent) {
+        setIsLoadingClasses(true)
+        setClassesError('')
+      }
 
-    loadClasesFromApi()
-      .catch((err) => {
+      try {
+        await loadClasesFromApi()
+        if (active && !silent) setClassesError('')
+      } catch (err) {
         if (!active) return
         setClassesError(err?.message ?? 'No pudimos cargar clases.')
-      })
-      .finally(() => {
-        if (active) setIsLoadingClasses(false)
-      })
+      } finally {
+        if (active && !silent) setIsLoadingClasses(false)
+      }
+    }
+
+    fetchClasses()
+    const intervalId = window.setInterval(() => {
+      fetchClasses({ silent: true }).catch(() => {})
+    }, 30_000)
 
     return () => {
       active = false
+      window.clearInterval(intervalId)
     }
   }, [loadClasesFromApi, useApiClasses])
 

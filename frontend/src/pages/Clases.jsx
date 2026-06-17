@@ -9,7 +9,8 @@
  * Depende de: classService, classes (data), ClassTypeFilter, SeatSelector
  * Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
  */
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import ClassTypeFilter from '@/features/clases/ClassTypeFilter'
@@ -30,6 +31,7 @@ import { getClassTimeToken } from '@/utils/classSchedule'
 import { normalizeDiscipline } from '@/utils/discipline'
 import CoachAvatar from '@/components/common/CoachAvatar'
 import { usePublicCoachesQuery } from '@/hooks/useApiQueries'
+import { queryKeys } from '@/api/queryKeys'
 import styles from './Clases.module.css'
 
 // Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Date helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
@@ -55,8 +57,9 @@ function canCancelClass(date, hora) {
 export default function Clases() {
   const { clases: allClasses, loadClasesFromApi } = useClasesStore()
   const { coaches }            = useCoachesStore()
-  const { reservas } = useReservasStore()
+  const { reservas, loadMisReservasFromApi } = useReservasStore()
   const { isAuthenticated, usuario } = useAuth()
+  const queryClient = useQueryClient()
   const [selectedDate, setSelectedDate]   = useState(new Date())
   const [weekOffset, setWeekOffset] = useState(0)
   const [filter, setFilter] = useState('')
@@ -81,38 +84,65 @@ export default function Clases() {
   const days = useMemo(() => getWeekDays(weekOffset), [weekOffset])
   const monthLabel = useMemo(() => getMonthLabel(days), [days])
   const selectedIdx = days.findIndex((d) => isSameDay(d, selectedDate))
+  const selectedRange = useMemo(() => ({
+    from: `${days[0].getFullYear()}-${String(days[0].getMonth() + 1).padStart(2, '0')}-${String(days[0].getDate()).padStart(2, '0')}`,
+    to: `${days[days.length - 1].getFullYear()}-${String(days[days.length - 1].getMonth() + 1).padStart(2, '0')}-${String(days[days.length - 1].getDate()).padStart(2, '0')}`,
+  }), [days])
+
+  const refreshVisibleOccurrences = useCallback(async () => {
+    if (!useApiClasses || !allClasses.length) return
+    const data = await getOccurrencesForDateRangeApi(allClasses.map((c) => c.id), selectedRange)
+    setOccurrencesByClass(data ?? {})
+  }, [allClasses, selectedRange, useApiClasses])
 
   useEffect(() => {
     if (!useApiClasses) return
-    loadClasesFromApi().catch((err) => {
-      if (import.meta.env.DEV) {
-        console.error('[Clases] No se pudo cargar clases API, fallback cache/store', err)
+    let active = true
+    const fetchClasses = async () => {
+      try {
+        await loadClasesFromApi()
+      } catch (err) {
+        if (active && import.meta.env.DEV) {
+          console.error('[Clases] No se pudo cargar clases API, fallback cache/store', err)
+        }
       }
-    })
+    }
+    fetchClasses()
+    const intervalId = window.setInterval(() => {
+      fetchClasses().catch(() => {})
+    }, 35_000)
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
   }, [loadClasesFromApi, useApiClasses])
 
   useEffect(() => {
-    if (!useApiClasses || !allClasses.length) return
-    const from = `${days[0].getFullYear()}-${String(days[0].getMonth() + 1).padStart(2, '0')}-${String(days[0].getDate()).padStart(2, '0')}`
-    const to = `${days[days.length - 1].getFullYear()}-${String(days[days.length - 1].getMonth() + 1).padStart(2, '0')}-${String(days[days.length - 1].getDate()).padStart(2, '0')}`
-    const controller = new AbortController()
+    if (!useApiClasses || !allClasses.length) {
+      setOccurrencesByClass({})
+      return
+    }
     let active = true
-
-    getOccurrencesForDateRangeApi(allClasses.map((c) => c.id), { from, to, signal: controller.signal })
-      .then((data) => {
+    let controller = new AbortController()
+    const fetchOccurrences = async () => {
+      controller.abort()
+      controller = new AbortController()
+      try {
+        const data = await getOccurrencesForDateRangeApi(allClasses.map((c) => c.id), { ...selectedRange, signal: controller.signal })
         if (active) setOccurrencesByClass(data)
-      })
-      .catch((err) => {
+      } catch (err) {
         if (err?.name === 'AbortError') return
-        if (active) setOccurrencesByClass({})
-      })
+      }
+    }
+
+    fetchOccurrences().catch(() => {})
 
     return () => {
       active = false
       controller.abort()
       clearOccurrencesInflightCache()
     }
-  }, [allClasses, days, useApiClasses])
+  }, [allClasses, selectedRange, useApiClasses])
 
   // Classes for the selected day, filtered by discipline.
   // Uses slow-based detection: anything that doesn't contain 'slow' is Stryde.
@@ -371,6 +401,8 @@ export default function Clases() {
               const { available, status } = getPublicAvailability(cls)
               const isFull  = status === 'full'
               const isLow   = status === 'low'
+              const classDiscipline = resolveDiscipline(cls.discipline ?? cls.tipo, cls.nombre)
+              const isMapClass = classDiscipline === 'slow' || classDiscipline === 'stryde'
               const coachFoto = cls.coachAvatarUrl
                 ?? coachFotoById[String(cls.coachId ?? cls.coach_id ?? '')]
                 ?? coachFotoByName[String(cls.coachNombre ?? cls.coach ?? '')]
@@ -382,8 +414,8 @@ export default function Clases() {
                 ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`
                 : selectedDate
 
-              const miReserva = isAuthenticated && usuario
-                ? reservas.find((r) => {
+              const misReservasClase = isAuthenticated && usuario
+                ? reservas.filter((r) => {
                     if (!(r.userId === usuario.id && r.estado === 'confirmada')) return false
                     if (!useApiReservations) return true
                     if (cls.occurrenceId) return Number(r.occurrenceId) === Number(cls.occurrenceId)
@@ -391,7 +423,8 @@ export default function Clases() {
                     if (!occurrenceDate || Number(r.claseId) !== Number(cls.id)) return false
                     return occurrenceDate === selectedDateISO
                   })
-                : null
+                : []
+              const miReserva = misReservasClase[0] ?? null
               const cancelAllowed = miReserva && classTime ? canCancelClass(selectedDate, classTime) : false
               const clasePasada = classTime ? new Date(selectedDateISO + 'T' + classTime + ':00') <= new Date() : false
 
@@ -419,7 +452,6 @@ export default function Clases() {
                         {cls.coachNombre}
                       </span>
                       {(() => {
-                        const classDiscipline = resolveDiscipline(cls.discipline ?? cls.tipo)
                         return (
                           <span className={`${styles.typeBadge} ${classDiscipline === 'stryde' ? styles.typeBadgeStride : classDiscipline === 'slow' ? styles.typeBadgeSlow : ''}`}>
                             {classDiscipline === 'slow' ? 'SLOW' : classDiscipline === 'stryde' ? 'STRYDE X' : 'Sin tipo'}
@@ -454,15 +486,27 @@ export default function Clases() {
                       <div className={styles.reservadaWrap}>
                         <span className={styles.reservadaBadge}>CONFIRMADA</span>
                         {cancelAllowed ? (
-                          <button
-                            className={styles.cancelarBtn}
-                            onClick={() => cancelarReservaService(miReserva.id, usuario.id)}
-                          >
-                            Cancelar
-                          </button>
+                          misReservasClase.map((reservation) => (
+                            <button
+                              key={reservation.id}
+                              className={styles.cancelarBtn}
+                              onClick={() => cancelarReservaService(reservation.id, usuario.id)}
+                            >
+                              {reservation.spotLabel ? `Cancelar ${reservation.spotLabel}` : 'Cancelar'}
+                            </button>
+                          ))
                         ) : (
                           <span className={styles.cancelarVencido}>Sin cancelación disponible</span>
                         )}
+                        {isMapClass ? (
+                          <button
+                            className={styles.reservarBtn}
+                            onClick={() => setSelectedClass(cls)}
+                            disabled={isFull}
+                          >
+                            Reservar otro
+                          </button>
+                        ) : null}
                       </div>
                     ) : (
                       <button
@@ -497,6 +541,18 @@ export default function Clases() {
             classId={selectedClass.classId ?? selectedClass.claseId ?? selectedClass.id}
             userId={usuario?.id}
             coachAvatarUrl={selectedClass.coachAvatarUrl ?? coachFotoById[String(selectedClass.coachId ?? selectedClass.coach_id ?? '')] ?? coachFotoByName[String(selectedClass.coachNombre ?? selectedClass.coach ?? '')] ?? null}
+            onReservationCreated={async () => {
+              await Promise.allSettled([
+                loadClasesFromApi?.(),
+                loadMisReservasFromApi?.(),
+                refreshVisibleOccurrences(),
+                queryClient.invalidateQueries({ queryKey: queryKeys.reservations.me() }),
+                queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
+                queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
+                queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+                queryClient.invalidateQueries({ queryKey: queryKeys.spots.byOccurrence(selectedClass.occurrenceId) }),
+              ])
+            }}
             onClose={() => setSelectedClass(null)}
           />
         ) : (

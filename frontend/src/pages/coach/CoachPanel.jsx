@@ -710,6 +710,7 @@ function ClassModal({ cls, onClose, useApiMode = false }) {
   const rosterQuery = useOccurrenceRosterQuery(occurrenceId, {
     includeCanceled: false,
     enabled: useApiMode && Boolean(occurrenceId),
+    refetchInterval: occurrenceId ? 10_000 : false,
   })
   const reservasClase = (Array.isArray(reservas) ? reservas : []).filter((r) => {
     const matchesOccurrence = occurrenceId

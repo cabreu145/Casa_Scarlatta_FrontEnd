@@ -136,31 +136,45 @@ const shortDefaults = {
   refetchOnWindowFocus: false,
 }
 
-export function useMyFinancialStateQuery({ enabled = false } = {}) {
+const softRealtimeDefaults = {
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
+  refetchIntervalInBackground: false,
+}
+
+export function useMyFinancialStateQuery({ enabled = false, refetchInterval = 12_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.myFinancialState,
     queryFn: getMyFinancialStateApi,
     enabled,
+    placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
-export function useMyMembershipsQuery({ enabled = false } = {}) {
+export function useMyMembershipsQuery({ enabled = false, refetchInterval = 15_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.myMemberships,
     queryFn: getMyMembershipsApi,
     enabled,
+    placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
-export function useMyCreditMovementsQuery({ page = 1, pageSize = 8, enabled = false } = {}) {
+export function useMyCreditMovementsQuery({ page = 1, pageSize = 8, enabled = false, refetchInterval = 15_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.myCreditMovements({ page, pageSize }),
     queryFn: () => getMyCreditMovementsPaginatedApi({ page, pageSize }),
     enabled,
     placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
@@ -234,16 +248,20 @@ export function useClassOccurrencesQuery(classId, { from, to, enabled = false } 
     queryKey: queryKeys.classes.occurrences(classId, { from: from || '', to: to || '' }),
     queryFn: () => getOccurrencesByClassApi(classId, { from, to }),
     enabled: Boolean(enabled && classId),
+    placeholderData: (previousData) => previousData,
     ...shortDefaults,
   })
 }
 
-export function useOccurrenceRosterQuery(occurrenceId, { includeCanceled = false, enabled = false } = {}) {
+export function useOccurrenceRosterQuery(occurrenceId, { includeCanceled = false, enabled = false, refetchInterval = false } = {}) {
   return useQuery({
     queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, includeCanceled),
     queryFn: () => getOccurrenceRosterApi(occurrenceId, { includeCanceled }),
     enabled: Boolean(enabled && occurrenceId),
+    placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
@@ -376,13 +394,15 @@ export function useTodayCashClosingQuery({ enabled = false } = {}) {
   })
 }
 
-export function useReservationsMeQuery({ page = 1, pageSize = 20, status, from, to, enabled = false } = {}) {
+export function useReservationsMeQuery({ page = 1, pageSize = 20, status, from, to, enabled = false, refetchInterval = 12_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.reservations.me({ page, pageSize, status: status || 'all', from: from || '', to: to || '' }),
     queryFn: () => getMisReservasPaginatedApi({ page, pageSize, status, from, to }),
     enabled,
     placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
@@ -964,12 +984,15 @@ export function useWaitlistByOccurrenceQuery(occurrenceId, { enabled = false } =
   })
 }
 
-export function useOccurrenceSpotsQuery(occurrenceId, { enabled = false } = {}) {
+export function useOccurrenceSpotsQuery(occurrenceId, { enabled = false, refetchInterval = 7_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.spots.byOccurrence(occurrenceId),
     queryFn: () => getOccurrenceSpotsApi({ occurrenceId }),
     enabled: Boolean(enabled && occurrenceId),
+    placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 

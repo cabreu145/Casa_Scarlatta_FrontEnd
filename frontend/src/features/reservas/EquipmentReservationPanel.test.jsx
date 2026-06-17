@@ -58,6 +58,7 @@ describe('EquipmentReservationPanel', () => {
     spotsQueryState = {
       data: null,
       isLoading: true,
+      isFetching: false,
       error: null,
       refetch: refetchMock,
     }
@@ -71,23 +72,19 @@ describe('EquipmentReservationPanel', () => {
     }
   })
 
-  test('permite seleccionar varios spots y confirma reserva multi', async () => {
+  test('al seleccionar segundo spot reemplaza el anterior y confirma solo un lugar', async () => {
     const user = userEvent.setup()
-    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
     createSpotHoldMock.mockResolvedValue({
       occurrenceId: 5,
       userId: 3,
-      holds: [
-        { holdId: 123, spotId: 1, status: 'held' },
-        { holdId: 124, spotId: 2, status: 'held' },
-      ],
+      holds: [{ holdId: 124, spotId: 2, status: 'held' }],
     })
     createReservationMock.mockResolvedValue({
       occurrenceId: 5,
       userId: 3,
-      creditsCharged: 2,
+      creditsCharged: 1,
       reservations: [
-        { id: 30, spotId: 1, spotLabel: '01', equipmentLabel: 'Tapete', estado: 'confirmada' },
         { id: 31, spotId: 2, spotLabel: '02', equipmentLabel: 'Tapete', estado: 'confirmada' },
       ],
     })
@@ -111,30 +108,30 @@ describe('EquipmentReservationPanel', () => {
     await user.click(await screen.findByTestId('slow-spot-01'))
     await user.click(screen.getByTestId('slow-spot-02'))
 
-    expect(screen.getByText('Lugares seleccionados: 2')).toBeInTheDocument()
-    expect(screen.getByText('Créditos a usar: 2 · Créditos disponibles: 5')).toBeInTheDocument()
+    expect(screen.getByText('Lugar seleccionado')).toBeInTheDocument()
+    expect(screen.getByText('Tapete 02')).toBeInTheDocument()
+    expect(screen.getByText('Crédito a usar: 1 · Créditos disponibles: 5')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Reservar 2 lugares' }))
+    await user.click(screen.getByRole('button', { name: 'Reservar lugar' }))
 
     await waitFor(() => {
-      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotIds: [1, 2], userId: 3 })
+      expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotIds: [2], userId: 3 })
       expect(createReservationMock).toHaveBeenCalledWith({
         claseId: 9,
         userId: 3,
         occurrenceId: 5,
-        spotIds: [1, 2],
-        holdIds: [123, 124],
+        spotIds: [2],
+        holdIds: [124],
       })
     })
 
     expect(screen.getByText(/Reserva confirmada/i)).toBeInTheDocument()
-    expect(screen.getByText('Tapete 01')).toBeInTheDocument()
     expect(screen.getByText('Tapete 02')).toBeInTheDocument()
   })
 
-  test('no permite seleccionar más spots que créditos disponibles', async () => {
+  test('si toca el mismo spot seleccionado, lo deselecciona', async () => {
     const user = userEvent.setup()
-    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
 
     const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
     render(
@@ -152,16 +149,16 @@ describe('EquipmentReservationPanel', () => {
       />
     )
 
-    await user.click(await screen.findByTestId('slow-spot-01'))
-    await user.click(screen.getByTestId('slow-spot-02'))
+    const spot = await screen.findByTestId('slow-spot-01')
+    await user.click(spot)
+    await user.click(spot)
 
-    expect(screen.getByText('No puedes seleccionar más lugares que tus créditos disponibles.')).toBeInTheDocument()
-    expect(screen.getByText('Lugares seleccionados: 1')).toBeInTheDocument()
+    expect(screen.queryByText('Lugar seleccionado')).not.toBeInTheDocument()
   })
 
-  test('deseleccionar spot lo quita de la selección sin crear hold aún', async () => {
+  test('si no tiene créditos disponibles no deja seleccionar lugar', async () => {
     const user = userEvent.setup()
-    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
 
     const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
     render(
@@ -171,26 +168,25 @@ describe('EquipmentReservationPanel', () => {
         userId={3}
         financialState={{
           financialState: {},
-          creditsBalance: 3,
-          activeMembership: { creditsAvailable: 3 },
+          creditsBalance: 0,
+          activeMembership: { creditsAvailable: 0 },
           isLoading: false,
           error: null,
         }}
       />
     )
 
-    const spot = await screen.findByTestId('slow-spot-01')
-    await user.click(spot)
-    await user.click(spot)
+    await user.click(await screen.findByTestId('slow-spot-01'))
 
-    expect(screen.queryByText('Lugares seleccionados: 1')).not.toBeInTheDocument()
+    expect(screen.getByText('No tienes créditos suficientes para estos lugares.')).toBeInTheDocument()
+    expect(screen.queryByText('Lugar seleccionado')).not.toBeInTheDocument()
     expect(createSpotHoldMock).not.toHaveBeenCalled()
     expect(releaseSpotHoldMock).not.toHaveBeenCalled()
   })
 
   test('admin manda user_id del cliente en holds y reservas', async () => {
     const user = userEvent.setup()
-    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
     createSpotHoldMock.mockResolvedValue({
       occurrenceId: 5,
       userId: 26,
@@ -220,7 +216,7 @@ describe('EquipmentReservationPanel', () => {
     )
 
     await user.click(await screen.findByTestId('slow-spot-01'))
-    await user.click(screen.getByRole('button', { name: 'Reservar 1 lugar' }))
+    await user.click(screen.getByRole('button', { name: 'Reservar lugar' }))
 
     await waitFor(() => {
       expect(createSpotHoldMock).toHaveBeenCalledWith({ occurrenceId: 5, spotIds: [1], userId: 26 })
@@ -236,7 +232,7 @@ describe('EquipmentReservationPanel', () => {
 
   test('si backend responde INSUFFICIENT_CREDITS muestra mensaje claro', async () => {
     const user = userEvent.setup()
-    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
     createSpotHoldMock.mockRejectedValue({ code: 'INSUFFICIENT_CREDITS' })
 
     const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
@@ -256,14 +252,14 @@ describe('EquipmentReservationPanel', () => {
     )
 
     await user.click(await screen.findByTestId('slow-spot-01'))
-    await user.click(screen.getByRole('button', { name: 'Reservar 1 lugar' }))
+    await user.click(screen.getByRole('button', { name: 'Reservar lugar' }))
 
     expect(await screen.findByText('No tienes créditos suficientes para estos lugares.')).toBeInTheDocument()
   })
 
   test('acepta hold singular legacy sin romper confirmación', async () => {
     const user = userEvent.setup()
-    spotsQueryState = { data: buildSlowResponse(), isLoading: false, error: null, refetch: refetchMock }
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: false, error: null, refetch: refetchMock }
     createSpotHoldMock.mockResolvedValue({
       holdId: 123,
       occurrenceId: 5,
@@ -296,7 +292,7 @@ describe('EquipmentReservationPanel', () => {
     )
 
     await user.click(await screen.findByTestId('slow-spot-01'))
-    await user.click(screen.getByRole('button', { name: 'Reservar 1 lugar' }))
+    await user.click(screen.getByRole('button', { name: 'Reservar lugar' }))
 
     await waitFor(() => {
       expect(createReservationMock).toHaveBeenCalledWith({
@@ -317,6 +313,7 @@ describe('EquipmentReservationPanel', () => {
         class_id: 77,
       },
       isLoading: false,
+      isFetching: false,
       error: null,
       refetch: refetchMock,
     }
@@ -338,10 +335,33 @@ describe('EquipmentReservationPanel', () => {
     )
 
     await user.click(await screen.findByTestId('slow-spot-01'))
-    await user.click(screen.getByRole('button', { name: 'Reservar 1 lugar' }))
+    await user.click(screen.getByRole('button', { name: 'Reservar lugar' }))
 
     expect(await screen.findByText('La ocurrencia seleccionada no pertenece a esta clase. Actualiza la vista e intenta de nuevo.')).toBeInTheDocument()
     expect(createSpotHoldMock).not.toHaveBeenCalled()
     expect(createReservationMock).not.toHaveBeenCalled()
+  })
+
+  test('muestra indicador sutil cuando spots se refrescan sin vaciar data previa', async () => {
+    spotsQueryState = { data: buildSlowResponse(), isLoading: false, isFetching: true, error: null, refetch: refetchMock }
+
+    const { default: EquipmentReservationPanel } = await import('./EquipmentReservationPanel')
+    render(
+      <EquipmentReservationPanel
+        occurrenceId={5}
+        classId={9}
+        userId={3}
+        financialState={{
+          financialState: {},
+          creditsBalance: 2,
+          activeMembership: { creditsAvailable: 2 },
+          isLoading: false,
+          error: null,
+        }}
+      />
+    )
+
+    expect(await screen.findByText('Actualizando lugares...')).toBeInTheDocument()
+    expect(screen.queryByText('Cargando mapa...')).not.toBeInTheDocument()
   })
 })

@@ -74,6 +74,14 @@ function isSpotDisabled(spot, busy) {
   return spot.status === 'held' || spot.status === 'reserved' || spot.status === 'inactive'
 }
 
+// Helper para formatear valores numéricos o nulos con soporte de infinito continuo
+function formatCreditValue(val) {
+  if (val == null) return 'N/A'
+  const num = Number(val)
+  if (Number.isNaN(num)) return val // Si es un string como '...' o '!', lo deja pasar intacto
+  return num >= 450 ? '∞' : num
+}
+
 function buildSpotLookup(spots) {
   return new Map((spots ?? []).map((spot) => [getEquipmentSpotKey(spot), spot]))
 }
@@ -181,7 +189,7 @@ function CoachBadge({ coachName, coachAvatarUrl = null, dark = false }) {
         name={coachName}
         avatarUrl={coachAvatarUrl}
         size={dark ? 38 : 34}
-        className={dark ? styles.instructorAvatar : styles.slowInstructorAvatar}
+        className={dark ? styles.instructorBadge : styles.slowInstructorAvatar}
         objectPosition="center 15%"
       />
       <span className={dark ? styles.instructorName : styles.slowInstructorName}>{coachName ?? 'Coach'}</span>
@@ -209,8 +217,10 @@ function CreditsBlock({ creditsSummary, creditsBalance }) {
 
   return (
     <div className={styles.sbCreditsBlock}>
-      <span className={styles.sbCreditsNum}>{value}</span>
-      <span className={styles.sbCreditsLabel}>{creditsSummary.label}</span>
+      <span className={styles.sbCreditsNum}>
+        {formatCreditValue(value)}
+      </span>
+      <span className={styles.sbCreditsLabel}>créditos restantes</span>
     </div>
   )
 }
@@ -282,6 +292,7 @@ export default function EquipmentSeatSelectorView({
   creditsToUse = 0,
   maxSelectableSpots = 0,
   selectionError,
+  isRefreshing = false,
   isBusy,
   isConfirming,
   reservationSuccess,
@@ -296,7 +307,9 @@ export default function EquipmentSeatSelectorView({
   const effectiveSelectedSpotIds = normalizeSelectedSpotIds(selectedSpotIds, selectedSpotId)
   const effectiveSelectedSpotId = effectiveSelectedSpotIds[0] ?? backendSelectedSpot?.spotId ?? null
   const selectedSpot = (spots ?? []).find((spot) => Number(spot.spotId) === Number(effectiveSelectedSpotId)) ?? null
-  const selectedSpots = (spots ?? []).filter((spot) => effectiveSelectedSpotIds.includes(Number(spot.spotId)))
+
+  // Transformación limpia de la variable para usar de manera segura en todo el componente
+  const formattedMaxSpots = formatCreditValue(maxSelectableSpots)
 
   if (reservationSuccess) {
     return (
@@ -387,22 +400,23 @@ export default function EquipmentSeatSelectorView({
               </div>
               <div className={styles.sbDivider} />
               <div className={styles.sbSelectionBlock}>
-                  {selectedSpots.length > 0 ? (
+                {selectedSpot ? (
                   <>
-                    <div className={styles.sbSelLabel}>Lugares seleccionados: {selectedSpots.length}</div>
-                    <div className={styles.sbSelMat}>{selectedSpots.map((spot) => getEquipmentSpotLabel(spot)).join(', ')}</div>
+                    <div className={styles.sbSelLabel}>Lugar seleccionado</div>
+                    <div className={styles.sbSelMat}>{getEquipmentSpotLabel(selectedSpot)}</div>
                     <div className={styles.sbSelDetail}>
-                      Créditos a usar: {creditsToUse} · Créditos disponibles: {maxSelectableSpots}
+                      Crédito a usar: {creditsToUse || 1} · Créditos disponibles: {formattedMaxSpots}
                     </div>
                   </>
                 ) : <div className={styles.sbSelHint}>Elige tu lugar<br />en el mapa</div>}
               </div>
               <div className={styles.sbDivider} />
               <CreditsBlock creditsSummary={creditsSummary} creditsBalance={creditsBalance} />
+              {isRefreshing ? <div style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 8 }}>Actualizando lugares...</div> : null}
               {selectionError ? <div style={{ color: '#b42318', fontSize: 13, marginBottom: 8 }}>{selectionError}</div> : null}
               <Policy />
-              <button className={styles.slowConfirmBtn} onClick={onConfirm} disabled={selectedSpots.length === 0 || isConfirming}>
-                {isConfirming ? 'Confirmando...' : selectedSpots.length > 0 ? `Reservar ${selectedSpots.length} lugar${selectedSpots.length === 1 ? '' : 'es'}` : 'Selecciona un lugar'}
+              <button className={styles.slowConfirmBtn} onClick={onConfirm} disabled={!selectedSpot || isConfirming}>
+                {isConfirming ? 'Confirmando...' : selectedSpot ? 'Reservar lugar' : 'Selecciona un lugar'}
               </button>
             </aside>
           </div>
@@ -471,10 +485,10 @@ export default function EquipmentSeatSelectorView({
             </div>
             <div className={styles.sbDivider} />
             <div className={styles.sbSelectionBlock}>
-              {selectedSpots.length > 0 ? (
+              {selectedSpot ? (
                 <>
-                  <div className={styles.sbSelLabel}>Lugares seleccionados: {selectedSpots.length}</div>
-                  <div className={styles.sbSelMat} style={{ fontSize: 18 }}>{selectedSpots.map((spot) => getEquipmentSpotLabel(spot)).join(', ')}</div>
+                  <div className={styles.sbSelLabel}>Lugar seleccionado</div>
+                  <div className={styles.sbSelMat} style={{ fontSize: 18 }}>{getEquipmentSpotLabel(selectedSpot)}</div>
                   {selectedSpot && selectedEquipment?.mode === 'rotation' ? (
                     <div className={styles.rotationFlow}>
                       <p className={styles.rfTitle}>ROTATION FLOW</p>
@@ -494,21 +508,22 @@ export default function EquipmentSeatSelectorView({
                     <div className={styles.benchOnlyFlow}>
                       <BenchMini active />
                       <div>
-                        <p className={styles.bofTitle}>{selectedSpots.length > 1 ? 'Selección múltiple' : 'Bench Only'}</p>
-                        <p className={styles.bofSub}>Créditos a usar: {creditsToUse} · Disponibles: {maxSelectableSpots}</p>
+                        <p className={styles.bofTitle}>Bench Only</p>
+                        <p className={styles.bofSub}>Crédito a usar: {creditsToUse || 1} · Disponibles: {formattedMaxSpots}</p>
                       </div>
                     </div>
                   )}
-                  <div className={styles.sbSelDetail}>Créditos a usar: {creditsToUse} · Créditos disponibles: {maxSelectableSpots}</div>
+                  <div className={styles.sbSelDetail}>Crédito a usar: {creditsToUse || 1} · Créditos disponibles: {formattedMaxSpots}</div>
                 </>
               ) : <div className={styles.sbSelHint}>Elige tu equipo<br />en el mapa</div>}
             </div>
             <div className={styles.sbDivider} />
             <CreditsBlock creditsSummary={creditsSummary} creditsBalance={creditsBalance} />
+            {isRefreshing ? <div style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 8 }}>Actualizando lugares...</div> : null}
             {selectionError ? <div style={{ color: '#fca5a5', fontSize: 13, marginBottom: 8 }}>{selectionError}</div> : null}
             <Policy />
-            <button className={styles.strydeConfirmBtn} onClick={onConfirm} disabled={selectedSpots.length === 0 || isConfirming}>
-              {isConfirming ? 'Confirmando...' : selectedSpots.length > 0 ? `Reservar ${selectedSpots.length} lugar${selectedSpots.length === 1 ? '' : 'es'}` : 'Selecciona un lugar'}
+            <button className={styles.strydeConfirmBtn} onClick={onConfirm} disabled={!selectedSpot || isConfirming}>
+              {isConfirming ? 'Confirmando...' : selectedSpot ? 'Reservar lugar' : 'Selecciona un lugar'}
             </button>
           </aside>
         </div>

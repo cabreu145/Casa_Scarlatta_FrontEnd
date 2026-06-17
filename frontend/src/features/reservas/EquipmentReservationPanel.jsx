@@ -181,15 +181,15 @@ export default function EquipmentReservationPanel({
     setSelectionError('')
     setSelectedSpotIds((current) => {
       if (current.includes(spotId)) {
-        return current.filter((value) => value !== spotId)
+        return []
       }
 
-      if (Number.isFinite(maxSelectableSpots) && current.length >= maxSelectableSpots) {
-        setSelectionError('No puedes seleccionar más lugares que tus créditos disponibles.')
+      if (Number.isFinite(maxSelectableSpots) && maxSelectableSpots <= 0) {
+        setSelectionError('No tienes créditos suficientes para estos lugares.')
         return current
       }
 
-      return [...current, spotId]
+      return [spotId]
     })
   }
 
@@ -203,7 +203,11 @@ export default function EquipmentReservationPanel({
       return
     }
     if (selectedSpotIds.length === 0) {
-      setSelectionError('Selecciona uno o más lugares antes de reservar.')
+      setSelectionError('Selecciona un lugar antes de reservar.')
+      return
+    }
+    if (selectedSpotIds.length > 1) {
+      setSelectionError('Solo puedes reservar un lugar a la vez. Para agregar otro asiento, confirma esta reserva y vuelve a reservar otro lugar.')
       return
     }
     if (Number.isFinite(layoutClassId) && Number.isFinite(selectedClassId) && layoutClassId !== selectedClassId) {
@@ -295,6 +299,7 @@ export default function EquipmentReservationPanel({
       creditsToUse={selectedSpotIds.length}
       maxSelectableSpots={Number.isFinite(maxSelectableSpots) ? maxSelectableSpots : selectedSpotIds.length}
       selectionError={selectionError}
+      isRefreshing={occurrenceSpotsQuery.isFetching && Boolean(occurrenceSpotsQuery.data)}
       isBusy={isConfirming}
       isConfirming={isConfirming}
       reservationSuccess={reservationSuccess}

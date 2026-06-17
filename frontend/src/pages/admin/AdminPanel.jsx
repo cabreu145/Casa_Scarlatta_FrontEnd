@@ -522,6 +522,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const occurrenceRosterQuery = useOccurrenceRosterQuery(modalAlumnosOccurrenceId, {
     includeCanceled: false,
     enabled: useApiClasses && canReadClassRoster && Boolean(modalAlumnosOccurrenceId && modalAlumnosClase),
+    refetchInterval: modalAlumnosOccurrenceId ? 10_000 : false,
   })
   // Usuario — asignar paquete desde modal Ver
   const [asignarPaqueteForm, setAsignarPaqueteForm] = useState({ paqueteNombre: '', metodoPago: 'efectivo' })
@@ -883,10 +884,21 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   useEffect(() => {
     if (!useApiClasses) return
     let active = true
-    loadClasesFromApi({ status: 'programada' }).catch(() => {
-      if (!active) return
-    })
-    return () => { active = false }
+    const fetchClasses = async () => {
+      try {
+        await loadClasesFromApi({ status: 'programada' })
+      } catch {
+        if (!active) return
+      }
+    }
+    fetchClasses()
+    const intervalId = window.setInterval(() => {
+      fetchClasses().catch(() => {})
+    }, 15_000)
+    return () => {
+      active = false
+      window.clearInterval(intervalId)
+    }
   }, [loadClasesFromApi, useApiClasses])
 
   useEffect(() => {

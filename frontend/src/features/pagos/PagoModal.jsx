@@ -157,7 +157,7 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
                 <div className={s.paqueteDetalle}>
                   {(() => {
                     const creditos = paquete?.creditos ?? paquete?.clases ?? 0
-                    return creditos >= 999 ? '∞ créditos' : `${creditos} créditos`
+                    return creditos >= 450 ? '∞ créditos' : `${creditos} créditos`
                   })()} · {paquete?.vigencia ?? 'Sin vigencia'}
                 </div>
                 {paquete?.descripcion ? <div className={s.paqueteBeneficios}>{paquete.descripcion}</div> : null}
