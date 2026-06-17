@@ -89,11 +89,25 @@ function mapFinanceSummary(payload = {}) {
   }
 }
 
+function mapFinanceTransaction(t = {}) {
+  return {
+    fecha: t.fecha ?? null,
+    folio: t.folio ?? null,
+    concepto: t.concepto ?? '',
+    producto: t.producto ?? null,
+    metodo: t.metodo ?? '—',
+    montoMxn: toNumber(t.monto_mxn ?? t.montoMxn, 0),
+    tipo: t.tipo ?? 'pos',
+  }
+}
+
 export function mapBackendFinanceReportToFrontend(payload = {}) {
+  const rawTransactions = Array.isArray(payload.transactions) ? payload.transactions : []
   return {
     from: payload.from ?? payload.fecha_inicio ?? payload.fechaInicio ?? null,
     to: payload.to ?? payload.fecha_fin ?? payload.fechaFin ?? null,
     summary: mapFinanceSummary(payload),
+    transactions: rawTransactions.map(mapFinanceTransaction),
     raw: payload,
   }
 }

@@ -51,10 +51,17 @@ export default function Clases() {
   const queryClient = useQueryClient()
   const [selectedDate, setSelectedDate]   = useState(new Date())
   const [weekOffset, setWeekOffset] = useState(0)
-  const [filter, setFilter] = useState('')
+  const [searchParams] = useSearchParams()
+  const [filter, setFilter] = useState(() => {
+    const tipo = searchParams.get('tipo') ?? ''
+    if (!tipo) return ''
+    return tipo.toLowerCase().includes('slow') ? 'Slow' : 'Stryde X'
+  })
   const [selectedClass, setSelectedClass] = useState(null)
   const [viewMode, setViewMode] = useState('day') // 'day' | 'week'
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
+  const [isLoadingClasses, setIsLoadingClasses] = useState(true)
+  const [isLoadingOccurrences, setIsLoadingOccurrences] = useState(true)
   const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
   const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
   const useApiAuth = import.meta.env.VITE_USE_API_AUTH === 'true'
@@ -90,20 +97,22 @@ export default function Clases() {
   }, [allClasses, selectedRange, useApiClasses])
 
   useEffect(() => {
-    if (!useApiClasses) return
+    if (!useApiClasses) { setIsLoadingClasses(false); setIsLoadingOccurrences(false); return }
     let active = true
-    const fetchClasses = async () => {
+    const fetchClasses = async (isFirst = false) => {
       try {
         await loadClasesFromApi()
       } catch (err) {
         if (active && import.meta.env.DEV) {
           console.error('[Clases] No se pudo cargar clases API, fallback cache/store', err)
         }
+      } finally {
+        if (active && isFirst) setIsLoadingClasses(false)
       }
     }
-    fetchClasses()
+    fetchClasses(true)
     const intervalId = window.setInterval(() => {
-      fetchClasses().catch(() => {})
+      fetchClasses(false).catch(() => {})
     }, 35_000)
     return () => {
       active = false
@@ -116,16 +125,22 @@ export default function Clases() {
       setOccurrencesByClass({})
       return
     }
+    setIsLoadingOccurrences(true)
     let active = true
+    let isFirst = true
     let controller = new AbortController()
     const fetchOccurrences = async () => {
       controller.abort()
       controller = new AbortController()
       try {
         const data = await getOccurrencesForDateRangeApi(allClasses.map((c) => c.id), { ...selectedRange, signal: controller.signal })
-        if (active) setOccurrencesByClass(data)
+        if (active) {
+          setOccurrencesByClass(data)
+          if (isFirst) { isFirst = false; setIsLoadingOccurrences(false) }
+        }
       } catch (err) {
         if (err?.name === 'AbortError') return
+        if (active && isFirst) { isFirst = false; setIsLoadingOccurrences(false) }
       }
     }
 
@@ -402,7 +417,13 @@ export default function Clases() {
 
         {/* ── DAY VIEW ── */}
         {viewMode === 'day' && <div className={styles.classList}>
-          {dayClasses.length === 0 ? (
+          {(isLoadingClasses || isLoadingOccurrences) ? (
+            <div className={styles.skeletonList}>
+              {[1, 2, 3].map(n => (
+                <div key={n} className={styles.skeletonCard} />
+              ))}
+            </div>
+          ) : dayClasses.length === 0 ? (
             <div className={styles.emptyState}>
               <span className={styles.emptyIcon}>📅</span>
               <p>Sin clases este día</p>

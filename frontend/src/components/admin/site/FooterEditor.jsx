@@ -60,7 +60,7 @@ function LinkList({ title, items = [], onChange, canEdit = true }) {
         )}
       </div>
       {items.map((item, index) => (
-        <div key={item?.label ?? index} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
+        <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
           <input
             className={styles.formInput}
             value={item?.label ?? ''}

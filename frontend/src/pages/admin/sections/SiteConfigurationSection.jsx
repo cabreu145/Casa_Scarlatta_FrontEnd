@@ -6,15 +6,17 @@ import { useUpdateSiteConfigurationMutation } from '@/hooks/useApiQueries'
 import { hasPermission } from '@/auth/permissions'
 import { uploadCloudinaryMediaApi } from '@/services/cloudinaryUploadService'
 import { uploadSiteConfigurationMediaApi } from '@/services/siteConfigurationApiService'
-import { createDefaultFooterConfig, createDefaultSuetConfig, createDefaultFlowConfig, createDefaultYogaConfig } from '@/constants/siteConfigurationDefaults'
+import { createDefaultFooterConfig, createDefaultSuetConfig, createDefaultFlowConfig, createDefaultYogaConfig, createDefaultTerminosConfig } from '@/constants/siteConfigurationDefaults'
 import PageContentEditor from '@/components/admin/site/PageContentEditor'
 import FooterEditor from '@/components/admin/site/FooterEditor'
+import TerminosEditor from '@/components/admin/site/TerminosEditor'
 
 const SITE_TABS = [
   { id: 'suet', label: 'STRYDE X' },
   { id: 'flow', label: 'SLOW' },
   { id: 'yoga', label: 'YOGA' },
   { id: 'footer', label: 'Footer' },
+  { id: 'terminos', label: 'Términos y condiciones' },
 ]
 
 function clone(value) {
@@ -243,6 +245,20 @@ export default function SiteConfigurationSection({ currentUser = null }) {
           />
           <button type="button" onClick={() => handleSave('footer')} disabled={!canEdit || !currentDirty} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#7B1E22', color: '#fff', cursor: canEdit ? 'pointer' : 'not-allowed' }}>
             Guardar Footer
+          </button>
+        </>
+      )}
+
+      {activeTab === 'terminos' && (
+        <>
+          <TerminosEditor
+            value={draft.pages?.terminos ?? createDefaultTerminosConfig()}
+            onChange={(next) => updatePage('terminos', next)}
+            onUploadFile={uploadMedia}
+            canEdit={canEdit}
+          />
+          <button type="button" onClick={() => handleSave('terminos')} disabled={!canEdit || !currentDirty} style={{ padding: '10px 16px', borderRadius: 10, border: 'none', background: '#7B1E22', color: '#fff', cursor: canEdit ? 'pointer' : 'not-allowed' }}>
+            Guardar Términos y condiciones
           </button>
         </>
       )}

@@ -8,6 +8,13 @@ const filters = [
 export default function ClassTypeFilter({ active, onChange }) {
   return (
     <div className={styles.wrap}>
+      <button
+        className={`${styles.btn} ${styles.btnTodas} ${active === '' ? styles.active : ''}`}
+        onClick={() => onChange('')}
+        aria-label="Todas las clases"
+      >
+        Todas
+      </button>
       {filters.map(({ value, img, alt }) => (
         <button
           key={value}

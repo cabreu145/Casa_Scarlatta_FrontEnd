@@ -167,7 +167,8 @@ function normalizeFooterConfig(footer = {}) {
   if (footer.links) {
     resolved.links = {
       ...(defaults.links ?? {}),
-      ...footer.links,
+      ...(Array.isArray(footer.links.studio) && footer.links.studio.length > 0 ? { studio: footer.links.studio } : {}),
+      ...(Array.isArray(footer.links.visit) && footer.links.visit.length > 0 ? { visit: footer.links.visit } : {}),
     }
   }
   if (footer.social) {
@@ -281,6 +282,7 @@ export function mapBackendSiteConfigurationToFrontend(item = {}) {
       suet: normalizePageConfig(item?.pages?.suet ?? {}, createDefaultSuetConfig()),
       flow: normalizePageConfig(item?.pages?.flow ?? {}, createDefaultFlowConfig()),
       yoga: normalizePageConfig(item?.pages?.yoga ?? {}, createDefaultYogaConfig()),
+      ...(item?.pages?.terminos !== undefined ? { terminos: item.pages.terminos } : {}),
     },
     footer: normalizeFooterConfig(item?.footer ?? {}),
   }

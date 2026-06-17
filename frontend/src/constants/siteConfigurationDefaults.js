@@ -395,6 +395,23 @@ export function createDefaultFooterConfig() {
   }
 }
 
+export function createDefaultTerminosConfig() {
+  return {
+    lastUpdated: 'junio 2026',
+    sections: [
+      { id: '1', titulo: '1. Aceptación de los términos', contenido: 'Al acceder y utilizar los servicios de Casa Scarlatta, incluyendo la reserva de clases, adquisición de paquetes y uso de la plataforma en línea, aceptas quedar sujeto a estos términos y condiciones. Si no estás de acuerdo con alguno de ellos, te pedimos no utilizar nuestros servicios.' },
+      { id: '2', titulo: '2. Reservas y cancelaciones', contenido: 'Las reservas de clases pueden cancelarse sin costo hasta 6 horas antes del inicio de la clase. Pasado ese tiempo, la clase se contabilizará como utilizada y el crédito correspondiente no será reembolsable. Casa Scarlatta se reserva el derecho de cancelar o reprogramar clases por causas de fuerza mayor, en cuyo caso se restablecerá el crédito al usuario.' },
+      { id: '3', titulo: '3. Paquetes y créditos', contenido: 'Los paquetes adquiridos tienen una vigencia determinada según el plan elegido. Los créditos no utilizados dentro del periodo de vigencia no se acumulan ni se transfieren a periodos posteriores, salvo acuerdo escrito con Casa Scarlatta. Los paquetes son personales e intransferibles, excepto los paquetes compartibles.' },
+      { id: '4', titulo: '4. Pagos', contenido: 'Todos los pagos realizados a través de la plataforma son procesados de forma segura. Casa Scarlatta no almacena datos de tarjetas de crédito o débito. Una vez confirmado el pago, no se realizarán reembolsos, salvo en casos excepcionales evaluados por el equipo administrativo.' },
+      { id: '5', titulo: '5. Conducta en las instalaciones', contenido: 'Los usuarios se comprometen a mantener un comportamiento respetuoso hacia el personal, coaches y demás asistentes. Casa Scarlatta se reserva el derecho de suspender o cancelar la membresía de cualquier usuario que incumpla estas normas de convivencia.' },
+      { id: '6', titulo: '6. Privacidad', contenido: 'La información personal recopilada en la plataforma es utilizada exclusivamente para la gestión de reservas, paquetes y comunicaciones relacionadas con los servicios de Casa Scarlatta. No compartimos ni vendemos datos personales a terceros.' },
+      { id: '7', titulo: '7. Modificaciones', contenido: 'Casa Scarlatta se reserva el derecho de actualizar estos términos en cualquier momento. Las modificaciones entrarán en vigor a partir de su publicación en esta página. El uso continuado del servicio implica la aceptación de los nuevos términos.' },
+      { id: '8', titulo: '8. Contacto', contenido: 'Si tienes dudas o comentarios sobre estos términos, puedes contactarnos a través de nuestro formulario de contacto o escribirnos directamente a nuestras instalaciones.' },
+    ],
+    images: [],
+  }
+}
+
 export function createDefaultSiteConfiguration() {
   return {
     pages: {

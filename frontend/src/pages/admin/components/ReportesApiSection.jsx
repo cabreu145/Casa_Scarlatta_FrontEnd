@@ -468,7 +468,33 @@ export default function ReportesApiSection({ inPanel = false }) {
       mercado_pago: 'Mercado Pago', mercadopago: 'Mercado Pago',
     }
 
-    const posRows = salesItems.map((sale) => {
+    // Use unified transactions list from the finance report (includes MP payments)
+    const backendTransactions = Array.isArray(finance?.transactions) ? finance.transactions : []
+    if (backendTransactions.length > 0) {
+      return backendTransactions.map((t) => {
+        const dateObj = t.fecha ? new Date(t.fecha) : null
+        const fecha = dateObj && !Number.isNaN(dateObj.getTime())
+          ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' })
+          : '—'
+        const hora = dateObj && !Number.isNaN(dateObj.getTime())
+          ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' })
+          : '—'
+        const metodoKey = (t.metodo ?? '').toLowerCase()
+        const metodo = metodosLabel[metodoKey] || t.metodo || '—'
+        return {
+          Fecha:    fecha,
+          Hora:     hora,
+          Folio:    t.folio || '—',
+          Concepto: t.concepto || '—',
+          Producto: t.producto || '—',
+          Método:   metodo,
+          Monto:    t.montoMxn ?? 0,
+        }
+      })
+    }
+
+    // Fallback: build rows from POS sales query (legacy path, no MP)
+    return salesItems.map((sale) => {
       const raw = String(sale.createdAt ?? sale.created_at ?? '')
       const dateObj = raw ? new Date(raw) : null
       const fecha = dateObj && !Number.isNaN(dateObj.getTime())
@@ -480,16 +506,6 @@ export default function ReportesApiSection({ inPanel = false }) {
       const payMethod = sale.paymentMethod?.toLowerCase?.() ?? ''
       const metodo = metodosLabel[payMethod] || sale.paymentMethod || '—'
       const clienteNombre = sale.customerName || sale.customer_name || ''
-      const esMercadoPago = payMethod === 'mercado_pago' || payMethod === 'mercadopago'
-
-      // Concepto: describe el tipo/origen de la venta
-      const concepto = (() => {
-        if (!clienteNombre) return 'Venta mostrador'
-        if (esMercadoPago) return clienteNombre
-        return clienteNombre
-      })()
-
-      // Producto: qué se compró (nombre del item/paquete)
       const producto = (() => {
         if (Array.isArray(sale.items) && sale.items.length) {
           const names = sale.items
@@ -499,41 +515,17 @@ export default function ReportesApiSection({ inPanel = false }) {
         }
         return '—'
       })()
-
       return {
         Fecha:    fecha,
         Hora:     hora,
         Folio:    sale.folio || '—',
-        Concepto: concepto,
+        Concepto: clienteNombre || 'Venta mostrador',
         Producto: producto,
         Método:   metodo,
         Monto:    sale.totalMxn ?? sale.total_mxn ?? 0,
       }
     })
-
-    // Cuando no hay ventas POS, construir filas resumen desde finance.summary
-    // (Mercado Pago no viene del endpoint /ventas)
-    if (posRows.length === 0) {
-      const summary = finance?.summary ?? {}
-      const dateLabel = from ?? '—'
-      const syntheticRows = []
-      const posMxn = Number(summary.posSalesTotalMxn ?? 0)
-      const mpMxn = Number(summary.mercadoPagoTotalMxn ?? 0)
-      const expMxn = Number(summary.expensesTotalMxn ?? 0)
-      if (posMxn > 0) {
-        syntheticRows.push({ Fecha: dateLabel, Hora: '—', Folio: '—', Concepto: 'Ventas POS', Producto: '—', Método: 'POS', Monto: posMxn })
-      }
-      if (mpMxn > 0) {
-        syntheticRows.push({ Fecha: dateLabel, Hora: '—', Folio: '—', Concepto: 'Ventas en línea', Producto: 'Paquetes / Membresías', Método: 'Mercado Pago', Monto: mpMxn })
-      }
-      if (expMxn > 0) {
-        syntheticRows.push({ Fecha: dateLabel, Hora: '—', Folio: '—', Concepto: 'Gastos', Producto: '—', Método: '—', Monto: -expMxn })
-      }
-      return syntheticRows
-    }
-
-    return posRows
-  }, [salesItems, finance, from])
+  }, [salesItems, finance])
 
   const allClients = allClientsQuery.data?.items ?? []
 
