@@ -19,6 +19,7 @@ describe('membershipAdapter', () => {
           name: 'Beneficiario Demo',
         },
       ],
+      limit_one_spot_per_occurrence: true,
     })
 
     expect(result).toMatchObject({
@@ -29,6 +30,7 @@ describe('membershipAdapter', () => {
       creditsAvailable: 8,
       creditsTotal: 12,
       expiresAt: '2026-07-07',
+      limitOneSpotPerOccurrence: true,
       isShareable: true,
       maxBeneficiaries: 1,
       beneficiariesCount: 1,

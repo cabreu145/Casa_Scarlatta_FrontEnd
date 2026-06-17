@@ -290,7 +290,7 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
 
         {cargando && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, marginBottom: 14, fontFamily: 'var(--font-body)', fontSize: 13, color: 'var(--text-muted)' }}>
-            <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>Ã¢ÂÂ³</span> Procesando archivo…
+            <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span> Procesando archivo…
           </div>
         )}
 
@@ -620,7 +620,7 @@ export default function ClasesSection({
     }
 
     clases.forEach(c => agregarClase(c))
-    logClaseCreada({ nombre: `ImportaciÃƒÂ³n masiva: ${clases.length} clases` })
+    logClaseCreada({ nombre: `Importación masiva: ${clases.length} clases` })
     toast.success(`${clases.length} clase${clases.length !== 1 ? 's' : ''} importadas correctamente`)
   }
 
@@ -1021,7 +1021,7 @@ export default function ClasesSection({
                           fontFamily: 'var(--font-body)',
                           marginLeft: 4,
                         }}>
-                          â³ {enEspera.length} en espera
+                          ⏳ {enEspera.length} en espera
                         </span>
                       )
                     })()}
@@ -1243,7 +1243,7 @@ export default function ClasesSection({
                               background: 'rgba(245,158,11,0.12)', color: '#F59E0B',
                               border: '1px solid rgba(245,158,11,0.25)',
                             }}>
-                              â³ {enEspera.length}
+                              ⏳ {enEspera.length}
                             </span>
                           )}
                         </div>
