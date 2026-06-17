@@ -9,6 +9,7 @@ describe('packageApiPayload', () => {
       precio: '2100',
       vigencia: '30',
       destacado: true,
+      limitOneSpotPerOccurrence: true,
       descripcion: 'Acceso a clases\nReserva prioritaria',
       compartible: true,
       maxParticipantes: '1',
@@ -24,6 +25,7 @@ describe('packageApiPayload', () => {
       benefits: ['Acceso a clases', 'Reserva prioritaria'],
       is_shareable: true,
       max_beneficiaries: 1,
+      limit_one_spot_per_occurrence: true,
     })
     expect(validatePackageApiPayload(payload)).toBeNull()
   })
@@ -68,6 +70,7 @@ describe('packageApiPayload', () => {
     expect(payload.name).toBeNull()
     expect(payload.is_shareable).toBe(false)
     expect(payload.max_beneficiaries).toBe(0)
+    expect(payload.limit_one_spot_per_occurrence).toBe(false)
     expect(validatePackageApiPayload(payload)).toBeNull()
   })
 
@@ -82,5 +85,18 @@ describe('packageApiPayload', () => {
     })
 
     expect(validatePackageApiPayload(payload)).toContain('beneficiarios')
+  })
+
+  test('acepta snake_case para límite de un lugar por clase', () => {
+    const payload = buildPackageApiPayload({
+      nombre: 'Ilimitado controlado',
+      clases: '30',
+      precio: '2500',
+      vigencia: '30',
+      limit_one_spot_per_occurrence: true,
+    })
+
+    expect(payload.limit_one_spot_per_occurrence).toBe(true)
+    expect(validatePackageApiPayload(payload)).toBeNull()
   })
 })

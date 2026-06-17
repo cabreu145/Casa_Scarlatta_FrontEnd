@@ -341,7 +341,7 @@ function ActivityEventCard({ item }) {
   const categoryLabel = CATEGORY_LABELS[item.category] ?? item.category ?? 'Sistema'
   const icon = CATEGORY_ICONS[item.category] ?? '📌'
   const entityLabel = item.entityLabel || formatEntityLabel(item)
-  const description = item.summary || item.description || 'Sin descripciÃ³n'
+  const description = item.summary || item.description || 'Sin descripción'
   const metadataRows = getMetadataRows(item)
   const actorRole = item.actorRole ? String(item.actorRole) : ''
 

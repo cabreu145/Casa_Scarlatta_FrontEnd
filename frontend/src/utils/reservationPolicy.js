@@ -7,6 +7,34 @@ export function resolveLimitOneSpotPerOccurrence(source = null) {
   )
 }
 
+export function isActiveReservationStatus(status) {
+  const normalized = String(status ?? '').trim().toLowerCase()
+  return normalized === 'confirmada' || normalized === 'confirmed'
+}
+
+export function hasActiveReservationInOccurrenceForUser({
+  reservations = [],
+  userId = null,
+  occurrenceId = null,
+} = {}) {
+  const numericUserId = Number(userId)
+  const numericOccurrenceId = Number(occurrenceId)
+
+  if (!Number.isFinite(numericUserId) || !Number.isFinite(numericOccurrenceId)) return false
+
+  return (Array.isArray(reservations) ? reservations : []).some((reservation) => {
+    const reservationUserId = Number(reservation?.userId ?? reservation?.user_id)
+    const reservationOccurrenceId = Number(reservation?.occurrenceId ?? reservation?.occurrence_id)
+    const reservationStatus = reservation?.status ?? reservation?.estado
+
+    return (
+      reservationUserId === numericUserId &&
+      reservationOccurrenceId === numericOccurrenceId &&
+      isActiveReservationStatus(reservationStatus)
+    )
+  })
+}
+
 export function canReserveAnotherSpotInOccurrence({
   isMapClass = false,
   hasActiveReservationInOccurrence = false,

@@ -23,13 +23,13 @@ function resolveFinancialSummary({ financialState, creditsBalance, activeMembers
     return { status: 'error', label: 'No pudimos cargar tus créditos.' }
   }
   if (!activeMembership && financialState) {
-    return { status: 'no_membership', label: 'Sin membresÃ­a activa.' }
+    return { status: 'no_membership', label: 'Sin membresí­a activa.' }
   }
   if (!activeMembership && (creditsBalance === null || creditsBalance === undefined || (Number(creditsBalance) === 0 && !financialState && !error))) {
     return { status: 'loading', label: 'Cargando créditos...' }
   }
   if (!activeMembership && (creditsBalance === null || creditsBalance === undefined)) {
-    return { status: 'no_membership', label: 'Sin membresÃ­a activa.' }
+    return { status: 'no_membership', label: 'Sin membresí­a activa.' }
   }
 
   const rawCredits = activeMembership?.creditsAvailable ?? creditsBalance ?? 0
@@ -45,18 +45,18 @@ function resolveFinancialSummary({ financialState, creditsBalance, activeMembers
 
 function resolveReservationErrorMessage(error, { admin = false } = {}) {
   const code = String(error?.code ?? error?.message ?? '').toUpperCase()
-  if (code.includes('HOLD_REQUIRED')) return 'Selecciona uno o mÃ¡s lugares antes de reservar.'
-  if (code.includes('HOLD_EXPIRED')) return 'Tu selecciÃ³n expirÃ³. Vuelve a elegir lugares.'
-  if (code.includes('HOLD_NOT_OWNED')) return 'La selecciÃ³n ya no pertenece a tu sesiÃ³n.'
-  if (code.includes('HOLD_SPOT_MISMATCH')) return 'La selecciÃ³n ya no coincide con los lugares apartados.'
+  if (code.includes('HOLD_REQUIRED')) return 'Selecciona uno o más lugares antes de reservar.'
+  if (code.includes('HOLD_EXPIRED')) return 'Tu selección expiró. Vuelve a elegir lugares.'
+  if (code.includes('HOLD_NOT_OWNED')) return 'La selección ya no pertenece a tu sesión.'
+  if (code.includes('HOLD_SPOT_MISMATCH')) return 'La selección ya no coincide con los lugares apartados.'
   if (code.includes('SPOT_HOLD_COUNT_MISMATCH')) return 'No pudimos apartar todos los lugares seleccionados. Intenta de nuevo.'
   if (code.includes('SPOT_ALREADY_RESERVED')) return 'Uno de los lugares ya fue reservado.'
-  if (code.includes('SPOT_HELD_BY_ANOTHER_USER')) return 'Uno de los lugares estÃ¡ apartado por otra persona.'
+  if (code.includes('SPOT_HELD_BY_ANOTHER_USER')) return 'Uno de los lugares está apartado por otra persona.'
   if (code.includes('INSUFFICIENT_CREDITS')) return 'No tienes créditos suficientes para estos lugares.'
-  if (code.includes('DUPLICATE_SPOT_SELECTION')) return 'La selecciÃ³n contiene lugares duplicados.'
+  if (code.includes('DUPLICATE_SPOT_SELECTION')) return 'La selección contiene lugares duplicados.'
   if (code.includes('ONE_SPOT_PER_OCCURRENCE_LIMIT')) return getOneSpotPerOccurrenceMessage({ admin })
-  if (code.includes('OCCURRENCE_FULL')) return 'La clase ya estÃ¡ llena.'
-  if (code.includes('OCCURRENCE_NOT_RESERVABLE')) return 'Esta ocurrencia aÃºn no tiene spots configurados.'
+  if (code.includes('OCCURRENCE_FULL')) return 'La clase ya está llena.'
+  if (code.includes('OCCURRENCE_NOT_RESERVABLE')) return 'Esta ocurrencia aún no tiene spots configurados.'
   if (code.includes('CLASS_NOT_AVAILABLE')) return 'La ocurrencia seleccionada no pertenece a esta clase. Actualiza la vista e intenta de nuevo.'
   return 'No pudimos completar tu reserva.'
 }
@@ -64,7 +64,7 @@ function resolveReservationErrorMessage(error, { admin = false } = {}) {
 function resolveOccurrenceSpotsErrorMessage(error) {
   const code = String(error?.code ?? error?.message ?? '').toUpperCase()
   if (code.includes('OCCURRENCE_NOT_RESERVABLE') || code.includes('NO HAY SPOTS CONFIGURADOS')) {
-    return 'Esta ocurrencia aÃºn no tiene spots configurados.'
+    return 'Esta ocurrencia aún no tiene spots configurados.'
   }
   return error?.message ?? 'No pudimos cargar mapa de lugares.'
 }
@@ -176,8 +176,8 @@ export default function EquipmentReservationPanel({
       setSelectionError(getEquipmentSpotStatusLabel(spot) === 'Ocupado'
         ? 'Uno de los lugares ya fue reservado.'
         : spot.status === 'held'
-          ? 'Uno de los lugares estÃ¡ apartado por otra persona.'
-          : 'Ese lugar no estÃ¡ disponible.')
+          ? 'Uno de los lugares está apartado por otra persona.'
+          : 'Ese lugar no está disponible.')
       return
     }
 
@@ -202,7 +202,7 @@ export default function EquipmentReservationPanel({
       return
     }
     if (!userId) {
-      setSelectionError('Selecciona un cliente vÃ¡lido antes de reservar.')
+      setSelectionError('Selecciona un cliente válido antes de reservar.')
       return
     }
     if (selectedSpotIds.length === 0) {
@@ -222,7 +222,7 @@ export default function EquipmentReservationPanel({
       return
     }
     if (Number.isFinite(maxSelectableSpots) && selectedSpotIds.length > maxSelectableSpots) {
-      setSelectionError('No puedes seleccionar mÃ¡s lugares que tus créditos disponibles.')
+      setSelectionError('No puedes seleccionar más lugares que tus créditos disponibles.')
       return
     }
 
@@ -285,7 +285,7 @@ export default function EquipmentReservationPanel({
   }
 
   if (noSpotsConfigured) {
-    return <div role="alert" style={{ padding: 24, color: '#b42318' }}>Esta ocurrencia aÃºn no tiene spots configurados.</div>
+    return <div role="alert" style={{ padding: 24, color: '#b42318' }}>Esta ocurrencia aún no tiene spots configurados.</div>
   }
 
   if (!layoutData || !layoutKind) return null
