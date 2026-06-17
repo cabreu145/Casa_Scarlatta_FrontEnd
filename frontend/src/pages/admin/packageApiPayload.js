@@ -36,6 +36,10 @@ export function buildPackageApiPayload(form = {}) {
     form.limit_one_spot_per_occurrence ?? form.limitOneSpotPerOccurrence,
     false
   )
+  const purchaseOncePerUser = toBoolean(
+    form.purchase_once_per_user ?? form.purchaseOncePerUser,
+    false
+  )
   const maxBeneficiaries = isShareable
     ? toPositiveInt(form.max_beneficiaries ?? form.maxBeneficiaries ?? form.maxParticipantes, null)
     : 0
@@ -51,6 +55,7 @@ export function buildPackageApiPayload(form = {}) {
     is_shareable: isShareable,
     max_beneficiaries: maxBeneficiaries,
     limit_one_spot_per_occurrence: limitOneSpotPerOccurrence,
+    purchase_once_per_user: purchaseOncePerUser,
   }
 }
 
@@ -65,6 +70,7 @@ export function validatePackageApiPayload(payload = {}) {
   if (payload.is_shareable && payload.max_beneficiaries < 1) return 'El paquete compartible requiere al menos 1 beneficiario.'
   if (!payload.is_shareable && payload.max_beneficiaries !== 0) return 'Los paquetes no compartibles deben usar 0 beneficiarios.'
   if (typeof payload.limit_one_spot_per_occurrence !== 'boolean') return 'Bandera de 1 lugar por clase inválida.'
+  if (typeof payload.purchase_once_per_user !== 'boolean') return 'Bandera de compra única inválida.'
   if (!Array.isArray(payload.benefits)) return 'Beneficios inválidos.'
   if (payload.benefits.some((item) => typeof item !== 'string')) return 'Beneficios inválidos.'
   return null

@@ -85,6 +85,9 @@ export default function PaquetesSection({
                 {p.limitOneSpotPerOccurrence && (
                   <div className={styles.paqueteStat}><strong>1 lugar por clase</strong></div>
                 )}
+                {p.purchaseOncePerUser && (
+                  <div className={styles.paqueteStat}><strong>Compra única</strong></div>
+                )}
                 {formatPackageShareabilityLabel(p) && (
                   <div className={styles.paqueteStat}><strong>{formatPackageShareabilityLabel(p)}</strong></div>
                 )}
@@ -104,6 +107,9 @@ export default function PaquetesSection({
                       isActive: Boolean(p.isActive),
                       limitOneSpotPerOccurrence: Boolean(
                         p.limitOneSpotPerOccurrence ?? p.limit_one_spot_per_occurrence ?? false
+                      ),
+                      purchaseOncePerUser: Boolean(
+                        p.purchaseOncePerUser ?? p.purchase_once_per_user ?? false
                       ),
                       beneficios: [...getPackageBenefits(p)],
                       isShareable: Boolean(p.isShareable),
@@ -228,6 +234,9 @@ export default function PaquetesSection({
               {p.limitOneSpotPerOccurrence && (
                 <div className={styles.paqueteStat}><strong>1 lugar por clase</strong></div>
               )}
+              {p.purchaseOncePerUser && (
+                <div className={styles.paqueteStat}><strong>Compra única</strong></div>
+              )}
               <div className={styles.paqueteStat}><strong>{formatPackageShareabilityLabel(p) || 'No compartible'}</strong></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
@@ -244,6 +253,9 @@ export default function PaquetesSection({
                     destacado: Boolean(p.destacado ?? p.isFeatured),
                     limitOneSpotPerOccurrence: Boolean(
                       p.limitOneSpotPerOccurrence ?? p.limit_one_spot_per_occurrence ?? false
+                    ),
+                    purchaseOncePerUser: Boolean(
+                      p.purchaseOncePerUser ?? p.purchase_once_per_user ?? false
                     ),
                     beneficios: [...getPackageBenefits(p)],
                     isShareable: Boolean(p.isShareable),

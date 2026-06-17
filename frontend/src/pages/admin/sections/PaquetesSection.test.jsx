@@ -29,6 +29,7 @@ describe('PaquetesSection', () => {
             is_active: true,
             is_featured: true,
             limitOneSpotPerOccurrence: true,
+            purchaseOncePerUser: true,
             benefits: ['Acceso a clases'],
           },
         ]}
@@ -58,6 +59,7 @@ describe('PaquetesSection', () => {
     expect(screen.getByText('1 clase · válido por 7 días')).toBeInTheDocument()
     expect(screen.getByText(/12 clases/)).toBeInTheDocument()
     expect(screen.getByText('1 lugar por clase')).toBeInTheDocument()
+    expect(screen.getByText('Compra única')).toBeInTheDocument()
     expect(screen.getByText(/Disponible.*Reportes/, { selector: 'span' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '+ Nuevo Paquete' }))
@@ -68,6 +70,7 @@ describe('PaquetesSection', () => {
     expect(setEditPaqueteForm).toHaveBeenCalledWith(expect.objectContaining({
       nombre: '',
       limitOneSpotPerOccurrence: true,
+      purchaseOncePerUser: true,
     }))
 
     await user.click(screen.getByRole('button', { name: /Eliminar/i }))

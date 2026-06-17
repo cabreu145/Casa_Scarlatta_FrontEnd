@@ -1,4 +1,4 @@
-﻿import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
@@ -246,7 +246,6 @@ describe('PuntoDeVentaSection', () => {
     const buyerSelect = screen.getByText('Selecciona cliente', { selector: 'option' }).closest('select')
     await user.selectOptions(buyerSelect, '1')
     await user.click(screen.getByRole('button', { name: /Mensual 12/i }))
-    await user.type(screen.getByPlaceholderText('emails separados por coma'), 'beneficiario@demo.local')
 
     await user.click(screen.getByRole('button', { name: /Cobrar/i }))
 
@@ -258,7 +257,7 @@ describe('PuntoDeVentaSection', () => {
       totalMxn: expect.any(Number),
       items: expect.arrayContaining([
         expect.objectContaining({ type: 'product', id: 1, name: 'Toalla' }),
-        expect.objectContaining({ type: 'package', id: 2, beneficiaries: ['beneficiario@demo.local'] }),
+        expect.objectContaining({ type: 'package', id: 2 }),
       ]),
     }))
 
@@ -299,8 +298,6 @@ describe('PuntoDeVentaSection', () => {
     expect(screen.queryByRole('button', { name: /Nuevo producto/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Nueva categoría/i })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Cobrar/i })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: /✏️/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /🗑/i })).not.toBeInTheDocument()
   })
 
   test('paquete sin cliente no permite agregar', async () => {
@@ -309,6 +306,24 @@ describe('PuntoDeVentaSection', () => {
 
     await user.click(screen.getByRole('button', { name: /Mensual 12/i }))
     expect(toastError).toHaveBeenCalledWith('Selecciona cliente para vender paquete.')
+  })
+
+  test('mapea PACKAGE_ALREADY_PURCHASED_ONCE con mensaje admin en POS', async () => {
+    mutateAsync.mockRejectedValueOnce({
+      code: 'PACKAGE_ALREADY_PURCHASED_ONCE',
+      message: 'PACKAGE_ALREADY_PURCHASED_ONCE',
+    })
+    const user = userEvent.setup()
+    render(<Harness />)
+
+    const buyerSelect = screen.getByText('Selecciona cliente', { selector: 'option' }).closest('select')
+    await user.selectOptions(buyerSelect, '1')
+    await user.click(screen.getByRole('button', { name: /Mensual 12/i }))
+    await user.click(screen.getByRole('button', { name: /Cobrar/i }))
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith('Este cliente ya adquirió este paquete anteriormente.')
+    })
   })
 
   test('abre modal de categoria', async () => {

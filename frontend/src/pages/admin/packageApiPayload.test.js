@@ -26,6 +26,7 @@ describe('packageApiPayload', () => {
       is_shareable: true,
       max_beneficiaries: 1,
       limit_one_spot_per_occurrence: true,
+      purchase_once_per_user: false,
     })
     expect(validatePackageApiPayload(payload)).toBeNull()
   })
@@ -71,6 +72,7 @@ describe('packageApiPayload', () => {
     expect(payload.is_shareable).toBe(false)
     expect(payload.max_beneficiaries).toBe(0)
     expect(payload.limit_one_spot_per_occurrence).toBe(false)
+    expect(payload.purchase_once_per_user).toBe(false)
     expect(validatePackageApiPayload(payload)).toBeNull()
   })
 
@@ -98,5 +100,27 @@ describe('packageApiPayload', () => {
 
     expect(payload.limit_one_spot_per_occurrence).toBe(true)
     expect(validatePackageApiPayload(payload)).toBeNull()
+  })
+
+  test('mapea purchaseOncePerUser en create y edit', () => {
+    const payloadTrue = buildPackageApiPayload({
+      nombre: 'First Class',
+      clases: '1',
+      precio: '300',
+      vigencia: '7',
+      purchaseOncePerUser: true,
+    })
+    const payloadFalse = buildPackageApiPayload({
+      nombre: 'Mensual',
+      clases: '12',
+      precio: '2100',
+      vigencia: '30',
+      purchase_once_per_user: false,
+    })
+
+    expect(payloadTrue.purchase_once_per_user).toBe(true)
+    expect(payloadFalse.purchase_once_per_user).toBe(false)
+    expect(validatePackageApiPayload(payloadTrue)).toBeNull()
+    expect(validatePackageApiPayload(payloadFalse)).toBeNull()
   })
 })

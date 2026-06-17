@@ -16,6 +16,7 @@ describe('packageAdapter', () => {
       is_shareable: true,
       max_beneficiaries: 1,
       limitOneSpotPerOccurrence: true,
+      purchase_once_per_user: true,
     })
 
     expect(result).toMatchObject({
@@ -25,6 +26,7 @@ describe('packageAdapter', () => {
       isShareable: true,
       maxBeneficiaries: 1,
       limitOneSpotPerOccurrence: true,
+      purchaseOncePerUser: true,
     })
   })
 
@@ -40,6 +42,22 @@ describe('packageAdapter', () => {
       benefits: [],
     })
 
+    expect(result.limitOneSpotPerOccurrence).toBe(false)
+    expect(result.purchaseOncePerUser).toBe(false)
+  })
+
+  test('normaliza purchaseOncePerUser camelCase sin mezclarlo con 1 lugar por clase', () => {
+    const result = mapBackendPackageToFrontend({
+      id: 3,
+      name: 'First Class',
+      credits: 1,
+      price_mxn: 200,
+      duration_days: 7,
+      purchaseOncePerUser: true,
+      limit_one_spot_per_occurrence: false,
+    })
+
+    expect(result.purchaseOncePerUser).toBe(true)
     expect(result.limitOneSpotPerOccurrence).toBe(false)
   })
 })
