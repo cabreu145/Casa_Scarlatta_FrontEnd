@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { getDashboardMetrics, getIngresosPorMes, getDistribucionPaquetes,
          getClasesHoy, getUsuariosPorVencer, getUltimasVentas }
   from '@/services/dashboardService'
@@ -16,6 +16,7 @@ import {
   useFinanceRecentSalesQuery,
 } from '@/hooks/useApiQueries'
 import { exportFinanceCsv } from '@/services/financeApiService'
+import { getPackagePromotionsApi } from '@/services/packagePromotionsApiService'
 import DateNavigator from '@/components/ui/DateNavigator'
 import styles from '../AdminPanel.module.css'
 
@@ -354,6 +355,18 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
     limit: 10,
     enabled: useApiMode,
   })
+  const [activePromos, setActivePromos] = useState([])
+  const [promosLoading, setPromosLoading] = useState(false)
+
+  useEffect(() => {
+    if (!useApiMode) return
+    setPromosLoading(true)
+    getPackagePromotionsApi({ isActive: true, pageSize: 50 })
+      .then((res) => setActivePromos(res.items ?? []))
+      .catch(() => setActivePromos([]))
+      .finally(() => setPromosLoading(false))
+  }, [useApiMode])
+
   const exportTypes = []
 
   const handleExportFinanceCsv = async (type) => {
@@ -497,6 +510,141 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
               up={card.up}
             />
           ))}
+        </div>
+
+        {/* ── Monitoreo de Promociones ── */}
+        <div className={styles.card} style={{ marginBottom: 20 }}>
+          <div className={styles.cardHeader} style={{ marginBottom: 16 }}>
+            <div>
+              <div className={styles.cardTitle}>Promociones activas</div>
+              <div className={styles.cardSub}>Monitoreo de redenciones en tiempo real</div>
+            </div>
+            <button
+              className={`${styles.btn} ${styles.btnGhost}`}
+              style={{ fontSize: 12 }}
+              onClick={() => showSection('promociones')}
+            >
+              Ver todas →
+            </button>
+          </div>
+
+          {promosLoading ? (
+            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 13, fontFamily: 'var(--font-body)', padding: '8px 0' }}>
+              Cargando promociones…
+            </div>
+          ) : activePromos.length === 0 ? (
+            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, fontFamily: 'var(--font-body)', textAlign: 'center', padding: '20px 0' }}>
+              No hay promociones activas en este momento.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {activePromos.map((promo) => {
+                const used = promo.usedCount ?? 0
+                const limit = promo.usageLimit ?? null
+                const remaining = promo.remainingCount ?? null
+                const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : null
+                const isAgotada = remaining === 0
+                const isBogo = promo.promotionType === 'buy_one_get_one'
+                const typeLabel = isBogo ? '2×1' : promo.discountPercent ? `${promo.discountPercent}% OFF` : 'Promo'
+                const typeColor = isBogo
+                  ? { bg: 'rgba(78,104,85,0.25)', color: '#6B8F72' }
+                  : { bg: 'rgba(184,137,42,0.2)', color: '#D4A843' }
+
+                return (
+                  <div key={promo.id} style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto',
+                    gap: '6px 16px',
+                    alignItems: 'center',
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                  }}>
+                    {/* left: name + package + bar */}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
+                          color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap',
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {promo.name}
+                        </span>
+                        <span style={{
+                          fontSize: 9, fontWeight: 800, letterSpacing: '0.12em',
+                          padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase',
+                          background: typeColor.bg, color: typeColor.color,
+                        }}>
+                          {typeLabel}
+                        </span>
+                        {isAgotada && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 800, letterSpacing: '0.1em',
+                            padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase',
+                            background: 'rgba(192,57,43,0.2)', color: '#E74C3C',
+                          }}>
+                            Agotada
+                          </span>
+                        )}
+                      </div>
+
+                      {limit != null ? (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-body)' }}>
+                              {used} de {limit} usados
+                            </span>
+                            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: isAgotada ? '#E74C3C' : 'rgba(255,255,255,0.55)' }}>
+                              {pct}%
+                            </span>
+                          </div>
+                          <div style={{ height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${pct}%`,
+                              borderRadius: 99,
+                              background: isAgotada
+                                ? '#E74C3C'
+                                : pct >= 80
+                                  ? '#E8924A'
+                                  : isBogo ? '#6B8F72' : '#D4A843',
+                              transition: 'width 0.4s ease',
+                            }} />
+                          </div>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--font-body)' }}>
+                          {used} usos · Sin límite de cupo
+                        </span>
+                      )}
+                    </div>
+
+                    {/* right: remaining badge */}
+                    <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                      {limit != null ? (
+                        <>
+                          <div style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: 22, fontWeight: 700,
+                            color: isAgotada ? '#E74C3C' : remaining <= 3 ? '#E8924A' : 'rgba(255,255,255,0.85)',
+                            lineHeight: 1,
+                          }}>
+                            {remaining}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontFamily: 'var(--font-body)', marginTop: 2 }}>
+                            disponibles
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-body)' }}>∞</div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div className={styles.dashGrid} style={{ marginBottom: 20 }}>
