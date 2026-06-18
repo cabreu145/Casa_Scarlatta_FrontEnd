@@ -3107,7 +3107,16 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     <tbody>
                       {inscritos.map(r => (
                         <tr key={r.reservationId ?? r.id}>
-                          <td style={{ fontWeight: 500 }}>{r.nombreUsuario}</td>
+                          <td style={{ fontWeight: 500 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {r.nombreUsuario}
+                              {r.isCourtesy && (
+                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: 'rgba(168,85,247,0.15)', color: '#a855f7', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
+                                  CORTESÍA
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td>
                             <div style={{ fontSize: 12, color: 'var(--muted)' }}>
                               {r.email ?? r.phone ?? `Usuario #${r.userId ?? r.user_id}`}

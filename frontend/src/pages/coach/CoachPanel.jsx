@@ -777,7 +777,14 @@ function ClassModal({ cls, onClose, useApiMode = false }) {
           <div key={r.reservationId ?? r.id ?? `${r.userId ?? r.user_id}-${r.nombreUsuario}`} className={s2.studentRow}>
             <div className={s2.studentAvatar}>{r.nombreUsuario?.charAt(0) ?? '?'}</div>
             <div style={{ flex: 1 }}>
-              <div className={s2.studentName}>{r.nombreUsuario ?? `Usuario #${r.userId}`}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className={s2.studentName}>{r.nombreUsuario ?? `Usuario #${r.userId}`}</span>
+                {r.isCourtesy && (
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: 'rgba(168,85,247,0.15)', color: '#a855f7', letterSpacing: '0.06em' }}>
+                    CORTESÍA
+                  </span>
+                )}
+              </div>
               <div className={s2.studentSub}>
                 {r.email ?? r.phone ?? 'Sin contacto'}
                 {' · '}

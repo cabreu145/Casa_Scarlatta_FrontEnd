@@ -329,6 +329,7 @@ function coachPaymentsRowsFromReport(report = {}) {
       Clase: detail.className ?? 'Clase',
       Disciplina: detail.discipline ?? '—',
       Asistentes: detail.attendees ?? 0,
+      Cortesía: detail.courtesyCount ?? 0,
       Tarifa: detail.rateMxn ?? 0,
       Pago: detail.payMxn ?? 0,
       Estatus: detail.status === 'missing_rate' ? 'missing_rate' : 'calculated',
@@ -891,7 +892,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           icono="💰"
           titulo="Pago de coaches"
           descripcion="Tarifa, pago y clases sin tarifa."
-          onCsv={() => exportCsv('reporte-pago-coaches', coachPaymentsRows, ['Coach', 'Fecha', 'Hora', 'Clase', 'Disciplina', 'Asistentes', 'Tarifa', 'Pago', 'Estatus'])}
+          onCsv={() => exportCsv('reporte-pago-coaches', coachPaymentsRows, ['Coach', 'Fecha', 'Hora', 'Clase', 'Disciplina', 'Asistentes', 'Cortesía', 'Tarifa', 'Pago', 'Estatus'])}
           onPdf={() => exportPdf('coaches_pagos', 'Pago de Coaches operativo', coachPaymentsRows, true)}
         />
         <ReportCard
@@ -1044,7 +1045,7 @@ export default function ReportesApiSection({ inPanel = false }) {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 16 }}>
           <MetricCard label="Coaches" value={String(coachPayments.coachesCount ?? coachPayments.items.length)} helper={`Clases ${coachPayments.classesCount ?? 0}`} accent="#22c55e" />
-          <MetricCard label="Total a pagar" value={formatMoneyMx(coachPayments.totalPayMxn)} helper={`Asistencias ${coachPayments.attendanceCount ?? 0}`} accent="#3b82f6" />
+          <MetricCard label="Total a pagar" value={formatMoneyMx(coachPayments.totalPayMxn)} helper={`Asistencias pagadas ${coachPayments.attendanceCount ?? 0}${coachPayments.courtesyCount > 0 ? ` · Cortesía ${coachPayments.courtesyCount}` : ''}`} accent="#3b82f6" />
           <MetricCard label="Clases sin tarifa" value={String(coachPayments.missingRateClasses ?? 0)} helper="Requiere tabulador" accent="#ef4444" />
         </div>
 
@@ -1052,7 +1053,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                {['Coach', 'Clases', 'Asist.', 'No show', 'Total a pagar', 'Sin tarifa', 'Detalle'].map((head) => (
+                {['Coach', 'Clases', 'Asist.', 'Cortesía', 'Total a pagar', 'Sin tarifa', 'Detalle'].map((head) => (
                   <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {head}
                   </th>
@@ -1066,7 +1067,7 @@ export default function ReportesApiSection({ inPanel = false }) {
                     <td style={{ padding: '10px', fontFamily: 'var(--font-body)', fontSize: 13 }}>{coach.name}</td>
                     <td style={{ padding: '10px' }}>{coach.classesCount}</td>
                     <td style={{ padding: '10px' }}>{coach.attendanceCount}</td>
-                    <td style={{ padding: '10px' }}>{coach.noShowCount}</td>
+                    <td style={{ padding: '10px', color: (coach.courtesyCount ?? 0) > 0 ? '#a855f7' : 'var(--text-muted)' }}>{coach.courtesyCount ?? 0}</td>
                     <td style={{ padding: '10px', fontWeight: 600, color: '#22c55e' }}>{formatMoneyMx(coach.totalPayMxn)}</td>
                     <td style={{ padding: '10px', color: coach.missingRateClasses > 0 ? '#fbbf24' : 'var(--text-primary)' }}>{coach.missingRateClasses}</td>
                     <td style={{ padding: '10px' }}>
@@ -1090,12 +1091,12 @@ export default function ReportesApiSection({ inPanel = false }) {
                   </tr>
                   {coachPaymentsExpandedId === coach.coachId && (
                     <tr>
-                      <td colSpan={7} style={{ padding: '0 10px 14px' }}>
+                      <td colSpan={8} style={{ padding: '0 10px 14px' }}>
                         <div style={{ marginTop: 10, border: '1px solid var(--neutral-border)', borderRadius: 10, overflow: 'hidden' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                               <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                {['Fecha', 'Hora', 'Clase', 'Disciplina', 'Asist.', 'Tarifa', 'Pago', 'Estatus'].map((head) => (
+                                {['Fecha', 'Hora', 'Clase', 'Disciplina', 'Asist.', 'Cortesía', 'Tarifa', 'Pago', 'Estatus'].map((head) => (
                                   <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                     {head}
                                   </th>
@@ -1110,13 +1111,14 @@ export default function ReportesApiSection({ inPanel = false }) {
                                   <td style={{ padding: '8px 10px' }}>{detail.className ?? 'Clase'}</td>
                                   <td style={{ padding: '8px 10px' }}>{detail.discipline ?? '—'}</td>
                                   <td style={{ padding: '8px 10px' }}>{detail.attendees ?? 0}</td>
+                                  <td style={{ padding: '8px 10px', color: (detail.courtesyCount ?? 0) > 0 ? '#a855f7' : 'var(--text-muted)' }}>{detail.courtesyCount ?? 0}</td>
                                   <td style={{ padding: '8px 10px' }}>{formatMoneyMx(detail.rateMxn)}</td>
                                   <td style={{ padding: '8px 10px', fontWeight: 600, color: detail.status === 'missing_rate' ? '#fbbf24' : '#22c55e' }}>{formatMoneyMx(detail.payMxn)}</td>
                                   <td style={{ padding: '8px 10px' }}>{detail.status === 'missing_rate' ? 'missing_rate' : 'calculated'}</td>
                                 </tr>
                               )) : (
                                 <tr>
-                                  <td colSpan={8} style={{ padding: '12px 10px', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                                  <td colSpan={9} style={{ padding: '12px 10px', color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
                                     Sin detalle para este coach.
                                   </td>
                                 </tr>

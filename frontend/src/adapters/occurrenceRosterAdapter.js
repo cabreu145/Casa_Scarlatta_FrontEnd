@@ -25,6 +25,7 @@ function mapStudent(item = {}) {
     equipmentType,
     equipmentLabel: equipmentType ? (EQUIPMENT_LABELS[equipmentType] ?? equipmentType) : null,
     createdAt: item.created_at ?? item.createdAt ?? null,
+    isCourtesy: item.is_courtesy ?? item.isCourtesy ?? false,
   }
 }
 
