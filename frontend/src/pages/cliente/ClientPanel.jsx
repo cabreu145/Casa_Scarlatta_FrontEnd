@@ -123,6 +123,78 @@ function resolveMembershipErrorMessage(error) {
   return raw || 'No se pudo actualizar la membresía compartida.'
 }
 
+function getCreditMovementTitle(movement) {
+  return movement?.displayTitle || movement?.display_title || movement?.type || 'Movimiento de crédito'
+}
+
+const UNLIMITED_CREDITS_THRESHOLD = 450
+
+function isUnlimitedCreditsValue(value) {
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) && numberValue >= UNLIMITED_CREDITS_THRESHOLD
+}
+
+function formatPackageCreditsDescription(credits) {
+  const numberValue = Number(credits)
+
+  if (isUnlimitedCreditsValue(numberValue)) {
+    return 'clases ilimitadas'
+  }
+
+  if (!Number.isFinite(numberValue)) {
+    return 'clases'
+  }
+
+  return `${numberValue} ${numberValue === 1 ? 'clase' : 'clases'}`
+}
+
+function getMovementAfterBalance(movement) {
+  return (
+    movement?.afterBalance ??
+    movement?.after_balance ??
+    movement?.balanceAfter ??
+    movement?.balance_after ??
+    null
+  )
+}
+
+function getCreditMovementDescription(movement) {
+  const type = movement?.type
+  const rawDescription = movement?.displayDescription || movement?.display_description || ''
+
+  if (type === 'package_purchase' || type === 'admin_package_assignment') {
+    const afterBalance = getMovementAfterBalance(movement)
+
+    if (afterBalance !== null && afterBalance !== undefined) {
+      return `Tu nuevo paquete incluye ${formatPackageCreditsDescription(afterBalance)}`
+    }
+  }
+
+  if (type === 'promotion_bonus_package') {
+    const afterBalance = getMovementAfterBalance(movement)
+
+    if (afterBalance !== null && afterBalance !== undefined) {
+      return `Tu paquete de regalo incluye ${formatPackageCreditsDescription(afterBalance)}`
+    }
+  }
+
+  return rawDescription
+}
+
+function getCreditMovementAmountMode(movement) {
+  return movement?.displayAmountMode || movement?.display_amount_mode || 'delta'
+}
+
+function formatCreditMovementAmount(movement) {
+  const rawAmount = movement?.displayAmount ?? movement?.display_amount ?? movement?.amount ?? 0
+  if (rawAmount == null || rawAmount === '') return ''
+  const amountNumber = Number(rawAmount)
+  if (!Number.isFinite(amountNumber)) return String(rawAmount)
+  if (amountNumber >= 450) return '+∞'
+  if (amountNumber <= -999) return '-∞'
+  return `${amountNumber > 0 ? '+' : ''}${amountNumber}`
+}
+
 // â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Mapea una reserva al shape interno usado por MisClasesCard / ClassCard
 function toClsShape(r) {
@@ -2070,16 +2142,34 @@ export default function ClientPanel() {
                   </div>
                 ) : useApiFinancialState && (apiCreditMovementsPage.total ?? 0) > 0 ? (
                   paginatedFinancialHistory.items.map((mv) => (
+                      (() => {
+                        const title = getCreditMovementTitle(mv)
+                        const description = getCreditMovementDescription(mv)
+                        const amountMode = getCreditMovementAmountMode(mv)
+                        const amountLabel = formatCreditMovementAmount(mv)
+                        const shouldShowAmount = amountMode !== 'hidden'
+                        const numericAmount = Number(mv?.displayAmount ?? mv?.display_amount ?? mv?.amount ?? 0)
+                        const amountStyle = numericAmount < 0 ? { color: '#e53e3e' } : { color: '#16a34a' }
+                        return (
                       <div key={`mv-${mv.id ?? mv.createdAt}`} className={s.historyRow}>
                         <div className={s.historyIcon}>💳</div>
                         <div style={{ flex: 1 }}>
-                          <div className={s.historyDesc}>{mv.type || 'Movimiento de crédito'}</div>
+                          <div className={s.historyDesc}>{title}</div>
                           <div className={s.historyDate}>{mv.createdAt ? formatFechaISO(mv.createdAt.slice(0, 10)) : 'Sin fecha'}</div>
+                          {description && (
+                            <div className={s.historyDate} style={{ marginTop: 4 }}>
+                              {description}
+                            </div>
+                          )}
                         </div>
-                        <div className={s.historyAmount} style={mv.amount < 0 ? { color: '#e53e3e' } : { color: '#16a34a' }}>
-                          {mv.amount >= 450 ? '+∞' : mv.amount <= -999 ? '-∞' : `${mv.amount > 0 ? '+' : ''}${mv.amount}`}
-                        </div>
+                        {shouldShowAmount && (
+                          <div className={s.historyAmount} style={amountStyle}>
+                            {amountLabel}
+                          </div>
+                        )}
                       </div>
+                        )
+                      })()
                     ))
                 ) : historialPagos.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>
