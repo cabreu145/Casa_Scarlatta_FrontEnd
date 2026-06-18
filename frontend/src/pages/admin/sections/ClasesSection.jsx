@@ -936,6 +936,7 @@ export default function ClasesSection({
               renderItem={(c) => {
                 const pct          = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
                 const isPasada = (() => {
+                  if (c.fin) return new Date(c.fin) < new Date()
                   if (!c.fecha) return false
                   const timeToken = getClassTimeToken(c)
                   const [h, m] = (timeToken || '00:00').split(':').map(Number)

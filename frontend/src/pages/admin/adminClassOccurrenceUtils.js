@@ -84,6 +84,7 @@ export function buildAdminClassOccurrenceRows(classes = [], occurrencesByClass =
           occurrence.cupoDisponible ?? occurrence.capacityAvailable,
           Math.max(0, cupoMax - cupoActual)
         ),
+        fin: occurrence.fin ?? occurrence.end_at ?? occurrence.endAt ?? null,
         estado: occurrence.estado ?? occurrence.status ?? baseClass.estado ?? baseClass.status ?? 'programada',
         status: occurrence.status ?? occurrence.estado ?? baseClass.status ?? baseClass.estado ?? 'programada',
         discipline: occurrence.discipline ?? baseClass.discipline ?? null,
