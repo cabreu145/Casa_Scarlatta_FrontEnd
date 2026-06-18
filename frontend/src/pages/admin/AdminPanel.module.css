@@ -1331,4 +1331,9 @@ details[open] > summary .detailsChevron {
     align-items: flex-start;
     gap: 10px;
   }
+
+  .searchInput {
+    max-width: 100%;
+    width: 100%;
+  }
 }

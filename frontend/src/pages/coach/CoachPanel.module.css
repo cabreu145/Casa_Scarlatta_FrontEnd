@@ -834,6 +834,35 @@
   }
 }
 
+@media (max-width: 480px) {
+  .weekDayBtn {
+    padding: 7px 0;
+    border-radius: 10px;
+  }
+
+  .wdbName {
+    font-size: 8px;
+    letter-spacing: 0.06em;
+  }
+
+  .wdbNum {
+    font-size: 15px;
+  }
+
+  .wdbDot {
+    width: 4px;
+    height: 4px;
+  }
+
+  .content {
+    padding: 16px 12px;
+  }
+
+  .searchInput {
+    width: 100%;
+  }
+}
+
 .searchInput::placeholder { color: var(--muted); }
 .searchInput:focus { border-color: rgba(232,164,173,0.4); }
 

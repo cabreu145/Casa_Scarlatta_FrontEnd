@@ -55,8 +55,7 @@ body {
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
+  max-width: 1126px;
   margin: 0 auto;
   text-align: center;
   border-inline: 1px solid var(--border);
@@ -64,6 +63,12 @@ body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  #root {
+    border-inline: none;
+  }
 }
 
 h1,

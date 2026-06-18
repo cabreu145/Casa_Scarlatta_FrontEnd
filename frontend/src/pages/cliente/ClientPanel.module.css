@@ -1683,3 +1683,26 @@
     width: 100%;
   }
 }
+
+@media (max-width: 480px) {
+  .content {
+    padding: 16px 12px calc(16px + env(safe-area-inset-bottom, 24px));
+  }
+
+  .heroCard {
+    padding: 18px 14px;
+  }
+
+  .pubCard {
+    grid-template-columns: 48px 1fr;
+  }
+
+  .pubAvatarWrap {
+    padding: 12px 6px 12px 10px;
+  }
+
+  .pubAvatar {
+    width: 36px;
+    height: 36px;
+  }
+}
