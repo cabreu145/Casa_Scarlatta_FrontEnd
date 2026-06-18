@@ -91,14 +91,15 @@ export default function PricingSection() {
     navigate(redirect)
   }
 
-  const handleComprar = (pkg) => {
+  const handleComprar = (pkg, { noPromo = false } = {}) => {
     if (authLoading) {
       toast.error('Espera a que cargue tu sesión.')
       return
     }
 
     const packageId = pkg?.id ?? null
-    const redirect = buildPackagePurchaseRedirect(packageId)
+    const base = buildPackagePurchaseRedirect(packageId)
+    const redirect = noPromo ? `${base}&noPromo=true` : base
 
     if (!isAuthenticated) {
       savePendingPackagePurchaseIntent(packageId)
@@ -150,6 +151,7 @@ export default function PricingSection() {
               key={p.id}
               p={p}
               onComprar={() => handleComprar(p)}
+              onComprarSinPromo={() => handleComprar(p, { noPromo: true })}
             />
           ))}
         </div>
@@ -303,28 +305,10 @@ function CornerRibbon({ badge }) {
 }
 
 /* ── Callout regalo 2×1 ── */
-function BogoCallout({ clases, description, featured }) {
-  const n = clases >= 450 ? 'ilimitadas' : clases
-  const text = description
-    ? description
-    : `COMPRAS ${n} CLASES / Y TE REGALAMOS OTRAS ${n}`
+function BogoCallout() {
   return (
-    <div
-      className="z-10 mx-7 mb-2 flex items-center gap-3 rounded-xl px-4 py-2"
-      style={{
-        background: featured
-          ? 'rgba(60,80,50,0.18)'
-          : 'linear-gradient(135deg, rgba(200,220,190,0.9) 0%, rgba(180,205,170,0.7) 100%)',
-        border: featured ? '1px solid rgba(78,104,85,0.45)' : '1px solid rgba(78,104,85,0.5)',
-      }}
-    >
-      <span className="shrink-0 text-[22px] leading-none">🎁</span>
-      <span
-        className="text-[10px] font-extrabold uppercase tracking-[0.12em] leading-tight"
-        style={{ color: featured ? 'rgba(160,210,150,0.95)' : '#2D4A33' }}
-      >
-        {text}
-      </span>
+    <div className="z-10 mx-7 mb-2 flex items-center justify-center">
+      <span className="text-[28px] leading-none">🎁</span>
     </div>
   )
 }
@@ -339,7 +323,6 @@ function SavingsPill({ amount }) {
         boxShadow: '0 4px 20px rgba(200,162,75,0.45)',
       }}
     >
-      <span className="text-[15px] leading-none">$</span>
       <span className="text-[11px] font-black uppercase tracking-[0.16em] text-white">
         Ahorra ${fmt} MXN
       </span>
@@ -384,7 +367,7 @@ function TrustBar({ featured }) {
   )
 }
 
-function PaqueteCard({ p, onComprar }) {
+function PaqueteCard({ p, onComprar, onComprarSinPromo }) {
   const esFeatured = Boolean(p?.destacado)
   const clases = getPackageCredits(p)
   const esUnlimited = clases >= 450
@@ -405,7 +388,7 @@ function PaqueteCard({ p, onComprar }) {
   const promoPriceLabel = precioPromoNum != null
     ? `$${Number(precioPromoNum).toLocaleString('es-MX', { maximumFractionDigits: 2 })} MXN`
     : null
-  const priceLabelMxn = priceLabel?.replace(' MX', ' MXN') ?? priceLabel
+  const priceLabelMxn = priceLabel ?? ''
 
   const remainingCount = activePromo?.remainingCount ?? null
   const isDiscountPromo = !isBogo && !!promoMeta
@@ -476,7 +459,7 @@ function PaqueteCard({ p, onComprar }) {
           )}
         </div>
 
-        {isBogo && <BogoCallout clases={clases} description={activePromo?.description} featured />}
+        {isBogo && <BogoCallout />}
         {hasSavings && <SavingsPill amount={activePromo.discountMxn} />}
 
         {/* Beneficios */}
@@ -510,20 +493,29 @@ function PaqueteCard({ p, onComprar }) {
 
         {/* Botón */}
         {promoMeta ? (
-          <button
-            onClick={onComprar}
-            className="font-sans z-10 mx-7 mb-5 flex items-center justify-center gap-2 rounded-full py-[14px] text-center text-xs font-black uppercase tracking-[0.18em] text-white transition-all duration-300 hover:-translate-y-0.5"
-            style={{
-              background: isBogo
-                ? 'linear-gradient(90deg, #2D4A33, #4E6855, #6B8F72, #4E6855, #2D4A33)'
-                : 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
-              boxShadow: isBogo
-                ? '0 4px 20px rgba(78,104,85,0.45)'
-                : '0 4px 20px rgba(200,162,75,0.45)',
-            }}
-          >
-            Comprar ahora <span className="text-sm leading-none">→</span>
-          </button>
+          <div className="z-10 mx-7 mb-5 flex flex-col gap-2">
+            <button
+              onClick={onComprar}
+              disabled={remainingCount === 0}
+              className="font-sans flex items-center justify-center gap-2 rounded-full py-[14px] text-center text-xs font-black uppercase tracking-[0.18em] text-white transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              style={{
+                background: isBogo
+                  ? 'linear-gradient(90deg, #2D4A33, #4E6855, #6B8F72, #4E6855, #2D4A33)'
+                  : 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
+                boxShadow: isBogo
+                  ? '0 4px 20px rgba(78,104,85,0.45)'
+                  : '0 4px 20px rgba(200,162,75,0.45)',
+              }}
+            >
+              Comprar ahora <span className="text-sm leading-none">→</span>
+            </button>
+            <button
+              onClick={onComprarSinPromo}
+              className="font-sans rounded-full border border-[rgba(245,237,232,0.35)] bg-transparent py-[11px] text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[rgba(245,237,232,0.7)] transition-all duration-300 hover:border-[#F5EDE8] hover:text-[#F5EDE8]"
+            >
+              Comprar al precio regular →
+            </button>
+          </div>
         ) : (
           <button
             onClick={onComprar}
@@ -579,7 +571,7 @@ function PaqueteCard({ p, onComprar }) {
         )}
       </div>
 
-      {isBogo && <BogoCallout clases={clases} description={activePromo?.description} featured={false} />}
+      {isBogo && <BogoCallout />}
       {hasSavings && <SavingsPill amount={activePromo.discountMxn} />}
 
       {/* Beneficios */}
@@ -613,20 +605,29 @@ function PaqueteCard({ p, onComprar }) {
 
       {/* Botón */}
       {promoMeta ? (
-        <button
-          onClick={onComprar}
-          className="font-sans z-10 mx-7 mb-5 flex items-center justify-center gap-2 rounded-full py-[14px] text-center text-xs font-black uppercase tracking-[0.18em] text-white transition-all duration-300 hover:-translate-y-0.5"
-          style={{
-            background: isBogo
-              ? 'linear-gradient(90deg, #2D4A33, #4E6855, #6B8F72, #4E6855, #2D4A33)'
-              : 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
-            boxShadow: isBogo
-              ? '0 4px 20px rgba(78,104,85,0.45)'
-              : '0 4px 20px rgba(200,162,75,0.45)',
-          }}
-        >
-          Comprar ahora <span className="text-sm leading-none">→</span>
-        </button>
+        <div className="z-10 mx-7 mb-5 flex flex-col gap-2">
+          <button
+            onClick={onComprar}
+            disabled={remainingCount === 0}
+            className="font-sans flex items-center justify-center gap-2 rounded-full py-[14px] text-center text-xs font-black uppercase tracking-[0.18em] text-white transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+            style={{
+              background: isBogo
+                ? 'linear-gradient(90deg, #2D4A33, #4E6855, #6B8F72, #4E6855, #2D4A33)'
+                : 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
+              boxShadow: isBogo
+                ? '0 4px 20px rgba(78,104,85,0.45)'
+                : '0 4px 20px rgba(200,162,75,0.45)',
+            }}
+          >
+            Comprar ahora <span className="text-sm leading-none">→</span>
+          </button>
+          <button
+            onClick={onComprarSinPromo}
+            className="font-sans rounded-full border-[1.5px] border-[rgba(123,31,46,0.3)] bg-transparent py-[11px] text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-[#7B5060] transition-all duration-300 hover:border-[#7B1E22] hover:text-[#7B1E22]"
+          >
+            Comprar al precio regular →
+          </button>
+        </div>
       ) : (
         <button
           onClick={onComprar}

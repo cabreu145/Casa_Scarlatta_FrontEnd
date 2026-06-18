@@ -14,7 +14,7 @@ function readEnvFlag(name) {
   return String(value).toLowerCase() === 'true'
 }
 
-export default function PagoModal({ paquete, onClose, onSuccess }) {
+export default function PagoModal({ paquete, onClose, onSuccess, noPromo = false }) {
   const useApiAuth = readEnvFlag('VITE_USE_API_AUTH')
   const useApiReservations = readEnvFlag('VITE_USE_API_RESERVATIONS')
   const useApiFinancialMode = useApiAuth && useApiReservations
@@ -26,7 +26,8 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
   const [loadingCheckout, setLoadingCheckout] = useState(false)
   const [compartirData, setCompartirData] = useState({ activo: false, participantes: [] })
 
-  const isBogo = paquete?.activePromotion?.type === 'buy_one_get_one'
+  const activePromotion = noPromo ? null : (activePromotion ?? null)
+  const isBogo = activePromotion?.type === 'buy_one_get_one'
   const [beneficiarioEmail, setBeneficiarioEmail] = useState('')
   const [beneficiario, setBeneficiario] = useState(null)
   const [buscandoBeneficiario, setBuscandoBeneficiario] = useState(false)
@@ -96,7 +97,7 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
       }
       setLoadingCheckout(true)
       try {
-        const promotionId = paquete?.activePromotion?.id ?? null
+        const promotionId = activePromotion?.id ?? null
         const beneficiaryUserId = isBogo ? (beneficiario?.id ?? null) : null
         const checkout = await createCheckoutPreferenceApi({ packageId: paquete.id, promotionId, beneficiaryUserId })
         const checkoutUrl = checkout.checkoutUrl ?? checkout.checkout_url ?? null
@@ -208,12 +209,12 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
                 {paquete?.descripcion ? <div className={s.paqueteBeneficios}>{paquete.descripcion}</div> : null}
               </div>
               <div className={s.paquetePrecio}>
-                {!isBogo && paquete?.activePromotion?.finalPriceMxn != null ? (
+                {!isBogo && activePromotion?.finalPriceMxn != null ? (
                   <>
                     <div className={s.precioNum} style={{ textDecoration: 'line-through', opacity: 0.45, fontSize: '0.85em' }}>
                       ${Number(paquete?.precio ?? 0).toLocaleString()} MXN
                     </div>
-                    <div className={s.precioNum}>${Number(paquete.activePromotion.finalPriceMxn).toLocaleString()}</div>
+                    <div className={s.precioNum}>${Number(activePromotion.finalPriceMxn).toLocaleString()}</div>
                   </>
                 ) : (
                   <div className={s.precioNum}>${Number(paquete?.precio ?? 0).toLocaleString()}</div>

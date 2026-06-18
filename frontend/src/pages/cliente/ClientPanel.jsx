@@ -197,6 +197,7 @@ export default function ClientPanel() {
   const queryClient = useQueryClient()
   const sectionQuery = new URLSearchParams(location.search).get('section')
   const packageIdQuery = new URLSearchParams(location.search).get('packageId')
+  const noPromoQuery = new URLSearchParams(location.search).get('noPromo') === 'true'
   const [activeSection, setActiveSection] = useState(sectionQuery === 'pagos' ? 'pagos' : 'inicio')
   const [financialHistoryPage, setFinancialHistoryPage] = useState(1)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -1846,7 +1847,7 @@ export default function ClientPanel() {
                 const promoIsBogo = activePromo?.type === 'buy_one_get_one'
                 const promoFinalPrice = activePromo?.finalPriceMxn ?? null
                 const promoPriceLabel = promoFinalPrice != null && !promoIsBogo
-                  ? `$${Number(promoFinalPrice).toLocaleString('es-MX')} MX`
+                  ? `$${Number(promoFinalPrice).toLocaleString('es-MX')} MXN`
                   : null
                 const promoRemaining = activePromo?.remainingCount ?? null
                 const isFeatured = Boolean(p.destacado)
@@ -1932,23 +1933,14 @@ export default function ClientPanel() {
                         boxShadow: '0 3px 12px rgba(200,162,75,0.35)',
                         fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.12em', textTransform: 'uppercase',
                       }}>
-                        $ Ahorra ${new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 }).format(Number(activePromo.discountMxn))} MXN
+                        Ahorra ${new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 }).format(Number(activePromo.discountMxn))} MXN
                       </div>
                     )}
 
                     {/* Callout regalo 2×1 */}
                     {promoIsBogo && (
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        margin: '8px 0 2px',
-                        padding: '8px 12px',
-                        borderRadius: 12,
-                        background: 'linear-gradient(135deg, rgba(200,220,190,0.9), rgba(180,205,170,0.7))',
-                        border: '1px solid rgba(78,104,85,0.5)',
-                        fontSize: 10, fontWeight: 800, color: '#2D4A33', letterSpacing: '0.1em', textTransform: 'uppercase',
-                      }}>
-                        <span style={{ fontSize: 16 }}>🎁</span>
-                        <span>{activePromo?.description || (() => { const n = (p.credits ?? p.clases ?? 0) >= 450 ? 'ilimitadas' : (p.credits ?? p.clases ?? 0); return `COMPRAS ${n} CLASES / Y TE REGALAMOS OTRAS ${n}` })()}</span>
+                      <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 2px' }}>
+                        <span style={{ fontSize: 24 }}>🎁</span>
                       </div>
                     )}
 
@@ -2065,6 +2057,7 @@ export default function ClientPanel() {
         {pagoModal && (
           <PagoModal
           paquete={pagoModal}
+          noPromo={noPromoQuery}
           onClose={() => setPagoModal(null)}
           onSuccess={() => { setPagoModal(null); goTo('reservar') }}
           />

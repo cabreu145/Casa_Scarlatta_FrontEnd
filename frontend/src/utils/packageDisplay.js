@@ -57,8 +57,8 @@ export function formatPackageShareabilityLabel(pkg = {}) {
 
 export function formatPackagePriceLabel(pkg = {}) {
   const price = Number(pkg?.priceMxn ?? pkg?.price_mxn ?? pkg?.precio ?? 0)
-  if (!Number.isFinite(price)) return '$0 MX'
-  return `$${price.toLocaleString()} MX`
+  if (!Number.isFinite(price)) return '$0 MXN'
+  return `$${price.toLocaleString()} MXN`
 }
 
 export function getPackageBenefits(pkg = {}) {
