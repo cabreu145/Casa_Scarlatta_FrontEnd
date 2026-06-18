@@ -1977,22 +1977,49 @@ export default function ClientPanel() {
                     </div>
                     <button
                       className={`${s.btnPricing} ${esPlanActual ? s.btnPricingPrimary : s.btnPricingOutline}`}
-                      style={!esPlanActual && promoBadge && promoRemaining !== 0 ? {
-                        background: promoIsBogo
-                          ? 'linear-gradient(90deg, #2D4A33, #4E6855, #6B8F72, #4E6855, #2D4A33)'
-                          : 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
-                        color: '#fff', border: 'none', fontWeight: 800,
-                      } : undefined}
+                      style={
+                        esPlanActual ? undefined
+                        : membershipStillValid ? (isFeatured ? {
+                          background: 'rgba(255,255,255,0.10)',
+                          color: 'rgba(255,255,255,0.55)',
+                          border: '1.5px solid rgba(255,255,255,0.22)',
+                          cursor: 'not-allowed',
+                          opacity: 0.85,
+                        } : {
+                          background: 'rgba(0,0,0,0.04)',
+                          color: 'var(--muted)',
+                          border: '1.5px solid rgba(0,0,0,0.10)',
+                          cursor: 'not-allowed',
+                          opacity: 0.6,
+                        })
+                        : (!esPlanActual && promoBadge && promoRemaining !== 0) ? {
+                          background: promoIsBogo
+                            ? 'linear-gradient(90deg, #2D4A33, #4E6855, #6B8F72, #4E6855, #2D4A33)'
+                            : 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
+                          color: '#fff', border: 'none', fontWeight: 800,
+                        } : undefined
+                      }
                       onClick={() => {
-                        if (esPlanActual) return
+                        if (esPlanActual || membershipStillValid) return
                         setSelectedPackageId(String(p.id))
                         setPagoModal(p)
                       }}
-                      disabled={esPlanActual || (promoBadge && promoRemaining === 0)}
+                      disabled={esPlanActual || membershipStillValid || (promoBadge && promoRemaining === 0)}
                      >
-                      {esPlanActual ? 'Plan actual' : isSelectedPackage ? 'Comprar ahora' : 'Seleccionar'}
+                      {esPlanActual ? 'Plan actual' : membershipStillValid ? 'Plan activo' : isSelectedPackage ? 'Comprar ahora' : 'Seleccionar'}
                     </button>
-                    {promoBadge && promoRemaining === 0 && !esPlanActual && (
+                    {membershipStillValid && !esPlanActual && (
+                      <p style={{
+                        margin: '8px 0 0',
+                        fontSize: 11,
+                        color: isFeatured ? 'rgba(255,255,255,0.45)' : 'var(--muted)',
+                        textAlign: 'center',
+                        lineHeight: 1.4,
+                      }}>
+                        Usa o vence tu plan actual antes de renovar
+                      </p>
+                    )}
+                    {!membershipStillValid && promoBadge && promoRemaining === 0 && !esPlanActual && (
                       <button
                         style={{
                           width: '100%', marginTop: 8,
