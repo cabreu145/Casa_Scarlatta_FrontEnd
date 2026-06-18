@@ -509,12 +509,14 @@ function PaqueteCard({ p, onComprar, onComprarSinPromo }) {
             >
               Comprar ahora <span className="text-sm leading-none">→</span>
             </button>
-            <button
-              onClick={onComprarSinPromo}
-              className="font-sans rounded-full border border-[rgba(245,237,232,0.35)] bg-transparent py-[11px] text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[rgba(245,237,232,0.7)] transition-all duration-300 hover:border-[#F5EDE8] hover:text-[#F5EDE8]"
-            >
-              Comprar al precio regular →
-            </button>
+            {remainingCount === 0 && (
+              <button
+                onClick={onComprarSinPromo}
+                className="font-sans rounded-full border border-[rgba(245,237,232,0.35)] bg-transparent py-[11px] text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-[rgba(245,237,232,0.7)] transition-all duration-300 hover:border-[#F5EDE8] hover:text-[#F5EDE8]"
+              >
+                Comprar al precio regular →
+              </button>
+            )}
           </div>
         ) : (
           <button
@@ -621,12 +623,14 @@ function PaqueteCard({ p, onComprar, onComprarSinPromo }) {
           >
             Comprar ahora <span className="text-sm leading-none">→</span>
           </button>
-          <button
-            onClick={onComprarSinPromo}
-            className="font-sans rounded-full border-[1.5px] border-[rgba(123,31,46,0.3)] bg-transparent py-[11px] text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-[#7B5060] transition-all duration-300 hover:border-[#7B1E22] hover:text-[#7B1E22]"
-          >
-            Comprar al precio regular →
-          </button>
+          {remainingCount === 0 && (
+            <button
+              onClick={onComprarSinPromo}
+              className="font-sans rounded-full border-[1.5px] border-[rgba(123,31,46,0.3)] bg-transparent py-[11px] text-center text-[10px] font-semibold uppercase tracking-[0.1em] text-[#7B5060] transition-all duration-300 hover:border-[#7B1E22] hover:text-[#7B1E22]"
+            >
+              Comprar al precio regular →
+            </button>
+          )}
         </div>
       ) : (
         <button
