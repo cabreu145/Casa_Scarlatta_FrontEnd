@@ -255,6 +255,7 @@ export default function ClientPanel() {
   const [resDayIdx,  setResDayIdx]  = useState(0)
   const [misClasesStatusFilter, setMisClasesStatusFilter] = useState('all')
   const [pagoModal, setPagoModal] = useState(null)
+  const [noPromoModal, setNoPromoModal] = useState(false)
   const [seatSelectorClass, setSeatSelectorClass] = useState(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   //const sectionQuery = new URLSearchParams(location.search).get('section')
@@ -1837,9 +1838,19 @@ export default function ClientPanel() {
                   No hay paquetes activos disponibles.
                 </div>
               ) : paquetesDisponibles.map((p) => {
-                const esPlanActual = useApiFinancialState
-                  ? activeMembership?.packageName === getPackageDisplayName(p)
-                  : usuario?.paquete === getPackageDisplayName(p)
+                const membershipStillValid = useApiFinancialState
+                  ? (() => {
+                      const am = effectiveActiveMembership
+                      if (!am) return false
+                      const isUnlimited = (am.creditsTotal ?? 0) >= 450
+                      const hasCredits = isUnlimited || (am.creditsAvailable ?? 0) > 0
+                      const notExpired = !am.expiresAt || new Date(am.expiresAt) > new Date()
+                      return hasCredits && notExpired
+                    })()
+                  : true
+                const esPlanActual = membershipStillValid && (useApiFinancialState
+                  ? effectiveActiveMembership?.packageName === getPackageDisplayName(p)
+                  : usuario?.paquete === getPackageDisplayName(p))
                 const isSelectedPackage = selectedPackageId != null && String(p.id) === String(selectedPackageId)
                 const shareableLabel = formatPackageShareabilityLabel(p)
                 const activePromo = p?.activePromotion ?? null
@@ -1966,7 +1977,7 @@ export default function ClientPanel() {
                     </div>
                     <button
                       className={`${s.btnPricing} ${esPlanActual ? s.btnPricingPrimary : s.btnPricingOutline}`}
-                      style={!esPlanActual && promoBadge ? {
+                      style={!esPlanActual && promoBadge && promoRemaining !== 0 ? {
                         background: promoIsBogo
                           ? 'linear-gradient(90deg, #2D4A33, #4E6855, #6B8F72, #4E6855, #2D4A33)'
                           : 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
@@ -1977,10 +1988,34 @@ export default function ClientPanel() {
                         setSelectedPackageId(String(p.id))
                         setPagoModal(p)
                       }}
-                      disabled={esPlanActual}
+                      disabled={esPlanActual || (promoBadge && promoRemaining === 0)}
                      >
                       {esPlanActual ? 'Plan actual' : isSelectedPackage ? 'Comprar ahora' : 'Seleccionar'}
                     </button>
+                    {promoBadge && promoRemaining === 0 && !esPlanActual && (
+                      <button
+                        style={{
+                          width: '100%', marginTop: 8,
+                          padding: '10px 16px', borderRadius: 50,
+                          background: 'none',
+                          border: '1.5px solid rgba(123,31,46,0.25)',
+                          color: '#9A6070',
+                          fontSize: 10, fontWeight: 600,
+                          fontFamily: 'var(--font-body)',
+                          letterSpacing: '0.1em', textTransform: 'uppercase',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#7B1E22'; e.currentTarget.style.color = '#7B1E22' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(123,31,46,0.25)'; e.currentTarget.style.color = '#9A6070' }}
+                        onClick={() => {
+                          setSelectedPackageId(String(p.id))
+                          setNoPromoModal(true)
+                          setPagoModal(p)
+                        }}
+                      >
+                        Comprar al precio regular →
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -2057,9 +2092,9 @@ export default function ClientPanel() {
         {pagoModal && (
           <PagoModal
           paquete={pagoModal}
-          noPromo={noPromoQuery}
-          onClose={() => setPagoModal(null)}
-          onSuccess={() => { setPagoModal(null); goTo('reservar') }}
+          noPromo={noPromoQuery || noPromoModal}
+          onClose={() => { setPagoModal(null); setNoPromoModal(false) }}
+          onSuccess={() => { setPagoModal(null); setNoPromoModal(false); goTo('reservar') }}
           />
         )}
         {shareMembershipModal && (

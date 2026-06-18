@@ -26,7 +26,7 @@ export default function PagoModal({ paquete, onClose, onSuccess, noPromo = false
   const [loadingCheckout, setLoadingCheckout] = useState(false)
   const [compartirData, setCompartirData] = useState({ activo: false, participantes: [] })
 
-  const activePromotion = noPromo ? null : (activePromotion ?? null)
+  const activePromotion = noPromo ? null : (paquete?.activePromotion ?? null)
   const isBogo = activePromotion?.type === 'buy_one_get_one'
   const [beneficiarioEmail, setBeneficiarioEmail] = useState('')
   const [beneficiario, setBeneficiario] = useState(null)

@@ -260,7 +260,8 @@ export default function PuntoDeVentaSection({
   function addProductToCart(item) {
     // Intercept BOGO packages before any other logic
     if (item.kind === 'package') {
-      const pkgPromo = item.item.activePromotion ?? null
+      const pkgPromoRaw = item.item.activePromotion ?? null
+      const pkgPromo = pkgPromoRaw?.remainingCount === 0 ? null : pkgPromoRaw
       if (pkgPromo?.type === 'buy_one_get_one') {
         if (item.kind === 'package' && !selectedCustomerId) {
           toast.error('Selecciona cliente para vender paquete.')
@@ -295,7 +296,8 @@ export default function PuntoDeVentaSection({
       toast.error('Selecciona cliente para vender paquete.')
       return
     }
-    const pkgPromo = item.kind === 'package' ? (item.item.activePromotion ?? null) : null
+    const pkgPromoRaw = item.kind === 'package' ? (item.item.activePromotion ?? null) : null
+    const pkgPromo = pkgPromoRaw?.remainingCount === 0 ? null : pkgPromoRaw
 
     const payload = item.kind === 'package'
       ? {
@@ -660,7 +662,8 @@ export default function PuntoDeVentaSection({
               {visibleItems.map(({ kind, item }) => {
                 const isPackage = kind === 'package'
                 const name = isPackage ? getPackageDisplayName(item) : item.name
-                const pkgPromoCard = isPackage ? (item.activePromotion ?? null) : null
+                const pkgPromoRaw = isPackage ? (item.activePromotion ?? null) : null
+                const pkgPromoCard = pkgPromoRaw?.remainingCount === 0 ? null : pkgPromoRaw
                 const pkgPromoIsBogo = pkgPromoCard?.type === 'buy_one_get_one'
                 const basePrice = Number(item.priceMxn ?? item.price_mxn ?? item.precio ?? 0)
                 const promoPrice = pkgPromoCard?.finalPriceMxn != null && !pkgPromoIsBogo ? Number(pkgPromoCard.finalPriceMxn) : null
