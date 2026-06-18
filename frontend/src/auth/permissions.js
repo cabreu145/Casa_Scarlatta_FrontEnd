@@ -5,6 +5,7 @@ export const ADMIN_SECTION_PERMISSIONS = {
   coaches: ['coaches.read'],
   clases: ['classes.read'],
   paquetes: ['packages.read'],
+  promociones: ['packages.read', 'packages.update'],
   pos: ['pos.read', 'pos.sell', 'pos.products.manage'],
   usuarios: ['users.read', 'clients.read'],
   finanzas: ['finance.read'],

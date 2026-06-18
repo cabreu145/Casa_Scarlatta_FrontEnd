@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react'
+﻿import { useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import styles from '../AdminPanel.module.css'
@@ -26,6 +26,7 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { hasAnyPermission, hasPermission } from '@/auth/permissions'
 import { resolvePackagePurchaseErrorMessage } from '@/utils/packagePurchasePolicy'
+import { buscarClientePorEmailApi } from '@/services/paymentsApiService'
 
 function FilterChips({ options, active, onChange }) {
   return (
@@ -137,6 +138,12 @@ export default function PuntoDeVentaSection({
   const [buyerSearch, setBuyerSearch] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [bogoModal, setBogoModal] = useState(null) // { item } pending cart add
+  const [bogoSearch, setBogoSearch] = useState('')
+  const [bogoBeneficiario, setBogoBeneficiario] = useState(null)
+  const [bogoBeneficiarioError, setBogoBeneficiarioError] = useState('')
+  const [bogoBuscando, setBogoBuscando] = useState(false)
+  const bogoDebounceRef = useRef(null)
   const [notes, setNotes] = useState('')
   const [saleResult, setSaleResult] = useState(null)
   const [whatsappPhone, setWhatsappPhone] = useState('')
@@ -251,6 +258,22 @@ export default function PuntoDeVentaSection({
   }, [apiPackages, apiProducts, canReadProducts, posFilter, productSearch, useApiMode])
 
   function addProductToCart(item) {
+    // Intercept BOGO packages before any other logic
+    if (item.kind === 'package') {
+      const pkgPromo = item.item.activePromotion ?? null
+      if (pkgPromo?.type === 'buy_one_get_one') {
+        if (item.kind === 'package' && !selectedCustomerId) {
+          toast.error('Selecciona cliente para vender paquete.')
+          return
+        }
+        setBogoModal({ item, pkgPromo })
+        setBogoSearch('')
+        setBogoBeneficiario(null)
+        setBogoBeneficiarioError('')
+        return
+      }
+    }
+
     if (!useApiMode) {
       addToCart?.(item)
       return
@@ -272,17 +295,22 @@ export default function PuntoDeVentaSection({
       toast.error('Selecciona cliente para vender paquete.')
       return
     }
+    const pkgPromo = item.kind === 'package' ? (item.item.activePromotion ?? null) : null
+
     const payload = item.kind === 'package'
       ? {
           type: 'package',
           id: item.item.id,
           name: getPackageDisplayName(item.item),
           quantity: 1,
-          unitPriceMxn: Number(item.item.priceMxn ?? item.item.price_mxn ?? item.item.precio ?? 0),
+          unitPriceMxn: Number(pkgPromo?.finalPriceMxn ?? item.item.priceMxn ?? item.item.price_mxn ?? item.item.precio ?? 0),
           beneficiariesText: '',
           packageId: item.item.id,
           isShareable: Boolean(item.item.isShareable),
           maxBeneficiaries: Number(item.item.maxBeneficiaries ?? 0),
+          promotionId: pkgPromo?.id ?? null,
+          activePromotion: pkgPromo,
+          beneficiaryUserId: null,
         }
       : {
           type: 'product',
@@ -294,6 +322,54 @@ export default function PuntoDeVentaSection({
           category: item.item.category,
         }
     addToCart?.(payload)
+  }
+
+  function handleBogoEmailChange(e) {
+    const val = e.target.value
+    setBogoSearch(val)
+    setBogoBeneficiario(null)
+    setBogoBeneficiarioError('')
+    clearTimeout(bogoDebounceRef.current)
+    if (val.length >= 5 && val.includes('@')) {
+      bogoDebounceRef.current = setTimeout(async () => {
+        setBogoBuscando(true)
+        try {
+          const result = await buscarClientePorEmailApi(val.trim())
+          if (result?.id && String(result.id) !== String(selectedCustomerId)) {
+            setBogoBeneficiario(result)
+          } else if (String(result?.id) === String(selectedCustomerId)) {
+            setBogoBeneficiarioError('El beneficiario no puede ser el mismo comprador.')
+          }
+        } catch (err) {
+          const msg = err?.payload?.detail?.message ?? err?.message ?? 'No se encontró un cliente con ese correo.'
+          setBogoBeneficiarioError(msg)
+        } finally {
+          setBogoBuscando(false)
+        }
+      }, 600)
+    }
+  }
+
+  function confirmBogoAdd() {
+    if (!bogoModal || !bogoBeneficiario) return
+    const { item, pkgPromo } = bogoModal
+    const payload = {
+      type: 'package',
+      id: item.item.id,
+      name: getPackageDisplayName(item.item),
+      quantity: 1,
+      unitPriceMxn: Number(item.item.priceMxn ?? item.item.price_mxn ?? item.item.precio ?? 0),
+      beneficiariesText: '',
+      packageId: item.item.id,
+      isShareable: Boolean(item.item.isShareable),
+      maxBeneficiaries: Number(item.item.maxBeneficiaries ?? 0),
+      promotionId: pkgPromo?.id ?? null,
+      activePromotion: pkgPromo,
+      beneficiaryUserId: bogoBeneficiario.id,
+      beneficiaryName: bogoBeneficiario.name,
+    }
+    addToCart?.(payload)
+    setBogoModal(null)
   }
 
   async function submitSale() {
@@ -584,7 +660,11 @@ export default function PuntoDeVentaSection({
               {visibleItems.map(({ kind, item }) => {
                 const isPackage = kind === 'package'
                 const name = isPackage ? getPackageDisplayName(item) : item.name
-                const price = isPackage ? Number(item.priceMxn ?? item.price_mxn ?? item.precio ?? 0) : Number(item.priceMxn ?? item.price_mxn ?? item.precio ?? 0)
+                const pkgPromoCard = isPackage ? (item.activePromotion ?? null) : null
+                const pkgPromoIsBogo = pkgPromoCard?.type === 'buy_one_get_one'
+                const basePrice = Number(item.priceMxn ?? item.price_mxn ?? item.precio ?? 0)
+                const promoPrice = pkgPromoCard?.finalPriceMxn != null && !pkgPromoIsBogo ? Number(pkgPromoCard.finalPriceMxn) : null
+                const price = promoPrice ?? basePrice
                 const categoryLabel = getCategoryName(item)
                 const emoji = isPackage ? (item.isFeatured ? '⭐' : '📦') : categoryEmoji(categoryLabel)
                 const isInactive = !isPackage && item.isActive === false
@@ -596,15 +676,47 @@ export default function PuntoDeVentaSection({
                       onClick={() => addProductToCart({ kind, item, isActive: item.isActive, stock: item.stock })}
                       disabled={isInactive || isOutOfStock || (useApiMode && !canSellPos)}
                       type="button"
+                      style={pkgPromoCard ? { position: 'relative', overflow: 'hidden' } : undefined}
                     >
-                      <div className={styles.productEmoji}>{emoji}</div>
+                      {pkgPromoCard?.badgeLabel && (
+                        <div style={{
+                          position: 'absolute', top: 0, left: 0, right: 0,
+                          background: pkgPromoCard.type === 'buy_one_get_one' ? '#4E6855' : '#A07830',
+                          color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
+                          textAlign: 'center', padding: '3px 0', lineHeight: 1.4,
+                        }}>
+                          🏷 {pkgPromoCard.badgeLabel}
+                        </div>
+                      )}
+                      <div className={styles.productEmoji} style={pkgPromoCard?.badgeLabel ? { marginTop: 16 } : undefined}>{emoji}</div>
                       <div className={styles.productName}>{name}</div>
-                      <div className={styles.productPrice}>{money(price)}</div>
+                      {promoPrice != null ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', textDecoration: 'line-through' }}>{money(basePrice)}</div>
+                          <div className={styles.productPrice} style={{ color: '#4ade80' }}>{money(promoPrice)}</div>
+                        </div>
+                      ) : (
+                        <div className={styles.productPrice}>{money(price)}</div>
+                      )}
                       {isPackage ? (
                         <div style={{ marginTop: 8, fontSize: 11, color: 'var(--muted)' }}>
                           <div>{formatPackageCreditsLabel(item)}</div>
                           <div>{formatPackageValidityLabel(item)}</div>
                           <div>{formatPackageShareabilityLabel(item) || 'No compartible'}</div>
+                          {pkgPromoCard?.type === 'buy_one_get_one' && pkgPromoCard?.bonusPackageName && (
+                            <div style={{ color: '#86efac', marginTop: 2 }}>+1 {pkgPromoCard.bonusPackageName}</div>
+                          )}
+                          {pkgPromoCard?.remainingCount != null && pkgPromoCard.remainingCount > 0 && (
+                            <div style={{
+                              color: pkgPromoCard.remainingCount <= 5 ? '#f87171' : pkgPromoCard.remainingCount <= 10 ? '#fb923c' : '#86efac',
+                              marginTop: 2, fontWeight: pkgPromoCard.remainingCount <= 10 ? 700 : 'normal',
+                            }}>
+                              {pkgPromoCard.remainingCount <= 5 ? '🔴' : pkgPromoCard.remainingCount <= 10 ? '⚠️' : '🎟️'} {pkgPromoCard.remainingCount <= 10 ? `¡Solo quedan ${pkgPromoCard.remainingCount}!` : `${pkgPromoCard.remainingCount} disponibles`}
+                            </div>
+                          )}
+                          {pkgPromoCard?.remainingCount === 0 && (
+                            <div style={{ color: '#f87171', marginTop: 2, fontWeight: 700 }}>🔴 Agotada</div>
+                          )}
                         </div>
                       ) : (
                         <div style={{ marginTop: 8, fontSize: 11, color: 'var(--muted)' }}>
@@ -969,7 +1081,48 @@ export default function PuntoDeVentaSection({
             </PosEntityModal>
           </div>,
           document.body
-        )}      </>
+        )}
+
+      {/* Modal beneficiario 2×1 */}
+      {bogoModal && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setBogoModal(null) }}>
+          <div style={{ background: '#1E1218', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', color: '#F5EDE8' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>🎁 Paquete 2×1</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 18 }}>
+              Este paquete incluye un regalo para otro cliente. Ingresa el correo del beneficiario (quien recibirá el paquete extra).
+            </div>
+            <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 6 }}>Correo del beneficiario</label>
+            <input
+              type="email"
+              autoFocus
+              placeholder="correo@ejemplo.com"
+              value={bogoSearch}
+              onChange={handleBogoEmailChange}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.15)', background: 'var(--surface-alt, rgba(255,255,255,0.07))', color: 'inherit', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+            />
+            {bogoBuscando && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>Buscando...</div>}
+            {bogoBeneficiario && (
+              <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(78,104,85,0.15)', border: '1px solid rgba(78,104,85,0.4)', fontSize: 13 }}>
+                ✅ <strong>{bogoBeneficiario.name}</strong> — {bogoBeneficiario.email}
+              </div>
+            )}
+            {bogoBeneficiarioError && <div style={{ marginTop: 6, fontSize: 12, color: '#f87171' }}>⚠️ {bogoBeneficiarioError}</div>}
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button onClick={() => setBogoModal(null)}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'inherit', fontSize: 13, cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              <button onClick={confirmBogoAdd} disabled={!bogoBeneficiario}
+                style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', background: bogoBeneficiario ? 'linear-gradient(90deg,#2D4A33,#4E6855,#6B8F72)' : 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: bogoBeneficiario ? 'pointer' : 'not-allowed' }}>
+                Agregar al carrito
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      </>
     )
   }
 
@@ -1101,6 +1254,7 @@ export default function PuntoDeVentaSection({
           </button>
         </div>
       </div>
+
     </>
   )
 }

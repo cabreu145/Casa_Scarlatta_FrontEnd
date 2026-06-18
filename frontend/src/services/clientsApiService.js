@@ -51,11 +51,15 @@ export async function deleteClientApi(id) {
   return (await httpDelete(ENDPOINTS.adminClientById(id))) ?? { success: true, id }
 }
 
-export async function assignClientPackageApi(id, { packageId, notes } = {}) {
-  const response = await httpPost(ENDPOINTS.adminClientPackages(id), {
+export async function assignClientPackageApi(id, { packageId, notes, promotionId, beneficiaryUserId } = {}) {
+  const body = {
     package_id: Number(packageId),
     notes: String(notes ?? '').trim() || null,
-  })
+  }
+  if (promotionId != null) body.promotion_id = Number(promotionId)
+  if (beneficiaryUserId != null) body.beneficiary_user_id = Number(beneficiaryUserId)
+
+  const response = await httpPost(ENDPOINTS.adminClientPackages(id), body)
   return mapBackendClientToFrontend(response)
 }
 

@@ -72,6 +72,7 @@ export const ENDPOINTS = {
   clientMembershipBeneficiaryById: (membershipId, beneficiaryId) =>
     withPrefix(`/clientes/me/memberships/${membershipId}/beneficiaries/${beneficiaryId}`),
   adminClients: withPrefix('/clientes'),
+  clienteBuscarPorEmail: (email) => withPrefix(`/clientes/buscar?email=${encodeURIComponent(email)}`),
   adminClientsPaginated: ({ page, pageSize, search, status, membershipStatus }) =>
     withQuery('/clientes', {
       page,
@@ -240,6 +241,14 @@ export const ENDPOINTS = {
   createPaymentCheckoutPreference: withPrefix('/pagos/checkout-preference'),
   getPaymentStatus: ({ externalReference }) =>
     withPrefix(`/pagos/estado?external_reference=${externalReference ?? ''}`),
+
+  packagePromotions: withPrefix('/package-promotions'),
+  packagePromotionsPaginated: ({ page, pageSize, search, packageId, isActive } = {}) =>
+    withQuery('/package-promotions', { page, page_size: pageSize, search, package_id: packageId, is_active: isActive }),
+  packagePromotionById: (id) => withPrefix(`/package-promotions/${id}`),
+  packagePromotionStatusById: (id) => withPrefix(`/package-promotions/${id}/status`),
+  packagePromotionRedemptions: (id) => withPrefix(`/package-promotions/${id}/redemptions`),
+  packagePromotionsReleaseExpired: withPrefix('/package-promotions/release-expired'),
 
   reportes: withPrefix('/admin/reportes'),
   finanzas: withPrefix('/admin/finanzas'),

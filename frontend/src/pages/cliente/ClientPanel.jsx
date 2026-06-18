@@ -258,6 +258,7 @@ export default function ClientPanel() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   //const sectionQuery = new URLSearchParams(location.search).get('section')
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
+  const [isLoadingOccurrences, setIsLoadingOccurrences] = useState(false)
   const [financialRefreshTick, setFinancialRefreshTick] = useState(0)
   const [misClasesPage, setMisClasesPage] = useState(1)
   const [apiCreditMovementsPageLegacy, setApiCreditMovementsPageLegacy] = useState({
@@ -419,6 +420,7 @@ export default function ClientPanel() {
     const from = resWeekDays[0]?.isoDate
     const to = resWeekDays[resWeekDays.length - 1]?.isoDate
     if (!from || !to) return
+    setIsLoadingOccurrences(true)
     let active = true
     let controller = new AbortController()
     const classIds = Array.from(new Set(clases.map((c) => c.id)))
@@ -427,9 +429,10 @@ export default function ClientPanel() {
       controller = new AbortController()
       try {
         const data = await getOccurrencesForDateRangeApi(classIds, { from, to, signal: controller.signal })
-        if (active) setOccurrencesByClass(data)
+        if (active) { setOccurrencesByClass(data); setIsLoadingOccurrences(false) }
       } catch (err) {
         if (err?.name === 'AbortError') return
+        if (active) setIsLoadingOccurrences(false)
       }
     }
     fetchOccurrences().catch(() => {})
@@ -1497,6 +1500,10 @@ export default function ClientPanel() {
                     )
                   })}
                 </div>
+              ) : isLoadingOccurrences ? (
+                <div className={s.skeletonList}>
+                  {[1, 2, 3].map(n => <div key={n} className={s.skeletonCard} />)}
+                </div>
               ) : (
                 <div className={s.emptyDay}>
                   <div className={s.emptyDayIcon}>📅</div>
@@ -1834,10 +1841,20 @@ export default function ClientPanel() {
                   : usuario?.paquete === getPackageDisplayName(p)
                 const isSelectedPackage = selectedPackageId != null && String(p.id) === String(selectedPackageId)
                 const shareableLabel = formatPackageShareabilityLabel(p)
+                const activePromo = p?.activePromotion ?? null
+                const promoBadge = activePromo?.badgeLabel ?? null
+                const promoIsBogo = activePromo?.type === 'buy_one_get_one'
+                const promoFinalPrice = activePromo?.finalPriceMxn ?? null
+                const promoPriceLabel = promoFinalPrice != null && !promoIsBogo
+                  ? `$${Number(promoFinalPrice).toLocaleString('es-MX')} MX`
+                  : null
+                const promoRemaining = activePromo?.remainingCount ?? null
+                const isFeatured = Boolean(p.destacado)
+
                 return (
                   <div
                     key={p.id}
-                    className={`${s.pricingCard} ${p.destacado ? s.featured : ''}`}
+                    className={`${s.pricingCard} ${isFeatured ? s.featured : ''}`}
                     style={isSelectedPackage ? { border: '1px solid rgba(123,31,46,0.35)', boxShadow: '0 18px 42px rgba(123,31,46,0.16)' } : undefined}
                   >
                     {isSelectedPackage && (
@@ -1845,14 +1862,111 @@ export default function ClientPanel() {
                         Seleccionado
                       </span>
                     )}
-                    {p.destacado && <span className={s.pricingTag}>Popular</span>}
+                    {!isSelectedPackage && isFeatured && <span className={s.pricingTag}>Popular</span>}
+
+                    {/* ── Banner de promoción ── */}
+                    {promoBadge && (
+                      <div style={{
+                        margin: '-24px -24px 16px -24px',
+                        padding: '9px 16px',
+                        background: promoIsBogo
+                          ? 'linear-gradient(90deg, #354A3A, #4E6855, #6B8F72, #4E6855, #354A3A)'
+                          : 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
+                        borderBottom: promoIsBogo ? '1px solid rgba(78,104,85,0.5)' : '1px solid rgba(200,162,75,0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 10,
+                        borderRadius: '14px 14px 0 0',
+                        position: 'relative',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          position: 'absolute', inset: 0, pointerEvents: 'none',
+                          background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%)',
+                        }} />
+                        <span style={{ fontSize: 12, fontWeight: 900, letterSpacing: '0.22em', color: '#fff', textTransform: 'uppercase' }}>
+                          {promoBadge}
+                        </span>
+                        <span style={{ width: 1, height: 12, background: 'rgba(255,255,255,0.45)' }} />
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.22em', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase' }}>
+                          Promoción activa
+                        </span>
+                      </div>
+                    )}
+
                     <div className={s.pricingName}>{getPackageDisplayName(p)}</div>
                     <div className={s.pricingClasses}>
                       {formatPackageCreditsLabel(p)}
                     </div>
-                    <div className={s.pricingPrice}>{formatPackagePriceLabel(p)}</div>
+
+                    {/* ── Precio (con o sin descuento) ── */}
+                    {promoPriceLabel ? (
+                      <div>
+                        <div style={{
+                          fontFamily: 'var(--font-display)',
+                          fontSize: 18,
+                          fontStyle: 'italic',
+                          textDecoration: 'line-through',
+                          opacity: 0.35,
+                          color: isFeatured ? '#fff' : 'var(--wine)',
+                          lineHeight: 1,
+                          marginBottom: 2,
+                        }}>
+                          {formatPackagePriceLabel(p)}
+                        </div>
+                        <div className={s.pricingPrice}>{promoPriceLabel}</div>
+                      </div>
+                    ) : (
+                      <div className={s.pricingPrice}>{formatPackagePriceLabel(p)}</div>
+                    )}
+
+                    {/* Pill de ahorro */}
+                    {!promoIsBogo && promoPriceLabel && activePromo?.discountMxn != null && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        margin: '6px 0 2px',
+                        padding: '6px 14px',
+                        borderRadius: 999,
+                        background: 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
+                        boxShadow: '0 3px 12px rgba(200,162,75,0.35)',
+                        fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.12em', textTransform: 'uppercase',
+                      }}>
+                        $ Ahorra ${new Intl.NumberFormat('es-MX', { maximumFractionDigits: 2 }).format(Number(activePromo.discountMxn))} MXN
+                      </div>
+                    )}
+
+                    {/* Callout regalo 2×1 */}
+                    {promoIsBogo && (
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        margin: '8px 0 2px',
+                        padding: '8px 12px',
+                        borderRadius: 12,
+                        background: 'linear-gradient(135deg, rgba(200,220,190,0.9), rgba(180,205,170,0.7))',
+                        border: '1px solid rgba(78,104,85,0.5)',
+                        fontSize: 10, fontWeight: 800, color: '#2D4A33', letterSpacing: '0.1em', textTransform: 'uppercase',
+                      }}>
+                        <span style={{ fontSize: 16 }}>🎁</span>
+                        <span>{activePromo?.description || (() => { const n = (p.credits ?? p.clases ?? 0) >= 450 ? 'ilimitadas' : (p.credits ?? p.clases ?? 0); return `COMPRAS ${n} CLASES / Y TE REGALAMOS OTRAS ${n}` })()}</span>
+                      </div>
+                    )}
+
                     <div className={s.pricingPeriod}>{formatPackageValidityLabel(p)}</div>
                     <div className={s.pricingFeatures}>
+                      {promoRemaining != null && promoRemaining > 0 && promoRemaining <= 10 && (
+                        <div className={s.pricingFeature} style={{
+                          color: promoRemaining <= 5 ? '#C0392B' : '#A07830',
+                          fontWeight: 700,
+                        }}>
+                          {promoRemaining <= 5 ? '🔴' : '⚠️'} ¡Solo quedan {promoRemaining} disponibles!
+                        </div>
+                      )}
+                      {promoRemaining === 0 && promoBadge && (
+                        <div className={s.pricingFeature} style={{ color: '#C0392B', fontWeight: 700 }}>
+                          🔴 Promoción agotada
+                        </div>
+                      )}
                       {shareableLabel && <div className={s.pricingFeature}>{shareableLabel}</div>}
                       {(p.beneficios || []).map((b, i) => (
                         <div key={i} className={s.pricingFeature}>{b}</div>
@@ -1860,6 +1974,12 @@ export default function ClientPanel() {
                     </div>
                     <button
                       className={`${s.btnPricing} ${esPlanActual ? s.btnPricingPrimary : s.btnPricingOutline}`}
+                      style={!esPlanActual && promoBadge ? {
+                        background: promoIsBogo
+                          ? 'linear-gradient(90deg, #2D4A33, #4E6855, #6B8F72, #4E6855, #2D4A33)'
+                          : 'linear-gradient(90deg, #B8892A, #D4A843, #F0CC6A, #D4A843, #B8892A)',
+                        color: '#fff', border: 'none', fontWeight: 800,
+                      } : undefined}
                       onClick={() => {
                         if (esPlanActual) return
                         setSelectedPackageId(String(p.id))

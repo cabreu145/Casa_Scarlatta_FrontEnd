@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import { useUsuariosStore } from '@/stores/usuariosStore'
 import { asignarPaqueteService } from '@/services/usuariosService'
-import { createCheckoutPreferenceApi } from '@/services/paymentsApiService'
+import { createCheckoutPreferenceApi, buscarClientePorEmailApi } from '@/services/paymentsApiService'
 import { logPaqueteVendido } from '@/services/actividadService'
 import { saveLastPaymentExternalReference, upsertRecentPaymentReference } from './paymentTracking'
 import { resolvePackagePurchaseErrorMessage } from '@/utils/packagePurchasePolicy'
@@ -25,6 +25,43 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
   const [error, setError] = useState('')
   const [loadingCheckout, setLoadingCheckout] = useState(false)
   const [compartirData, setCompartirData] = useState({ activo: false, participantes: [] })
+
+  const isBogo = paquete?.activePromotion?.type === 'buy_one_get_one'
+  const [beneficiarioEmail, setBeneficiarioEmail] = useState('')
+  const [beneficiario, setBeneficiario] = useState(null)
+  const [buscandoBeneficiario, setBuscandoBeneficiario] = useState(false)
+  const [beneficiarioError, setBeneficiarioError] = useState('')
+  const debounceRef = useRef(null)
+
+  async function buscarBeneficiario(email) {
+    if (!email || email.length < 5 || !email.includes('@')) {
+      setBeneficiario(null)
+      setBeneficiarioError('')
+      return
+    }
+    setBuscandoBeneficiario(true)
+    setBeneficiarioError('')
+    try {
+      const result = await buscarClientePorEmailApi(email.trim())
+      setBeneficiario(result)
+    } catch (err) {
+      setBeneficiario(null)
+      const msg = err?.payload?.detail?.message ?? err?.message ?? 'No se encontró un cliente con ese correo.'
+      setBeneficiarioError(msg)
+    } finally {
+      setBuscandoBeneficiario(false)
+    }
+  }
+
+  function handleBeneficiarioEmailChange(e) {
+    const val = e.target.value
+    setBeneficiarioEmail(val)
+    setBeneficiario(null)
+    setBeneficiarioError('')
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => buscarBeneficiario(val), 600)
+  }
+
   const [form, setForm] = useState({
     numero: '',
     nombre: '',
@@ -53,9 +90,15 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
   async function handlePagar() {
     if (useApiFinancialMode) {
       setError('')
+      if (isBogo && !beneficiario) {
+        setError('Debes ingresar el correo del beneficiario del paquete regalo antes de continuar.')
+        return
+      }
       setLoadingCheckout(true)
       try {
-        const checkout = await createCheckoutPreferenceApi({ packageId: paquete.id })
+        const promotionId = paquete?.activePromotion?.id ?? null
+        const beneficiaryUserId = isBogo ? (beneficiario?.id ?? null) : null
+        const checkout = await createCheckoutPreferenceApi({ packageId: paquete.id, promotionId, beneficiaryUserId })
         const checkoutUrl = checkout.checkoutUrl ?? checkout.checkout_url ?? null
         const externalReference = checkout.externalReference ?? checkout.external_reference ?? null
 
@@ -165,10 +208,48 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
                 {paquete?.descripcion ? <div className={s.paqueteBeneficios}>{paquete.descripcion}</div> : null}
               </div>
               <div className={s.paquetePrecio}>
-                <div className={s.precioNum}>${Number(paquete?.precio ?? 0).toLocaleString()}</div>
+                {!isBogo && paquete?.activePromotion?.finalPriceMxn != null ? (
+                  <>
+                    <div className={s.precioNum} style={{ textDecoration: 'line-through', opacity: 0.45, fontSize: '0.85em' }}>
+                      ${Number(paquete?.precio ?? 0).toLocaleString()} MXN
+                    </div>
+                    <div className={s.precioNum}>${Number(paquete.activePromotion.finalPriceMxn).toLocaleString()}</div>
+                  </>
+                ) : (
+                  <div className={s.precioNum}>${Number(paquete?.precio ?? 0).toLocaleString()}</div>
+                )}
                 <div className={s.precioSub}>MXN</div>
               </div>
             </div>
+
+            {isBogo && (
+              <div style={{ marginBottom: 16, padding: '14px 16px', borderRadius: 12, background: 'rgba(78,104,85,0.08)', border: '1px solid rgba(78,104,85,0.3)' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#2D4A33', marginBottom: 8 }}>
+                  🎁 ¿A quién le regalas el paquete extra?
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>
+                  Ingresa el correo de la persona que recibirá el paquete de regalo (debe ser cliente activo).
+                </div>
+                <input
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={beneficiarioEmail}
+                  onChange={handleBeneficiarioEmailChange}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid rgba(78,104,85,0.4)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                />
+                {buscandoBeneficiario && (
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>Buscando...</div>
+                )}
+                {beneficiario && (
+                  <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: 'rgba(78,104,85,0.12)', border: '1px solid rgba(78,104,85,0.35)', fontSize: 13 }}>
+                    ✅ <strong>{beneficiario.name}</strong> — {beneficiario.email}
+                  </div>
+                )}
+                {beneficiarioError && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#C0392B' }}>⚠️ {beneficiarioError}</div>
+                )}
+              </div>
+            )}
 
             <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5, marginBottom: 16 }}>
               Serás redirigido a Mercado Pago para completar tu pago de forma segura.
@@ -176,7 +257,7 @@ export default function PagoModal({ paquete, onClose, onSuccess }) {
 
             {error && <div className={s.errorMsg}>⚠️ {error}</div>}
 
-            <button className={s.btnPrimary} onClick={handlePagar} disabled={loadingCheckout}>
+            <button className={s.btnPrimary} onClick={handlePagar} disabled={loadingCheckout || (isBogo && !beneficiario)}>
               {loadingCheckout ? 'Creando checkout...' : 'Continuar a Mercado Pago'}
             </button>
             <button className={s.btnGhost} onClick={onClose}>Cancelar</button>

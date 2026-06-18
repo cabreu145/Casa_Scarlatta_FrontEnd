@@ -1,3 +1,25 @@
+function normalizeActivePromotion(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const type = String(raw.type ?? raw.promotion_type ?? '').trim()
+  if (!type) return null
+  return {
+    id: raw.id ?? null,
+    type,
+    name: String(raw.name ?? '').trim() || null,
+    badgeLabel: String(raw.badgeLabel ?? raw.badge_label ?? '').trim() || null,
+    discountPercent: raw.discountPercent ?? raw.discount_percent ?? null,
+    originalPriceMxn: raw.originalPriceMxn ?? raw.original_price_mxn ?? null,
+    discountMxn: raw.discountMxn ?? raw.discount_mxn ?? null,
+    finalPriceMxn: raw.finalPriceMxn ?? raw.final_price_mxn ?? null,
+    remainingCount: raw.remainingCount ?? raw.remaining_count ?? null,
+    bonusPackageId: raw.bonusPackageId ?? raw.bonus_package_id ?? null,
+    bonusPackageName: raw.bonusPackageName ?? raw.bonus_package_name ?? null,
+    description: String(raw.description ?? '').trim() || null,
+    startsAt: raw.startsAt ?? raw.starts_at ?? null,
+    endsAt: raw.endsAt ?? raw.ends_at ?? null,
+  }
+}
+
 export function mapBackendPackageToFrontend(payload = {}) {
   const credits = Number(payload.credits ?? payload.clases ?? 0)
   const priceMxn = Number(payload.price_mxn ?? payload.precio ?? 0)
@@ -53,6 +75,9 @@ export function mapBackendPackageToFrontend(payload = {}) {
     beneficios: benefits,
     description: payload.description ?? payload.descripcion ?? '',
     descripcion: payload.description ?? payload.descripcion ?? '',
+    activePromotion: normalizeActivePromotion(
+      payload.activePromotion ?? payload.active_promotion ?? null
+    ),
     raw: payload,
   }
 }

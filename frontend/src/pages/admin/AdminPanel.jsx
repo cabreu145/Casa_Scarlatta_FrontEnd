@@ -5,6 +5,7 @@ import DashboardSection from './sections/DashboardSection'
 import CoachesSection from './sections/CoachesSection'
 import ClasesSection from './sections/ClasesSection'
 import PaquetesSection from './sections/PaquetesSection'
+import PromocionesSection from './sections/PromocionesSection'
 import PuntoDeVentaSection from './sections/PuntoDeVentaSection'
 import PosEntityModal from './components/PosEntityModal'
 import UsuariosSection from './sections/UsuariosSection'
@@ -175,8 +176,9 @@ const SECTIONS = {
   dashboard: { title: 'Dashboard',        sub: ''                                    },
   coaches:   { title: 'Coaches',          sub: 'Gestión y perfiles del equipo'       },
   clases:    { title: 'Clases',           sub: 'Calendario y gestión de clases'      },
-  paquetes:  { title: 'Paquetes',         sub: 'Gestión y venta de paquetes'         },
-  pos:       { title: 'Punto de Venta',   sub: 'Venta de productos en estudio'       },
+  paquetes:      { title: 'Paquetes',         sub: 'Gestión y venta de paquetes'         },
+  promociones:   { title: 'Promociones',      sub: 'Descuentos y 2x1 por paquete'        },
+  pos:           { title: 'Punto de Venta',   sub: 'Venta de productos en estudio'       },
   usuarios:  { title: 'Usuarios',         sub: 'Gestión de miembros activos'         },
   finanzas:  { title: 'Finanzas',         sub: 'Resumen financiero del estudio'       },
   gastos:    { title: 'Gastos',           sub: 'Control de gastos operativos'        },
@@ -1518,8 +1520,9 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 ? String(coachesBadgeQuery.data ?? apiCoachList.length ?? coaches.length)
                 : String(coaches.length),
             },
-            { id: 'clases',    icon: '🗓', label: 'Clases'       },
-            { id: 'paquetes',  icon: '📦', label: 'Paquetes'     },
+            { id: 'clases',       icon: '🗓', label: 'Clases'       },
+            { id: 'paquetes',     icon: '📦', label: 'Paquetes'     },
+            { id: 'promociones',  icon: '🏷', label: 'Promociones'  },
           ].filter(({ id }) => canAccessAdminSection(usuario, id)).map(({ id, icon, label, badge }) => (
             <button
               key={id}
@@ -1702,6 +1705,15 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               onPageChange={setApiPackagesPage}
               onToggleActive={handleTogglePackageStatus}
               onToggleFeatured={handleTogglePackageFeatured}
+            />
+          </section>
+
+          {/* ── PROMOCIONES ── */}
+          <section className={`${styles.section}${activeSection === 'promociones' ? ' ' + styles.active : ''}`}>
+            <PromocionesSection
+              paquetes={useApiPackages ? packagesForAdmin : paquetes}
+              useApiMode={useApiPackages}
+              isActive={activeSection === 'promociones'}
             />
           </section>
 
@@ -3931,11 +3943,17 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                         }}
                       >
                         <option value="">Sin paquete</option>
-                        {packagesForClients.map(p => (
-                          <option key={p.id} value={useApiClients ? String(p.id) : getPackageDisplayName(p)}>
-                            {getPackageDisplayName(p)} — {formatPackagePriceLabel(p)} ({formatPackageCreditsLabel(p)})
-                          </option>
-                        ))}
+                        {packagesForClients.map(p => {
+                          const promo = p?.activePromotion ?? null
+                          const promoLabel = promo?.badgeLabel
+                            ? ` 🏷 ${promo.badgeLabel}${promo.finalPriceMxn != null ? ` → $${Number(promo.finalPriceMxn).toLocaleString('es-MX')}` : ''}`
+                            : ''
+                          return (
+                            <option key={p.id} value={useApiClients ? String(p.id) : getPackageDisplayName(p)}>
+                              {getPackageDisplayName(p)} — {formatPackagePriceLabel(p)} ({formatPackageCreditsLabel(p)}){promoLabel}
+                            </option>
+                          )
+                        })}
                       </select>
                     </div>
                     {!useApiClients && <div style={{ flex: 1 }}>
@@ -3956,10 +3974,13 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                         if (useApiClients) {
                           const packageId = Number(asignarPaqueteForm.paqueteNombre)
                           if (!packageId) return toast.error('Selecciona un paquete valido.')
+                          const selectedPkg = (packagesForClients ?? []).find(p => p.id === packageId)
+                          const promotionId = selectedPkg?.activePromotion?.id ?? null
                           try {
                             await assignClientPackageApi(u.id, {
                               packageId,
                               notes: `Asignacion manual admin para ${u.nombre}`,
+                              promotionId,
                             })
                             await refreshClientDetail(u.id)
                             toast.success('Paquete asignado')

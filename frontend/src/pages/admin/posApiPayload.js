@@ -74,12 +74,23 @@ export function buildPosSaleApiPayload({ customerId, items = [], paymentMethod, 
       ? normalizeBeneficiaries(item.beneficiaries ?? item.beneficiaryEmails ?? item.beneficiariesText)
       : []
 
+    const promotionId = type === 'package'
+      ? (item.promotionId ?? item.promotion_id ?? item.activePromotion?.id ?? null)
+      : null
+    const beneficiaryUserId = type === 'package'
+      ? (item.beneficiaryUserId ?? item.beneficiary_user_id ?? null)
+      : null
+
     return {
       type,
       id: Number(item.id ?? item.itemId ?? item.productId ?? item.packageId),
       quantity: Math.max(1, Number(item.quantity ?? 1) || 1),
       unit_price_mxn: Number(item.unit_price_mxn ?? item.unitPriceMxn ?? item.priceMxn ?? item.price ?? 0),
-      ...(type === 'package' ? { beneficiaries } : {}),
+      ...(type === 'package' ? {
+        beneficiaries,
+        ...(promotionId != null ? { promotion_id: Number(promotionId) } : {}),
+        ...(beneficiaryUserId != null ? { beneficiary_user_id: Number(beneficiaryUserId) } : {}),
+      } : {}),
     }
   })
 

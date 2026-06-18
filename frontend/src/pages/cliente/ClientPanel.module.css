@@ -1248,6 +1248,27 @@
   flex-shrink: 0;
 }
 
+/* ── SKELETON LOADING ──────────────────────────────────────────────────────── */
+.skeletonList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.skeletonCard {
+  height: 90px;
+  border-radius: 16px;
+  background: linear-gradient(90deg, #ede5df 25%, #f5ede8 50%, #ede5df 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeletonShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* ── EMPTY DAY STATE ───────────────────────────────────────────────────────── */
 .emptyDay {
   text-align: center;
