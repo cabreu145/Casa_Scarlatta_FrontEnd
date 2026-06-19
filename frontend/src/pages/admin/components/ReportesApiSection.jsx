@@ -15,6 +15,7 @@ import {
   useTopClassesReportQuery,
   useUsersReportQuery,
   usePosSalesQuery,
+  useFinanceRecentSalesQuery,
   useSiteConfigurationQuery,
   useAdminClientsQuery,
   useExpensesQuery,
@@ -365,6 +366,7 @@ export default function ReportesApiSection({ inPanel = false }) {
   const coachPaymentsQuery = useCoachPaymentsReportQuery({ from, to, enabled: true })
   const payTableQuery = usePayTableQuery({ enabled: canReadPayTable })
   const salesQuery = usePosSalesQuery({ from, to, pageSize: 100, page: 1, enabled: true })
+  const recentSalesQuery = useFinanceRecentSalesQuery({ limit: 500, enabled: true })
   const allClientsQuery = useAdminClientsQuery({ pageSize: 100, page: 1, enabled: true })
   const expensesQuery = useExpensesQuery({ from, to, pageSize: 100, page: 1, enabled: true })
   const cashClosingsQuery = useCashClosingsQuery({ from, to, pageSize: 100, page: 1, enabled: true })
@@ -463,6 +465,22 @@ export default function ReportesApiSection({ inPanel = false }) {
   }
 
   const salesItems = salesQuery.data?.items ?? []
+
+  const recentSalesForFolio = recentSalesQuery.data ?? []
+
+  // Build folio lookup from recentSalesQuery (includes POS + MP sales with their folios)
+  // keyed by totalMxn + date-day to enrich finance.transactions that lack MP folios
+  const folioByAmountAndDay = useMemo(() => {
+    const map = new Map()
+    for (const s of recentSalesForFolio) {
+      if (!s.folio || !s.createdAt) continue
+      const day = new Date(s.createdAt).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' })
+      const key = `${day}_${s.totalMxn}`
+      if (!map.has(key)) map.set(key, s.folio)
+    }
+    return map
+  }, [recentSalesForFolio])
+
   const financeTransactionRows = useMemo(() => {
     const metodosLabel = {
       cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia',
@@ -482,10 +500,14 @@ export default function ReportesApiSection({ inPanel = false }) {
           : '—'
         const metodoKey = (t.metodo ?? '').toLowerCase()
         const metodo = metodosLabel[metodoKey] || t.metodo || '—'
+        const folio = t.folio
+          || t.raw?.folio || t.raw?.code || t.raw?.external_id || t.raw?.payment_id
+          || folioByAmountAndDay.get(`${fecha}_${t.montoMxn}`)
+          || '—'
         return {
           Fecha:    fecha,
           Hora:     hora,
-          Folio:    t.folio || '—',
+          Folio:    folio,
           Concepto: t.concepto || '—',
           Producto: t.producto || '—',
           Método:   metodo,
@@ -494,7 +516,7 @@ export default function ReportesApiSection({ inPanel = false }) {
       })
     }
 
-    // Fallback: build rows from POS sales query (legacy path, no MP)
+    // Fallback: build rows from POS sales query
     return salesItems.map((sale) => {
       const raw = String(sale.createdAt ?? sale.created_at ?? '')
       const dateObj = raw ? new Date(raw) : null
@@ -526,7 +548,7 @@ export default function ReportesApiSection({ inPanel = false }) {
         Monto:    sale.totalMxn ?? sale.total_mxn ?? 0,
       }
     })
-  }, [salesItems, finance])
+  }, [salesItems, finance, folioByAmountAndDay])
 
   const allClients = allClientsQuery.data?.items ?? []
 

@@ -18,6 +18,7 @@ import {
   useTodayCashClosingQuery,
 } from '@/hooks/useApiQueries'
 import { exportFinanceCsv } from '@/services/financeApiService'
+import { getSalesApi } from '@/services/posApiService'
 import { abrirReportePDF } from '@/utils/reportePDF'
 import { formatBusinessDateTime } from '@/utils/formatters'
 import styles from '@/styles/dashboard.module.css'
@@ -473,6 +474,51 @@ export default function FinanzasApiSection({ inPanel = false }) {
       setExportMessage(error?.status === 401 || error?.status === 403
         ? 'Sin permisos para exportar.'
         : 'No se pudo exportar el archivo. Intenta nuevamente.')
+    } finally {
+      setExportingType(null)
+    }
+  }
+
+  const handleExportVentasCsv = async () => {
+    setExportingType('sales')
+    setExportMessage('Preparando descarga...')
+    try {
+      const METODO_ES = { cash: 'Efectivo', card: 'Tarjeta de crédito', transfer: 'Transferencia', mercadoPago: 'Mercado Pago', mercadopago: 'Mercado Pago', other: 'Otro' }
+      const STATUS_ES = { paid: 'Pagado', pending: 'Pendiente', cancelled: 'Cancelado', refunded: 'Reembolsado' }
+      let allSales = []
+      let page = 1
+      const pageSize = 100
+      while (true) {
+        const result = await getSalesApi({ from: dashboardRange.from, to: dashboardRange.to, page, pageSize, status: 'paid' })
+        const items = result?.items ?? result?.data ?? (Array.isArray(result) ? result : [])
+        allSales = allSales.concat(items)
+        const total = result?.total ?? result?.pagination?.total ?? null
+        if (items.length < pageSize || (total !== null && allSales.length >= total)) break
+        page++
+      }
+      const header = ['Folio', 'Estado', 'Cliente', 'Email', 'Método de pago', 'Subtotal', 'Impuesto', 'Total', 'Fecha'].join(',')
+      const rows = allSales.map((s) => [
+        s.folio ?? '',
+        STATUS_ES[s.status] ?? s.status ?? '',
+        `"${(s.customerName ?? '').replace(/"/g, '""')}"`,
+        s.customerEmail ?? '',
+        METODO_ES[s.paymentMethod] ?? s.paymentMethod ?? '',
+        s.subtotalMxn ?? 0,
+        s.taxMxn ?? 0,
+        s.totalMxn ?? 0,
+        s.createdAt ? new Date(s.createdAt).toLocaleString('es-MX', { timeZone: 'America/Merida' }) : '',
+      ].join(','))
+      const csv = [header, ...rows].join('\n')
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `ventas-${dashboardRange.from}_${dashboardRange.to}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      setExportMessage('Archivo CSV descargado.')
+    } catch {
+      setExportMessage('No se pudo exportar el archivo. Intenta nuevamente.')
     } finally {
       setExportingType(null)
     }
@@ -1169,9 +1215,9 @@ export default function FinanzasApiSection({ inPanel = false }) {
           <PanelTitle title="Resumen del día" sub="Ventas y gastos recientes." />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 16 }}>
             {[
-              { label: 'Ventas', value: formatMoneyMx(todayClosing.totalMxn), helper: `${todayClosing.salesCount} ventas`, color: '#22c55e' },
-              { label: 'Gastos', value: formatMoneyMx(todayClosing.expensesTotalMxn), helper: 'Gastos activos del día', color: '#ef4444' },
-              { label: 'Neto', value: formatMoneyMx(todayClosing.netTotalMxn), helper: 'Ingresos - gastos', color: todayClosing.netTotalMxn >= 0 ? '#22c55e' : '#ef4444' },
+              { label: 'Ventas', value: formatMoneyMx(kpis.sales.totalMxn), helper: `${kpis.sales.count} ventas`, color: '#22c55e' },
+              { label: 'Gastos', value: formatMoneyMx(kpis.expenses.totalMxn), helper: `${kpis.expenses.count} registros`, color: '#ef4444' },
+              { label: 'Neto', value: formatMoneyMx(kpis.net.totalMxn), helper: 'Ingresos - gastos', color: kpis.net.totalMxn >= 0 ? '#22c55e' : '#ef4444' },
               { label: 'Corte', value: todayClosing.isClosed ? 'Cerrado' : 'Abierto', helper: todayClosing.date ? `Fecha ${formatDateMx(todayClosing.date)}` : 'Sin fecha', color: todayClosing.isClosed ? '#22c55e' : '#F59E0B' },
             ].map((item) => (
               <div key={item.label} style={{ background: '#2C1A1E', borderRadius: 8, padding: '12px 14px', border: `1px solid ${item.color}33` }}>
@@ -1251,7 +1297,7 @@ export default function FinanzasApiSection({ inPanel = false }) {
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
           <button
             className={`${styles.btn} ${styles.btnSecondary} ${styles.btnSm}`}
-            onClick={() => handleExportFinanceCsv('sales')}
+            onClick={() => handleExportVentasCsv()}
             disabled={exportingType === 'sales'}
           >
             {exportingType === 'sales' ? 'Descargando...' : 'CSV Ventas'}

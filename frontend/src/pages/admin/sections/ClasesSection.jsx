@@ -494,7 +494,11 @@ export default function ClasesSection({
     return hoy
   })
   const [modalImport, setModalImport] = useState(false)
-  const [vistaLista, setVistaLista]   = useState(false)
+  const [vistaMode, setVistaMode]     = useState('semana') // 'dia' | 'semana' | 'lista'
+  const vistaLista = vistaMode === 'lista'
+  const [semanaWeekOff, setSemanaWeekOff] = useState(0)
+  const [semanaOccurrencesByClass, setSemanaOccurrencesByClass] = useState({})
+  const [semanaOccurrencesLoading, setSemanaOccurrencesLoading] = useState(false)
   const [clasesListPage, setClasesListPage] = useState(1)
   const [clasesSearch, setClasesSearch] = useState('')
   const [clasesStatusFilter, setClasesStatusFilter] = useState('activa')
@@ -655,6 +659,59 @@ export default function ClasesSection({
       return matchesSearch && matchesCoach && matchesStatus && matchesDiscipline
     })
   }, [clasesBaseApi, clasesCoachFilter, clasesSearch, clasesStatusFilter, selectedDiscipline, useApiClasses])
+
+  const DAYS_ABBR_ADMIN = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB']
+  const MONTHS_ES_ADMIN = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+  const semanaWeekDays = useMemo(() => {
+    const hoy = new Date(); hoy.setHours(0,0,0,0)
+    const dow = hoy.getDay()
+    const lunes = new Date(hoy)
+    lunes.setDate(hoy.getDate() - (dow === 0 ? 6 : dow - 1) + semanaWeekOff * 7)
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(lunes); d.setDate(lunes.getDate() + i)
+      const y = d.getFullYear()
+      const m = String(d.getMonth()+1).padStart(2,'0')
+      const day = String(d.getDate()).padStart(2,'0')
+      return { date: d, isoDate: `${y}-${m}-${day}`, abbr: DAYS_ABBR_ADMIN[d.getDay()], num: d.getDate(), month: MONTHS_ES_ADMIN[d.getMonth()], year: y }
+    })
+  }, [semanaWeekOff])
+
+  const semanaMonthLabel = useMemo(() => {
+    const a = semanaWeekDays[0], b = semanaWeekDays[6]
+    if (a.month === b.month) return `${a.month.toUpperCase()} ${b.year}`
+    return `${a.month.toUpperCase()} — ${b.month.toUpperCase()} ${b.year}`
+  }, [semanaWeekDays])
+
+  useEffect(() => {
+    if (!useApiClasses || vistaMode !== 'semana' || !clasesApiFiltradasBase.length) {
+      setSemanaOccurrencesByClass({})
+      return
+    }
+    const classIds = clasesApiFiltradasBase.map(c => c.id).filter(Boolean)
+    if (!classIds.length) return
+    setSemanaOccurrencesLoading(true)
+    let active = true
+    const from = semanaWeekDays[0].isoDate
+    const to   = semanaWeekDays[6].isoDate
+    getOccurrencesForDateRangeApi(classIds, { from, to })
+      .then(data => { if (active) { setSemanaOccurrencesByClass(data ?? {}); setSemanaOccurrencesLoading(false) } })
+      .catch(() => { if (active) setSemanaOccurrencesLoading(false) })
+    return () => { active = false }
+  }, [clasesApiFiltradasBase, semanaWeekDays, useApiClasses, vistaMode])
+
+  const semanaClasesByDay = useMemo(() => {
+    if (vistaMode !== 'semana') return {}
+    const merged = buildAdminClassOccurrenceRows(clasesApiFiltradasBase, semanaOccurrencesByClass)
+    const filtered = filterAdminClassRows(merged, { search: clasesSearch, discipline: clasesFilter, status: clasesStatusFilter, coachId: clasesCoachFilter })
+    const result = {}
+    for (const day of semanaWeekDays) {
+      result[day.isoDate] = filtered.filter(c => c.fecha === day.isoDate).sort((a, b) => (a.hora ?? '').localeCompare(b.hora ?? ''))
+    }
+    return result
+  }, [clasesApiFiltradasBase, clasesCoachFilter, clasesFilter, clasesSearch, clasesStatusFilter, semanaOccurrencesByClass, semanaWeekDays, vistaMode])
+
+
 
   useEffect(() => {
     if (!useApiClasses) return
@@ -830,30 +887,24 @@ export default function ClasesSection({
             <>
               {/* Vista toggle */}
               <div style={{ display: 'flex', gap: 4, marginRight: 4 }}>
-                <button
-                  onClick={() => setVistaLista(false)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 8, fontSize: 12,
-                    fontFamily: 'var(--font-body)', cursor: 'pointer',
-                    background: !vistaLista ? 'rgba(123,31,46,0.15)' : 'transparent',
-                    border: !vistaLista ? '1px solid rgba(123,31,46,0.4)' : '1px solid var(--neutral-border)',
-                    color: !vistaLista ? '#E8A4AD' : 'var(--text-muted)',
-                  }}
-                >
-                  📅 Calendario
-                </button>
-                <button
-                  onClick={() => setVistaLista(true)}
-                  style={{
-                    padding: '6px 14px', borderRadius: 8, fontSize: 12,
-                    fontFamily: 'var(--font-body)', cursor: 'pointer',
-                    background: vistaLista ? 'rgba(123,31,46,0.15)' : 'transparent',
-                    border: vistaLista ? '1px solid rgba(123,31,46,0.4)' : '1px solid var(--neutral-border)',
-                    color: vistaLista ? '#E8A4AD' : 'var(--text-muted)',
-                  }}
-                >
-                  ☰ Lista
-                </button>
+                {[
+                  { key: 'semana', label: '📅 Calendario' },
+                  { key: 'dia',    label: '⬛ Semana' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setVistaMode(key)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 8, fontSize: 12,
+                      fontFamily: 'var(--font-body)', cursor: 'pointer',
+                      background: vistaMode === key ? 'rgba(123,31,46,0.15)' : 'transparent',
+                      border: vistaMode === key ? '1px solid rgba(123,31,46,0.4)' : '1px solid var(--neutral-border)',
+                      color: vistaMode === key ? '#E8A4AD' : 'var(--text-muted)',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
               {canCreateClass && (
                 <>
@@ -871,7 +922,7 @@ export default function ClasesSection({
       </div>
 
       {/* Ã¢â€â‚¬Ã¢â€â‚¬ Vista Calendario Ã¢â€â‚¬Ã¢â€â‚¬ */}
-      {!vistaLista && (
+      {vistaMode === 'dia' && (
         <>
           {/* Toolbar de selecciÃƒÂ³n */}
           {selectMode && (() => {
@@ -1106,7 +1157,103 @@ export default function ClasesSection({
       )}
 
       {/* Ã¢â€â‚¬Ã¢â€â‚¬ Vista Lista Ã¢â€â‚¬Ã¢â€â‚¬ */}
-      {vistaLista && (() => {
+      {/* Vista Semana */}
+      {vistaMode === 'semana' && (
+        <div style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <button
+              onClick={() => setSemanaWeekOff(w => Math.max(0, w - 1))}
+              disabled={semanaWeekOff === 0}
+              style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--neutral-border)', background: 'transparent', cursor: semanaWeekOff === 0 ? 'default' : 'pointer', opacity: semanaWeekOff === 0 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', fontSize: 18 }}
+            >&lsaquo;</button>
+            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>{semanaMonthLabel}</span>
+            <button onClick={() => setSemanaWeekOff(w => w + 1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--neutral-border)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', fontSize: 18 }}>&rsaquo;</button>
+            {semanaOccurrencesLoading && <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#93c5fd' }}>Cargando...</span>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(180px, 1fr))', gap: 8, minWidth: 900 }}>
+            {semanaWeekDays.map((day) => {
+              const hoyIso = new Date().toISOString().split('T')[0]
+              const isToday = day.isoDate === hoyIso
+              const clasesDia = semanaClasesByDay[day.isoDate] ?? []
+              return (
+                <div key={day.isoDate} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ textAlign: 'center', padding: '8px 4px', borderRadius: 10, marginBottom: 2, background: isToday ? 'rgba(123,31,46,0.25)' : 'rgba(255,255,255,0.03)', border: isToday ? '1px solid rgba(123,31,46,0.5)' : '1px solid var(--neutral-border)' }}>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, fontWeight: 700, color: isToday ? '#E8A4AD' : 'var(--text-muted)', letterSpacing: '0.1em' }}>{day.abbr}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 20, fontWeight: 700, color: isToday ? '#fff' : 'var(--text-primary)' }}>{day.num}</div>
+                  </div>
+                  {clasesDia.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '20px 8px', color: 'rgba(255,255,255,0.2)', fontFamily: 'var(--font-body)', fontSize: 12 }}>-</div>
+                  ) : clasesDia.map((c, ci) => {
+                    const isSlowCls = isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo)
+                    const pct = c.cupoMax > 0 ? Math.round((c.cupoActual / c.cupoMax) * 100) : 0
+                    const isPasada = (() => {
+                      if (!c.fecha) return false
+                      const tok = getClassTimeToken(c)
+                      const [hh, mm] = (tok || '00:00').split(':').map(Number)
+                      const fin = new Date(c.fecha + 'T00:00:00')
+                      fin.setHours(hh + Math.floor((c.duracion||50)/60), mm + (c.duracion||50)%60)
+                      return fin < new Date()
+                    })()
+                    const classActionId = resolveClassActionId(c)
+                    return (
+                      <div key={ci} style={{ background: 'var(--neutral-card)', border: '1px solid var(--neutral-border)', borderRadius: 10, padding: '10px 10px 8px', display: 'flex', flexDirection: 'column', gap: 5, opacity: isPasada ? 0.7 : 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{getClassDisplayTime(c)}</span>
+                          <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 20, fontWeight: 700, background: isSlowCls ? 'rgba(59,130,246,0.15)' : 'rgba(239,68,68,0.15)', color: isSlowCls ? '#60a5fa' : '#f87171' }}>{isSlowCls ? 'SLOW' : 'STRYDE X'}</span>
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{c.nombre}</div>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)' }}>{c.coachNombre}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ flex: 1, height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.08)' }}>
+                            <div style={{ height: '100%', borderRadius: 2, width: pct + '%', background: pct >= 90 ? '#ef4444' : pct >= 60 ? '#eab308' : '#22c55e' }} />
+                          </div>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{c.cupoActual}/{c.cupoMax}</span>
+                        </div>
+                        <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 20, alignSelf: 'flex-start', background: isPasada ? 'rgba(255,255,255,0.05)' : pct >= 100 ? 'rgba(239,68,68,0.12)' : pct >= 80 ? 'rgba(234,179,8,0.12)' : 'rgba(34,197,94,0.12)', color: isPasada ? 'rgba(255,255,255,0.3)' : pct >= 100 ? '#ef4444' : pct >= 80 ? '#eab308' : '#22c55e' }}>
+                          {isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'}
+                        </span>
+                        <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                          {canReadRoster && (
+                            <button onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }} title='Ver alumnos' style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}>
+                              Alumnos ({c.cupoActual})
+                            </button>
+                          )}
+                          {canUpdateClass && (
+                            <button
+                              onClick={() => {
+                                if (!classActionId) { toast.error('No se pudo identificar la clase.'); return }
+                                setModalEditClase({ ...c, id: classActionId })
+                                setEditClaseForm({ nombre: c.nombre, tipo: c.tipo, coach: c.coachNombre === 'Sin asignar' ? '' : c.coachNombre, dia: c.dia, hora: c.hora, duracion: String(c.duracion||50), cupoMax: String(c.cupoMax||15), descripcion: c.descripcion||'', publicarEn: c.publicarEn ? new Date(c.publicarEn).toISOString().slice(0,16) : '', fecha: c.fecha ?? '' })
+                              }}
+                              title='Editar'
+                              style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}
+                            >Editar</button>
+                          )}
+                          {canDeleteClass && (
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm('Eliminar clase: ' + c.nombre + '?')) return
+                                if (!classActionId) { toast.error('No se pudo identificar la clase.'); return }
+                                await handleDeleteClase(classActionId)
+                                logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                                toast.success('Clase eliminada')
+                              }}
+                              title='Eliminar'
+                              style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}
+                            >Borrar</button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+            {vistaLista && (() => {
         const isSlow = (tipo) => isSlowDiscipline(tipo)
         const sourceList = (useBackendPaginationInList && apiListState.isPaginated)
           ? (apiListState.items ?? [])

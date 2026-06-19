@@ -92,12 +92,13 @@ function mapFinanceSummary(payload = {}) {
 function mapFinanceTransaction(t = {}) {
   return {
     fecha: t.fecha ?? null,
-    folio: t.folio ?? null,
+    folio: t.folio ?? t.code ?? t.external_id ?? t.externalId ?? t.payment_id ?? t.paymentId ?? t.mp_id ?? null,
     concepto: t.concepto ?? '',
     producto: t.producto ?? null,
     metodo: t.metodo ?? '—',
     montoMxn: toNumber(t.monto_mxn ?? t.montoMxn, 0),
     tipo: t.tipo ?? 'pos',
+    raw: t,
   }
 }
 
