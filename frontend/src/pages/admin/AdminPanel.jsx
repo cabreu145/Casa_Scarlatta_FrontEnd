@@ -1328,10 +1328,13 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       setProdModal(null)
       setProdForm({ nombre: '', categoria: 'Accesorios', categoryId: '', precio: '', stock: '', emoji: '' })
     } catch (error) {
-      toast.error(error?.message ?? 'No se pudo guardar el producto')
+      toast.error(error?.message === 'Failed to fetch'
+          ? 'No se pudo conectar con el servidor. Verifica tu conexión.'
+          : (error?.message ?? 'No se pudo guardar el producto')
+      )
     }
   }
-
+  
   async function handleEliminarProducto() {
     try {
       if (useApiPos) {
