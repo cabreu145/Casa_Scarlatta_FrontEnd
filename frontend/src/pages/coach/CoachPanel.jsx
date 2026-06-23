@@ -15,6 +15,7 @@ import { useOccurrenceRosterQuery, usePublicCoachesQuery } from '@/hooks/useApiQ
 import CoachAvatar from '@/components/common/CoachAvatar'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
+import SeatMapViewer from '@/features/clases/SeatMapViewer'
 import s from './CoachPanel.module.css'
 
 // â”€â”€ Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -112,6 +113,7 @@ export default function CoachPanel() {
   const [selectedDay, setSelectedDay] = useState(KEYS[new Date().getDay()])
   const [weekOffset, setWeekOffset]   = useState(0)
   const [modalClass, setModalClass]       = useState(null)  // class object | null
+  const [viewMapClass, setViewMapClass]   = useState(null)  // { cls, occurrenceId } | null
   const { usuario, logout } = useAuth()
   const { clases } = useClasesStore()
   const { coaches } = useCoachesStore()
@@ -435,7 +437,7 @@ export default function CoachPanel() {
                   No tienes clases asignadas esta semana.
                 </div>
               ) : (
-                <WeekTable classes={misClases} onOpen={openModal} />
+                <WeekTable classes={misClases} onOpen={openModal} onViewMap={cls => { const oId = cls.occurrenceId ?? cls.occurrence_id ?? null; if (oId) setViewMapClass({ cls, occurrenceId: oId, fecha: cls.fecha ? new Date(cls.fecha + 'T12:00:00') : null }) }} />
               )}
             </div>
           </div>
@@ -511,7 +513,7 @@ export default function CoachPanel() {
               )
               return filtered.length > 0 ? (
                 <div className={s.card}>
-                  <MisClasesTable classes={filtered} onOpen={openModal} />
+                  <MisClasesTable classes={filtered} onOpen={openModal} onViewMap={cls => { const oId = cls.occurrenceId ?? cls.occurrence_id ?? null; if (oId) setViewMapClass({ cls, occurrenceId: oId, fecha: cls.fecha ? new Date(cls.fecha + 'T12:00:00') : null }) }} />
                 </div>
               ) : (
                 <div className={s.card}>
@@ -540,12 +542,21 @@ export default function CoachPanel() {
       >
         {modalClass && <ClassModal cls={modalClass} onClose={closeModal} useApiMode={useApiMode} />}
       </div>
+
+      {viewMapClass && (
+        <SeatMapViewer
+          cls={viewMapClass.cls}
+          occurrenceId={viewMapClass.occurrenceId}
+          fecha={viewMapClass.fecha}
+          onClose={() => setViewMapClass(null)}
+        />
+      )}
     </div>
   )
 }
 
 // â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function WeekTable({ classes, onOpen }) {
+function WeekTable({ classes, onOpen, onViewMap }) {
   const s2 = s
   const hoy = new Date()
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
@@ -567,7 +578,9 @@ function WeekTable({ classes, onOpen }) {
       <tbody>
         {classes.map(cls => {
           const color = availColor(cls.cupoActual, cls.cupoMax)
-          const esHoy = cls.dia === diaHoy          
+          const esHoy = cls.dia === diaHoy
+          const isMapCls = ['slow','stryde'].includes(normalizeDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo))
+          const hasOcc = Boolean(cls.occurrenceId ?? cls.occurrence_id)
           return (
             <tr
               key={cls.id}
@@ -609,12 +622,16 @@ function WeekTable({ classes, onOpen }) {
                 )}
               </td>
               <td>
-                <button
-                  className={s2.btnSm}
-                  onClick={e => { e.stopPropagation(); onOpen(cls) }}
-                >
-                  Ver alumnos
-                </button>
+                <div style={{ display:'flex', gap:6 }}>
+                  <button className={s2.btnSm} onClick={e => { e.stopPropagation(); onOpen(cls) }}>
+                    Ver alumnos
+                  </button>
+                  {isMapCls && hasOcc && (
+                    <button className={s2.btnSm} style={{ background:'rgba(232,164,173,0.12)', color:'var(--blush)', borderColor:'rgba(232,164,173,0.25)' }} onClick={e => { e.stopPropagation(); onViewMap(cls) }}>
+                      Ver mapa
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           )
@@ -625,7 +642,7 @@ function WeekTable({ classes, onOpen }) {
   )
 }
 
-function MisClasesTable({ classes, onOpen }) {
+function MisClasesTable({ classes, onOpen, onViewMap }) {
   const s2 = s
   const hoy = new Date()
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
@@ -650,6 +667,8 @@ function MisClasesTable({ classes, onOpen }) {
           const { label, cls: stCls } = classStatusLabel(cls.cupoActual, cls.cupoMax)
           const stStyle = statusColor(stCls)
           const esHoy = cls.dia === diaHoy
+          const isMapCls2 = ['slow','stryde'].includes(normalizeDiscipline(cls.discipline ?? cls.classDiscipline ?? cls.tipo))
+          const hasOcc2 = Boolean(cls.occurrenceId ?? cls.occurrence_id)
           return (
             <tr
               key={cls.id}
@@ -686,12 +705,16 @@ function MisClasesTable({ classes, onOpen }) {
                 }
               </td>
               <td>
-                <button
-                  className={s2.btnSm}
-                  onClick={e => { e.stopPropagation(); onOpen(cls) }}
-                >
-                  Ver alumnos
-                </button>
+                <div style={{ display:'flex', gap:6 }}>
+                  <button className={s2.btnSm} onClick={e => { e.stopPropagation(); onOpen(cls) }}>
+                    Ver alumnos
+                  </button>
+                  {isMapCls2 && hasOcc2 && (
+                    <button className={s2.btnSm} style={{ background:'rgba(232,164,173,0.12)', color:'var(--blush)', borderColor:'rgba(232,164,173,0.25)' }} onClick={e => { e.stopPropagation(); onViewMap(cls) }}>
+                      Ver mapa
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           )

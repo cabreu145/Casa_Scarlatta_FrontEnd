@@ -486,6 +486,7 @@ export default function ClasesSection({
   claseForm,
   setClaseForm,
   refreshToken = 0,
+  onViewMap,
 }) {
   const { usuario } = useAuthStore()
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() => {
@@ -1054,6 +1055,7 @@ export default function ClasesSection({
                       <div className={styles.claseMeta}>{getClassDisplayTime(c)} · {c.duracion} min · {c.coachNombre}</div>
                     </div>
                     <Tag color={isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'blue' : 'pink'}>{isSlowDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo) ? 'Slow' : 'Stryde X'}</Tag>
+                    <div className={styles.claseActions}>
                     <div className={styles.claseSpots}>
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.cupoActual}/{c.cupoMax} lugares</div>
                       <div className={styles.spotsBar}>
@@ -1077,20 +1079,30 @@ export default function ClasesSection({
                         </span>
                       )
                     })()}
-                    {!selectMode && <div style={{ display: 'flex', gap: 6 }}>
+                    {!selectMode && <div style={{ display: 'flex', gap: 4 }}>
                       <button
                         className={`${styles.btn} ${styles.btnSecondary}`}
-                        style={{ padding: '6px 12px', fontSize: 12 }}
+                        style={{ padding: '6px 9px', fontSize: 13 }}
                         onClick={async () => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
                         disabled={!canReadRoster}
                         title={canReadRoster ? 'Ver alumnos' : 'No tienes permisos para ver alumnos'}
                       >
                         👥{c.cupoActual}
                       </button>
+                      {onViewMap && (c.occurrenceId ?? c.occurrence_id) && ['slow','stryde'].includes(normalizeDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo)) && (
+                        <button
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          style={{ padding: '6px 8px', fontSize: 13 }}
+                          title="Ver mapa de asientos"
+                          onClick={() => onViewMap(c)}
+                        >
+                          🗺️
+                        </button>
+                      )}
                       {canUpdateClass && (
                         <button
                           className={`${styles.btn} ${styles.btnGhost}`}
-                          style={{ padding: '6px 12px', fontSize: 12 }}
+                          style={{ padding: '6px 9px', fontSize: 14 }}
                           onClick={async () => {
                             const classActionId = resolveClassActionId(c)
                             if (!classActionId) {
@@ -1115,13 +1127,13 @@ export default function ClasesSection({
                             })
                           }}
                         >
-                          ✏️ Editar
+                          ✏️
                         </button>
                       )}
                       {canDeleteClass && (
                         <button
                           className={`${styles.btn} ${styles.btnGhost}`}
-                          style={{ padding: '6px 8px', fontSize: 12, color: '#ef4444' }}
+                          style={{ padding: '6px 9px', fontSize: 14, color: '#ef4444' }}
                           onClick={async () => {
                             if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return
                             if (!classActionId) {
@@ -1137,6 +1149,7 @@ export default function ClasesSection({
                         </button>
                       )}
                     </div>}
+                    </div>
                   </div>
                 )
               }}

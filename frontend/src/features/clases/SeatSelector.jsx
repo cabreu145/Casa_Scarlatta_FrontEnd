@@ -11,7 +11,34 @@ import { useCoachesStore }  from '@/stores/coachesStore'
 import { getReservationOccurrenceDate } from '@/services/classService'
 import { normalizeDiscipline } from '@/utils/discipline'
 import CoachAvatar from '@/components/common/CoachAvatar'
+import { useOccurrenceRosterQuery } from '@/hooks/useApiQueries'
+import { hasAnyPermission } from '@/auth/permissions'
 import styles from './SeatSelector.module.css'
+
+function rosterFirstName(name) {
+  if (!name) return ''
+  return name.trim().split(/\s+/)[0]
+}
+
+function slowIdFromSpotLabel(label) {
+  const m = label?.match(/^(?:Mat|Tapete)\s*(\d+)$/i)
+  if (!m) return null
+  const num = m[1].padStart(2, '0')
+  return SLOW_MATS.find(mat => mat.num === num)?.id ?? null
+}
+
+function strydeIdFromSpotLabel(label, layout) {
+  const m = label?.match(/^(Banco|Caminadora|Treadmill|Bench)\s*(\d+)$/i)
+  if (!m) return null
+  const type = /banco|bench/i.test(m[1]) ? 'bench' : 'treadmill'
+  const num  = m[2].padStart(2, '0')
+  for (const row of layout) {
+    for (const eq of row.equipment) {
+      if (eq.type === type && eq.num === num) return eq.id
+    }
+  }
+  return null
+}
 
 // ── Slow room layout (fixed) ──────────────────────────────────────────────────
 // 9 mats: 4 in row 1 (01,03,07,09) + 5 in row 2 (02,04,06,08,10); position 05 is the coach spot
@@ -233,15 +260,7 @@ export function BenchIcon({ state }) {
   )
 }
 
-/**
- * Props:
- *  cls           – raw class object from clasesStore
- *  onClose       – called when the modal should be dismissed
- *  targetUserId  – (optional) reserve for this user instead of the logged-in user
- *  onSuccess     – (optional) called after a successful reservation
- *  adminForce    – (optional) bypass credit check
- */
-export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, adminForce = false, fecha }) {
+export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, adminForce = false, fecha, viewOnly = false, occurrenceId: viewOccurrenceId, externalOccupantMap = null }) {
   const navigate = useNavigate()
   const { isAuthenticated, usuario } = useAuth()
   const { reservas } = useReservasStore()
@@ -258,26 +277,62 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
   const selectedIsoDate = fecha
     ? (fecha instanceof Date ? `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}` : String(fecha).slice(0, 10))
     : null
-  const selectedOccurrenceId = cls.occurrenceId ?? cls.occurrence_id ?? null
+  const selectedOccurrenceId = cls.occurrenceId ?? cls.occurrence_id ?? viewOccurrenceId ?? null
 
   // Dynamic Stryde X layout derived from cupoMax
   const strydeLayout = useMemo(() => buildStrydeLayout(), [])
 
-  const occupied = useMemo(() => new Set(
-    reservas
-      .filter((r) => {
-        if (r.estado !== 'confirmada') return false
-        if (!useApiReservations) return true
-        if (selectedOccurrenceId) return Number(r.occurrenceId) === Number(selectedOccurrenceId)
-        const occurrenceDate = getReservationOccurrenceDate(r)
-        if (!occurrenceDate || !selectedIsoDate || Number(r.claseId) !== Number(cls.id)) return false
-        return occurrenceDate === selectedIsoDate
-      })
-      .map(r => isSlow ? slowIdFromAsiento(r.asiento) : seatIdFromLabel(r.asiento))
-      .filter(Boolean)
-  ), [reservas, cls.id, isSlow, selectedIsoDate, useApiReservations])
+  // Roster mode: fetch and display the class roster in viewOnly mode
+  const useRoster = viewOnly
+  const useApiClasses = import.meta.env.VITE_USE_API_CLASSES === 'true'
+  const canReadClassRoster = hasAnyPermission(usuario, ['classes.roster.read', 'classes.roster.manage'])
+  const rosterOccId = useRoster ? (viewOccurrenceId ?? selectedOccurrenceId) : null
+  const rosterQuery = useOccurrenceRosterQuery(rosterOccId, {
+    enabled: useApiClasses && canReadClassRoster && Boolean(rosterOccId),
+    refetchInterval: rosterOccId ? 10_000 : false,
+  })
+  const occupantMap = useMemo(() => {
+    if (externalOccupantMap) return externalOccupantMap
+    if (!viewOnly || !rosterQuery.data?.students) return {}
+    const map = {}
+    for (const s of rosterQuery.data.students) {
+      const id = isSlow
+        ? slowIdFromSpotLabel(s.spotLabel)
+        : strydeIdFromSpotLabel(s.spotLabel, strydeLayout)
+      if (id) map[id] = s.name
+    }
+    return map
+  }, [externalOccupantMap, viewOnly, rosterQuery.data, isSlow, strydeLayout])
+
+  // Find the logged-in user's seat in viewOnly mode
+  const myViewSeatId = useMemo(() => {
+    if (!viewOnly || !rosterQuery.data?.students || !usuario?.id) return null
+    const mine = rosterQuery.data.students.find(s => Number(s.userId) === Number(usuario.id))
+    if (!mine?.spotLabel) return null
+    return isSlow
+      ? slowIdFromSpotLabel(mine.spotLabel)
+      : strydeIdFromSpotLabel(mine.spotLabel, strydeLayout)
+  }, [viewOnly, rosterQuery.data, usuario?.id, isSlow, strydeLayout])
+
+  const occupied = useMemo(() => {
+    if (useRoster) return new Set(Object.keys(occupantMap))
+    return new Set(
+      reservas
+        .filter((r) => {
+          if (r.estado !== 'confirmada') return false
+          if (!useApiReservations) return true
+          if (selectedOccurrenceId) return Number(r.occurrenceId) === Number(selectedOccurrenceId)
+          const occurrenceDate = getReservationOccurrenceDate(r)
+          if (!occurrenceDate || !selectedIsoDate || Number(r.claseId) !== Number(cls.id)) return false
+          return occurrenceDate === selectedIsoDate
+        })
+        .map(r => isSlow ? slowIdFromAsiento(r.asiento) : seatIdFromLabel(r.asiento))
+        .filter(Boolean)
+    )
+  }, [useRoster, occupantMap, reservas, cls.id, isSlow, selectedIsoDate, useApiReservations])
 
   const [selected, setSelected] = useState(() => {
+    if (viewOnly) return null
     const myReserva = reservas.find((r) => {
       if (!(r.userId === userId && r.estado === 'confirmada')) return false
       if (!useApiReservations) return true
@@ -391,9 +446,13 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
               <button className={styles.slowConfirmBtn} onClick={handleCerrar}>Ver mis clases →</button>
             </div>
           ) : (
-            <div className={styles.fitnessLayout}>
+            <div className={viewOnly ? styles.fitnessLayoutViewOnly : styles.fitnessLayout}>
               {/* LEFT */}
               <div className={styles.machineSection}>
+                {/* Close button in viewOnly mode (no sidebar) */}
+                {viewOnly && (
+                  <button className={styles.viewOnlyCloseBtn} onClick={onClose} aria-label="Cerrar"><X size={18}/></button>
+                )}
                 {/* Mirrors / espejos */}
                 <div className={styles.slowMirrors}>
                   <div className={styles.slowMirrorArch}/>
@@ -411,17 +470,19 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
                 <div className={styles.machineGrid} style={{'--cols':5}} role="group" aria-label="Fila frontal">
                   {SLOW_MATS.filter(m => m.row === 1 && (m.num === '01' || m.num === '03')).map(mat => {
                     const isOccupied = occupied.has(mat.id)
-                    const isSelected = selected === mat.id
-                    const state = isOccupied ? 'occupied' : isSelected ? 'selected' : 'available'
+                    const isMySpot  = viewOnly && mat.id === myViewSeatId
+                    const isSelected = isMySpot || (!viewOnly && selected === mat.id)
+                    const state = isMySpot ? 'selected' : isOccupied ? 'occupied' : 'available'
                     return (
                       <button key={mat.id}
                         className={[styles.machineCard, isOccupied?styles.cardOccupied:styles.cardAvailable, isSelected?styles.cardSelected:''].join(' ')}
-                        onClick={() => !isOccupied && toggle(mat.id)} disabled={isOccupied}
+                        onClick={() => !isOccupied && !viewOnly && toggle(mat.id)} disabled={isOccupied || viewOnly}
                         aria-label={`Mat ${mat.num}${isOccupied?' — ocupado':isSelected?' — seleccionado':' — disponible'}`}
                         aria-pressed={isSelected}>
-                        <span className={[styles.statusIndicator, isOccupied?styles.indGray:isSelected?styles.indWine:styles.indGreen].join(' ')}/>
+                        <span className={[styles.statusIndicator, isMySpot?styles.indWine:isOccupied?styles.indGray:styles.indGreen].join(' ')}/>
                         <div className={styles.matIconWrap}><YogaMatIcon state={state}/></div>
                         <span className={styles.machineNumber}>{mat.num}</span>
+                        {viewOnly && occupantMap[mat.id] && <span className={styles.seatOccupantName}>{rosterFirstName(occupantMap[mat.id])}</span>}
                       </button>
                     )
                   })}
@@ -439,17 +500,19 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
                   </div>
                   {SLOW_MATS.filter(m => m.row === 1 && (m.num === '07' || m.num === '09')).map(mat => {
                     const isOccupied = occupied.has(mat.id)
-                    const isSelected = selected === mat.id
-                    const state = isOccupied ? 'occupied' : isSelected ? 'selected' : 'available'
+                    const isMySpot  = viewOnly && mat.id === myViewSeatId
+                    const isSelected = isMySpot || (!viewOnly && selected === mat.id)
+                    const state = isMySpot ? 'selected' : isOccupied ? 'occupied' : 'available'
                     return (
                       <button key={mat.id}
                         className={[styles.machineCard, isOccupied?styles.cardOccupied:styles.cardAvailable, isSelected?styles.cardSelected:''].join(' ')}
-                        onClick={() => !isOccupied && toggle(mat.id)} disabled={isOccupied}
+                        onClick={() => !isOccupied && !viewOnly && toggle(mat.id)} disabled={isOccupied || viewOnly}
                         aria-label={`Mat ${mat.num}${isOccupied?' — ocupado':isSelected?' — seleccionado':' — disponible'}`}
                         aria-pressed={isSelected}>
-                        <span className={[styles.statusIndicator, isOccupied?styles.indGray:isSelected?styles.indWine:styles.indGreen].join(' ')}/>
+                        <span className={[styles.statusIndicator, isMySpot?styles.indWine:isOccupied?styles.indGray:styles.indGreen].join(' ')}/>
                         <div className={styles.matIconWrap}><YogaMatIcon state={state}/></div>
                         <span className={styles.machineNumber}>{mat.num}</span>
+                        {viewOnly && occupantMap[mat.id] && <span className={styles.seatOccupantName}>{rosterFirstName(occupantMap[mat.id])}</span>}
                       </button>
                     )
                   })}
@@ -459,17 +522,19 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
                 <div className={styles.machineGrid} style={{'--cols':5}} role="group" aria-label="Fila trasera">
                   {SLOW_MATS.filter(m => m.row === 2).map(mat => {
                     const isOccupied = occupied.has(mat.id)
-                    const isSelected = selected === mat.id
-                    const state = isOccupied ? 'occupied' : isSelected ? 'selected' : 'available'
+                    const isMySpot  = viewOnly && mat.id === myViewSeatId
+                    const isSelected = isMySpot || (!viewOnly && selected === mat.id)
+                    const state = isMySpot ? 'selected' : isOccupied ? 'occupied' : 'available'
                     return (
                       <button key={mat.id}
                         className={[styles.machineCard, isOccupied?styles.cardOccupied:styles.cardAvailable, isSelected?styles.cardSelected:''].join(' ')}
-                        onClick={() => !isOccupied && toggle(mat.id)} disabled={isOccupied}
+                        onClick={() => !isOccupied && !viewOnly && toggle(mat.id)} disabled={isOccupied || viewOnly}
                         aria-label={`Mat ${mat.num}${isOccupied?' — ocupado':isSelected?' — seleccionado':' — disponible'}`}
                         aria-pressed={isSelected}>
-                        <span className={[styles.statusIndicator, isOccupied?styles.indGray:isSelected?styles.indWine:styles.indGreen].join(' ')}/>
+                        <span className={[styles.statusIndicator, isMySpot?styles.indWine:isOccupied?styles.indGray:styles.indGreen].join(' ')}/>
                         <div className={styles.matIconWrap}><YogaMatIcon state={state}/></div>
                         <span className={styles.machineNumber}>{mat.num}</span>
+                        {viewOnly && occupantMap[mat.id] && <span className={styles.seatOccupantName}>{rosterFirstName(occupantMap[mat.id])}</span>}
                       </button>
                     )
                   })}
@@ -483,48 +548,50 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
                   ))}
                 </div>
               </div>
-              {/* RIGHT */}
-              <aside className={styles.reservationSidebar}>
-                <div className={styles.sbBlock}>
-                  <div className={styles.sbTopRow}>
-                    <span className={styles.sbSlowBadge}>SLOW</span>
-                    <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar"><X size={18}/></button>
-                  </div>
-                  <div className={styles.sbTitle}>{cls.nombre}</div>
-                  <div className={styles.sbCoach}>Coach {cls.coachNombre}</div>
-                  {cls.descripcion && <div className={styles.sbDesc}>{cls.descripcion}</div>}
-                  <div className={styles.sbTime}>
-                    {fecha ? formatFecha(fecha, cls.hora) : `${cls.dia} · ${cls.hora}`}
-                  </div>
-                </div>
-                <div className={styles.sbDivider}/>
-                <div className={styles.sbSelectionBlock}>
-                  {selected ? (
-                    <>
-                      <div className={styles.sbSelLabel}>Tu lugar elegido</div>
-                      <div className={styles.sbSelMat}>Mat {slowMatNum(selected)}</div>
-                      <div className={styles.sbSelDetail}>Fila {parseSeat(selected).row}</div>
-                    </>
-                  ) : <div className={styles.sbSelHint}>Elige tu lugar<br/>en el mapa</div>}
-                </div>
-                {usuario?.clasesPaquete !== undefined && usuario.clasesPaquete !== 999 && (
-                  <><div className={styles.sbDivider}/>
-                    <div className={styles.sbCreditsBlock}>
-                      <span className={styles.sbCreditsNum}>{usuario.clasesPaquete}</span>
-                      <span className={styles.sbCreditsLabel}>créditos restantes</span>
+              {/* RIGHT — sidebar only in booking mode, not viewOnly */}
+              {!viewOnly && (
+                <aside className={styles.reservationSidebar}>
+                  <div className={styles.sbBlock}>
+                    <div className={styles.sbTopRow}>
+                      <span className={styles.sbSlowBadge}>SLOW</span>
+                      <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar"><X size={18}/></button>
                     </div>
-                  </>
-                )}
-                <div className={styles.sbPolicy}>
-                  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{flexShrink:0,marginTop:2}}>
-                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
-                  </svg>
-                  <span><strong>Política de cancelación:</strong> puedes cancelar hasta <strong>6 horas antes</strong> del inicio de la clase. Después de ese plazo tu crédito no será reembolsado aunque no asistas.</span>
-                </div>
-                <button className={styles.slowConfirmBtn} onClick={confirm} disabled={!selected}>
-                  {selected ? 'Confirmar reserva →' : 'Selecciona un lugar'}
-                </button>
-              </aside>
+                    <div className={styles.sbTitle}>{cls.nombre}</div>
+                    <div className={styles.sbCoach}>Coach {cls.coachNombre}</div>
+                    {cls.descripcion && <div className={styles.sbDesc}>{cls.descripcion}</div>}
+                    <div className={styles.sbTime}>
+                      {fecha ? formatFecha(fecha, cls.hora) : `${cls.dia} · ${cls.hora}`}
+                    </div>
+                  </div>
+                  <div className={styles.sbDivider}/>
+                  <div className={styles.sbSelectionBlock}>
+                    {selected ? (
+                      <>
+                        <div className={styles.sbSelLabel}>Tu lugar elegido</div>
+                        <div className={styles.sbSelMat}>Mat {slowMatNum(selected)}</div>
+                        <div className={styles.sbSelDetail}>Fila {parseSeat(selected).row}</div>
+                      </>
+                    ) : <div className={styles.sbSelHint}>Elige tu lugar<br/>en el mapa</div>}
+                  </div>
+                  {usuario?.clasesPaquete !== undefined && usuario.clasesPaquete !== 999 && (
+                    <><div className={styles.sbDivider}/>
+                      <div className={styles.sbCreditsBlock}>
+                        <span className={styles.sbCreditsNum}>{usuario.clasesPaquete}</span>
+                        <span className={styles.sbCreditsLabel}>créditos restantes</span>
+                      </div>
+                    </>
+                  )}
+                  <div className={styles.sbPolicy}>
+                    <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{flexShrink:0,marginTop:2}}>
+                      <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+                    </svg>
+                    <span><strong>Política de cancelación:</strong> puedes cancelar hasta <strong>6 horas antes</strong> del inicio de la clase. Después de ese plazo tu crédito no será reembolsado aunque no asistas.</span>
+                  </div>
+                  <button className={styles.slowConfirmBtn} onClick={confirm} disabled={!selected}>
+                    {selected ? 'Confirmar reserva →' : 'Selecciona un lugar'}
+                  </button>
+                </aside>
+              )}
             </div>
           )}
         </div>
@@ -535,8 +602,9 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
   // ── STRYDE X: Premium boutique fitness layout ─────────────────────────────────
   const renderEquipRow = (rowData) => rowData.equipment.map(eq => {
     const isOccupied = occupied.has(eq.id)
-    const isSelected = selected === eq.id
-    const state      = isOccupied ? 'occupied' : isSelected ? 'selected' : 'available'
+    const isMySpot  = viewOnly && eq.id === myViewSeatId
+    const isSelected = isMySpot || (!viewOnly && selected === eq.id)
+    const state      = isMySpot ? 'selected' : isOccupied ? 'occupied' : 'available'
     const isRot      = eq.mode === 'rotation'
     return (
       <button
@@ -548,16 +616,17 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
           isSelected ? styles.strydeSelected : '',
           isRot ? styles.strydeCardRot : styles.strydeCardStatic,
         ].join(' ')}
-        onClick={() => !isOccupied && toggle(eq.id)}
-        disabled={isOccupied}
+        onClick={() => !isOccupied && !viewOnly && toggle(eq.id)}
+        disabled={isOccupied || viewOnly}
         aria-label={`${eq.label} ${eq.num}${isRot ? ' — rotación' : ' — solo banco'}${isOccupied?' — ocupado':isSelected?' — seleccionado':' — disponible'}`}
         aria-pressed={isSelected}
       >
-        <span className={[styles.strydeStatusDot, isOccupied?styles.strydeGray:isSelected?styles.strydeWine:styles.strydeGreen].join(' ')}/>
+        <span className={[styles.strydeStatusDot, isMySpot?styles.strydeWine:isOccupied?styles.strydeGray:styles.strydeGreen].join(' ')}/>
         <div className={eq.type==='bench' ? styles.benchIconWrap : styles.treadIconWrap}>
           {eq.type === 'bench' ? <BenchIcon state={state}/> : <TreadmillIcon state={state}/>}
         </div>
         <span className={styles.strydeEquipNum}>{eq.num}</span>
+        {viewOnly && occupantMap[eq.id] && <span className={styles.seatOccupantName}>{rosterFirstName(occupantMap[eq.id])}</span>}
         {/* Mode badge — icon-only, no text */}
         {isRot ? (
           <div className={styles.modeTagRot}>
@@ -602,10 +671,13 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
             <button className={styles.strydeConfirmBtn} onClick={handleCerrar}>Ver mis clases →</button>
           </div>
         ) : (
-          <div className={styles.strydeLayout}>
+          <div className={viewOnly ? styles.strydeLayoutViewOnly : styles.strydeLayout}>
 
             {/* LEFT — room grid */}
             <div className={styles.strydeSection}>
+              {viewOnly && (
+                <button className={styles.viewOnlyCloseBtn} onClick={onClose} aria-label="Cerrar" style={{color:'rgba(255,255,255,0.6)'}}><X size={18}/></button>
+              )}
               <div className={styles.strydeRoom}>
                 <div className={styles.strydeWall}>
                   <div className={styles.strydeWallLine}/>
@@ -659,73 +731,75 @@ export default function SeatSelector({ cls, onClose, targetUserId, onSuccess, ad
               </div>
             </div>
 
-            {/* RIGHT — sidebar */}
-            <aside className={styles.strydeSidebar}>
-              <div className={styles.sbBlock}>
-                <div className={styles.sbTopRow}>
-                  <span className={styles.strydeXBadge}>STRYDE X</span>
-                  <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar"><X size={18}/></button>
-                </div>
-                <div className={styles.sbTitle}>{cls.nombre}</div>
-                <div className={styles.sbCoach}>Coach {cls.coachNombre}</div>
-                {cls.descripcion && <div className={styles.sbDesc}>{cls.descripcion}</div>}
-                <div className={styles.sbTime}>
-                  {fecha ? formatFecha(fecha, cls.hora) : `${cls.dia} · ${cls.hora}`}
-                </div>
-              </div>
-              <div className={styles.sbDivider}/>
-              <div className={styles.sbSelectionBlock}>
-                {selected && selEq ? (
-                  <>
-                    <div className={styles.sbSelLabel}>Tu equipo</div>
-                    <div className={styles.sbSelMat} style={{fontSize:18}}>{selEq.label} {selEq.num}</div>
-                    {selEq.mode === 'rotation' ? (
-                      <div className={styles.rotationFlow}>
-                        <p className={styles.rfTitle}>ROTATION FLOW</p>
-                        <div className={styles.rfTimeline}>
-                          {getRotationBlocks(selEq.type).map((type, i) => (
-                            <div key={i} className={styles.rfStep}>
-                              <div className={styles.rfIconBlock}>
-                                <div className={styles.rfIcon}>
-                                  {type === 'bench' ? <BenchMini active /> : <TreadMini active />}
-                                </div>
-                                <span className={styles.rfBlock}>B{i + 1}</span>
-                              </div>
-                              {i < 3 && <span className={styles.rfArrow}>›</span>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className={styles.benchOnlyFlow}>
-                        <BenchMini active />
-                        <div>
-                          <p className={styles.bofTitle}>Bench Only</p>
-                          <p className={styles.bofSub}>No rota · Toda la clase</p>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : <div className={styles.sbSelHint}>Elige tu equipo<br/>en el mapa</div>}
-              </div>
-              {usuario?.clasesPaquete !== undefined && usuario.clasesPaquete !== 999 && (
-                <><div className={styles.sbDivider}/>
-                  <div className={styles.sbCreditsBlock}>
-                    <span className={styles.sbCreditsNum}>{usuario.clasesPaquete}</span>
-                    <span className={styles.sbCreditsLabel}>créditos restantes</span>
+            {/* RIGHT — sidebar only in booking mode, not viewOnly */}
+            {!viewOnly && (
+              <aside className={styles.strydeSidebar}>
+                <div className={styles.sbBlock}>
+                  <div className={styles.sbTopRow}>
+                    <span className={styles.strydeXBadge}>STRYDE X</span>
+                    <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar"><X size={18}/></button>
                   </div>
-                </>
-              )}
-              <div className={styles.sbPolicy}>
-                <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{flexShrink:0,marginTop:2}}>
-                  <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
-                </svg>
-                <span><strong>Política de cancelación:</strong> puedes cancelar hasta <strong>6 horas antes</strong> del inicio de la clase. Después de ese plazo tu crédito no será reembolsado aunque no asistas.</span>
-              </div>
-              <button className={styles.strydeConfirmBtn} onClick={confirm} disabled={!selected}>
-                {selected ? 'Confirmar reserva →' : 'Selecciona un lugar'}
-              </button>
-            </aside>
+                  <div className={styles.sbTitle}>{cls.nombre}</div>
+                  <div className={styles.sbCoach}>Coach {cls.coachNombre}</div>
+                  {cls.descripcion && <div className={styles.sbDesc}>{cls.descripcion}</div>}
+                  <div className={styles.sbTime}>
+                    {fecha ? formatFecha(fecha, cls.hora) : `${cls.dia} · ${cls.hora}`}
+                  </div>
+                </div>
+                <div className={styles.sbDivider}/>
+                <div className={styles.sbSelectionBlock}>
+                  {selected && selEq ? (
+                    <>
+                      <div className={styles.sbSelLabel}>Tu equipo</div>
+                      <div className={styles.sbSelMat} style={{fontSize:18}}>{selEq.label} {selEq.num}</div>
+                      {selEq.mode === 'rotation' ? (
+                        <div className={styles.rotationFlow}>
+                          <p className={styles.rfTitle}>ROTATION FLOW</p>
+                          <div className={styles.rfTimeline}>
+                            {getRotationBlocks(selEq.type).map((type, i) => (
+                              <div key={i} className={styles.rfStep}>
+                                <div className={styles.rfIconBlock}>
+                                  <div className={styles.rfIcon}>
+                                    {type === 'bench' ? <BenchMini active /> : <TreadMini active />}
+                                  </div>
+                                  <span className={styles.rfBlock}>B{i + 1}</span>
+                                </div>
+                                {i < 3 && <span className={styles.rfArrow}>›</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={styles.benchOnlyFlow}>
+                          <BenchMini active />
+                          <div>
+                            <p className={styles.bofTitle}>Bench Only</p>
+                            <p className={styles.bofSub}>No rota · Toda la clase</p>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : <div className={styles.sbSelHint}>Elige tu equipo<br/>en el mapa</div>}
+                </div>
+                {usuario?.clasesPaquete !== undefined && usuario.clasesPaquete !== 999 && (
+                  <><div className={styles.sbDivider}/>
+                    <div className={styles.sbCreditsBlock}>
+                      <span className={styles.sbCreditsNum}>{usuario.clasesPaquete}</span>
+                      <span className={styles.sbCreditsLabel}>créditos restantes</span>
+                    </div>
+                  </>
+                )}
+                <div className={styles.sbPolicy}>
+                  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{flexShrink:0,marginTop:2}}>
+                    <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+                  </svg>
+                  <span><strong>Política de cancelación:</strong> puedes cancelar hasta <strong>6 horas antes</strong> del inicio de la clase. Después de ese plazo tu crédito no será reembolsado aunque no asistas.</span>
+                </div>
+                <button className={styles.strydeConfirmBtn} onClick={confirm} disabled={!selected}>
+                  {selected ? 'Confirmar reserva →' : 'Selecciona un lugar'}
+                </button>
+              </aside>
+            )}
 
           </div>
         )}

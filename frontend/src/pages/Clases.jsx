@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import ClassTypeFilter from '@/features/clases/ClassTypeFilter'
 import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationPanel'
 import SeatSelector from '@/features/clases/SeatSelector'
+import SeatMapViewer from '@/features/clases/SeatMapViewer'
 import { useClasesStore }          from '@/stores/clasesStore'
 import { useCoachesStore }         from '@/stores/coachesStore'
 import { useReservasStore }        from '@/stores/reservasStore'
@@ -58,6 +59,9 @@ export default function Clases() {
     return tipo.toLowerCase().includes('slow') ? 'Slow' : 'Stryde X'
   })
   const [selectedClass, setSelectedClass] = useState(null)
+  const [viewMapClass, setViewMapClass] = useState(null) // { cls, occurrenceId, fecha }
+  const isAdminOrCoach = usuario?.rol === 'admin' || usuario?.rol === 'coach'
+  const isAdmin = usuario?.rol === 'admin'
   const [viewMode, setViewMode] = useState('day') // 'day' | 'week'
   const [occurrencesByClass, setOccurrencesByClass] = useState({})
   const [isLoadingClasses, setIsLoadingClasses] = useState(true)
@@ -516,10 +520,21 @@ export default function Clases() {
                       </span>
                     ))}
                     {clasePasada ? (
-                      <span className={styles.cancelarVencido} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
-                        Clase finalizada
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                        <span className={styles.cancelarVencido} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', flexShrink: 0, display: 'inline-block' }} />
+                          Clase finalizada
+                        </span>
+                        {isAdmin && isMapClass && cls.occurrenceId && (
+                          <button
+                            className={styles.reservarBtn}
+                            style={{ fontSize: 11, padding: '6px 12px' }}
+                            onClick={() => setViewMapClass({ cls, occurrenceId: cls.occurrenceId, fecha: selectedDate })}
+                          >
+                            Ver mapa
+                          </button>
+                        )}
+                      </div>
                     ) : miReserva ? (
                       <div className={styles.reservadaWrap}>
                         <span className={styles.reservadaBadge}>CONFIRMADA</span>
@@ -536,7 +551,7 @@ export default function Clases() {
                         ) : (
                           <span className={styles.cancelarVencido}>Sin cancelación disponible</span>
                         )}
-                        {canReserveAnother ? (
+                        {canReserveAnother && !isAdmin ? (
                           <button
                             className={styles.reservarBtn}
                             onClick={() => setSelectedClass(cls)}
@@ -551,19 +566,30 @@ export default function Clases() {
                         ) : null}
                       </div>
                     ) : (
+                      !isAdmin && (
+                        <button
+                          className={styles.reservarBtn}
+                          onClick={() => {
+                            if (isFull) return
+                            if (!isAuthenticated) {
+                              navigate(ROUTES.login, { state: { selectedClass: cls } })
+                              return
+                            }
+                            setSelectedClass(cls)
+                          }}
+                          disabled={isFull}
+                        >
+                          RESERVAR
+                        </button>
+                      )
+                    )}
+                    {isAdmin && isMapClass && cls.occurrenceId && !clasePasada && (
                       <button
                         className={styles.reservarBtn}
-                        onClick={() => {
-                          if (isFull) return
-                          if (!isAuthenticated) {
-                            navigate(ROUTES.login, { state: { selectedClass: cls } })
-                            return
-                          }
-                          setSelectedClass(cls)
-                        }}
-                        disabled={isFull}
+                        style={{ fontSize: 11, padding: '6px 12px', marginTop: 4 }}
+                        onClick={() => setViewMapClass({ cls, occurrenceId: cls.occurrenceId, fecha: selectedDate })}
                       >
-                        RESERVAR
+                        Ver mapa
                       </button>
                     )}
                   </div>
@@ -576,6 +602,15 @@ export default function Clases() {
       </div>
 
       
+      {viewMapClass && (
+        <SeatMapViewer
+          cls={viewMapClass.cls}
+          occurrenceId={viewMapClass.occurrenceId}
+          fecha={viewMapClass.fecha}
+          onClose={() => setViewMapClass(null)}
+        />
+      )}
+
       {selectedClass && (
         useApiReservations && selectedClass.occurrenceId ? (
           <EquipmentReservationPanel

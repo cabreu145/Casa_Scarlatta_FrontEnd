@@ -4,6 +4,7 @@ import PasswordInput from '@/components/ui/PasswordInput'
 import DashboardSection from './sections/DashboardSection'
 import CoachesSection from './sections/CoachesSection'
 import ClasesSection from './sections/ClasesSection'
+import SeatMapViewer from '@/features/clases/SeatMapViewer'
 import PaquetesSection from './sections/PaquetesSection'
 import PromocionesSection from './sections/PromocionesSection'
 import PuntoDeVentaSection from './sections/PuntoDeVentaSection'
@@ -452,7 +453,9 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const [enrollSearch, setEnrollSearch] = useState('')
   const [enrollPage,   setEnrollPage]   = useState(1)
   const [enrollDropdownOpen, setEnrollDropdownOpen] = useState(false)
+  const [enrollDropdownPos, setEnrollDropdownPos] = useState({ top: 0, left: 0, width: 0 })
   const enrollDropdownRef = useRef(null)
+  const enrollBtnRef = useRef(null)
   // Lista paginada/buscable de clientes activos para el select de "inscribir alumno",
   // independiente de la paginación/filtros de la tabla de Usuarios.
   const ENROLL_CLIENTS_PAGE_SIZE = 20
@@ -482,6 +485,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [enrollDropdownOpen])
   const [adminSeatSelector, setAdminSeatSelector] = useState(null) // { cls, userId } | null
+  const [adminViewMapClass, setAdminViewMapClass] = useState(null) // { cls, occurrenceId, fecha } | null
   // Saldo/créditos del alumno objetivo al reservar lugar desde el admin
   const adminSeatTargetClientQuery = useAdminClientDetailQuery(adminSeatSelector?.userId, {
     enabled: useApiClients && Boolean(adminSeatSelector?.userId),
@@ -1681,6 +1685,10 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               claseForm={claseForm}
               setClaseForm={setClaseForm}
               refreshToken={clasesRefreshToken}
+              onViewMap={(cls) => {
+                const oId = cls.occurrenceId ?? cls.occurrence_id ?? null
+                if (oId) setAdminViewMapClass({ cls, occurrenceId: oId, fecha: cls.fecha ? new Date(cls.fecha + 'T12:00:00') : null })
+              }}
             />
           </section>
 
@@ -2921,6 +2929,15 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       )}
 
       {/* ── ALUMNOS DE CLASE ── */}
+      {adminViewMapClass && (
+        <SeatMapViewer
+          cls={adminViewMapClass.cls}
+          occurrenceId={adminViewMapClass.occurrenceId}
+          fecha={adminViewMapClass.fecha}
+          onClose={() => setAdminViewMapClass(null)}
+        />
+      )}
+
       {modalAlumnosClase && (() => {
         const cls      = modalAlumnosClase
         const occurrenceId = cls.occurrenceId ?? cls.occurrence_id ?? null
@@ -3062,8 +3079,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
             <div
               className={styles.modal}
               style={{
-                maxWidth: 720,
-                width: '90vw',
+                maxWidth: 760,
+                width: '92vw',
                 height: enrollDropdownOpen ? '92vh' : 'auto',
                 maxHeight: '92vh',
                 overflowY: enrollDropdownOpen ? 'hidden' : 'auto',
@@ -3104,7 +3121,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                         <th>Detalle</th>
                         <th>Estado</th>
                         <th>Asiento</th>
-                        <th style={{ textAlign: 'right' }}>Acción</th>
+                        <th style={{ textAlign: 'center' }}>Acción</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3112,7 +3129,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                         <tr key={r.reservationId ?? r.id}>
                           <td style={{ fontWeight: 500 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              {r.nombreUsuario}
+                              {(r.nombreUsuario ?? '').split(' ')[0]}
                               {r.isCourtesy && (
                                 <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: 'rgba(168,85,247,0.15)', color: '#a855f7', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>
                                   CORTESÍA
@@ -3141,11 +3158,11 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                             </div>
                           </td>
                           <td style={{ textAlign: 'right' }}>
-                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                               {String(r.status ?? r.estado ?? '').toLowerCase() === 'confirmada' && (
                                 <button
                                   className={`${styles.btn} ${styles.btnGhost}`}
-                                  style={{ fontSize: 11, padding: '4px 10px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.3)' }}
+                                  style={{ fontSize: 10, padding: '3px 6px', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.3)', whiteSpace: 'nowrap' }}
                                   disabled={!canManageClassRoster}
                                   title={canManageClassRoster ? 'Marcar ausente' : 'No tienes permisos para gestionar roster'}
                                   onClick={async () => {
@@ -3163,7 +3180,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                                     else toast.error(res.error)
                                   }}
                                 >
-                                  Marcar ausente
+                                  Ausente
                                 </button>
                               )}
                                 {String(r.status ?? r.estado ?? '').toLowerCase() === 'confirmada' && (
@@ -3178,7 +3195,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                                   })() ? (
                                     <button
                                       className={`${styles.btn} ${styles.btnGhost}`}
-                                      style={{ fontSize: 11, padding: '4px 10px' }}
+                                      style={{ fontSize: 10, padding: '3px 6px', whiteSpace: 'nowrap' }}
                                       disabled={!canManageReservations}
                                       title={canManageReservations ? 'Agregar otro asiento' : 'No tienes permisos para reservar otro asiento'}
                                       onClick={() => setAdminSeatSelector({
@@ -3187,14 +3204,14 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                                         hasExistingReservationInOccurrence: true,
                                       })}
                                     >
-                                      Agregar otro asiento
+                                      + Asiento
                                     </button>
                                   ) : null
                                 )}
                                 {String(r.status ?? r.estado ?? '').toLowerCase() === 'confirmada' && (
                                   <button
                                     className={`${styles.btn} ${styles.btnGhost}`}
-                                    style={{ fontSize: 11, padding: '4px 10px', color: '#ef4444' }}
+                                    style={{ fontSize: 10, padding: '3px 6px', color: '#ef4444', whiteSpace: 'nowrap' }}
                                     disabled={!canManageReservations}
                                   title={canManageReservations ? 'Cancelar reserva' : 'No tienes permisos para cancelar reservas'}
                                   onClick={() => handleCancelar({
@@ -3204,7 +3221,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                                     nombreUsuario: r.nombreUsuario,
                                   })}
                                 >
-                                  Cancelar reserva
+                                  Cancelar
                                 </button>
                               )}
                             </div>
@@ -3287,27 +3304,27 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 10, fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   Inscribir alumno manualmente
                 </div>
-                {useApiClients && (
-                  <input
-                    type="text"
-                    className={styles.formInput}
-                    style={{ width: '100%', fontSize: 13, marginBottom: 8 }}
-                    placeholder="Buscar por nombre o email…"
-                    value={enrollSearch}
-                    onChange={e => {
-                      setEnrollSearch(e.target.value)
-                      setEnrollPage(1)
-                      setAlumnoAgregarId('')
-                    }}
-                  />
-                )}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <div ref={enrollDropdownRef} style={{ position: 'relative', flex: 1 }}>
                     <button
+                      ref={enrollBtnRef}
                       type="button"
                       className={`${styles.formSelect} ${styles.dropdownToggle}`}
                       style={{ width: '100%', fontSize: 13 }}
-                      onClick={() => setEnrollDropdownOpen(o => !o)}
+                      onClick={() => {
+                        if (enrollBtnRef.current) {
+                          const r = enrollBtnRef.current.getBoundingClientRect()
+                          const DROPDOWN_H = 260
+                          const spaceBelow = window.innerHeight - r.bottom - 8
+                          const spaceAbove = r.top - 8
+                          if (spaceBelow >= DROPDOWN_H || spaceBelow >= spaceAbove) {
+                            setEnrollDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width, maxH: Math.min(DROPDOWN_H, spaceBelow) })
+                          } else {
+                            setEnrollDropdownPos({ top: r.top - Math.min(DROPDOWN_H, spaceAbove) - 4, left: r.left, width: r.width, maxH: Math.min(DROPDOWN_H, spaceAbove) })
+                          }
+                        }
+                        setEnrollDropdownOpen(o => !o)
+                      }}
                     >
                       <span>
                         {(() => {
@@ -3322,7 +3339,28 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       <span style={{ opacity: 0.6 }}>▾</span>
                     </button>
                     {enrollDropdownOpen && (
-                      <div className={styles.dropdownPanel}>
+                      <div
+                        className={styles.dropdownPanelFixed}
+                        style={{ top: enrollDropdownPos.top, left: enrollDropdownPos.left, width: enrollDropdownPos.width, maxHeight: enrollDropdownPos.maxH ?? 260 }}
+                      >
+                        {useApiClients && (
+                          <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--border)' }}>
+                            <input
+                              type="text"
+                              className={styles.formInput}
+                              style={{ width: '100%', fontSize: 12, padding: '5px 8px' }}
+                              placeholder="Buscar por nombre o email…"
+                              autoFocus
+                              value={enrollSearch}
+                              onChange={e => {
+                                setEnrollSearch(e.target.value)
+                                setEnrollPage(1)
+                                setAlumnoAgregarId('')
+                              }}
+                              onClick={e => e.stopPropagation()}
+                            />
+                          </div>
+                        )}
                         <div
                           className={`${styles.dropdownOption} ${!alumnoAgregarId ? styles.dropdownOptionSelected : ''}`}
                           onClick={() => { setAlumnoAgregarId(''); setEnrollDropdownOpen(false) }}
@@ -3345,11 +3383,11 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                             <button
                               type="button"
                               className={`${styles.btn} ${styles.btnGhost}`}
-                              style={{ fontSize: 11, padding: '3px 10px' }}
+                              style={{ fontSize: 13, padding: '2px 8px' }}
                               onClick={(e) => { e.stopPropagation(); setEnrollPage(p => Math.max(1, p - 1)) }}
                               disabled={enrollPage <= 1 || enrollableClientsQuery.isFetching}
                             >
-                              ‹ Anterior
+                              ‹
                             </button>
                             <span style={{ fontSize: 11, color: 'var(--muted)' }}>
                               Página {enrollPage} de {enrollableTotalPages}
@@ -3357,11 +3395,11 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                             <button
                               type="button"
                               className={`${styles.btn} ${styles.btnGhost}`}
-                              style={{ fontSize: 11, padding: '3px 10px' }}
+                              style={{ fontSize: 13, padding: '2px 8px' }}
                               onClick={(e) => { e.stopPropagation(); setEnrollPage(p => Math.min(enrollableTotalPages, p + 1)) }}
                               disabled={enrollPage >= enrollableTotalPages || enrollableClientsQuery.isFetching}
                             >
-                              Siguiente ›
+                              ›
                             </button>
                           </div>
                         )}
