@@ -12,9 +12,20 @@ import { useUsuariosStore }       from '@/stores/usuariosStore'
 import { useTransaccionesStore }  from '@/stores/transaccionesStore'
 import { useNotificacionesStore } from '@/stores/notificacionesStore'
 import { useAuthStore }           from '@/stores/authStore'
+import { ENDPOINTS } from '@/constants/api'
+import { httpPut } from '@/lib/http'
+import { mapBackendUserToFrontendUser } from '@/adapters/authAdapter'
 import { TIPOS_TRANSACCION, TIPOS_NOTIFICACION } from '@/data/mockData'
 import { mockUsers }              from '@/data/mockUsers'
 import { fechaLocal }             from '@/utils/fecha'
+
+function normalizeGenderForApi(value) {
+  const raw = String(value ?? '').trim().toLowerCase()
+  if (raw === 'femenino' || raw === 'mujer') return 'femenino'
+  if (raw === 'masculino' || raw === 'hombre') return 'masculino'
+  if (raw === 'prefiero no decir' || raw === 'prefiero_no_decir') return 'prefiero_no_decir'
+  return value ?? ''
+}
 
 /**
  * Registra un cliente nuevo desde el panel admin.
@@ -118,9 +129,27 @@ export async function asignarPaqueteService(clienteId, paquete, origen = 'estudi
 export async function editarPerfilService(clienteId, datos) {
   const usuariosStore = useUsuariosStore.getState()
   const authStore     = useAuthStore.getState()
+  const payload = {
+    name: datos.nombreCompleto ?? datos.name ?? datos.nombre ?? '',
+    phone: datos.telefono ?? datos.phone ?? '',
+    gender: normalizeGenderForApi(datos.genero ?? datos.gender ?? ''),
+  }
 
-  usuariosStore.editarUsuario(clienteId, datos)
-  authStore.actualizarPerfil(datos)
+  const response = await httpPut(ENDPOINTS.userById(clienteId), payload)
+  const updatedUser = mapBackendUserToFrontendUser(response?.user ?? response)
 
-  return { ok: true, mensaje: 'Perfil actualizado correctamente.' }
+  if (updatedUser) {
+    usuariosStore.editarUsuario(clienteId, {
+      nombre: updatedUser.nombre,
+      telefono: updatedUser.telefono,
+      genero: updatedUser.genero,
+    })
+    authStore.actualizarPerfil(updatedUser)
+  }
+
+  return {
+    ok: true,
+    mensaje: 'Perfil actualizado correctamente.',
+    usuario: updatedUser,
+  }
 }

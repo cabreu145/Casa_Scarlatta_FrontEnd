@@ -1,8 +1,8 @@
-import { describe, expect, test } from 'vitest'
+﻿import { describe, expect, test } from 'vitest'
 import { buildPerfilFormFromUser, resolvePerfilCompleto } from './profileFormUtils'
 
 describe('profileFormUtils', () => {
-  test('buildPerfilFormFromUser hidrata campos sin click/focus', () => {
+  test('buildPerfilFormFromUser hidrata nombre completo sin partir apellido', () => {
     const form = buildPerfilFormFromUser({
       nombre: 'Ana Perez',
       email: 'ana@test.com',
@@ -10,15 +10,21 @@ describe('profileFormUtils', () => {
       genero: 'femenino',
       fechaNacimiento: '1998-01-01',
     })
-    expect(form.nombre).toBe('Ana')
-    expect(form.apellido).toBe('Perez')
+    expect(form.nombreCompleto).toBe('Ana Perez')
     expect(form.email).toBe('ana@test.com')
     expect(form.telefono).toBe('5512345678')
     expect(form.genero).toBe('femenino')
     expect(form.fechaNacimiento).toBe('1998-01-01')
   })
 
-  test('en API mode prioriza usuario de sesión sobre usuariosStore', () => {
+  test('usa prefiero_no_decir como default compatible con select', () => {
+    const form = buildPerfilFormFromUser({
+      nombre: 'Ana Perez',
+    })
+    expect(form.genero).toBe('prefiero_no_decir')
+  })
+
+  test('en API mode prioriza usuario de sesion sobre usuariosStore', () => {
     const usuarioSesion = { id: 3, nombre: 'Cliente API', telefono: '999' }
     const usuariosStore = [{ id: 3, nombre: 'Cliente Mock', telefono: '111' }]
     const perfil = resolvePerfilCompleto({

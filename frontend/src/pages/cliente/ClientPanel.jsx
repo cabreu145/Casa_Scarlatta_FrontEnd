@@ -576,17 +576,20 @@ export default function ClientPanel() {
     e.preventDefault()
     if (!perfilForm || !usuario?.id) return
     setGuardandoPerfil(true)
-    const nombre = [perfilForm.nombre, perfilForm.apellido].filter(Boolean).join(' ')
-    const resultado = await editarPerfilService(usuario.id, {
-      nombre,
-      telefono:        perfilForm.telefono,
-      genero:          perfilForm.genero,
-      fechaNacimiento: perfilForm.fechaNacimiento,
-    })
-    if (resultado.ok) toast.success(resultado.mensaje)
-    else toast.error(resultado.mensaje)
-    if (resultado.ok) setIsPerfilDirty(false)
-    setGuardandoPerfil(false)
+    try {
+      const resultado = await editarPerfilService(usuario.id, {
+        nombreCompleto: perfilForm.nombreCompleto,
+        telefono: perfilForm.telefono,
+        genero: perfilForm.genero,
+      })
+      if (resultado.ok) toast.success(resultado.mensaje)
+      else toast.error(resultado.mensaje)
+      if (resultado.ok) setIsPerfilDirty(false)
+    } catch (error) {
+      toast.error(error?.message || 'No se pudo actualizar el perfil.')
+    } finally {
+      setGuardandoPerfil(false)
+    }
   }
   const clasesRestantes = financialUiState.clasesRestantes
   const clasesUsadas = financialUiState.clasesUsadas
@@ -1632,26 +1635,14 @@ export default function ClientPanel() {
                   <form onSubmit={handleGuardarPerfil}>
                     <div className={s.formRow}>
                       <div className={s.formGroup}>
-                        <label className={s.formLabel}>Nombre</label>
+                        <label className={s.formLabel}>Nombre completo</label>
                         <input
                           className={s.formInput}
                           type="text"
-                          value={perfilForm?.nombre ?? ''}
+                          value={perfilForm?.nombreCompleto ?? ''}
                           onChange={(e) => {
                             setIsPerfilDirty(true)
-                            setPerfilForm((p) => ({ ...(p ?? {}), nombre: e.target.value }))
-                          }}
-                        />
-                      </div>
-                      <div className={s.formGroup}>
-                        <label className={s.formLabel}>Apellido</label>
-                        <input
-                          className={s.formInput}
-                          type="text"
-                          value={perfilForm?.apellido ?? ''}
-                          onChange={(e) => {
-                            setIsPerfilDirty(true)
-                            setPerfilForm((p) => ({ ...(p ?? {}), apellido: e.target.value }))
+                            setPerfilForm((p) => ({ ...(p ?? {}), nombreCompleto: e.target.value }))
                           }}
                         />
                       </div>
@@ -1678,15 +1669,15 @@ export default function ClientPanel() {
                         <label className={s.formLabel}>Género</label>
                         <select
                           className={s.formInput}
-                          value={perfilForm?.genero ?? 'Prefiero no decir'}
+                          value={perfilForm?.genero ?? 'prefiero_no_decir'}
                           onChange={(e) => {
                             setIsPerfilDirty(true)
                             setPerfilForm((p) => ({ ...(p ?? {}), genero: e.target.value }))
                           }}
                         >
-                          <option>Masculino</option>
-                          <option>Femenino</option>
-                          <option>Prefiero no decir</option>
+                          <option value="masculino">Masculino</option>
+                          <option value="femenino">Femenino</option>
+                          <option value="prefiero_no_decir">Prefiero no decir</option>
                         </select>
                       </div>
                     </div>

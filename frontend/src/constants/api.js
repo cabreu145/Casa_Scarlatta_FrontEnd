@@ -60,6 +60,7 @@ export const ENDPOINTS = {
 
   usuarios: withPrefix('/usuarios'),
   usuarioById: (id) => withPrefix(`/usuarios/${id}`),
+  userById: (id) => withPrefix(`/users/${id}`),
   miPerfil: withPrefix('/usuarios/me'),
   miEstadoFinanciero: withPrefix('/clientes/me/estado-financiero'),
   miCreditMovements: ({ page, pageSize }) =>

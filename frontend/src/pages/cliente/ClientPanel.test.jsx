@@ -28,7 +28,10 @@ const mockUnirse = vi.fn()
 const mockSalir = vi.fn()
 const mockEstaEnLista = vi.fn().mockReturnValue(false)
 const mockGetPosicion = vi.fn().mockReturnValue(null)
-const mockEditarPerfilService = vi.fn().mockResolvedValue({})
+const mockEditarPerfilService = vi.fn().mockResolvedValue({
+  ok: true,
+  mensaje: 'Perfil actualizado correctamente.',
+})
 const mockGetPublicClassesByDate = vi.fn().mockResolvedValue([])
 const mockGetReservationOccurrenceDate = vi.fn().mockReturnValue(null)
 const mockIsPublished = vi.fn().mockReturnValue(true)
@@ -258,6 +261,11 @@ describe('ClientPanel payments section', () => {
     membershipsData = []
     mockLoadMisReservasFromApi.mockClear()
     mockLoadClasesFromApi.mockClear()
+    mockEditarPerfilService.mockClear()
+    mockEditarPerfilService.mockResolvedValue({
+      ok: true,
+      mensaje: 'Perfil actualizado correctamente.',
+    })
     mockUsePublicCoachesQuery.mockReturnValue({ data: [], isLoading: false, isFetching: false, error: null })
     window.history.pushState({}, '', '/cliente/dashboard')
   })
@@ -476,5 +484,30 @@ describe('ClientPanel payments section', () => {
 
     expect(await screen.findByText('Clase Demo API')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /reservar otro/i })).not.toBeInTheDocument()
+  })
+
+  test('mi perfil guarda nombre completo, telefono y genero', async () => {
+    const user = userEvent.setup()
+    await renderPanel('/cliente/dashboard')
+
+    await user.click(await screen.findByRole('button', { name: 'Mi Perfil' }))
+
+    const nombreInput = await screen.findByDisplayValue('Cliente Demo')
+    await user.clear(nombreInput)
+    await user.type(nombreInput, 'Cliente Demo Actualizado')
+
+    const telefonoInput = screen.getByDisplayValue('')
+    await user.type(telefonoInput, '5512345678')
+
+    await user.selectOptions(screen.getByRole('combobox'), 'femenino')
+    await user.click(screen.getByRole('button', { name: /guardar cambios/i }))
+
+    await waitFor(() =>
+      expect(mockEditarPerfilService).toHaveBeenCalledWith(1, {
+        nombreCompleto: 'Cliente Demo Actualizado',
+        telefono: '5512345678',
+        genero: 'femenino',
+      })
+    )
   })
 })
