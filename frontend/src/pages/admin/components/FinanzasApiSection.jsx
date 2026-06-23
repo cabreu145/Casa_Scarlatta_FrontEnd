@@ -18,8 +18,9 @@ import {
   useTodayCashClosingQuery,
 } from '@/hooks/useApiQueries'
 import { exportFinanceCsv } from '@/services/financeApiService'
+import { getCashClosingDetail } from '@/services/cashClosingsApiService'
 import { getSalesApi } from '@/services/posApiService'
-import { abrirReportePDF } from '@/utils/reportePDF'
+import { abrirCortesDetalladoPDF, abrirReportePDF } from '@/utils/reportePDF'
 import { formatBusinessDateTime } from '@/utils/formatters'
 import styles from '@/styles/dashboard.module.css'
 
@@ -292,16 +293,23 @@ function formatCutExport(rows = []) {
   return rows.map((row) => ({
     Fecha: formatDateMx(row.date),
     Estado: row.isClosed ? 'Cerrado' : 'Abierto',
+    'Hora apertura': row.openedAt ? formatDateTimeMx(row.openedAt) : '—',
+    'Hora cierre': row.closedAt ? formatDateTimeMx(row.closedAt) : '—',
+    'Cerró': row.createdByName || '—',
     Ventas: row.salesCount,
     Subtotal: row.subtotalMxn,
     IVA: row.taxMxn,
     'Total ingresos': row.totalMxn,
-    Efectivo: row.cashTotalMxn,
+    'Fondo inicial': row.openingCashMxn,
+    'Efectivo ventas': row.cashTotalMxn,
     Tarjeta: row.cardTotalMxn,
     Transferencia: row.transferTotalMxn,
     Otros: row.otherTotalMxn,
     Gastos: -Math.abs(row.expensesTotalMxn),
-    Neto: row.netTotalMxn,
+    'Utilidad del turno': row.netTotalMxn,
+    'Efectivo esperado': row.expectedCashMxn ?? '—',
+    'Efectivo contado': row.countedCashMxn ?? '—',
+    'Diferencia caja': row.cashDifferenceMxn ?? '—',
   }))
 }
 
@@ -313,7 +321,7 @@ export default function FinanzasApiSection({ inPanel = false }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroActivo, setFiltroActivo] = useState(null)
   const [txExpandidas, setTxExpandidas] = useState(false)
-  const [filtroCortes, setFiltroCortes] = useState('todo')
+  const [cutsFecha, setCutsFecha] = useState(null) // null = hoy, 'YYYY-MM-DD' = fecha específica
   const [modalGasto, setModalGasto] = useState(false)
   const [modalCorte, setModalCorte] = useState(false)
   const [selectedCutId, setSelectedCutId] = useState(null)
@@ -358,11 +366,12 @@ export default function FinanzasApiSection({ inPanel = false }) {
     enabled: true,
   })
   const todayClosingQuery = useTodayCashClosingQuery({ enabled: true })
+  const cutsQueryDate = cutsFecha ?? formatMeridaDate(new Date())
   const cashClosingsQuery = useCashClosingsQuery({
     page: 1,
-    pageSize: 20,
-    from: dashboardRange.from,
-    to: dashboardRange.to,
+    pageSize: 50,
+    from: cutsQueryDate,
+    to: cutsQueryDate,
     enabled: true,
   })
   const expensesQuery = useExpensesQuery({
@@ -436,15 +445,7 @@ export default function FinanzasApiSection({ inPanel = false }) {
   const txVisible = txExpandidas ? txFiltered : txFiltered.slice(0, 5)
   const hayMasTx = txFiltered.length > 5
 
-  const cutsFiltered = useMemo(() => {
-    const hoy = formatMeridaDate(new Date())
-    const hace7 = formatMeridaDate(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000))
-    const mes = hoy.slice(0, 7)
-    if (filtroCortes === 'hoy') return cutsItems.filter((item) => item.date === hoy)
-    if (filtroCortes === 'semana') return cutsItems.filter((item) => item.date && item.date >= hace7)
-    if (filtroCortes === 'mes') return cutsItems.filter((item) => item.date?.startsWith(mes))
-    return cutsItems
-  }, [cutsItems, filtroCortes])
+  const cutsFiltered = cutsItems
 
   const alertas = useMemo(() => {
     const lista = []
@@ -532,21 +533,31 @@ export default function FinanzasApiSection({ inPanel = false }) {
     )
   }
 
+  const cutsDateLabel = cutsFecha
+    ? new Date(`${cutsFecha}T12:00:00`).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    : 'Hoy'
+
   const handleExportCutsExcel = () => {
+    const fecha = cutsFecha ?? formatMeridaDate(new Date())
     exportarExcelLocal(
       formatCutExport(cutsFiltered),
-      `cortes_${dashboardRange.from}_${dashboardRange.to}.xlsx`,
+      `cortes_${fecha}.xlsx`,
       'Cortes'
     )
   }
 
-  const handleExportCutsPdf = () => {
-    abrirReportePDF({
-      tipo: 'cortes',
-      titulo: `Cortes de caja — ${getRangeLabel(rango, fechaEspecifica, fechaDesde, fechaHasta)}`,
-      datos: formatCutExport(cutsFiltered),
-      landscape: true,
-    })
+  const handleExportCutsPdf = async () => {
+    if (!cutsFiltered.length) { toast('Sin cortes para exportar.', { icon: '📋' }); return }
+    try {
+      const details = await Promise.all(cutsFiltered.map((c) => getCashClosingDetail(c.id)))
+      abrirCortesDetalladoPDF({
+        titulo: `Cortes de caja — ${cutsDateLabel}`,
+        cortes: details,
+        siteInfo: {},
+      })
+    } catch {
+      toast.error('No se pudo obtener el detalle de los cortes')
+    }
   }
 
   const handleCreateExpense = async () => {
@@ -1026,7 +1037,7 @@ export default function FinanzasApiSection({ inPanel = false }) {
               { label: '🧾 Otros', val: todayClosing.otherTotalMxn, color: 'var(--text-primary)' },
               { label: '📊 Total ingresos', val: todayClosing.totalMxn, color: '#22c55e', border: '#22c55e44' },
               { label: '📉 Gastos del día', val: todayClosing.expensesTotalMxn, color: '#ef4444', border: '#ef444444', neg: true },
-              { label: '💰 Neto a entregar', val: todayClosing.netTotalMxn, color: '#E8A4AD', border: '#7B1E22', bold: true },
+              { label: '💰 Utilidad del turno', val: todayClosing.netTotalMxn, color: '#E8A4AD', border: '#7B1E22', bold: true },
             ].map(({ label, val, color, border, bold, neg }) => (
               <div
                 key={label}
@@ -1046,35 +1057,31 @@ export default function FinanzasApiSection({ inPanel = false }) {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                 Historial de cortes
               </div>
-              <div style={{ display: 'flex', gap: 2, background: '#1E1014', padding: 3, borderRadius: 6 }}>
-                {[
-                  { v: 'hoy', l: 'Hoy' },
-                  { v: 'semana', l: '7 días' },
-                  { v: 'mes', l: 'Mes' },
-                  { v: 'todo', l: 'Todo' },
-                ].map(({ v, l }) => (
-                  <button
-                    key={v}
-                    onClick={() => setFiltroCortes(v)}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: 4,
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontFamily: 'var(--font-body)',
-                      fontSize: 11,
-                      background: filtroCortes === v ? '#7B1E22' : 'transparent',
-                      color: filtroCortes === v ? '#fff' : '#A69A93',
-                    }}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
+              <button
+                onClick={() => setCutsFecha(null)}
+                style={{
+                  padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--font-body)', fontSize: 11, fontWeight: 600,
+                  background: cutsFecha === null ? '#7B1E22' : '#1E1014',
+                  color: cutsFecha === null ? '#fff' : '#A69A93',
+                }}
+              >
+                Hoy
+              </button>
+              <input
+                type="date"
+                value={cutsFecha ?? ''}
+                onChange={(e) => setCutsFecha(e.target.value || null)}
+                style={{
+                  padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)',
+                  background: '#1E1014', color: cutsFecha ? '#fff' : '#A69A93',
+                  fontFamily: 'var(--font-body)', fontSize: 11, cursor: 'pointer',
+                }}
+              />
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button
@@ -1459,73 +1466,213 @@ export default function FinanzasApiSection({ inPanel = false }) {
             role="dialog"
             aria-modal="true"
             aria-label="Detalle de corte"
-            style={{ background: '#1E1014', borderRadius: 16, padding: 32, width: '92%', maxWidth: 780, maxHeight: '90vh', overflowY: 'auto', border: '1px solid #3C2A2E' }}
+            style={{ background: '#1E1014', borderRadius: 16, padding: 28, width: '92%', maxWidth: 820, maxHeight: '90vh', overflowY: 'auto', border: '1px solid #3C2A2E' }}
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 22, margin: '0 0 4px', color: '#F5EDE8' }}>
-              Detalle de corte
-            </h2>
-            <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', margin: '0 0 20px' }}>
-              {cutDetail?.date ? formatDateMx(cutDetail.date) : '—'}
-            </p>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 400, fontSize: 22, margin: '0 0 4px', color: '#F5EDE8' }}>
+                  Detalle de corte
+                </h2>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#A69A93', margin: 0 }}>
+                  {cutDetail?.date ? formatDateMx(cutDetail.date) : '—'}
+                  {cutDetail?.shiftLabel ? ` · ${cutDetail.shiftLabel}` : ''}
+                </p>
+              </div>
+              {cutDetail && (() => {
+                const diff = cutDetail.cashDifferenceMxn
+                const counted = cutDetail.countedCashMxn
+                if (counted === null) return (
+                  <div style={{ background: '#3B2B00', border: '1px solid #F59E0B44', borderRadius: 8, padding: '8px 14px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 16 }}>⚠️</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#F59E0B', fontWeight: 600 }}>Sin contar</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A69A93' }}>Falta efectivo</div>
+                  </div>
+                )
+                if (diff === 0 || diff === null) return (
+                  <div style={{ background: '#0F3320', border: '1px solid #22c55e44', borderRadius: 8, padding: '8px 14px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 16 }}>✅</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#22c55e', fontWeight: 600 }}>Cuadrado</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A69A93' }}>Sin diferencias</div>
+                  </div>
+                )
+                if (diff > 0) return (
+                  <div style={{ background: '#0F3320', border: '1px solid #22c55e44', borderRadius: 8, padding: '8px 14px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 16 }}>🟢</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#22c55e', fontWeight: 600 }}>Sobrante {formatMoneyMx(diff)}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A69A93' }}>Todo conciliado</div>
+                  </div>
+                )
+                return (
+                  <div style={{ background: '#3B0F0F', border: '1px solid #ef444444', borderRadius: 8, padding: '8px 14px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 16 }}>🔴</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#ef4444', fontWeight: 600 }}>Diferencia {formatMoneyMx(Math.abs(diff))}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A69A93' }}>Revisar ventas</div>
+                  </div>
+                )
+              })()}
+            </div>
 
             {cutDetail ? (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 20 }}>
-                  {[
-                    { label: 'Ventas', value: cutDetail.salesCount },
-                    { label: 'Subtotal', value: formatMoneyMx(cutDetail.subtotalMxn) },
-                    { label: 'IVA', value: formatMoneyMx(cutDetail.taxMxn) },
-                    { label: 'Total', value: formatMoneyMx(cutDetail.totalMxn) },
-                    { label: 'Gastos', value: formatMoneyMx(cutDetail.expensesTotalMxn) },
-                    { label: 'Neto', value: formatMoneyMx(cutDetail.netTotalMxn) },
-                  ].map((item) => (
-                    <div key={item.label} style={{ background: '#2C1A1E', borderRadius: 8, padding: '12px 14px', border: '1px solid #3C2A2E' }}>
-                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: '#A69A93', marginBottom: 4 }}>{item.label}</div>
-                      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: '#F5EDE8' }}>{item.value}</div>
+                {/* Apertura / Cierre */}
+                <div style={{ display: 'grid', gridTemplateColumns: cutDetail.closedAt ? '1fr 1fr' : '1fr', gap: 12, marginBottom: 20 }}>
+                  <div style={{ background: '#2C1A1E', borderRadius: 10, padding: '14px 16px', border: '1px solid #3C2A2E' }}>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A69A93', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Apertura</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>Fondo inicial</span>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: '#F5EDE8' }}>{formatMoneyMx(cutDetail.openingCashMxn)}</span>
+                      </div>
+                      {cutDetail.openedAt && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>Hora apertura</span>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#F5EDE8' }}>{formatDateTimeMx(cutDetail.openedAt)}</span>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  </div>
+                  {cutDetail.closedAt && (
+                    <div style={{ background: '#2C1A1E', borderRadius: 10, padding: '14px 16px', border: '1px solid #3C2A2E' }}>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A69A93', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Cierre</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>Hora cierre</span>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#F5EDE8' }}>{formatDateTimeMx(cutDetail.closedAt)}</span>
+                        </div>
+                        {cutDetail.createdByName && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>Cerró</span>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: '#F5EDE8' }}>{cutDetail.createdByName}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 14, color: '#F5EDE8', marginBottom: 12 }}>
-                  Ventas incluidas
+                {/* Resumen financiero */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                  {/* Ingresos reales */}
+                  <div style={{ background: '#2C1A1E', borderRadius: 10, padding: '14px 16px', border: '1px solid #3C2A2E' }}>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A69A93', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Desglose de ingresos</div>
+                    {[
+                      { label: 'Total ventas', val: cutDetail.totalMxn, color: '#F5EDE8', bold: true },
+                      { label: '──────────────', val: '', color: '#3C2A2E', bold: false },
+                      { label: 'Dinero físico (efectivo)', val: cutDetail.cashTotalMxn, color: '#60A5FA' },
+                      { label: 'Dinero bancario (tarjeta)', val: cutDetail.cardTotalMxn, color: '#60A5FA' },
+                      { label: 'Transferencia', val: cutDetail.transferTotalMxn, color: '#60A5FA' },
+                      { label: 'Otros', val: cutDetail.otherTotalMxn, color: '#60A5FA' },
+                      { label: '──────────────', val: '', color: '#3C2A2E', bold: false },
+                      { label: 'Gastos', val: -cutDetail.expensesTotalMxn, color: '#ef4444' },
+                      { label: 'Utilidad del turno', val: cutDetail.netTotalMxn, color: '#22c55e', bold: true },
+                    ].map((row, i) => row.label.startsWith('──') ? (
+                      <div key={i} style={{ borderTop: '1px solid #3C2A2E', margin: '6px 0' }} />
+                    ) : (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{row.label}</span>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: row.bold ? 14 : 13, fontWeight: row.bold ? 700 : 500, color: row.color }}>{row.val !== '' ? formatMoneyMx(row.val) : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Dinero por entregar */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ background: '#2C1A1E', borderRadius: 10, padding: '14px 16px', border: '1px solid #3C2A2E', flex: 1 }}>
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A69A93', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Dinero por entregar ⭐</div>
+                      {[
+                        { label: 'Efectivo a entregar', val: cutDetail.cashTotalMxn, color: '#F5EDE8' },
+                        { label: 'Tarjetas / Transferencia', val: (cutDetail.cardTotalMxn ?? 0) + (cutDetail.transferTotalMxn ?? 0) + (cutDetail.otherTotalMxn ?? 0), color: '#F5EDE8' },
+                        { label: 'Total corte', val: cutDetail.totalMxn, color: '#E8A4AD', bold: true },
+                      ].map((row) => (
+                        <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{row.label}</span>
+                          <span style={{ fontFamily: 'var(--font-body)', fontSize: row.bold ? 15 : 13, fontWeight: row.bold ? 700 : 500, color: row.color }}>{formatMoneyMx(row.val)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {cutDetail.countedCashMxn !== null && (
+                      <div style={{ background: '#2C1A1E', borderRadius: 10, padding: '14px 16px', border: '1px solid #3C2A2E' }}>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: '#A69A93', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Conteo de caja</div>
+                        {[
+                          { label: 'Efectivo esperado', val: cutDetail.expectedCashMxn, color: '#F5EDE8' },
+                          { label: 'Efectivo contado', val: cutDetail.countedCashMxn, color: '#F5EDE8' },
+                          { label: 'Diferencia', val: cutDetail.cashDifferenceMxn, color: (cutDetail.cashDifferenceMxn ?? 0) >= 0 ? '#22c55e' : '#ef4444', bold: true },
+                        ].map((row) => (
+                          <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: '#A69A93' }}>{row.label}</span>
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: row.bold ? 14 : 13, fontWeight: row.bold ? 700 : 500, color: row.color }}>{formatMoneyMx(row.val)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ventas incluidas */}
+                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 14, color: '#F5EDE8', marginBottom: 10 }}>
+                  Ventas incluidas ({cutDetail.salesCount})
                 </div>
                 {cutDetail.sales?.length > 0 ? (
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Folio</th>
-                        <th>Cliente</th>
-                        <th>Método</th>
-                        <th>Subtotal</th>
-                        <th>IVA</th>
-                        <th>Total</th>
-                        <th>Fecha</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cutDetail.sales.map((sale) => (
-                        <tr key={sale.saleId ?? sale.id}>
-                          <td>{sale.folio}</td>
-                          <td>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</td>
-                          <td>{paymentMethodLabel(sale.paymentMethod)}</td>
-                          <td>{formatMoneyMx(sale.subtotalMxn)}</td>
-                          <td>{formatMoneyMx(sale.taxMxn)}</td>
-                          <td>{formatMoneyMx(sale.totalMxn)}</td>
-                          <td>{formatDateTimeMx(sale.createdAt)}</td>
+                  <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr>
+                          {['Folio','Cliente','Método','Subtotal','IVA','Total','Fecha'].map((h) => (
+                            <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#A69A93', borderBottom: '1px solid #3C2A2E', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {cutDetail.sales.map((sale) => (
+                          <tr key={sale.saleId ?? sale.id}>
+                            {[sale.folio, sale.customerName || sale.customerEmail || 'Venta mostrador', paymentMethodLabel(sale.paymentMethod), formatMoneyMx(sale.subtotalMxn), formatMoneyMx(sale.taxMxn), formatMoneyMx(sale.totalMxn), formatDateTimeMx(sale.createdAt)].map((val, i) => (
+                              <td key={i} style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.85)', borderBottom: '1px solid rgba(255,255,255,0.04)', whiteSpace: 'nowrap' }}>{val}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <EmptyState>Este corte no contiene ventas incluidas.</EmptyState>
+                )}
+
+                {/* Gastos incluidos */}
+                {cutDetail.expenses?.length > 0 && (
+                  <>
+                    <div style={{ fontFamily: 'var(--font-heading)', fontSize: 14, color: '#F5EDE8', marginBottom: 10 }}>
+                      Gastos del turno ({cutDetail.expenses.length})
+                    </div>
+                    <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                        <thead>
+                          <tr>
+                            {['Categoría','Descripción','Método','Monto','Fecha'].map((h) => (
+                              <th key={h} style={{ textAlign: 'left', padding: '8px 12px', fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#A69A93', borderBottom: '1px solid #3C2A2E', whiteSpace: 'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cutDetail.expenses.map((exp) => (
+                            <tr key={exp.id}>
+                              {[exp.category || '—', exp.description || '—', paymentMethodLabel(exp.paymentMethod), formatMoneyMx(exp.amountMxn), formatDateTimeMx(exp.createdAt)].map((val, i) => (
+                                <td key={i} style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.85)', borderBottom: '1px solid rgba(255,255,255,0.04)', whiteSpace: 'nowrap' }}>{val}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
               </>
             ) : (
               <EmptyState>Cargando detalle...</EmptyState>
             )}
 
-            <div style={{ marginTop: 24 }}>
+            <div style={{ marginTop: 16 }}>
               <button
                 onClick={() => setSelectedCutId(null)}
                 style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #3C2A2E', background: 'transparent', color: '#A69A93', fontFamily: 'var(--font-body)', fontSize: 14, cursor: 'pointer' }}

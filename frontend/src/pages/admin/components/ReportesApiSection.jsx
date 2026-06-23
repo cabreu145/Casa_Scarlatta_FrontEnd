@@ -15,17 +15,19 @@ import {
   useTopClassesReportQuery,
   useUsersReportQuery,
   usePosSalesQuery,
+  useAllSalesForReportQuery,
   useFinanceRecentSalesQuery,
   useSiteConfigurationQuery,
-  useAdminClientsQuery,
+  useAllClientsForReportQuery,
   useExpensesQuery,
   useCashClosingsQuery,
 } from '@/hooks/useApiQueries'
 import { useAuth } from '@/context/AuthContext'
 import { hasPermission } from '@/auth/permissions'
-import { abrirReportePDF } from '@/utils/reportePDF'
+import { abrirReportePDF, abrirCortesDetalladoPDF } from '@/utils/reportePDF'
 import { buildReportFilename, downloadCsvFromRows } from '@/utils/reportExport'
 import { exportFinanceCsv } from '@/services/financeApiService'
+import { getCashClosingDetail } from '@/services/cashClosingsApiService'
 import styles from '@/styles/dashboard.module.css'
 
 function formatMeridaDate(date = new Date()) {
@@ -322,20 +324,25 @@ function occupancyRowsFromReport(occupancy) {
 }
 
 function coachPaymentsRowsFromReport(report = {}) {
-  return (report.items ?? []).flatMap((coach) =>
+  const rows = (report.items ?? []).flatMap((coach) =>
     (coach.details ?? []).map((detail) => ({
-      Coach: coach.name,
-      Fecha: detail.date ?? '—',
-      Hora: detail.time ?? '—',
-      Clase: detail.className ?? 'Clase',
-      Disciplina: detail.discipline ?? '—',
-      Asistentes: detail.attendees ?? 0,
-      Cortesía: detail.courtesyCount ?? 0,
-      Tarifa: detail.rateMxn ?? 0,
-      Pago: detail.payMxn ?? 0,
-      Estatus: detail.status === 'missing_rate' ? 'missing_rate' : 'calculated',
+      Coach:            coach.name,
+      Fecha:            detail.date ?? '—',
+      Hora:             detail.time ?? '—',
+      Clase:            detail.className ?? 'Clase',
+      Disciplina:       detail.discipline ?? '—',
+      'Total cupos':    (detail.courtesyCount ?? 0) + (detail.attendees ?? 0),
+      Cortesía:         detail.courtesyCount ?? 0,
+      'Asistentes reales': detail.attendees ?? 0,
+      Pago:             detail.payMxn ?? 0,
+      Estatus:          detail.status === 'missing_rate' ? 'Sin tarifa' : 'Calculado',
     }))
   )
+  return rows.sort((a, b) => {
+    const dateA = `${a.Fecha} ${a.Hora}`
+    const dateB = `${b.Fecha} ${b.Hora}`
+    return dateA.localeCompare(dateB)
+  })
 }
 
 function payTableRowsFromReport(payTableItems = []) {
@@ -365,9 +372,9 @@ export default function ReportesApiSection({ inPanel = false }) {
   const occupancyQuery = useOccupancyByDisciplineReportQuery({ from, to, enabled: true })
   const coachPaymentsQuery = useCoachPaymentsReportQuery({ from, to, enabled: true })
   const payTableQuery = usePayTableQuery({ enabled: canReadPayTable })
-  const salesQuery = usePosSalesQuery({ from, to, pageSize: 100, page: 1, enabled: true })
+  const salesQuery = useAllSalesForReportQuery({ from, to, enabled: true })
   const recentSalesQuery = useFinanceRecentSalesQuery({ limit: 500, enabled: true })
-  const allClientsQuery = useAdminClientsQuery({ pageSize: 100, page: 1, enabled: true })
+  const allClientsQuery = useAllClientsForReportQuery({ enabled: true })
   const expensesQuery = useExpensesQuery({ from, to, pageSize: 100, page: 1, enabled: true })
   const cashClosingsQuery = useCashClosingsQuery({ from, to, pageSize: 100, page: 1, enabled: true })
   const siteConfigQuery = useSiteConfigurationQuery({ enabled: true })
@@ -489,76 +496,91 @@ export default function ReportesApiSection({ inPanel = false }) {
 
     // Use unified transactions list from the finance report (includes MP payments)
     const backendTransactions = Array.isArray(finance?.transactions) ? finance.transactions : []
-    if (backendTransactions.length > 0) {
-      return backendTransactions.map((t) => {
-        const dateObj = t.fecha ? new Date(t.fecha) : null
-        const fecha = dateObj && !Number.isNaN(dateObj.getTime())
-          ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' })
-          : '—'
-        const hora = dateObj && !Number.isNaN(dateObj.getTime())
-          ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' })
-          : '—'
-        const metodoKey = (t.metodo ?? '').toLowerCase()
-        const metodo = metodosLabel[metodoKey] || t.metodo || '—'
-        const folio = t.folio
-          || t.raw?.folio || t.raw?.code || t.raw?.external_id || t.raw?.payment_id
-          || folioByAmountAndDay.get(`${fecha}_${t.montoMxn}`)
-          || '—'
-        return {
-          Fecha:    fecha,
-          Hora:     hora,
-          Folio:    folio,
-          Concepto: t.concepto || '—',
-          Producto: t.producto || '—',
-          Método:   metodo,
-          Monto:    t.montoMxn ?? 0,
-        }
-      })
-    }
+    const incomeRows = backendTransactions.length > 0
+      ? backendTransactions.map((t) => {
+          const dateObj = t.fecha ? new Date(t.fecha) : null
+          const fecha = dateObj && !Number.isNaN(dateObj.getTime())
+            ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' })
+            : '—'
+          const hora = dateObj && !Number.isNaN(dateObj.getTime())
+            ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' })
+            : '—'
+          const metodoKey = (t.metodo ?? '').toLowerCase()
+          const metodo = metodosLabel[metodoKey] || t.metodo || '—'
+          const folio = t.folio
+            || t.raw?.folio || t.raw?.code || t.raw?.external_id || t.raw?.payment_id
+            || folioByAmountAndDay.get(`${fecha}_${t.montoMxn}`)
+            || '—'
+          return {
+            Fecha:    fecha,
+            Hora:     hora,
+            Folio:    folio,
+            Tipo:     'Ingreso',
+            Concepto: t.concepto || '—',
+            Producto: t.producto || '—',
+            Método:   metodo,
+            Monto:    t.montoMxn ?? 0,
+          }
+        })
+      // Fallback: build rows from POS sales query
+      : salesItems.map((sale) => {
+          const raw = String(sale.createdAt ?? sale.created_at ?? '')
+          const dateObj = raw ? new Date(raw) : null
+          const fecha = dateObj && !Number.isNaN(dateObj.getTime())
+            ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' })
+            : '—'
+          const hora = dateObj && !Number.isNaN(dateObj.getTime())
+            ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' })
+            : '—'
+          const payMethod = sale.paymentMethod?.toLowerCase?.() ?? ''
+          const metodo = metodosLabel[payMethod] || sale.paymentMethod || '—'
+          const clienteNombre = sale.customerName || sale.customer_name || ''
+          const producto = (() => {
+            if (Array.isArray(sale.items) && sale.items.length) {
+              const names = sale.items
+                .map((i) => i.name || i.nombre || i.displayName || i.description || '')
+                .filter((n) => n && n !== 'Item')
+              if (names.length) return names.join(', ')
+            }
+            return '—'
+          })()
+          return {
+            Fecha:    fecha,
+            Hora:     hora,
+            Folio:    sale.folio || '—',
+            Tipo:     'Ingreso',
+            Concepto: clienteNombre || 'Venta mostrador',
+            Producto: producto,
+            Método:   metodo,
+            Monto:    sale.totalMxn ?? sale.total_mxn ?? 0,
+          }
+        })
 
-    // Fallback: build rows from POS sales query
-    return salesItems.map((sale) => {
-      const raw = String(sale.createdAt ?? sale.created_at ?? '')
-      const dateObj = raw ? new Date(raw) : null
-      const fecha = dateObj && !Number.isNaN(dateObj.getTime())
-        ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' })
-        : '—'
-      const hora = dateObj && !Number.isNaN(dateObj.getTime())
-        ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' })
-        : '—'
-      const payMethod = sale.paymentMethod?.toLowerCase?.() ?? ''
-      const metodo = metodosLabel[payMethod] || sale.paymentMethod || '—'
-      const clienteNombre = sale.customerName || sale.customer_name || ''
-      const producto = (() => {
-        if (Array.isArray(sale.items) && sale.items.length) {
-          const names = sale.items
-            .map((i) => i.name || i.nombre || i.displayName || i.description || '')
-            .filter((n) => n && n !== 'Item')
-          if (names.length) return names.join(', ')
-        }
-        return '—'
-      })()
-      return {
-        Fecha:    fecha,
-        Hora:     hora,
-        Folio:    sale.folio || '—',
-        Concepto: clienteNombre || 'Venta mostrador',
-        Producto: producto,
-        Método:   metodo,
-        Monto:    sale.totalMxn ?? sale.total_mxn ?? 0,
-      }
-    })
-  }, [salesItems, finance, folioByAmountAndDay])
+    // Append expense rows so gastos appear in the financial report
+    const rawExpenses = expensesQuery.data?.items ?? []
+    const expenseRows = rawExpenses.map((e) => ({
+      Fecha:    e.expenseDate ?? '—',
+      Hora:     '—',
+      Folio:    'GASTO',
+      Tipo:     'Gasto',
+      Concepto: e.category || '—',
+      Producto: e.description || '—',
+      Método:   metodosLabel[(e.paymentMethod ?? '').toLowerCase()] || e.paymentMethod || '—',
+      Monto:    -(e.amountMxn ?? 0),
+    }))
+
+    return [...incomeRows, ...expenseRows]
+  }, [salesItems, finance, folioByAmountAndDay, expensesQuery.data])
 
   const allClients = allClientsQuery.data?.items ?? []
 
   const packagesDetailRows = useMemo(() => {
     const clientMap = new Map(allClients.map((c) => [String(c.id), c]))
 
-    // Ventas de paquetes siempre tienen un cliente identificado
+    // POS package sales: those associated with a customer
     const packageSales = salesItems.filter((sale) => !!(sale.customerId || sale.customer_id))
 
-    const transactionRows = packageSales.map((sale) => {
+    const posRows_ = packageSales.map((sale) => {
       const raw     = String(sale.createdAt ?? sale.created_at ?? '')
       const dateObj = raw ? new Date(raw) : null
       const valid   = dateObj && !Number.isNaN(dateObj.getTime())
@@ -574,6 +596,28 @@ export default function ReportesApiSection({ inPanel = false }) {
       return { Fecha: fecha, Hora: hora, Cliente: cliente, Paquete: paquete, Monto: sale.totalMxn ?? sale.total_mxn ?? 0 }
     })
 
+    // Mercado Pago transactions are exclusively package/membership sales
+    const backendTransactions = Array.isArray(finance?.transactions) ? finance.transactions : []
+    const mpRows = backendTransactions
+      .filter((t) => {
+        const metodo = (t.metodo ?? '').toLowerCase()
+        return metodo === 'mercado_pago' || metodo === 'mercadopago'
+      })
+      .map((t) => {
+        const dateObj = t.fecha ? new Date(t.fecha) : null
+        const valid   = dateObj && !Number.isNaN(dateObj.getTime())
+        const fecha   = valid ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' }) : '—'
+        const hora    = valid ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' }) : '—'
+        return {
+          Fecha:   fecha,
+          Hora:    hora,
+          Cliente: t.concepto || '—',
+          Paquete: t.producto || '—',
+          Monto:   t.montoMxn ?? 0,
+        }
+      })
+
+    const transactionRows = [...posRows_, ...mpRows]
     if (!transactionRows.length) return packagesRows
 
     // Resumen debajo del TOTAL — Fecha vacía = no se suma, aparece después del TOTAL
@@ -584,7 +628,7 @@ export default function ReportesApiSection({ inPanel = false }) {
     ]
 
     return [...transactionRows, ...summaryRows]
-  }, [salesItems, packagesRows, packagesReport, allClients])
+  }, [salesItems, packagesRows, packagesReport, allClients, finance])
 
   const posDetailRows = useMemo(() => {
     if (!salesItems.length) return posRows
@@ -879,7 +923,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           icono="💰"
           titulo="Reporte financiero"
           descripcion="Ingresos, gastos, utilidad neta y métodos de pago."
-          onCsv={() => exportCsv('reporte-financiero', financeTransactionRows, ['Fecha', 'Hora', 'Folio', 'Concepto', 'Producto', 'Método', 'Monto'])}
+          onCsv={() => exportCsv('reporte-financiero', financeTransactionRows, ['Fecha', 'Hora', 'Folio', 'Tipo', 'Concepto', 'Producto', 'Método', 'Monto'])}
           onPdf={() => exportPdf('financiero', 'Reporte Financiero operativo', financeTransactionRows)}
         />
         <ReportCard
@@ -904,17 +948,10 @@ export default function ReportesApiSection({ inPanel = false }) {
           onPdf={() => exportPdf('pdv', 'Reporte POS operativo', posDetailRows, true)}
         />
         <ReportCard
-          icono="👩‍🏫"
-          titulo="Reporte de coaches"
-          descripcion="Clases, reservas, asistencia y ocupación."
-          onCsv={() => exportCsv('reporte-coaches', coachesRows, ['Coach', 'Clases', 'Reservas', 'Asistencias', 'No shows', 'Ocupación %', 'Disciplina'])}
-          onPdf={() => exportPdf('coaches', 'Reporte de Coaches operativo', coachesRows, true)}
-        />
-        <ReportCard
           icono="💰"
           titulo="Pago de coaches"
-          descripcion="Tarifa, pago y clases sin tarifa."
-          onCsv={() => exportCsv('reporte-pago-coaches', coachPaymentsRows, ['Coach', 'Fecha', 'Hora', 'Clase', 'Disciplina', 'Asistentes', 'Cortesía', 'Tarifa', 'Pago', 'Estatus'])}
+          descripcion="Pago por clase, cupos y asistencia real."
+          onCsv={() => exportCsv('reporte-pago-coaches', coachPaymentsRows, ['Coach', 'Fecha', 'Hora', 'Clase', 'Disciplina', 'Total cupos', 'Cortesía', 'Asistentes reales', 'Pago', 'Estatus'])}
           onPdf={() => exportPdf('coaches_pagos', 'Pago de Coaches operativo', coachPaymentsRows, true)}
         />
         <ReportCard
@@ -936,7 +973,16 @@ export default function ReportesApiSection({ inPanel = false }) {
           titulo="Exportar cortes"
           descripcion="Historial de cortes de caja: ingresos, gastos y neto por corte."
           onCsv={() => exportCsv('reporte-cortes', cortesDetailRows, ['Fecha', 'Ventas', 'Total ingresos', 'Efectivo', 'Tarjeta', 'Transferencia', 'Gastos', 'Neto', 'Notas'])}
-          onPdf={() => exportPdf('cortes', 'Reporte de Cortes de Caja', cortesDetailRows)}
+          onPdf={async () => {
+            if (!cashClosingItems.length) { toast('Sin cortes para exportar.', { icon: '📋' }); return }
+            try {
+              const details = await Promise.all(cashClosingItems.map((c) => getCashClosingDetail(c.id)))
+              const rangeLabel = `${formatDateMx(from)} a ${formatDateMx(to)}`
+              abrirCortesDetalladoPDF({ titulo: `Cortes de caja — ${rangeLabel}`, cortes: details, siteInfo })
+            } catch {
+              toast.error('No se pudo generar el PDF de cortes.')
+            }
+          }}
         />
       </div>
 
@@ -1118,7 +1164,7 @@ export default function ReportesApiSection({ inPanel = false }) {
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                               <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                {['Fecha', 'Hora', 'Clase', 'Disciplina', 'Asist.', 'Cortesía', 'Tarifa', 'Pago', 'Estatus'].map((head) => (
+                                {['Fecha', 'Hora', 'Clase', 'Disciplina', 'Total cupos', 'Cortesía', 'Asistentes reales', 'Pago', 'Estatus'].map((head) => (
                                   <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                     {head}
                                   </th>
@@ -1126,17 +1172,17 @@ export default function ReportesApiSection({ inPanel = false }) {
                               </tr>
                             </thead>
                             <tbody>
-                              {coach.details.length > 0 ? coach.details.map((detail, index) => (
+                              {coach.details.length > 0 ? [...coach.details].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`)).map((detail, index) => (
                                 <tr key={`${coach.coachId ?? coach.name}-${index}`} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
                                   <td style={{ padding: '8px 10px' }}>{detail.date ?? '—'}</td>
                                   <td style={{ padding: '8px 10px' }}>{detail.time ?? '—'}</td>
                                   <td style={{ padding: '8px 10px' }}>{detail.className ?? 'Clase'}</td>
                                   <td style={{ padding: '8px 10px' }}>{detail.discipline ?? '—'}</td>
-                                  <td style={{ padding: '8px 10px' }}>{detail.attendees ?? 0}</td>
+                                  <td style={{ padding: '8px 10px' }}>{(detail.courtesyCount ?? 0) + (detail.attendees ?? 0)}</td>
                                   <td style={{ padding: '8px 10px', color: (detail.courtesyCount ?? 0) > 0 ? '#a855f7' : 'var(--text-muted)' }}>{detail.courtesyCount ?? 0}</td>
-                                  <td style={{ padding: '8px 10px' }}>{formatMoneyMx(detail.rateMxn)}</td>
+                                  <td style={{ padding: '8px 10px' }}>{detail.attendees ?? 0}</td>
                                   <td style={{ padding: '8px 10px', fontWeight: 600, color: detail.status === 'missing_rate' ? '#fbbf24' : '#22c55e' }}>{formatMoneyMx(detail.payMxn)}</td>
-                                  <td style={{ padding: '8px 10px' }}>{detail.status === 'missing_rate' ? 'missing_rate' : 'calculated'}</td>
+                                  <td style={{ padding: '8px 10px', color: detail.status === 'missing_rate' ? '#fbbf24' : 'var(--text-muted)' }}>{detail.status === 'missing_rate' ? 'Sin tarifa' : 'Calculado'}</td>
                                 </tr>
                               )) : (
                                 <tr>

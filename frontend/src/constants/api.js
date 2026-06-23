@@ -137,8 +137,11 @@ export const ENDPOINTS = {
 
   cortes: withPrefix('/cortes'),
   cortesHoy: withPrefix('/cortes/hoy'),
-  cortesPaginated: ({ page, pageSize, from, to }) =>
-    withQuery('/cortes', { page, page_size: pageSize, from, to }),
+  cortesResumen: ({ date, shiftKey }) =>
+    withQuery('/cortes/resumen', { date, shift_key: shiftKey }),
+  cortesApertura: withPrefix('/cortes/apertura'),
+  cortesPaginated: ({ page, pageSize, from, to, shiftKey }) =>
+    withQuery('/cortes', { page, page_size: pageSize, from, to, shift_key: shiftKey }),
   corteById: (id) => withPrefix(`/cortes/${id}`),
   ejecutarCorte: withPrefix('/cortes/ejecutar'),
 

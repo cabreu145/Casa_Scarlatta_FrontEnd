@@ -67,10 +67,12 @@ export function mapBackendClientToFrontend(item = {}) {
     paqueteInfo: activeMembership
       ? {
           packageId: activeMembership.packageId,
+          fechaCompra: activeMembership.purchasedAt ?? null,
           fechaVencimiento: activeMembership.expiresAt,
           creditsTotal: activeMembership.creditsTotal,
         }
       : null,
+    fechaNacimiento: item.nacimiento ?? item.fecha_nacimiento ?? item.fechaNacimiento ?? item.birth_date ?? item.birthDate ?? item.birthdate ?? null,
     lastVisit: item.last_visit ?? item.lastVisit ?? null,
     reservationsCount: Number(item.reservations_count ?? item.reservationsCount ?? 0),
     recentCreditMovements: (item.recent_credit_movements ?? item.recentCreditMovements ?? []).map(mapCreditMovement),

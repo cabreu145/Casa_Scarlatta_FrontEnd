@@ -35,6 +35,24 @@ export async function getClientsPaginatedApi({
   }
 }
 
+export async function getAllClientsForReportApi() {
+  const PAGE_SIZE = 100
+  const first = await httpGet(ENDPOINTS.adminClientsPaginated({ page: 1, pageSize: PAGE_SIZE }))
+  const firstNorm = normalizePaginatedResponse(first, mapBackendClientToFrontend)
+  const total = firstNorm.total ?? 0
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  if (totalPages <= 1) return firstNorm
+
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) =>
+      httpGet(ENDPOINTS.adminClientsPaginated({ page: i + 2, pageSize: PAGE_SIZE }))
+        .then((p) => normalizePaginatedResponse(p, mapBackendClientToFrontend).items)
+    )
+  )
+  return { ...firstNorm, items: [...firstNorm.items, ...rest.flat()] }
+}
+
 export async function createClientApi(payload) {
   return mapBackendClientToFrontend(await httpPost(ENDPOINTS.adminClients, payload))
 }

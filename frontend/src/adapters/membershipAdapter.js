@@ -33,6 +33,7 @@ export function mapBackendMembershipToFrontend(item = {}) {
     creditsTotal: Number(item.credits_total ?? item.creditsTotal ?? item.credits ?? 0),
     creditsAvailable: Number(item.credits_available ?? item.creditsAvailable ?? item.allocated_credits ?? 0),
     allocatedCredits: Number(item.allocated_credits ?? item.allocatedCredits ?? item.credits_allocated ?? 0),
+    purchasedAt: item.created_at ?? item.purchased_at ?? item.purchasedAt ?? item.createdAt ?? item.activated_at ?? item.activatedAt ?? null,
     expiresAt: item.expires_at ?? item.expiresAt ?? null,
     status: item.status ?? item.estado ?? null,
     limitOneSpotPerOccurrence: Boolean(

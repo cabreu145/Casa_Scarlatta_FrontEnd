@@ -1,4 +1,4 @@
-﻿import { useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import styles from '../AdminPanel.module.css'
@@ -137,6 +137,22 @@ export default function PuntoDeVentaSection({
   const { usuario } = useAuthStore()
   const [buyerSearch, setBuyerSearch] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [buyerDropdownOpen, setBuyerDropdownOpen] = useState(false)
+  const [buyerDropdownPos, setBuyerDropdownPos] = useState({ top: 0, left: 0, width: 0, maxH: 260 })
+  const buyerBtnRef = useRef(null)
+  const buyerDropdownRef = useRef(null)
+  useEffect(() => {
+    if (!buyerDropdownOpen) return
+    const handleClickOutside = (e) => {
+      if (buyerDropdownRef.current && !buyerDropdownRef.current.contains(e.target) &&
+          buyerBtnRef.current && !buyerBtnRef.current.contains(e.target)) {
+        setBuyerDropdownOpen(false)
+        setBuyerSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [buyerDropdownOpen])
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [bogoModal, setBogoModal] = useState(null) // { item } pending cart add
   const [bogoSearch, setBogoSearch] = useState('')
@@ -822,29 +838,87 @@ export default function PuntoDeVentaSection({
               <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 8 }}>
                 Cliente para paquetes
               </div>
-              <input
-                className={styles.searchInput}
-                placeholder="Buscar cliente..."
-                value={buyerSearch}
-                onChange={(event) => setBuyerSearch(event.target.value)}
-                style={{ maxWidth: '100%', marginBottom: 8 }}
-              />
-              <select
-                className={styles.formSelect}
-                value={selectedCustomerId}
-                onChange={(event) => setSelectedCustomerId(event.target.value)}
-                style={{ width: '100%' }}
-              >
-                <option value="">Selecciona cliente</option>
-                {selectedCustomerId && !selectedCustomer && (
-                  <option value={selectedCustomerId}>Cliente seleccionado</option>
+              <div style={{ position: 'relative' }}>
+                <button
+                  ref={buyerBtnRef}
+                  type="button"
+                  className={styles.formSelect}
+                  style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', fontSize: 13 }}
+                  onClick={() => {
+                    if (buyerBtnRef.current) {
+                      const r = buyerBtnRef.current.getBoundingClientRect()
+                      const DROPDOWN_H = 260
+                      const spaceBelow = window.innerHeight - r.bottom - 8
+                      const spaceAbove = r.top - 8
+                      if (spaceBelow >= DROPDOWN_H || spaceBelow >= spaceAbove) {
+                        setBuyerDropdownPos({ top: r.bottom + 4, left: r.left, width: r.width, maxH: Math.min(DROPDOWN_H, spaceBelow) })
+                      } else {
+                        setBuyerDropdownPos({ top: r.top - Math.min(DROPDOWN_H, spaceAbove) - 4, left: r.left, width: r.width, maxH: Math.min(DROPDOWN_H, spaceAbove) })
+                      }
+                    }
+                    setBuyerDropdownOpen(o => !o)
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedCustomer ? (selectedCustomer.name ?? selectedCustomer.nombre ?? selectedCustomer.email) : 'Selecciona cliente'}
+                  </span>
+                  <span style={{ opacity: 0.6, flexShrink: 0 }}>▾</span>
+                </button>
+                {buyerDropdownOpen && createPortal(
+                  <div
+                    ref={buyerDropdownRef}
+                    style={{
+                      position: 'fixed',
+                      top: buyerDropdownPos.top,
+                      left: buyerDropdownPos.left,
+                      width: buyerDropdownPos.width,
+                      maxHeight: buyerDropdownPos.maxH,
+                      zIndex: 9999,
+                      background: '#2a171e',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                      borderRadius: 8,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    <div style={{ padding: '6px 8px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                      <input
+                        type="text"
+                        style={{ width: '100%', fontSize: 12, padding: '5px 8px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#fff', outline: 'none' }}
+                        placeholder="Buscar cliente..."
+                        autoFocus
+                        value={buyerSearch}
+                        onChange={e => setBuyerSearch(e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                      />
+                    </div>
+                    <div
+                      style={{ padding: '8px 12px', fontSize: 13, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
+                      onClick={() => { setSelectedCustomerId(''); setBuyerDropdownOpen(false); setBuyerSearch('') }}
+                    >
+                      Selecciona cliente
+                    </div>
+                    {buyerClients.map(client => (
+                      <div
+                        key={client.id}
+                        style={{
+                          padding: '8px 12px',
+                          fontSize: 13,
+                          color: '#fff',
+                          cursor: 'pointer',
+                          background: String(selectedCustomerId) === String(client.id) ? 'rgba(255,255,255,0.1)' : 'transparent',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                        onMouseLeave={e => e.currentTarget.style.background = String(selectedCustomerId) === String(client.id) ? 'rgba(255,255,255,0.1)' : 'transparent'}
+                        onClick={() => { setSelectedCustomerId(String(client.id)); setBuyerDropdownOpen(false); setBuyerSearch('') }}
+                      >
+                        {client.name ?? client.nombre ?? client.email}
+                      </div>
+                    ))}
+                  </div>,
+                  document.body
                 )}
-                {buyerClients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name ?? client.nombre ?? client.email}
-                  </option>
-                ))}
-              </select>
+              </div>
               {selectedCustomer && (
                 <div style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
                   Cliente: <strong style={{ color: 'rgba(255,255,255,0.85)' }}>{selectedCustomer.name ?? selectedCustomer.nombre}</strong>

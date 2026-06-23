@@ -24,8 +24,10 @@ import {
 import {
   executeCashClosing,
   getCashClosingDetail,
+  getCashShiftSummary,
   getTodayCashClosingSummary,
   listCashClosings,
+  openCashShift,
 } from '@/services/cashClosingsApiService'
 import {
   getFinanceCategories,
@@ -95,6 +97,7 @@ import {
   deleteClientApi,
   getClientByIdApi,
   getClientsPaginatedApi,
+  getAllClientsForReportApi,
   updateClientMembershipExpirationApi,
   updateClientApi,
 } from '@/services/clientsApiService'
@@ -112,6 +115,7 @@ import {
   getSaleByIdApi,
   getSaleTicketApi,
   getSalesApi,
+  getAllSalesForReportApi,
   updateProductApi,
   updateProductStatusApi,
 } from '@/services/posApiService'
@@ -367,6 +371,15 @@ export function usePosSalesQuery({
   })
 }
 
+export function useAllSalesForReportQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: ['sales', 'report', 'all', from || '', to || ''],
+    queryFn: () => getAllSalesForReportApi({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
 export function usePosSaleDetailQuery(saleId, { enabled = false } = {}) {
   return useQuery({
     queryKey: queryKeys.posSaleDetail(saleId),
@@ -411,6 +424,7 @@ export function useCashClosingsQuery({
   pageSize = 20,
   from,
   to,
+  shiftKey,
   enabled = false,
 } = {}) {
   const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
@@ -420,8 +434,9 @@ export function useCashClosingsQuery({
       pageSize: normalizedPageSize,
       from: from || '',
       to: to || '',
+      shiftKey: shiftKey || '',
     }),
-    queryFn: () => listCashClosings({ page, pageSize: normalizedPageSize, from, to }),
+    queryFn: () => listCashClosings({ page, pageSize: normalizedPageSize, from, to, shiftKey }),
     enabled,
     placeholderData: (previousData) => previousData,
     ...shortDefaults,
@@ -434,6 +449,37 @@ export function useCashClosingDetailQuery(id, { enabled = false } = {}) {
     queryFn: () => getCashClosingDetail(id),
     enabled: Boolean(enabled && id),
     ...shortDefaults,
+  })
+}
+
+export function useCashShiftSummaryQuery({ date, shiftKey, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.cashClosings.shiftSummary({ date: date || '', shiftKey: shiftKey || '' }),
+    queryFn: () => getCashShiftSummary({ date, shiftKey }),
+    enabled: Boolean(enabled && date && shiftKey),
+    ...shortDefaults,
+  })
+}
+
+export function useOpenCashShiftMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: openCashShift,
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['cashClosings'] })
+      queryClient.invalidateQueries({ queryKey: ['finance'] })
+    },
+  })
+}
+
+export function useExecuteCashShiftMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: executeCashClosing,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cashClosings'] })
+      queryClient.invalidateQueries({ queryKey: ['finance'] })
+    },
   })
 }
 
@@ -1283,6 +1329,15 @@ export function useAdminClientsQuery({ page = 1, pageSize = 20, search, status, 
     queryFn: () => getClientsPaginatedApi({ page, pageSize, search, status, membershipStatus }),
     enabled,
     placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useAllClientsForReportQuery({ enabled = false } = {}) {
+  return useQuery({
+    queryKey: ['clients', 'report', 'all'],
+    queryFn: () => getAllClientsForReportApi(),
+    enabled,
     ...shortDefaults,
   })
 }

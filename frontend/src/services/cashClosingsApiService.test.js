@@ -4,12 +4,15 @@ vi.mock('@/constants/api', () => ({
   ENDPOINTS: {
     cortesHoy: '/api/v1/cortes/hoy',
     ejecutarCorte: '/api/v1/cortes/ejecutar',
-    cortesPaginated: ({ page, pageSize, from, to }) => {
+    cortesApertura: '/api/v1/cortes/apertura',
+    cortesResumen: ({ date, shiftKey }) => `/api/v1/cortes/resumen?date=${date}&shift_key=${shiftKey}`,
+    cortesPaginated: ({ page, pageSize, from, to, shiftKey }) => {
       const params = new URLSearchParams()
       params.set('page', String(page))
       params.set('page_size', String(pageSize))
       if (from) params.set('from', from)
       if (to) params.set('to', to)
+      if (shiftKey) params.set('shift_key', shiftKey)
       return `/api/v1/cortes?${params.toString()}`
     },
     corteById: (id) => `/api/v1/cortes/${id}`,

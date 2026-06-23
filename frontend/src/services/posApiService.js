@@ -137,6 +137,24 @@ export async function getSalesApi({
   }
 }
 
+export async function getAllSalesForReportApi({ from, to } = {}) {
+  const PAGE_SIZE = 100
+  const first = await httpGet(ENDPOINTS.ventasPaginated({ page: 1, pageSize: PAGE_SIZE, from, to }))
+  const firstNorm = normalizePaginatedResponse(first, mapBackendSaleToFrontend)
+  const total = firstNorm.total ?? 0
+  const totalPages = Math.ceil(total / PAGE_SIZE)
+
+  if (totalPages <= 1) return firstNorm
+
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) =>
+      httpGet(ENDPOINTS.ventasPaginated({ page: i + 2, pageSize: PAGE_SIZE, from, to }))
+        .then((p) => normalizePaginatedResponse(p, mapBackendSaleToFrontend).items)
+    )
+  )
+  return { ...firstNorm, items: [...firstNorm.items, ...rest.flat()] }
+}
+
 export async function getSaleByIdApi(saleId) {
   if (!ENDPOINTS.ventaById) {
     throw new Error('POS_SALES_ENDPOINT_MISSING')

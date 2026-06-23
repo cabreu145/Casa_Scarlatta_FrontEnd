@@ -576,12 +576,12 @@ export default function ClientPanel() {
     e.preventDefault()
     if (!perfilForm || !usuario?.id) return
     setGuardandoPerfil(true)
-    const nombre = [perfilFormSafe.nombre, perfilFormSafe.apellido].filter(Boolean).join(' ')
+    const nombre = [perfilForm.nombre, perfilForm.apellido].filter(Boolean).join(' ')
     const resultado = await editarPerfilService(usuario.id, {
       nombre,
-      telefono:        perfilFormSafe.telefono,
-      genero:          perfilFormSafe.genero,
-      fechaNacimiento: perfilFormSafe.fechaNacimiento,
+      telefono:        perfilForm.telefono,
+      genero:          perfilForm.genero,
+      fechaNacimiento: perfilForm.fechaNacimiento,
     })
     if (resultado.ok) toast.success(resultado.mensaje)
     else toast.error(resultado.mensaje)

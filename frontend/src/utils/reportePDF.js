@@ -601,6 +601,217 @@ export function abrirReportePDF({ tipo, titulo, datos, periodo = '', landscape =
   win.document.close()
 }
 
+function fmtMoney(v) {
+  const n = Number(v ?? 0)
+  return '$' + (Number.isFinite(n) ? n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00')
+}
+
+function fmtDateTime(iso) {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  } catch { return iso }
+}
+
+function metodoPago(m) {
+  const map = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', mercado_pago: 'Mercado Pago', mercadopago: 'Mercado Pago', other: 'Otro' }
+  return map[(m || '').toLowerCase()] || m || '—'
+}
+
+function buildCortesDetalladoHTML({ titulo, cortes, periodo, siteInfo = {} }) {
+  const nombre  = siteInfo.nombre || siteInfo.nombreEstudio || 'Casa Scarlatta'
+  const fechaHoy = hoy()
+
+  const totalIngresos = cortes.reduce((a, c) => a + Number(c.totalMxn ?? 0), 0)
+  const totalGastos   = cortes.reduce((a, c) => a + Number(c.expensesTotalMxn ?? 0), 0)
+  const totalUtilidad = cortes.reduce((a, c) => a + Number(c.netTotalMxn ?? 0), 0)
+
+  const statsHTML = [
+    { v: cortes.length, l: 'Cortes realizados' },
+    { v: fmtMoney(totalIngresos), l: 'Total ingresos' },
+    { v: fmtMoney(totalGastos),   l: 'Total gastos' },
+    { v: fmtMoney(totalUtilidad), l: 'Utilidad del turno' },
+  ].map(s => `<div class="stat-card"><div class="stat-value">${s.v}</div><div class="stat-label">${s.l}</div></div>`).join('')
+
+  const cortesHTML = cortes.map((c) => {
+    const diff    = c.cashDifferenceMxn
+    const counted = c.countedCashMxn
+    let saludColor = '#22c55e'; let saludTxt = 'Cuadrado'
+    if (counted === null || counted === undefined) { saludColor = '#d97706'; saludTxt = 'Sin contar' }
+    else if (diff < 0) { saludColor = '#dc2626'; saludTxt = `Diferencia ${fmtMoney(Math.abs(diff))}` }
+    else if (diff > 0) { saludTxt = `Sobrante ${fmtMoney(diff)}` }
+
+    const apertura = [
+      ['Fondo inicial', fmtMoney(c.openingCashMxn)],
+      c.openedAt ? ['Hora apertura', fmtDateTime(c.openedAt)] : null,
+    ].filter(Boolean).map(([l, v]) => `<tr><td style="color:#7A5C58;font-size:10px">${l}</td><td style="font-weight:600;text-align:right">${v}</td></tr>`).join('')
+
+    const cierre = c.closedAt ? [
+      ['Hora cierre', fmtDateTime(c.closedAt)],
+      c.createdByName ? ['Cerró', c.createdByName] : null,
+    ].filter(Boolean).map(([l, v]) => `<tr><td style="color:#7A5C58;font-size:10px">${l}</td><td style="font-weight:600;text-align:right">${v}</td></tr>`).join('') : ''
+
+    const dineroFisico   = Number(c.cashTotalMxn ?? 0)
+    const dineroBancario = Number(c.cardTotalMxn ?? 0) + Number(c.transferTotalMxn ?? 0) + Number(c.otherTotalMxn ?? 0)
+
+    const desglose = [
+      { l: 'Total ventas',            v: fmtMoney(c.totalMxn),           bold: true,  color: '#2C1810' },
+      { l: 'Dinero físico (efectivo)',v: fmtMoney(dineroFisico),          color: '#1D4ED8' },
+      { l: 'Dinero bancario',         v: fmtMoney(dineroBancario),        color: '#1D4ED8' },
+      { l: 'Gastos',                  v: '−' + fmtMoney(c.expensesTotalMxn), color: '#DC2626' },
+      { l: 'Utilidad del turno',      v: fmtMoney(c.netTotalMxn),         bold: true,  color: '#15803D' },
+    ].map(({ l, v, bold, color }) =>
+      `<tr><td style="color:#7A5C58;font-size:10px">${l}</td><td style="font-weight:${bold ? 700 : 500};color:${color || '#2C1810'};text-align:right">${v}</td></tr>`
+    ).join('')
+
+    const entrega = [
+      { l: 'Efectivo a entregar',      v: fmtMoney(dineroFisico) },
+      { l: 'Tarjetas / Transferencia', v: fmtMoney(dineroBancario) },
+      { l: 'Total corte',              v: fmtMoney(c.totalMxn), bold: true },
+    ].map(({ l, v, bold }) =>
+      `<tr><td style="color:#7A5C58;font-size:10px">${l}</td><td style="font-weight:${bold ? 700 : 500};text-align:right${bold ? ';color:#7B1E22' : ''}">${v}</td></tr>`
+    ).join('')
+
+    const conteo = (counted !== null && counted !== undefined) ? [
+      { l: 'Efectivo esperado', v: fmtMoney(c.expectedCashMxn) },
+      { l: 'Efectivo contado',  v: fmtMoney(counted) },
+      { l: 'Diferencia',        v: fmtMoney(diff), color: diff >= 0 ? '#15803D' : '#DC2626', bold: true },
+    ].map(({ l, v, color, bold }) =>
+      `<tr><td style="color:#7A5C58;font-size:10px">${l}</td><td style="font-weight:${bold ? 700 : 500};color:${color || '#2C1810'};text-align:right">${v}</td></tr>`
+    ).join('') : ''
+
+    const salesHTML = (c.sales?.length > 0) ? `
+      <div style="margin-top:14px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">Ventas incluidas (${c.sales.length})</div>
+        <table style="width:100%;border-collapse:collapse;font-size:9.5px">
+          <thead><tr style="background:#7B1E22">
+            ${['Folio','Cliente','Método','Subtotal','IVA','Total','Fecha'].map(h => `<th style="padding:5px 7px;color:#fff;text-align:left;font-size:8px;letter-spacing:0.06em;text-transform:uppercase">${h}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${c.sales.map((s, i) => `<tr style="background:${i % 2 === 0 ? '#fff' : '#FDFAF8'}">
+              ${[s.folio, s.customerName || s.customerEmail || 'Venta mostrador', metodoPago(s.paymentMethod), fmtMoney(s.subtotalMxn), fmtMoney(s.taxMxn), fmtMoney(s.totalMxn), fmtDateTime(s.createdAt)]
+                .map(v => `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${v}</td>`).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : ''
+
+    const expensesHTML = (c.expenses?.length > 0) ? `
+      <div style="margin-top:12px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">Gastos del turno (${c.expenses.length})</div>
+        <table style="width:100%;border-collapse:collapse;font-size:9.5px">
+          <thead><tr style="background:#7B1E22">
+            ${['Categoría','Descripción','Método','Monto'].map(h => `<th style="padding:5px 7px;color:#fff;text-align:left;font-size:8px;letter-spacing:0.06em;text-transform:uppercase">${h}</th>`).join('')}
+          </tr></thead>
+          <tbody>
+            ${c.expenses.map((e, i) => `<tr style="background:${i % 2 === 0 ? '#fff' : '#FDFAF8'}">
+              ${[e.category || '—', e.description || '—', metodoPago(e.paymentMethod), fmtMoney(e.amountMxn)]
+                .map(v => `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${v}</td>`).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>` : ''
+
+    return `
+    <div style="border:1px solid #E8D5CB;border-radius:8px;padding:18px 20px;margin-bottom:20px;page-break-inside:avoid;break-inside:avoid">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div>
+          <div style="font-family:'DM Serif Display',serif;font-size:16px;color:#7B1E22">${fmtFecha(c.date)}</div>
+          <div style="font-size:10px;color:#7A5C58;margin-top:2px">${c.shiftLabel || 'Día completo'} · ${c.salesCount ?? 0} ventas · ${c.isClosed ? 'Cerrado' : 'Abierto'}</div>
+        </div>
+        <div style="background:${saludColor}18;border:1px solid ${saludColor}44;border-radius:6px;padding:6px 12px;text-align:center">
+          <div style="font-size:11px;font-weight:700;color:${saludColor}">${saludTxt}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:${c.closedAt ? '1fr 1fr' : '1fr'} 1fr 1fr${conteo ? ' 1fr' : ''};gap:12px">
+        <div style="background:#F5EDE8;border-radius:6px;padding:12px">
+          <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#7A5C58;margin-bottom:8px">Apertura</div>
+          <table style="width:100%;border-collapse:collapse">${apertura}</table>
+        </div>
+        ${c.closedAt ? `<div style="background:#F5EDE8;border-radius:6px;padding:12px">
+          <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#7A5C58;margin-bottom:8px">Cierre</div>
+          <table style="width:100%;border-collapse:collapse">${cierre}</table>
+        </div>` : ''}
+        <div style="background:#F5EDE8;border-radius:6px;padding:12px">
+          <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#7A5C58;margin-bottom:8px">Desglose de ingresos</div>
+          <table style="width:100%;border-collapse:collapse">${desglose}</table>
+        </div>
+        <div style="background:#F5EDE8;border-radius:6px;padding:12px">
+          <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#7A5C58;margin-bottom:8px">Dinero por entregar ⭐</div>
+          <table style="width:100%;border-collapse:collapse">${entrega}</table>
+        </div>
+        ${conteo ? `<div style="background:#F5EDE8;border-radius:6px;padding:12px">
+          <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#7A5C58;margin-bottom:8px">Conteo de caja</div>
+          <table style="width:100%;border-collapse:collapse">${conteo}</table>
+        </div>` : ''}
+      </div>
+      ${salesHTML}
+      ${expensesHTML}
+    </div>`
+  }).join('')
+
+  const periodoStr = periodo ? ` · Período: <strong>${periodo}</strong>` : ''
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${nombre} — ${titulo}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400;1,600&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    ${CSS_VARS}
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: 'DM Sans', sans-serif; color: var(--dark); background: #F0E9E4; min-height: 100vh; padding: 40px 20px 60px; }
+    .page { background: white; max-width: 900px; margin: 0 auto; padding: 44px 52px; border-radius: 4px; box-shadow: 0 4px 40px rgba(44,24,16,0.15); }
+    ${CSS_SHARED}
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+    @media print {
+      body { background: white; padding: 0; }
+      .page { box-shadow: none; border-radius: 0; padding: 20px 24px; max-width: 100%; }
+      .print-controls { display: none; }
+      @page { size: letter portrait; margin: 10mm 8mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    ${buildHeaderBlock(siteInfo)}
+    <div class="report-meta">
+      <div class="report-meta-icon">🏧</div>
+      <div>
+        <div class="report-title">${titulo}</div>
+        <div class="report-date">Generado el ${fechaHoy}${periodoStr} · ${cortes.length} corte${cortes.length !== 1 ? 's' : ''}</div>
+      </div>
+    </div>
+    <div class="stats-grid">${statsHTML}</div>
+    ${cortesHTML}
+    <div class="footer">
+      <span><strong>${nombre}</strong> Wellness Studio</span>
+      <span>Documento generado automáticamente · ${fechaHoy}</span>
+    </div>
+  </div>
+  <div class="print-controls">
+    <button class="btn-print" onclick="window.print()">🖨&nbsp; Guardar como PDF</button>
+    <button class="btn-close" onclick="window.close()">Cerrar</button>
+  </div>
+</body>
+</html>`
+}
+
+export function abrirCortesDetalladoPDF({ titulo, cortes, periodo = '', siteInfo = {} }) {
+  const html = buildCortesDetalladoHTML({ titulo, cortes, periodo, siteInfo })
+  const win  = window.open('', '_blank')
+  if (!win) {
+    alert('El navegador bloqueó la ventana emergente. Permite pop-ups para este sitio.')
+    return
+  }
+  win.document.write(html)
+  win.document.close()
+}
+
 /**
  * Descarga el reporte como archivo .html independiente.
  */

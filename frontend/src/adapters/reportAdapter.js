@@ -236,6 +236,7 @@ function mapCoachPaymentsDetailItem(item = {}) {
     discipline: normalizeString(item.discipline ?? item.primary_discipline ?? item.primaryDiscipline, 'Sin disciplina'),
     attendees: toNumber(item.attendees ?? item.assistants ?? item.attendance_count ?? item.attendanceCount, 0),
     courtesyCount: toNumber(item.courtesy_count ?? item.courtesyCount, 0),
+    reservationsCount: toNumber(item.reservations_count ?? item.reservationsCount ?? item.total_reservations ?? item.totalReservations, 0),
     rateMxn,
     payMxn,
     status,

@@ -478,13 +478,14 @@ export default function GastosSection({ inPanel = false, isActive = true, useApi
                         <td>{money(expense.amountMxn)}</td>
                         <td>{statusLabel(expense.status)}</td>
                         <td>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                            <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setDetailId(expense.id)}>
+                          <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 4 }}>
+                            <button type="button" className={`${styles.btn} ${styles.btnGhost}`} style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setDetailId(expense.id)}>
                               Ver
                             </button>
                             <button
                               type="button"
                               className={`${styles.btn} ${styles.btnGhost}`}
+                              style={{ padding: '4px 8px', fontSize: 12 }}
                               onClick={() => openEditModal(expense)}
                               disabled={disabled}
                             >
@@ -493,6 +494,7 @@ export default function GastosSection({ inPanel = false, isActive = true, useApi
                             <button
                               type="button"
                               className={`${styles.btn} ${styles.btnGhost}`}
+                              style={{ padding: '4px 8px', fontSize: 12 }}
                               onClick={() => openCancelModal(expense)}
                               disabled={disabled}
                             >
@@ -501,6 +503,7 @@ export default function GastosSection({ inPanel = false, isActive = true, useApi
                             <button
                               type="button"
                               className={`${styles.btn} ${styles.btnGhost}`}
+                              style={{ padding: '4px 8px', fontSize: 12 }}
                               onClick={() => setDeleteModal(expense)}
                               disabled={disabled}
                             >

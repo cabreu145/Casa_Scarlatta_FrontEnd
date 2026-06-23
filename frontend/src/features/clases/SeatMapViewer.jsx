@@ -2,14 +2,35 @@ import { useState, useEffect, useMemo } from 'react'
 import SeatSelector, { SLOW_MATS, buildStrydeLayout } from './SeatSelector'
 import { getOccurrenceRosterApi } from '@/services/reservasApiService'
 import { normalizeDiscipline } from '@/utils/discipline'
+import { usePublicCoachesQuery } from '@/hooks/useApiQueries'
 
 export default function SeatMapViewer({ cls, occurrenceId, onClose, fecha }) {
   const [occupantMap, setOccupantMap] = useState({})
 
+  // Fetch public coaches only when cls is missing coachAvatarUrl or coachNombre
+  const needsCoachEnrichment = Boolean(cls.coachId && (!cls.coachAvatarUrl || !cls.coachNombre))
+  const coachesQuery = usePublicCoachesQuery({ enabled: needsCoachEnrichment })
+
+  // Enrich cls with coach photo/name from the public coaches API when missing
+  const enrichedCls = useMemo(() => {
+    if (!needsCoachEnrichment) return cls
+    const coaches = coachesQuery.data ?? []
+    if (!coaches.length) return cls
+    const coach = coaches.find(
+      (c) => c.id === cls.coachId || c.coachId === cls.coachId
+    )
+    if (!coach) return cls
+    return {
+      ...cls,
+      coachAvatarUrl: cls.coachAvatarUrl ?? coach.avatarUrl ?? coach.foto ?? null,
+      coachNombre: cls.coachNombre ?? coach.name ?? coach.nombre ?? null,
+    }
+  }, [cls, needsCoachEnrichment, coachesQuery.data])
+
   const isSlow = useMemo(() => {
-    const disc = cls.discipline ?? cls.classDiscipline ?? cls.tipo ?? ''
+    const disc = enrichedCls.discipline ?? enrichedCls.classDiscipline ?? enrichedCls.tipo ?? ''
     return normalizeDiscipline(disc) === 'slow'
-  }, [cls])
+  }, [enrichedCls])
 
   const strydeLayout = useMemo(() => buildStrydeLayout(), [])
 
@@ -22,8 +43,6 @@ export default function SeatMapViewer({ cls, occurrenceId, onClose, fecha }) {
         const students = data?.students ?? []
         const map = {}
         for (const s of students) {
-          // spotLabel from API is just the number e.g. '07', '02'
-          // equipmentType is 'mat', 'bench', 'treadmill'
           const num = String(s.spotLabel ?? '').padStart(2, '0')
           if (!num || num === '00') continue
 
@@ -51,7 +70,7 @@ export default function SeatMapViewer({ cls, occurrenceId, onClose, fecha }) {
 
   return (
     <SeatSelector
-      cls={cls}
+      cls={enrichedCls}
       onClose={onClose}
       fecha={fecha}
       viewOnly={true}

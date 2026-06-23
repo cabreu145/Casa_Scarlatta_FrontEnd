@@ -94,6 +94,7 @@ export const queryKeys = {
   posSaleTicket: (saleId) => ['admin', 'pos', 'sales', saleId, 'ticket'],
   cashClosings: {
     today: ['cashClosings', 'today'],
+    shiftSummary: (params = {}) => ['cashClosings', 'shiftSummary', params],
     list: (params = {}) => ['cashClosings', 'list', params],
     detail: (id) => ['cashClosings', 'detail', id],
   },

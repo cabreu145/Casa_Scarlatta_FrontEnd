@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { mapBackendCashClosingToFrontend, mapBackendCashClosingsToFrontend } from './cashClosingAdapter'
+import { mapBackendCashClosingToFrontend, mapBackendCashClosingsToFrontend, normalizeCashClosing } from './cashClosingAdapter'
 
 describe('cashClosingAdapter', () => {
   test('mapea resumen backend a frontend', () => {
@@ -70,5 +70,80 @@ describe('cashClosingAdapter', () => {
   test('mapea lista de cortes', () => {
     const mapped = mapBackendCashClosingsToFrontend([{ id: 1, date: '2026-06-09' }])
     expect(mapped[0]).toMatchObject({ id: 1, date: '2026-06-09' })
+  })
+
+  test('normalizeCashClosing: mapea campos de turno snake y camel', () => {
+    const raw = {
+      id: 10,
+      date: '2026-06-19',
+      shiftKey: 'turno_1',
+      shiftLabel: 'Turno 1',
+      shiftStartAt: '2026-06-19T07:00:00-06:00',
+      shiftEndAt: '2026-06-19T15:00:00-06:00',
+      status: 'open',
+      isOpen: true,
+      isClosed: false,
+      opening_cash_mxn: 500,
+      cash_outflows_mxn: 150,
+      expected_cash_mxn: 1550,
+      counted_cash_mxn: null,
+      cash_difference_mxn: null,
+    }
+    const n = normalizeCashClosing(raw)
+    expect(n.shiftKey).toBe('turno_1')
+    expect(n.shiftLabel).toBe('Turno 1')
+    expect(n.isOpen).toBe(true)
+    expect(n.isClosed).toBe(false)
+    expect(n.openingCashMxn).toBe(500)
+    expect(n.cashOutflowsMxn).toBe(150)
+    expect(n.expectedCashMxn).toBe(1550)
+    expect(n.countedCashMxn).toBeNull()
+    expect(n.cashDifferenceMxn).toBeNull()
+  })
+
+  test('normalizeCashClosing: acepta campos snake_case de turno', () => {
+    const raw = {
+      shift_key: 'turno_2',
+      shift_label: 'Turno 2',
+      status: 'closed',
+      counted_cash_mxn: 1600,
+      cash_difference_mxn: 50,
+    }
+    const n = normalizeCashClosing(raw)
+    expect(n.shiftKey).toBe('turno_2')
+    expect(n.shiftLabel).toBe('Turno 2')
+    expect(n.isClosed).toBe(true)
+    expect(n.countedCashMxn).toBe(1600)
+    expect(n.cashDifferenceMxn).toBe(50)
+  })
+
+  test('normalizeCashClosing: fallback a dia_completo si no hay turno', () => {
+    const n = normalizeCashClosing({ id: 1, date: '2026-06-01', status: 'closed' })
+    expect(n.shiftKey).toBe('dia_completo')
+    expect(n.shiftLabel).toBe('Día completo')
+  })
+
+  test('normalizeCashClosing: mapea gastos incluidos', () => {
+    const raw = {
+      expenses: [
+        {
+          expense_id: 55,
+          category: 'operacion',
+          description: 'Compra de insumos',
+          payment_method: 'cash',
+          amount_mxn: 150,
+          expense_date: '2026-06-19',
+        },
+      ],
+    }
+    const n = normalizeCashClosing(raw)
+    expect(n.expenses[0]).toMatchObject({
+      expenseId: 55,
+      category: 'operacion',
+      description: 'Compra de insumos',
+      paymentMethod: 'cash',
+      amountMxn: 150,
+      expenseDate: '2026-06-19',
+    })
   })
 })

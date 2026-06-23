@@ -5,10 +5,12 @@ export function resolvePerfilCompleto({ useApiAuth, usuario, usuarios }) {
 }
 
 export function buildPerfilFormFromUser(perfil = null) {
-  const partes = (perfil?.nombre ?? '').split(' ')
+  const partes = (perfil?.nombre ?? '').trim().split(/\s+/).filter(Boolean)
+  // For 4+ word names split in half (e.g. "eduardo jesus sanchez santini" → "eduardo jesus" / "sanchez santini")
+  const splitAt = partes.length >= 4 ? Math.floor(partes.length / 2) : 1
   return {
-    nombre: partes[0] ?? '',
-    apellido: partes.slice(1).join(' '),
+    nombre: partes.slice(0, splitAt).join(' '),
+    apellido: partes.slice(splitAt).join(' '),
     email: perfil?.email ?? '',
     telefono: perfil?.telefono ?? '',
     genero: perfil?.genero ?? 'Prefiero no decir',
