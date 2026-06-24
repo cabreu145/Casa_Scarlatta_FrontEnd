@@ -186,13 +186,15 @@ export function useMyCreditMovementsQuery({ page = 1, pageSize = 8, enabled = fa
   })
 }
 
-export function useMyPaymentsQuery({ page = 1, pageSize = 10, status, enabled = false } = {}) {
+export function useMyPaymentsQuery({ page = 1, pageSize = 10, status, enabled = false, refetchInterval = 15_000 } = {}) {
   return useQuery({
     queryKey: queryKeys.myPayments({ page, pageSize, status: status || 'all' }),
     queryFn: () => getMyPaymentsApi({ page, pageSize, status }),
     enabled,
     placeholderData: (previousData) => previousData,
+    refetchInterval,
     ...shortDefaults,
+    ...softRealtimeDefaults,
   })
 }
 
