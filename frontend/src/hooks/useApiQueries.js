@@ -53,7 +53,11 @@ import {
   sendTestEmailApi,
   updateEmailConfigApi,
 } from '@/services/emailConfigApiService'
-import { getPaymentStatusApi } from '@/services/paymentsApiService'
+import {
+  cancelPendingPaymentAdminApi,
+  getClientPaymentsAdminApi,
+  getPaymentStatusApi,
+} from '@/services/paymentsApiService'
 import {
   getSiteConfigurationApi,
   updateSiteConfigurationApi,
@@ -211,6 +215,26 @@ export function usePaymentStatusQuery(externalReference, options = {}) {
     refetchOnWindowFocus,
     retry,
     ...restOptions,
+  })
+}
+
+export function useAdminClientPaymentsQuery({ clientId, page = 1, pageSize = 10, status, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.adminClientPayments(clientId, { page, pageSize, status: status || 'all' }),
+    queryFn: () => getClientPaymentsAdminApi({ clientId, page, pageSize, status }),
+    enabled: Boolean(clientId) && enabled,
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
+export function useCancelPendingPaymentAdminMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ externalReference }) => cancelPendingPaymentAdminApi({ externalReference }),
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.adminClientPayments(variables?.clientId, {}).slice(0, 3) })
+    },
   })
 }
 

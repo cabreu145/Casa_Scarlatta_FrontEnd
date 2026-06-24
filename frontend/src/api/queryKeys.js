@@ -31,6 +31,7 @@ export const queryKeys = {
   payments: {
     status: (externalReference) => ['payments', 'status', externalReference],
   },
+  adminClientPayments: (clientId, params = {}) => ['admin', 'clients', clientId, 'payments', params],
   coachAgenda: {
     me: (params = {}) => ['coachAgenda', 'me', params],
   },

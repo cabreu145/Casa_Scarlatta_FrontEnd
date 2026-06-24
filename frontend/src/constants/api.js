@@ -245,6 +245,10 @@ export const ENDPOINTS = {
   createPaymentCheckoutPreference: withPrefix('/pagos/checkout-preference'),
   getPaymentStatus: ({ externalReference }) =>
     withPrefix(`/pagos/estado?external_reference=${externalReference ?? ''}`),
+  adminClientPayments: (clientId, { page, pageSize, status } = {}) =>
+    withQuery(`/clientes/${clientId}/pagos`, { page, page_size: pageSize, status }),
+  adminCancelPendingPayment: (externalReference) =>
+    withPrefix(`/pagos/admin/${externalReference}/cancelar`),
 
   packagePromotions: withPrefix('/package-promotions'),
   packagePromotionsPaginated: ({ page, pageSize, search, packageId, isActive } = {}) =>

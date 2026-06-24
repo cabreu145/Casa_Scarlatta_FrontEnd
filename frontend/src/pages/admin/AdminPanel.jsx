@@ -85,9 +85,11 @@ import { resolvePackagePurchaseErrorMessage } from '@/utils/packagePurchasePolic
 import { queryKeys } from '@/api/queryKeys'
 import {
   useAdminClientDetailQuery,
+  useAdminClientPaymentsQuery,
   useAdminClientsQuery,
   useAdminClientsActiveCountQuery,
   useAdminCoachesActiveCountQuery,
+  useCancelPendingPaymentAdminMutation,
   invalidateClassSideEffects,
   useCreateProductMutation,
   useDeleteProductMutation,
@@ -539,6 +541,14 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const modalVerUsuarioResolved = useApiClients && apiClientDetailQuery.data
     ? apiClientDetailQuery.data
     : modalVerUsuario
+  const modalVerUsuarioPaymentsQuery = useAdminClientPaymentsQuery({
+    clientId: modalVerUsuario?.id,
+    page: 1,
+    pageSize: 20,
+    enabled: useApiClients && Boolean(modalVerUsuario?.id),
+  })
+  const cancelPendingPaymentMutation = useCancelPendingPaymentAdminMutation()
+  const [cancelingPaymentRef, setCancelingPaymentRef] = useState(null)
   const modalAlumnosOccurrenceId = modalAlumnosClase?.occurrenceId ?? modalAlumnosClase?.occurrence_id ?? null
   const occurrenceRosterQuery = useOccurrenceRosterQuery(modalAlumnosOccurrenceId, {
     includeCanceled: false,
@@ -3822,6 +3832,59 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       </button>
                     </div>
                   )}
+
+                {useApiClients && (() => {
+                  const pendingPayments = (modalVerUsuarioPaymentsQuery.data?.items ?? []).filter(
+                    (payment) => !payment.applied && payment.status !== 'cancelled' && payment.status !== 'rejected' && payment.status !== 'failed'
+                  )
+                  if (pendingPayments.length === 0) return null
+                  return (
+                    <div style={{ marginTop: 24, padding: '16px 18px', background: 'rgba(217,119,6,0.08)', borderRadius: 12, border: '1px solid rgba(217,119,6,0.25)' }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>
+                        Pagos pendientes
+                      </div>
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {pendingPayments.map((payment) => (
+                          <div key={payment.externalReference} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <div>
+                              <div style={{ fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>
+                                {payment.packageName ?? (payment.packageId ? `Paquete #${payment.packageId}` : 'Paquete')}
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                                Folio {payment.externalReference} · {payment.paymentMethodId ?? payment.provider ?? 'pago'} · {payment.status}
+                              </div>
+                            </div>
+                            <button
+                              className={`${styles.btn} ${styles.btnGhost}`}
+                              style={{ fontSize: 11, padding: '6px 10px', whiteSpace: 'nowrap' }}
+                              disabled={cancelingPaymentRef === payment.externalReference}
+                              onClick={async () => {
+                                const confirmCancel = window.confirm(
+                                  'Cancelar este pago pendiente liberara al cliente para volver a comprar el paquete. Continuar?'
+                                )
+                                if (!confirmCancel) return
+                                setCancelingPaymentRef(payment.externalReference)
+                                try {
+                                  await cancelPendingPaymentMutation.mutateAsync({
+                                    externalReference: payment.externalReference,
+                                    clientId: u.id,
+                                  })
+                                  toast.success('Pago pendiente cancelado')
+                                } catch (error) {
+                                  toast.error(error?.message ?? 'No se pudo cancelar el pago')
+                                } finally {
+                                  setCancelingPaymentRef(null)
+                                }
+                              }}
+                            >
+                              {cancelingPaymentRef === payment.externalReference ? 'Cancelando...' : 'Cancelar pago'}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {useApiClients && (u.sharedMemberships ?? []).length > 0 && (
                   <div style={{ marginTop: 24, padding: '16px 18px', background: 'rgba(123,30,34,0.08)', borderRadius: 12, border: '1px solid rgba(123,30,34,0.18)' }}>

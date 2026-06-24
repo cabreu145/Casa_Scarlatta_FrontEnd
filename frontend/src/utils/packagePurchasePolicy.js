@@ -29,6 +29,10 @@ export function resolvePackagePurchaseErrorMessage(error, { admin = false } = {}
     return getPackageAlreadyPurchasedMessage({ admin })
   }
 
+  if (code === 'PACKAGE_PAYMENT_ALREADY_PENDING' || raw.includes('PACKAGE_PAYMENT_ALREADY_PENDING')) {
+    return raw || 'Ya tienes un pago pendiente para este paquete. Si no deseas continuar con ese metodo de pago, levanta un ticket con administracion para cancelar esa referencia y poder comprar de nuevo.'
+  }
+
   if (Object.prototype.hasOwnProperty.call(PROMOTION_ERROR_MESSAGES, code)) {
     return (PROMOTION_ERROR_MESSAGES[code] ?? raw) || null
   }
