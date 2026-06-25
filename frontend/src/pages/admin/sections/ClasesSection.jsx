@@ -101,6 +101,8 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
   const [modoPublicacion, setModoPublicacion] = useState('inmediato') // 'inmediato' | 'automatico' | 'personalizado'
   const [publicarEnCustom, setPublicarEnCustom] = useState('')   // datetime-local string
   const [cargando,        setCargando]        = useState(false)
+  const [importando,      setImportando]      = useState(false)
+  const [importProgress,  setImportProgress]  = useState({ done: 0, total: 0 })
   const fileInputRef = useRef(null)
 
   // Fecha/hora de publicaciÃƒÂ³n efectiva segÃƒÂºn el modo seleccionado
@@ -246,18 +248,45 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
       toast.error('Selecciona la fecha y hora de publicación')
       return
     }
-    await onImportar(clasesParseadas.map(c => ({ ...c, ...(publicarEnFinal ? { publicarEn: publicarEnFinal } : {}) })))
-    const msg = publicarEnFinal
-      ? `${clasesParseadas.length} clase${clasesParseadas.length !== 1 ? 's' : ''} programadas para ${new Date(publicarEnFinal).toLocaleString('es-MX', { weekday:'short', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}`
-      : `${clasesParseadas.length} clase${clasesParseadas.length !== 1 ? 's' : ''} publicadas inmediatamente`
-    toast.success(msg)
-    onClose()
+    setImportando(true)
+    setImportProgress({ done: 0, total: clasesParseadas.length })
+    try {
+      await onImportar(
+        clasesParseadas.map(c => ({ ...c, ...(publicarEnFinal ? { publicarEn: publicarEnFinal } : {}) })),
+        { onProgress: (done, total) => setImportProgress({ done, total }) }
+      )
+      const msg = publicarEnFinal
+        ? `${clasesParseadas.length} clase${clasesParseadas.length !== 1 ? 's' : ''} programadas para ${new Date(publicarEnFinal).toLocaleString('es-MX', { weekday:'short', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}`
+        : `${clasesParseadas.length} clase${clasesParseadas.length !== 1 ? 's' : ''} publicadas inmediatamente`
+      toast.success(msg)
+      onClose()
+    } finally {
+      setImportando(false)
+    }
   }
 
   return (
-    <div className={styles.modalOverlay} style={{ display: 'flex' }} onClick={onClose}>
+    <div className={styles.modalOverlay} style={{ display: 'flex' }} onClick={importando ? undefined : onClose}>
       <div className={styles.modal} style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
         <h2 className={styles.modalTitle}>Importar clases desde Excel</h2>
+        {importando && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
+            padding: '12px 16px', borderRadius: 10,
+            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+          }}>
+            <span style={{ fontSize: 22, display: 'inline-block', animation: 'spin 1.2s linear infinite' }}>🕐</span>
+            <div>
+              <div style={{ fontFamily: 'var(--font-body)', fontWeight: 600, color: 'rgba(255,255,255,0.92)' }}>
+                Subiendo clases... {importProgress.done} de {importProgress.total}
+              </div>
+              <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>
+                No cierres esta ventana, espera a que termine de subir todas las clases.
+              </div>
+            </div>
+          </div>
+        )}
+        <style>{'@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }'}</style>
 
         {/* Ã¢â€â‚¬Ã¢â€â‚¬ Botones de acciÃƒÂ³n Ã¢â€â‚¬Ã¢â€â‚¬ */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
@@ -456,10 +485,39 @@ function ModalImportarClases({ coaches, onImportar, onClose }) {
         )}
 
         <div className={styles.modalActions}>
-          <button className={`${styles.btn} ${styles.btnGhost}`} onClick={onClose}>Cancelar</button>
+          <button
+            className={`${styles.btn} ${styles.btnGhost}`}
+            onClick={onClose}
+            disabled={importando}
+            style={{
+              background: 'rgba(255,255,255,0.14)',
+              border: '1px solid rgba(255,255,255,0.28)',
+              color: '#fff',
+              fontWeight: 600,
+              opacity: importando ? 0.5 : 1,
+              cursor: importando ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Cancelar
+          </button>
           {clasesParseadas.length > 0 && (
-            <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={confirmar}>
-              {publicarEnFinal ? '🕐 ' : '⚡ '}Cargar {clasesParseadas.length} clase{clasesParseadas.length !== 1 ? 's' : ''}
+            <button
+              className={`${styles.btn} ${styles.btnPrimary}`}
+              onClick={confirmar}
+              disabled={importando}
+              style={{
+                background: 'linear-gradient(135deg, #b3232e, #d6303c)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: '#fff',
+                fontWeight: 700,
+                boxShadow: '0 2px 10px rgba(214,48,60,0.45)',
+                opacity: importando ? 0.7 : 1,
+                cursor: importando ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {importando
+                ? `🕐 Subiendo ${importProgress.done}/${importProgress.total}...`
+                : `${publicarEnFinal ? '🕐 ' : '⚡ '}Cargar ${clasesParseadas.length} clase${clasesParseadas.length !== 1 ? 's' : ''}`}
             </button>
           )}
         </div>
@@ -589,13 +647,14 @@ export default function ClasesSection({
     eliminarClaseConReservas(claseId)
   }, [canDeleteClass, clasesListPage, fetchApiClasesPage, queryClient, useApiClasses])
 
-  const handleImportar = async (clases) => {
+  const handleImportar = async (clases, { onProgress } = {}) => {
     if (!canCreateClass) {
       toast.error('No tienes permisos para crear clases.')
       return
     }
     if (useApiClasses) {
       try {
+        let done = 0
         for (const clase of clases) {
           const payload = buildClaseApiPayload({
             form: {
@@ -610,11 +669,12 @@ export default function ClasesSection({
             const occurrencePayload = buildOccurrencePayloadFromImportedClass(clase, payload)
             await createClassOccurrenceApi(createdClase?.id, occurrencePayload)
           }
-          await invalidateClassSideEffects(queryClient, {
-            classId: createdClase?.id,
-            coachId: createdClase?.coachId ?? createdClase?.coach_id ?? payload.coach_id,
-          })
+          done += 1
+          onProgress?.(done, clases.length)
         }
+        // Una sola invalidación de cache al final, en vez de una por cada clase importada
+        // (hacerlo dentro del loop disparaba ~20 refetches por clase y volvía la importación muy lenta).
+        await invalidateClassSideEffects(queryClient, {})
         await useClasesStore.getState().loadClasesFromApi({ force: true })
         await fetchApiClasesPage(clasesListPage)
         toast.success(`${clases.length} clase${clases.length !== 1 ? 's' : ''} importadas correctamente`)
@@ -858,12 +918,30 @@ export default function ClasesSection({
               style={{ background: '#ef4444', borderColor: '#ef4444' }}
               onClick={async () => {
                 if (!window.confirm(`¿Eliminar ${selectedIds.size} clase${selectedIds.size > 1 ? 's' : ''}?`)) return
-                await Promise.all([...selectedIds].map((id) => handleDeleteClase(id, { refetch: false })))
+                const selectedRows = clasesFiltradas.filter((c) => selectedIds.has(c.id))
+                const classIdsToDelete = [...new Set(selectedRows.map((c) => resolveClassActionId(c)).filter(Boolean))]
+                if (classIdsToDelete.length === 0) {
+                  toast.error('No se pudo identificar la clase a eliminar.')
+                  return
+                }
+                const results = await Promise.allSettled(
+                  classIdsToDelete.map((id) => handleDeleteClase(id, { refetch: false }))
+                )
+                const failed = results.filter((r) => r.status === 'rejected')
                 if (useApiClasses) {
                   await useClasesStore.getState().loadClasesFromApi({ force: true })
                   await fetchApiClasesPage(clasesListPage)
                 }
-                toast.success(`${selectedIds.size} clase${selectedIds.size > 1 ? 's eliminadas' : ' eliminada'}`)
+                const succeededCount = classIdsToDelete.length - failed.length
+                if (failed.length > 0) {
+                  toast.error(
+                    succeededCount > 0
+                      ? `${succeededCount} clase${succeededCount > 1 ? 's' : ''} eliminada${succeededCount > 1 ? 's' : ''}, ${failed.length} fallaron`
+                      : `No se pudo eliminar ${failed.length > 1 ? 'las clases' : 'la clase'}`
+                  )
+                } else {
+                  toast.success(`${succeededCount} clase${succeededCount > 1 ? 's eliminadas' : ' eliminada'}`)
+                }
                 setSelectedIds(new Set())
                 setSelectMode(false)
               }}

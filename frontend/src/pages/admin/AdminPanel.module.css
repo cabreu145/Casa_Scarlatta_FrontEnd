@@ -1099,6 +1099,14 @@ details[open] > summary .detailsChevron {
 
 .modalTitle { font-family: var(--font-display); font-size: 24px; font-style: italic; color: #fff; }
 
+.modalActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 24px;
+}
+
 .modalBody {
   display: grid;
   gap: 14px;
