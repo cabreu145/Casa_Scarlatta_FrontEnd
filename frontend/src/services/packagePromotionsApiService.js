@@ -48,9 +48,9 @@ function mapRedemption(raw = {}) {
   }
 }
 
-export async function getPackagePromotionsApi({ page = 1, pageSize = 20, search, packageId, isActive } = {}) {
+export async function getPackagePromotionsApi({ page = 1, pageSize = 20, search, packageId, status } = {}) {
   const payload = await httpGet(
-    ENDPOINTS.packagePromotionsPaginated({ page, pageSize, search, packageId, isActive })
+    ENDPOINTS.packagePromotionsPaginated({ page, pageSize, search, packageId, status })
   )
   return normalizePaginatedResponse(payload, mapPromotion)
 }

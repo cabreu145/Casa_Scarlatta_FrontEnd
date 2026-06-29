@@ -251,8 +251,8 @@ export const ENDPOINTS = {
     withPrefix(`/pagos/admin/${externalReference}/cancelar`),
 
   packagePromotions: withPrefix('/package-promotions'),
-  packagePromotionsPaginated: ({ page, pageSize, search, packageId, isActive } = {}) =>
-    withQuery('/package-promotions', { page, page_size: pageSize, search, package_id: packageId, is_active: isActive }),
+  packagePromotionsPaginated: ({ page, pageSize, search, packageId, status } = {}) =>
+    withQuery('/package-promotions', { page, page_size: pageSize, search, package_id: packageId, status }),
   packagePromotionById: (id) => withPrefix(`/package-promotions/${id}`),
   packagePromotionStatusById: (id) => withPrefix(`/package-promotions/${id}/status`),
   packagePromotionRedemptions: (id) => withPrefix(`/package-promotions/${id}/redemptions`),

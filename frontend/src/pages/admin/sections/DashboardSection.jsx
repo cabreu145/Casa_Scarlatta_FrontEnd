@@ -361,7 +361,7 @@ export default function DashboardSection({ rangoDash, setRangoDash, showSection,
   useEffect(() => {
     if (!useApiMode) return
     setPromosLoading(true)
-    getPackagePromotionsApi({ isActive: true, pageSize: 50 })
+    getPackagePromotionsApi({ status: 'active', pageSize: 50 })
       .then((res) => setActivePromos(res.items ?? []))
       .catch(() => setActivePromos([]))
       .finally(() => setPromosLoading(false))

@@ -1,6 +1,7 @@
 ﻿import { useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PasswordInput from '@/components/ui/PasswordInput'
+import WaitlistModal from '@/components/shared/WaitlistModal'
 import DashboardSection from './sections/DashboardSection'
 import CoachesSection from './sections/CoachesSection'
 import ClasesSection from './sections/ClasesSection'
@@ -451,6 +452,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
   // Clase — ver alumnos
   const [modalAlumnosClase, setModalAlumnosClase] = useState(null) // clase | null
+  const [modalWaitlistClase, setModalWaitlistClase] = useState(null) // clase | null
   const [alumnoAgregarId,   setAlumnoAgregarId]   = useState('')
   const [enrollSearch, setEnrollSearch] = useState('')
   const [enrollPage,   setEnrollPage]   = useState(1)
@@ -1689,6 +1691,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               disciplinas={disciplinas}
               openModal={openModal}
               setModalAlumnosClase={setModalAlumnosClase}
+              setModalWaitlistClase={setModalWaitlistClase}
               setAlumnoAgregarId={setAlumnoAgregarId}
               setModalEditClase={setModalEditClase}
               setEditClaseForm={setEditClaseForm}
@@ -3462,6 +3465,26 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               </div>
             </div>
           </div>
+        )
+      })()}
+
+      {/* ── LISTA DE ESPERA ── */}
+      {modalWaitlistClase && (() => {
+        const cls = modalWaitlistClase
+        const occurrenceId = cls.occurrenceId ?? cls.occurrence_id ?? null
+        const resolveUserName = (userId) =>
+          (clientsForAdmin ?? []).find((client) => Number(client.id) === Number(userId))?.name
+          ?? (clientsForAdmin ?? []).find((client) => Number(client.id) === Number(userId))?.nombre
+          ?? usuarios.find((u) => Number(u.id) === Number(userId))?.nombre
+          ?? `Usuario #${userId}`
+        return (
+          <WaitlistModal
+            occurrenceId={occurrenceId}
+            claseNombre={cls.nombre}
+            dayLabel={`${cls.dia ?? cls.discipline ?? 'Sin día'} · ${getClassDisplayTime(cls)}`}
+            resolveUserName={resolveUserName}
+            onClose={() => setModalWaitlistClase(null)}
+          />
         )
       })()}
 

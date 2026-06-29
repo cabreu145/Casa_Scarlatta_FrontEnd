@@ -92,8 +92,8 @@ export default function PromocionesSection({ paquetes = [], useApiMode = false, 
     setIsLoading(true)
     setError('')
     try {
-      const isActiveFilter = filterActive === 'active' ? true : filterActive === 'inactive' ? false : undefined
-      const res = await getPackagePromotionsApi({ page, pageSize, search: search || undefined, isActive: isActiveFilter })
+      const statusFilter = filterActive === 'all' ? undefined : filterActive
+      const res = await getPackagePromotionsApi({ page, pageSize, search: search || undefined, status: statusFilter })
       setItems(res.items ?? [])
       setTotal(res.total ?? 0)
     } catch (err) {

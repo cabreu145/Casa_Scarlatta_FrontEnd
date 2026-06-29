@@ -538,6 +538,7 @@ export default function ClasesSection({
   disciplinas,
   openModal,
   setModalAlumnosClase,
+  setModalWaitlistClase,
   setAlumnoAgregarId,
   setModalEditClase,
   setEditClaseForm,
@@ -1167,6 +1168,16 @@ export default function ClasesSection({
                       >
                         👥{c.cupoActual}
                       </button>
+                      {c.cupoActual >= c.cupoMax && (
+                        <button
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          style={{ padding: '6px 9px', fontSize: 13, color: '#F59E0B', borderColor: 'rgba(245,158,11,0.3)' }}
+                          onClick={() => setModalWaitlistClase(c)}
+                          title="Ver lista de espera en tiempo real"
+                        >
+                          ⏳
+                        </button>
+                      )}
                       {onViewMap && (c.occurrenceId ?? c.occurrence_id) && ['slow','stryde'].includes(normalizeDiscipline(c.discipline ?? c.classDiscipline ?? c.tipo)) && (
                         <button
                           className={`${styles.btn} ${styles.btnGhost}`}
@@ -1307,6 +1318,11 @@ export default function ClasesSection({
                           {canReadRoster && (
                             <button onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }} title='Ver alumnos' style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}>
                               Alumnos ({c.cupoActual})
+                            </button>
+                          )}
+                          {c.cupoActual >= c.cupoMax && (
+                            <button onClick={() => setModalWaitlistClase(c)} title='Ver lista de espera en tiempo real' style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', background: 'transparent', color: '#F59E0B', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}>
+                              ⏳ Espera
                             </button>
                           )}
                           {canUpdateClass && (
@@ -1497,6 +1513,15 @@ export default function ClasesSection({
                           >
                             👥
                           </button>
+                          {c.cupoActual >= c.cupoMax && (
+                            <button
+                              onClick={() => setModalWaitlistClase(c)}
+                              title="Ver lista de espera en tiempo real"
+                              style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', background: 'transparent', color: '#F59E0B', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              ⏳
+                            </button>
+                          )}
                           {canUpdateClass && (
                             <button
                               onClick={async () => {

@@ -16,6 +16,7 @@ import CoachAvatar from '@/components/common/CoachAvatar'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import SeatMapViewer from '@/features/clases/SeatMapViewer'
+import WaitlistModal from '@/components/shared/WaitlistModal'
 import s from './CoachPanel.module.css'
 
 // â”€â”€ Data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -113,6 +114,7 @@ export default function CoachPanel() {
   const [selectedDay, setSelectedDay] = useState(KEYS[new Date().getDay()])
   const [weekOffset, setWeekOffset]   = useState(0)
   const [modalClass, setModalClass]       = useState(null)  // class object | null
+  const [waitlistClass, setWaitlistClass] = useState(null)  // class object | null
   const [viewMapClass, setViewMapClass]   = useState(null)  // { cls, occurrenceId } | null
   const { usuario, logout } = useAuth()
   const { clases } = useClasesStore()
@@ -437,7 +439,7 @@ export default function CoachPanel() {
                   No tienes clases asignadas esta semana.
                 </div>
               ) : (
-                <WeekTable classes={misClases} onOpen={openModal} onViewMap={cls => { const oId = cls.occurrenceId ?? cls.occurrence_id ?? null; if (oId) setViewMapClass({ cls, occurrenceId: oId, fecha: cls.fecha ? new Date(cls.fecha + 'T12:00:00') : null }) }} />
+                <WeekTable classes={misClases} onOpen={openModal} onOpenWaitlist={setWaitlistClass} onViewMap={cls => { const oId = cls.occurrenceId ?? cls.occurrence_id ?? null; if (oId) setViewMapClass({ cls, occurrenceId: oId, fecha: cls.fecha ? new Date(cls.fecha + 'T12:00:00') : null }) }} />
               )}
             </div>
           </div>
@@ -513,7 +515,7 @@ export default function CoachPanel() {
               )
               return filtered.length > 0 ? (
                 <div className={s.card}>
-                  <MisClasesTable classes={filtered} onOpen={openModal} onViewMap={cls => { const oId = cls.occurrenceId ?? cls.occurrence_id ?? null; if (oId) setViewMapClass({ cls, occurrenceId: oId, fecha: cls.fecha ? new Date(cls.fecha + 'T12:00:00') : null }) }} />
+                  <MisClasesTable classes={filtered} onOpen={openModal} onOpenWaitlist={setWaitlistClass} onViewMap={cls => { const oId = cls.occurrenceId ?? cls.occurrence_id ?? null; if (oId) setViewMapClass({ cls, occurrenceId: oId, fecha: cls.fecha ? new Date(cls.fecha + 'T12:00:00') : null }) }} />
                 </div>
               ) : (
                 <div className={s.card}>
@@ -543,6 +545,15 @@ export default function CoachPanel() {
         {modalClass && <ClassModal cls={modalClass} onClose={closeModal} useApiMode={useApiMode} />}
       </div>
 
+      {waitlistClass && (
+        <WaitlistModal
+          occurrenceId={waitlistClass.occurrenceId ?? waitlistClass.occurrence_id ?? null}
+          claseNombre={waitlistClass.nombre}
+          dayLabel={`${waitlistClass.dia ?? ''} · ${getClassDisplayTime(waitlistClass)}`}
+          onClose={() => setWaitlistClass(null)}
+        />
+      )}
+
       {viewMapClass && (
         <SeatMapViewer
           cls={viewMapClass.cls}
@@ -556,7 +567,7 @@ export default function CoachPanel() {
 }
 
 // â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function WeekTable({ classes, onOpen, onViewMap }) {
+function WeekTable({ classes, onOpen, onOpenWaitlist, onViewMap }) {
   const s2 = s
   const hoy = new Date()
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
@@ -626,6 +637,11 @@ function WeekTable({ classes, onOpen, onViewMap }) {
                   <button className={s2.btnSm} onClick={e => { e.stopPropagation(); onOpen(cls) }}>
                     Ver alumnos
                   </button>
+                  {cls.cupoActual >= cls.cupoMax && (
+                    <button className={s2.btnSm} style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.25)' }} onClick={e => { e.stopPropagation(); onOpenWaitlist(cls) }}>
+                      ⏳ Espera
+                    </button>
+                  )}
                   {isMapCls && hasOcc && (
                     <button className={s2.btnSm} style={{ background:'rgba(232,164,173,0.12)', color:'var(--blush)', borderColor:'rgba(232,164,173,0.25)' }} onClick={e => { e.stopPropagation(); onViewMap(cls) }}>
                       Ver mapa
@@ -642,7 +658,7 @@ function WeekTable({ classes, onOpen, onViewMap }) {
   )
 }
 
-function MisClasesTable({ classes, onOpen, onViewMap }) {
+function MisClasesTable({ classes, onOpen, onOpenWaitlist, onViewMap }) {
   const s2 = s
   const hoy = new Date()
   const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado']
@@ -709,6 +725,11 @@ function MisClasesTable({ classes, onOpen, onViewMap }) {
                   <button className={s2.btnSm} onClick={e => { e.stopPropagation(); onOpen(cls) }}>
                     Ver alumnos
                   </button>
+                  {cls.cupoActual >= cls.cupoMax && (
+                    <button className={s2.btnSm} style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', borderColor: 'rgba(245,158,11,0.25)' }} onClick={e => { e.stopPropagation(); onOpenWaitlist(cls) }}>
+                      ⏳ Espera
+                    </button>
+                  )}
                   {isMapCls2 && hasOcc2 && (
                     <button className={s2.btnSm} style={{ background:'rgba(232,164,173,0.12)', color:'var(--blush)', borderColor:'rgba(232,164,173,0.25)' }} onClick={e => { e.stopPropagation(); onViewMap(cls) }}>
                       Ver mapa
