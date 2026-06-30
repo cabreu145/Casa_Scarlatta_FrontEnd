@@ -30,7 +30,7 @@ export function resolvePackagePurchaseErrorMessage(error, { admin = false } = {}
   }
 
   if (code === 'PACKAGE_PAYMENT_ALREADY_PENDING' || raw.includes('PACKAGE_PAYMENT_ALREADY_PENDING')) {
-    return raw || 'Ya tienes un pago pendiente para este paquete. Si no deseas continuar con ese metodo de pago, levanta un ticket con administracion para cancelar esa referencia y poder comprar de nuevo.'
+    return raw || 'Hay un proceso de pago pendiente para este paquete. Espera 5 minutos e intenta de nuevo; si el problema persiste, contacta a administracion.'
   }
 
   if (Object.prototype.hasOwnProperty.call(PROMOTION_ERROR_MESSAGES, code)) {
