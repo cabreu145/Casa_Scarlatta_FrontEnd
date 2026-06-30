@@ -1264,9 +1264,8 @@ export default function ClasesSection({
         <div style={{ overflowX: 'auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
             <button
-              onClick={() => setSemanaWeekOff(w => Math.max(0, w - 1))}
-              disabled={semanaWeekOff === 0}
-              style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--neutral-border)', background: 'transparent', cursor: semanaWeekOff === 0 ? 'default' : 'pointer', opacity: semanaWeekOff === 0 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', fontSize: 18 }}
+              onClick={() => setSemanaWeekOff(w => w - 1)}
+              style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--neutral-border)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', fontSize: 18 }}
             >&lsaquo;</button>
             <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em' }}>{semanaMonthLabel}</span>
             <button onClick={() => setSemanaWeekOff(w => w + 1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--neutral-border)', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-primary)', fontSize: 18 }}>&rsaquo;</button>
