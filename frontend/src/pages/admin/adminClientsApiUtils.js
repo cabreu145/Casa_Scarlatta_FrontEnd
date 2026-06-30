@@ -25,6 +25,8 @@ export function buildAdminClientsApiQuery({
         ? 'expired'
         : normalizedFilter === 'con paquete'
           ? 'active'
-          : undefined,
+          : normalizedFilter === 'pago pendiente'
+            ? 'pending_payment'
+            : undefined,
   }
 }

@@ -236,6 +236,7 @@ export function useCancelPendingPaymentAdminMutation() {
     mutationFn: ({ externalReference }) => cancelPendingPaymentAdminApi({ externalReference }),
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.adminClientPayments(variables?.clientId, {}).slice(0, 3) })
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
     },
   })
 }

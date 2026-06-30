@@ -103,7 +103,7 @@ export default function UsuariosSection({
               value={usersSearch}
               onChange={(event) => setUsersSearch(event.target.value)}
             />
-            {['Todos', 'Con paquete', 'Sin paquete', 'Por vencer'].map((filter) => (
+            {['Todos', 'Con paquete', 'Sin paquete', 'Por vencer', 'Pago pendiente'].map((filter) => (
               <button
                 key={filter}
                 className={`${styles.filterChip}${usersFilter === filter ? ` ${styles.active}` : ''}`}
