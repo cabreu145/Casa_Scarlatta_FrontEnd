@@ -1,5 +1,5 @@
 import { ENDPOINTS } from '@/constants/api'
-import { httpDelete, httpGet, httpPost, httpPut } from '@/lib/http'
+import { httpDelete, httpGet, httpPatch, httpPost, httpPut } from '@/lib/http'
 import {
   mapBackendAvailabilityToFrontend,
   mapBackendClassToFrontendClass,
@@ -62,6 +62,11 @@ export async function createClassOccurrenceApi(classId, payload) {
 export async function updateClaseApi(id, payload) {
   const response = await httpPut(ENDPOINTS.claseById(id), payload)
   return mapBackendClassToFrontendClass(response ?? {})
+}
+
+export async function patchOccurrenceCoachApi(classId, occurrenceId, coachId) {
+  const response = await httpPatch(ENDPOINTS.claseOcurrenciaById(classId, occurrenceId), { coach_id: coachId ?? null })
+  return mapBackendOccurrenceToFrontend(response ?? {})
 }
 
 export async function deleteClaseApi(id) {

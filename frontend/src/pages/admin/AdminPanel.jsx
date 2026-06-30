@@ -47,7 +47,7 @@ import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationP
 import { FinanzasSection } from './AdminFinanzas'
 import { ReportesSection } from './AdminReportes'
 import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
-import { createClaseApi, createClassOccurrenceApi, updateClaseApi } from '@/services/clasesApiService'
+import { createClaseApi, createClassOccurrenceApi, patchOccurrenceCoachApi, updateClaseApi } from '@/services/clasesApiService'
 import {
   createCoachApi,
   deleteCoachApi,
@@ -500,8 +500,9 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const [userSelectMode,     setUserSelectMode]     = useState(false)
   const [userSelectedIds,    setUserSelectedIds]    = useState(new Set())
   // Clase — editar
-  const [modalEditClase,  setModalEditClase]  = useState(null)  // clase | null
-  const [editClaseForm,   setEditClaseForm]   = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
+  const [modalEditClase,     setModalEditClase]     = useState(null)  // clase | null
+  const [editClaseForm,      setEditClaseForm]      = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
+  const [editAplicarATodos,  setEditAplicarATodos]  = useState(false)
   // Paquete form (crear)
   const [paqueteForm, setPaqueteForm] = useState({
     nombre: '',
@@ -1695,6 +1696,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               setAlumnoAgregarId={setAlumnoAgregarId}
               setModalEditClase={setModalEditClase}
               setEditClaseForm={setEditClaseForm}
+              setEditAplicarATodos={setEditAplicarATodos}
               claseForm={claseForm}
               setClaseForm={setClaseForm}
               refreshToken={clasesRefreshToken}
@@ -2754,6 +2756,20 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   ))}
                 </select>
               </div>
+              {modalEditClase?.occurrenceId && (
+                <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(251,191,36,0.25)', background: 'rgba(251,191,36,0.06)' }}>
+                  <input
+                    id="edit-aplicar-todos"
+                    type="checkbox"
+                    checked={editAplicarATodos}
+                    onChange={e => setEditAplicarATodos(e.target.checked)}
+                    style={{ width: 16, height: 16, accentColor: '#fbbf24', cursor: 'pointer', flexShrink: 0 }}
+                  />
+                  <label htmlFor="edit-aplicar-todos" style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(251,191,36,0.9)', cursor: 'pointer', margin: 0 }}>
+                    Aplicar cambios a todos los días futuros
+                  </label>
+                </div>
+              )}
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>
                   Fecha específica
@@ -2860,6 +2876,23 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       toast.error('No hay coaches registrados en backend. Sincroniza coaches antes de editar clases.')
                       return
                     }
+                    if (modalEditClase?.occurrenceId && !editAplicarATodos) {
+                      // Solo cambiar el coach de esta ocurrencia específica
+                      const coachObj = coachesForClassForms.find(c => c.nombre === editClaseForm.coach)
+                      const resolvedCoachId = coachObj?.id ?? payload.coach_id ?? null
+                      try {
+                        await patchOccurrenceCoachApi(modalEditClase.claseId ?? modalEditClase.id, modalEditClase.occurrenceId, resolvedCoachId)
+                      } catch (patchErr) {
+                        toast.error(patchErr?.message ?? 'No se pudo actualizar el coach de esta sesión.')
+                        return
+                      }
+                      await invalidateClassSideEffects(queryClient, {
+                        classId: modalEditClase.claseId ?? modalEditClase.id,
+                        occurrenceId: modalEditClase.occurrenceId,
+                        coachId: resolvedCoachId,
+                      })
+                      await loadClasesFromApi({ force: true, status: 'programada' })
+                    } else {
                     if (editClaseForm.publicarEn) {
                       toast.error('Programar publicación no está soportado todavía por backend')
                       return
@@ -2904,6 +2937,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       coachId: updatedClase?.coachId ?? updatedClase?.coach_id ?? payload.coach_id,
                     })
                     await loadClasesFromApi({ force: true, status: 'programada' })
+                    }
                     } catch (error) {
                       const code = String(error?.code ?? '').trim()
                       const mapped = {

@@ -542,6 +542,7 @@ export default function ClasesSection({
   setAlumnoAgregarId,
   setModalEditClase,
   setEditClaseForm,
+  setEditAplicarATodos,
   claseForm,
   setClaseForm,
   refreshToken = 0,
@@ -1199,6 +1200,7 @@ export default function ClasesSection({
                               return
                             }
                             setModalEditClase({ ...c, id: classActionId })
+                            setEditAplicarATodos(false)
                             const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
                             setEditClaseForm({
                               nombre:      c.nombre,
@@ -1330,6 +1332,7 @@ export default function ClasesSection({
                               onClick={() => {
                                 if (!classActionId) { toast.error('No se pudo identificar la clase.'); return }
                                 setModalEditClase({ ...c, id: classActionId })
+                                setEditAplicarATodos(false)
                                 setEditClaseForm({ nombre: c.nombre, tipo: c.tipo, coach: c.coachNombre === 'Sin asignar' ? '' : c.coachNombre, dia: c.dia, hora: c.hora, duracion: String(c.duracion||50), cupoMax: String(c.cupoMax||15), descripcion: c.descripcion||'', publicarEn: c.publicarEn ? new Date(c.publicarEn).toISOString().slice(0,16) : '', fecha: c.fecha ?? '' })
                               }}
                               title='Editar'
@@ -1531,6 +1534,7 @@ export default function ClasesSection({
                                   return
                                 }
                                 setModalEditClase({ ...c, id: classActionId })
+                                setEditAplicarATodos(false)
                                 const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
                                 setEditClaseForm({
                                   nombre: c.nombre,
