@@ -137,6 +137,7 @@ export default function PuntoDeVentaSection({
   const { usuario } = useAuthStore()
   const [buyerSearch, setBuyerSearch] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [selectedCustomerObj, setSelectedCustomerObj] = useState(null)
   const [buyerDropdownOpen, setBuyerDropdownOpen] = useState(false)
   const [buyerDropdownPos, setBuyerDropdownPos] = useState({ top: 0, left: 0, width: 0, maxH: 260 })
   const buyerBtnRef = useRef(null)
@@ -220,8 +221,9 @@ export default function PuntoDeVentaSection({
 
   const selectedCustomer = useMemo(() => {
     if (!useApiMode) return null
+    if (selectedCustomerObj && String(selectedCustomerObj.id) === String(selectedCustomerId)) return selectedCustomerObj
     return buyerClients.find((client) => String(client.id) === String(selectedCustomerId)) ?? null
-  }, [buyerClients, selectedCustomerId, useApiMode])
+  }, [buyerClients, selectedCustomerId, selectedCustomerObj, useApiMode])
 
   const cartTotalComputed = useMemo(
     () => cart.reduce((sum, item) => sum + Number(item.quantity ?? 1) * Number(item.unitPriceMxn ?? item.price ?? 0), 0),
@@ -894,7 +896,7 @@ export default function PuntoDeVentaSection({
                     </div>
                     <div
                       style={{ padding: '8px 12px', fontSize: 13, color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}
-                      onClick={() => { setSelectedCustomerId(''); setBuyerDropdownOpen(false); setBuyerSearch('') }}
+                      onClick={() => { setSelectedCustomerId(''); setSelectedCustomerObj(null); setBuyerDropdownOpen(false); setBuyerSearch('') }}
                     >
                       Selecciona cliente
                     </div>
@@ -910,7 +912,7 @@ export default function PuntoDeVentaSection({
                         }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
                         onMouseLeave={e => e.currentTarget.style.background = String(selectedCustomerId) === String(client.id) ? 'rgba(255,255,255,0.1)' : 'transparent'}
-                        onClick={() => { setSelectedCustomerId(String(client.id)); setBuyerDropdownOpen(false); setBuyerSearch('') }}
+                        onClick={() => { setSelectedCustomerId(String(client.id)); setSelectedCustomerObj(client); setBuyerDropdownOpen(false); setBuyerSearch('') }}
                       >
                         {client.name ?? client.nombre ?? client.email}
                       </div>
