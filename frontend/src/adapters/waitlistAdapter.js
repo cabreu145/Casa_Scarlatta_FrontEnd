@@ -4,6 +4,8 @@
     claseId: entry.class_id ?? entry.clase_id ?? entry.claseId ?? null,
     occurrenceId: entry.occurrence_id ?? entry.occurrenceId ?? null,
     userId: entry.user_id ?? entry.userId ?? null,
+    userName: entry.user_name ?? entry.userName ?? null,
+    userEmail: entry.user_email ?? entry.userEmail ?? null,
     posicion: entry.position ?? entry.posicion ?? null,
     status: entry.status ?? entry.estado ?? 'esperando',
     estado: entry.status ?? entry.estado ?? 'esperando',

@@ -3481,7 +3481,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
           <WaitlistModal
             occurrenceId={occurrenceId}
             claseNombre={cls.nombre}
-            dayLabel={`${cls.dia ?? cls.discipline ?? 'Sin día'} · ${getClassDisplayTime(cls)}`}
+            dayLabel={`${cls.fecha ? new Date(cls.fecha + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) : (cls.dia ?? cls.discipline ?? 'Sin día')} · ${getClassDisplayTime(cls)}`}
             resolveUserName={resolveUserName}
             onClose={() => setModalWaitlistClase(null)}
           />

@@ -1274,7 +1274,8 @@ export default function ClasesSection({
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(180px, 1fr))', gap: 8, minWidth: 900 }}>
             {semanaWeekDays.map((day) => {
-              const hoyIso = new Date().toISOString().split('T')[0]
+              const hoyLocal = new Date()
+              const hoyIso = `${hoyLocal.getFullYear()}-${String(hoyLocal.getMonth() + 1).padStart(2, '0')}-${String(hoyLocal.getDate()).padStart(2, '0')}`
               const isToday = day.isoDate === hoyIso
               const clasesDia = semanaClasesByDay[day.isoDate] ?? []
               return (

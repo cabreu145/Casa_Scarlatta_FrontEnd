@@ -9,19 +9,19 @@ const COLORS = {
 }
 
 const STATUS_LABELS = {
-  waiting: 'Esperando',
-  notified: 'Notificado',
-  expired: 'Expiró',
-  assigned: 'Asignado',
-  cancelled: 'Cancelado',
+  esperando: 'Esperando',
+  notificado: 'Notificado',
+  expirado: 'Expiró',
+  asignado: 'Asignado',
+  cancelado: 'Cancelado',
 }
 
 const STATUS_STYLES = {
-  waiting: { background: 'rgba(245,158,11,0.18)', color: '#FBBF24', border: '1px solid rgba(245,158,11,0.35)' },
-  notified: { background: 'rgba(59,130,246,0.18)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.35)' },
-  expired: { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.15)' },
-  assigned: { background: 'rgba(34,197,94,0.18)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.35)' },
-  cancelled: { background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' },
+  esperando: { background: 'rgba(245,158,11,0.18)', color: '#FBBF24', border: '1px solid rgba(245,158,11,0.35)' },
+  notificado: { background: 'rgba(59,130,246,0.18)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.35)' },
+  expirado: { background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.15)' },
+  asignado: { background: 'rgba(34,197,94,0.18)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.35)' },
+  cancelado: { background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' },
 }
 
 function formatJoinedAt(value) {
@@ -38,7 +38,7 @@ export default function WaitlistModal({ occurrenceId, claseNombre, dayLabel, onC
     const u = usuarios.find((usr) => Number(usr.id) === Number(userId))
     return u?.nombre ?? u?.name ?? `Usuario #${userId}`
   }
-  const getName = resolveUserName ?? fallbackResolveName
+  const getName = (entry) => entry.userName || (resolveUserName ?? fallbackResolveName)(entry.userId)
 
   const waitlistQuery = useWaitlistByOccurrenceQuery(occurrenceId, {
     enabled: Boolean(occurrenceId),
@@ -47,7 +47,7 @@ export default function WaitlistModal({ occurrenceId, claseNombre, dayLabel, onC
 
   const allEntries = waitlistQuery.data?.entries ?? []
   const entries = allEntries
-    .filter((e) => e.status === 'waiting' || e.status === 'notified')
+    .filter((e) => e.status === 'esperando' || e.status === 'notificado')
     .sort((a, b) => (a.posicion ?? 0) - (b.posicion ?? 0))
 
   const errorMessage = waitlistQuery.error
@@ -141,7 +141,7 @@ export default function WaitlistModal({ occurrenceId, claseNombre, dayLabel, onC
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textPrimary }}>
-                      {getName(entry.userId)}
+                      {getName(entry)}
                     </div>
                     <div style={{ fontSize: 11, color: COLORS.textMuted }}>
                       Se unió: {formatJoinedAt(entry.fechaIngreso) || '—'}

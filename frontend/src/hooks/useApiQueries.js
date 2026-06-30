@@ -1048,12 +1048,13 @@ export function useUpdateRbacUserPermissionOverridesMutation() {
   })
 }
 
-export function useWaitlistByOccurrenceQuery(occurrenceId, { enabled = false } = {}) {
+export function useWaitlistByOccurrenceQuery(occurrenceId, { enabled = false, refetchInterval } = {}) {
   return useQuery({
     queryKey: queryKeys.waitlist.byOccurrence(occurrenceId),
     queryFn: () => getWaitlistByOccurrenceApi(occurrenceId),
     enabled: Boolean(enabled && occurrenceId),
     ...shortDefaults,
+    ...(refetchInterval !== undefined ? { refetchInterval } : {}),
   })
 }
 
