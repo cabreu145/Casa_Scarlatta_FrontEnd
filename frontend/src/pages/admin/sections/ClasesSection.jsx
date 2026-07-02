@@ -707,9 +707,6 @@ export default function ClasesSection({
       ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(searchTerm))
-      const coachValue = String(clasesCoachFilter ?? '').trim()
-      const matchesCoach = !coachValue || coachValue === 'Todos'
-        || String(row.coachId ?? row.coach_id ?? '').trim() === coachValue
       const statusValue = String(clasesStatusFilter ?? '').trim().toLowerCase()
       const rowStatus = String(row.status ?? row.estado ?? '').trim().toLowerCase()
       const matchesStatus = !statusValue || statusValue === 'todas'
@@ -719,9 +716,9 @@ export default function ClasesSection({
         || rowStatus === statusValue
       const matchesDiscipline = !selectedDiscipline
         || normalizeDiscipline(row.discipline ?? row.tipo) === selectedDiscipline
-      return matchesSearch && matchesCoach && matchesStatus && matchesDiscipline
+      return matchesSearch && matchesStatus && matchesDiscipline
     })
-  }, [clasesBaseApi, clasesCoachFilter, clasesSearch, clasesStatusFilter, selectedDiscipline, useApiClasses])
+  }, [clasesBaseApi, clasesSearch, clasesStatusFilter, selectedDiscipline, useApiClasses])
 
   const DAYS_ABBR_ADMIN = ['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB']
   const MONTHS_ES_ADMIN = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
