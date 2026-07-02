@@ -1,5 +1,6 @@
 ﻿import { normalizeDiscipline } from '@/utils/discipline'
 import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
+import { resolveCoachId, resolveCoachNombre } from '@/utils/resolveClassCoach'
 
 function safeNumber(value, fallback = 0) {
   const n = Number(value)
@@ -88,8 +89,8 @@ export function buildAdminClassOccurrenceRows(classes = [], occurrencesByClass =
         estado: occurrence.estado ?? occurrence.status ?? baseClass.estado ?? baseClass.status ?? 'programada',
         status: occurrence.status ?? occurrence.estado ?? baseClass.status ?? baseClass.estado ?? 'programada',
         discipline: occurrence.discipline ?? baseClass.discipline ?? null,
-        coachId: occurrence.coachId ?? baseClass.coachId ?? null,
-        coachNombre: occurrence.coachNombre ?? baseClass.coachNombre ?? baseClass.coach_name ?? `Coach #${baseClass.coachId ?? 'N/A'}`,
+        coachId: resolveCoachId(occurrence, baseClass),
+        coachNombre: resolveCoachNombre(occurrence, baseClass) ?? `Coach #${baseClass.coachId ?? 'N/A'}`,
       })
     }
   }

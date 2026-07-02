@@ -29,6 +29,7 @@ import {
   buildWeek, weekRangeLabel, formatHour, formatFechaISO,
 } from '@/utils/formatters'
 import { formatClassDate, getClassDisplayDate, getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
+import { resolveCoachId, resolveCoachNombre } from '@/utils/resolveClassCoach'
 import s from './ClientPanel.module.css'
 import MisClasesCard from './MisClasesCard'
 import ClassCard from './ClassCard'
@@ -777,7 +778,7 @@ export default function ClientPanel() {
             claseId: c.id,
             occurrenceId: occ.occurrenceId,
             title: occ.claseNombre ?? c.nombre,
-            coach: occ.coachNombre ?? c.coachNombre,
+            coach: resolveCoachNombre(occ, c),
             date: c.dia,
             fecha: occ.fecha,
             time: occurrenceTime ?? c.hora ?? null,
@@ -801,7 +802,7 @@ export default function ClientPanel() {
       id:         c.id,
       occurrenceId: c.occurrenceId ?? null,
       title:      c.nombre,
-      coach:      c.coachNombre ?? c.coach_name,
+      coach:      resolveCoachNombre(c, c),
       date:       c.dia,
       fecha:      c.fecha ?? null,
       time:       getClassTimeToken(c) ?? c.hora ?? null,

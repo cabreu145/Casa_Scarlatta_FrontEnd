@@ -18,6 +18,7 @@ import { cancelarReserva as cancelarReservaService } from '@/services/reservasSe
 import { ROUTES } from '@/constants/routes'
 import { getWeekDays, isSameDay, formatHour, DAYS_ABBR, MONTHS_ES } from '@/utils/formatters'
 import { getClassTimeToken } from '@/utils/classSchedule'
+import { resolveCoachId, resolveCoachNombre } from '@/utils/resolveClassCoach'
 import { normalizeDiscipline } from '@/utils/discipline'
 import CoachAvatar from '@/components/common/CoachAvatar'
 import { useMyFinancialStateQuery, usePublicCoachesQuery } from '@/hooks/useApiQueries'
@@ -180,8 +181,8 @@ export default function Clases() {
           cupoMax: occ.cupoMax ?? cls.cupoMax,
           cupoActual: occ.cupoActual ?? cls.cupoActual,
           estado: occ.estado ?? cls.estado,
-          coachId: occ.coachId ?? cls.coachId,
-          coachNombre: occ.coachNombre ?? cls.coachNombre,
+          coachId: resolveCoachId(occ, cls),
+          coachNombre: resolveCoachNombre(occ, cls),
           nombre: occ.claseNombre ?? cls.nombre,
         })
       }
