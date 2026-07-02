@@ -70,7 +70,7 @@ export default function PromocionesSection({ paquetes = [], useApiMode = false, 
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
-  const [filterActive, setFilterActive] = useState('all')
+  const [filterActive, setFilterActive] = useState('active')
 
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
@@ -587,31 +587,45 @@ export default function PromocionesSection({ paquetes = [], useApiMode = false, 
               <div style={{ padding: 16, color: 'var(--text-muted, #A69A93)', fontSize: 14 }}>Sin redenciones.</div>
             )}
 
-            {redemptions.length > 0 && (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginTop: 8 }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border, rgba(0,0,0,0.08))' }}>
-                    {['ID', 'Canal', 'Estado', 'Tipo', 'Original', 'Descuento', 'Final', 'Aplicado'].map((h) => (
-                      <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted, #A69A93)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {redemptions.map((r) => (
-                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border, rgba(0,0,0,0.05))' }}>
-                      <td style={{ padding: '6px 8px' }}>{r.id}</td>
-                      <td style={{ padding: '6px 8px' }}>{r.channel ?? '—'}</td>
-                      <td style={{ padding: '6px 8px' }}>{r.status ?? '—'}</td>
-                      <td style={{ padding: '6px 8px' }}>{r.promotionTypeSnapshot ?? '—'}</td>
-                      <td style={{ padding: '6px 8px' }}>{r.originalPriceMxn != null ? `$${Number(r.originalPriceMxn).toLocaleString('es-MX')}` : '—'}</td>
-                      <td style={{ padding: '6px 8px' }}>{r.discountMxn != null ? `-$${Number(r.discountMxn).toLocaleString('es-MX')}` : '—'}</td>
-                      <td style={{ padding: '6px 8px' }}>{r.finalPriceMxn != null ? `$${Number(r.finalPriceMxn).toLocaleString('es-MX')}` : '—'}</td>
-                      <td style={{ padding: '6px 8px' }}>{formatDate(r.appliedAt)}</td>
+            {redemptions.length > 0 && (() => {
+              const promoStart = redemptionsModal?.startsAt ? new Date(redemptionsModal.startsAt) : null
+              const promoEnd   = redemptionsModal?.endsAt   ? new Date(redemptionsModal.endsAt)   : null
+              const filtered = redemptions.filter(r => {
+                if (!r.appliedAt) return false
+                const d = new Date(r.appliedAt)
+                if (promoStart && d < promoStart) return false
+                if (promoEnd   && d > promoEnd)   return false
+                return true
+              })
+              if (filtered.length === 0) return (
+                <div style={{ padding: 16, color: 'var(--text-muted, #A69A93)', fontSize: 14 }}>Sin redenciones en el período de esta promoción.</div>
+              )
+              return (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginTop: 8 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border, rgba(0,0,0,0.08))' }}>
+                      {['ID', 'Canal', 'Estado', 'Tipo', 'Original', 'Descuento', 'Final', 'Aplicado'].map((h) => (
+                        <th key={h} style={{ padding: '6px 8px', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted, #A69A93)' }}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                  </thead>
+                  <tbody>
+                    {filtered.map((r) => (
+                      <tr key={r.id} style={{ borderBottom: '1px solid var(--border, rgba(0,0,0,0.05))' }}>
+                        <td style={{ padding: '6px 8px' }}>{r.id}</td>
+                        <td style={{ padding: '6px 8px' }}>{r.channel ?? '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{r.status ?? '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{r.promotionTypeSnapshot ?? '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{r.originalPriceMxn != null ? `$${Number(r.originalPriceMxn).toLocaleString('es-MX')}` : '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{r.discountMxn != null ? `-$${Number(r.discountMxn).toLocaleString('es-MX')}` : '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{r.finalPriceMxn != null ? `$${Number(r.finalPriceMxn).toLocaleString('es-MX')}` : '—'}</td>
+                        <td style={{ padding: '6px 8px' }}>{formatDate(r.appliedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            })()}
           </div>
         </div>
       )}

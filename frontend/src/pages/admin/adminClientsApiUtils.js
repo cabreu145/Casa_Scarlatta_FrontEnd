@@ -22,7 +22,7 @@ export function buildAdminClientsApiQuery({
     membershipStatus: normalizedFilter === 'sin paquete'
       ? 'none'
       : normalizedFilter === 'por vencer'
-        ? 'expired'
+        ? 'expiring_soon'
         : normalizedFilter === 'con paquete'
           ? 'active'
           : normalizedFilter === 'pago pendiente'
