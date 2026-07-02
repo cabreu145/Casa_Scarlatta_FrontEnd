@@ -181,7 +181,7 @@ export default function Clases() {
           cupoActual: occ.cupoActual ?? cls.cupoActual,
           estado: occ.estado ?? cls.estado,
           coachId: occ.coachId ?? cls.coachId,
-          coachNombre: cls.coachNombre,
+          coachNombre: occ.coachNombre ?? cls.coachNombre,
           nombre: occ.claseNombre ?? cls.nombre,
         })
       }

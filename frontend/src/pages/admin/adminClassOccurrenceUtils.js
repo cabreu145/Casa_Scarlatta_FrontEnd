@@ -89,7 +89,7 @@ export function buildAdminClassOccurrenceRows(classes = [], occurrencesByClass =
         status: occurrence.status ?? occurrence.estado ?? baseClass.status ?? baseClass.estado ?? 'programada',
         discipline: occurrence.discipline ?? baseClass.discipline ?? null,
         coachId: occurrence.coachId ?? baseClass.coachId ?? null,
-        coachNombre: baseClass.coachNombre ?? occurrence.coachNombre ?? baseClass.coach_name ?? `Coach #${baseClass.coachId ?? 'N/A'}`,
+        coachNombre: occurrence.coachNombre ?? baseClass.coachNombre ?? baseClass.coach_name ?? `Coach #${baseClass.coachId ?? 'N/A'}`,
       })
     }
   }

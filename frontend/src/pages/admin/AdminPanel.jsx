@@ -503,6 +503,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const [modalEditClase,     setModalEditClase]     = useState(null)  // clase | null
   const [editClaseForm,      setEditClaseForm]      = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
   const [editAplicarATodos,  setEditAplicarATodos]  = useState(false)
+  const [editClaseSaving,    setEditClaseSaving]    = useState(false)
   // Paquete form (crear)
   const [paqueteForm, setPaqueteForm] = useState({
     nombre: '',
@@ -2713,6 +2714,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
         </div>
       )}
 
+      <style>{'@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }'}</style>
       {/* ── EDITAR CLASE ── */}
       {modalEditClase && (
         <div
@@ -2863,8 +2865,11 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               </button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
+                disabled={editClaseSaving}
+                style={editClaseSaving ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}
                 onClick={async () => {
                   if (!editClaseForm.nombre.trim()) return
+                  setEditClaseSaving(true)
                   const payload = buildClaseApiPayload({
                     form: editClaseForm,
                     coaches: coachesForClassForms,
@@ -2874,6 +2879,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     try {
                     if (!Array.isArray(coachesForClassForms) || coachesForClassForms.length === 0) {
                       toast.error('No hay coaches registrados en backend. Sincroniza coaches antes de editar clases.')
+                      setEditClaseSaving(false)
                       return
                     }
                     if (modalEditClase?.occurrenceId && !editAplicarATodos) {
@@ -2884,6 +2890,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                         await patchOccurrenceCoachApi(modalEditClase.claseId ?? modalEditClase.id, modalEditClase.occurrenceId, resolvedCoachId)
                       } catch (patchErr) {
                         toast.error(patchErr?.message ?? 'No se pudo actualizar el coach de esta sesión.')
+                        setEditClaseSaving(false)
                         return
                       }
                       await invalidateClassSideEffects(queryClient, {
@@ -2892,6 +2899,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                         coachId: resolvedCoachId,
                       })
                       await loadClasesFromApi({ force: true, status: 'programada' })
+                      setClasesRefreshToken(t => t + 1)
                     } else {
                     if (editClaseForm.publicarEn) {
                       toast.error('Programar publicación no está soportado todavía por backend')
@@ -2909,6 +2917,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       }[code]
                       const msg = mapped ?? updateErr?.message ?? JSON.stringify(updateErr) ?? 'Error desconocido'
                       toast.error(`No se pudo guardar la clase: ${msg}`)
+                      setEditClaseSaving(false)
                       return
                     }
                     let editedOccurrence = null
@@ -2928,6 +2937,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       }
                     }
                     if (occurrenceFailed) {
+                      setEditClaseSaving(false)
                       setModalEditClase(null)
                       return
                     }
@@ -2946,6 +2956,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                         CLASS_SPOTS_NOT_CONFIGURED: 'No hay lugares configurados para esta disciplina.',
                       }[code]
                       toast.error(mapped ?? error?.message ?? 'No se pudo guardar la clase.')
+                      setEditClaseSaving(false)
                       return
                     }
                   } else {
@@ -2964,11 +2975,17 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       fecha:       editClaseForm.fecha || null,
                     })
                   }
+                  setEditClaseSaving(false)
                   toast.success(`Clase "${editClaseForm.nombre}" actualizada`)
                   setModalEditClase(null)
                 }}
               >
-                Guardar cambios
+                {editClaseSaving ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                    Guardando…
+                  </span>
+                ) : 'Guardar cambios'}
               </button>
             </div>
           </div>

@@ -761,7 +761,7 @@ export default function ClasesSection({
       .then(data => { if (active) { setSemanaOccurrencesByClass(data ?? {}); setSemanaOccurrencesLoading(false) } })
       .catch(() => { if (active) setSemanaOccurrencesLoading(false) })
     return () => { active = false }
-  }, [clasesApiFiltradasBase, semanaWeekDays, useApiClasses, vistaMode])
+  }, [clasesApiFiltradasBase, semanaWeekDays, useApiClasses, vistaMode, refreshToken])
 
   const semanaClasesByDay = useMemo(() => {
     if (vistaMode !== 'semana') return {}
