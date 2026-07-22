@@ -14,6 +14,7 @@ import {
 } from './equipmentLayoutConfig'
 import EquipmentSeatSelectorView from './EquipmentSeatSelectorView'
 import { getOneSpotPerOccurrenceMessage, resolveLimitOneSpotPerOccurrence } from '@/utils/reservationPolicy'
+import { getMembershipEligibilityErrorMessage } from '@/utils/reservationEligibility'
 
 const useApiFinancialState = import.meta.env.VITE_USE_API_AUTH === 'true'
 
@@ -44,6 +45,8 @@ function resolveFinancialSummary({ financialState, creditsBalance, activeMembers
 }
 
 function resolveReservationErrorMessage(error, { admin = false } = {}) {
+  const membershipEligibilityMessage = getMembershipEligibilityErrorMessage(error)
+  if (membershipEligibilityMessage) return membershipEligibilityMessage
   const code = String(error?.code ?? error?.message ?? '').toUpperCase()
   if (code.includes('HOLD_REQUIRED')) return 'Selecciona uno o más lugares antes de reservar.'
   if (code.includes('HOLD_EXPIRED')) return 'Tu selección expiró. Vuelve a elegir lugares.'

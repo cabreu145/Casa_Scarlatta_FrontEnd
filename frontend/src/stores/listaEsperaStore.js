@@ -6,6 +6,7 @@ import {
   salirWaitlistApi,
   unirseWaitlistApi,
 } from '@/services/waitlistApiService'
+import { getMembershipEligibilityErrorMessage } from '@/utils/reservationEligibility'
 
 const useApiWaitlist = import.meta.env.VITE_USE_API_WAITLIST === 'true'
 const inflightWaitlistByOccurrence = new Map()
@@ -63,9 +64,17 @@ export const useListaEsperaStore = create(
       unirse: async ({ claseId, occurrenceId, userId, nombre }) => {
         if (useApiWaitlist) {
           if (!occurrenceId) return { ok: false, error: 'OCCURRENCE_REQUIRED' }
-          const entrada = await unirseWaitlistApi({ claseId, occurrenceId, userId })
-          set((s) => ({ lista: [...s.lista.filter((e) => e.id !== entrada.id), entrada] }))
-          return { ok: true, entrada }
+          try {
+            const entrada = await unirseWaitlistApi({ claseId, occurrenceId, userId })
+            set((s) => ({ lista: [...s.lista.filter((e) => e.id !== entrada.id), entrada] }))
+            return { ok: true, entrada }
+          } catch (error) {
+            return {
+              ok: false,
+              code: error?.code ?? null,
+              error: getMembershipEligibilityErrorMessage(error) ?? error?.message ?? 'No se pudo unir a la lista de espera',
+            }
+          }
         }
 
         const yaEsta = get().lista.some(

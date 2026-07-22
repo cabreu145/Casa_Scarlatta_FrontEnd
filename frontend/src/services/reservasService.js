@@ -20,6 +20,7 @@ import {
   getMisReservasApi,
   marcarNoAsistioApi,
 } from '@/services/reservasApiService'
+import { getMembershipEligibilityErrorMessage } from '@/utils/reservationEligibility'
 
 const useApiReservations = import.meta.env.VITE_USE_API_RESERVATIONS === 'true'
 const useApiWaitlist = import.meta.env.VITE_USE_API_WAITLIST === 'true'
@@ -64,7 +65,11 @@ export async function reservarClase(userId, claseId, asiento = null, occurrenceI
       if (import.meta.env.DEV && err?.details) {
         console.error('[reservarClase][api] error details', err.details)
       }
-      return { ok: false, error: err.message || 'No se pudo crear la reserva' }
+      return {
+        ok: false,
+        code: err?.code ?? null,
+        error: getMembershipEligibilityErrorMessage(err) ?? err.message ?? 'No se pudo crear la reserva',
+      }
     }
   }
 

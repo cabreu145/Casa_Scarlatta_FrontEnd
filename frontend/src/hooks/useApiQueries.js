@@ -137,6 +137,7 @@ import {
   updatePayTableApi,
 } from '@/services/payTableApiService'
 import { getWaitlistByOccurrenceApi } from '@/services/waitlistApiService'
+import { getMembershipEligibilityErrorMessage } from '@/utils/reservationEligibility'
 
 const shortDefaults = {
   staleTime: 30_000,
@@ -1527,6 +1528,14 @@ export function useCreateSpotHoldMutation() {
     onSuccess: async (_data, variables) => {
       await invalidateSpotsAndHolds(queryClient, variables?.occurrenceId)
     },
+    onError: async (error, variables) => {
+      if (getMembershipEligibilityErrorMessage(error)) {
+        await invalidateReservationSideEffects(queryClient, {
+          occurrenceId: variables?.occurrenceId,
+          userId: variables?.userId,
+        })
+      }
+    },
   })
 }
 
@@ -1547,6 +1556,15 @@ export function useCreateReservationMutation() {
       crearReservaApi({ claseId, userId, asiento, occurrenceId, spotId, holdId, spotIds, holdIds }),
     onSuccess: async (_data, variables) => {
       await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.claseId, userId: variables?.userId })
+    },
+    onError: async (error, variables) => {
+      if (getMembershipEligibilityErrorMessage(error)) {
+        await invalidateReservationSideEffects(queryClient, {
+          occurrenceId: variables?.occurrenceId,
+          classId: variables?.claseId,
+          userId: variables?.userId,
+        })
+      }
     },
   })
 }

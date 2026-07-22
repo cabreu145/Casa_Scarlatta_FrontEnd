@@ -845,6 +845,13 @@ export default function ClientPanel() {
       nombre:  userName,
     })
     if (!resultado.ok) {
+      if (resultado?.code === 'MEMBERSHIP_EXPIRES_BEFORE_CLASS') {
+        await invalidateReservationSideEffects(queryClient, {
+          occurrenceId: av.occurrenceId ?? av._raw?.occurrenceId ?? null,
+          classId: av.id,
+          userId: usuario.id,
+        })
+      }
       toast.error(resultado.error)
       return
     }
