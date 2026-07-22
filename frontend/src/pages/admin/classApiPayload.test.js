@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { buildClaseApiPayload, resolveApiClassStatus, resolveCoachIdByName } from './classApiPayload'
+import { buildClaseApiPayload, resolveApiClassStatus, resolveCoachIdByName, validateClaseForm } from './classApiPayload'
 
 describe('classApiPayload', () => {
   test('resuelve coach_id canónico por nombre', () => {
@@ -49,5 +49,30 @@ describe('classApiPayload', () => {
   test('resolveCoachIdByName rechaza ids mock no numéricos', () => {
     const coaches = [{ id: 'coach-1', nombre: 'Coach Demo' }]
     expect(resolveCoachIdByName(coaches, 'Coach Demo')).toBeNull()
+  })
+  test('valida todos los campos obligatorios de clase', () => {
+    expect(validateClaseForm({})).toEqual(expect.arrayContaining([
+      'Nombre de la clase',
+      'Tipo / Disciplina',
+      'Coach',
+      'Fecha específica',
+      'Día de la semana',
+      'Hora de inicio',
+      'Descripción',
+      'Duración (minutos) válida entre 30 y 120',
+    ]))
+  })
+
+  test('acepta formulario de clase completo', () => {
+    expect(validateClaseForm({
+      nombre: 'SLOW Demo',
+      tipo: 'Slow',
+      coach: 'Coach Demo',
+      fecha: '2026-07-27',
+      dia: 'Lunes',
+      hora: '07:00',
+      duracion: '50',
+      descripcion: 'Clase de prueba',
+    })).toEqual([])
   })
 })

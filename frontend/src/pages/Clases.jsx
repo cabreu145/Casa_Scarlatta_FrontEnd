@@ -183,12 +183,19 @@ export default function Clases() {
           estado: occ.estado ?? cls.estado,
           coachId: resolveCoachId(occ, cls),
           coachNombre: resolveCoachNombre(occ, cls),
+          // Occurrence coach can differ from template coach. Resolve avatar from
+          // effective coach ID before retaining any template-level image.
+          coachAvatarUrl:
+            coachFotoById[String(resolveCoachId(occ, cls) ?? '')]
+            ?? occ.coachAvatarUrl
+            ?? cls.coachAvatarUrl
+            ?? null,
           nombre: occ.claseNombre ?? cls.nombre,
         })
       }
     }
     return sessions
-  }, [allClasses, occurrencesByClass, useApiClasses])
+  }, [allClasses, coachFotoById, occurrencesByClass, useApiClasses])
 
   const dayHasClasses = useMemo(() =>
     days.map((d) => {
@@ -383,8 +390,8 @@ export default function Clases() {
                       const { available, status } = getPublicAvailability(cls)
                       const isFull = status === 'full'
                       const classDiscipline = resolveDiscipline(cls.discipline ?? cls.tipo)
-                      const coachFoto = cls.coachAvatarUrl
-                        ?? coachFotoById[String(cls.coachId ?? cls.coach_id ?? '')]
+                      const coachFoto = coachFotoById[String(cls.coachId ?? cls.coach_id ?? '')]
+                        ?? cls.coachAvatarUrl
                         ?? coachFotoByName[String(cls.coachNombre ?? cls.coach ?? '')]
                         ?? null
                       return (
@@ -440,8 +447,8 @@ export default function Clases() {
               const isLow   = status === 'low'
               const classDiscipline = resolveDiscipline(cls.discipline ?? cls.tipo, cls.nombre)
               const isMapClass = classDiscipline === 'slow' || classDiscipline === 'stryde'
-              const coachFoto = cls.coachAvatarUrl
-                ?? coachFotoById[String(cls.coachId ?? cls.coach_id ?? '')]
+              const coachFoto = coachFotoById[String(cls.coachId ?? cls.coach_id ?? '')]
+                ?? cls.coachAvatarUrl
                 ?? coachFotoByName[String(cls.coachNombre ?? cls.coach ?? '')]
                 ?? null
               const classTime = getClassTimeToken(cls)
@@ -620,7 +627,7 @@ export default function Clases() {
             userId={usuario?.id}
             hasExistingReservationInOccurrence={selectedClassExistingReservations.length > 0}
             limitErrorMessage={getOneSpotPerOccurrenceMessage()}
-            coachAvatarUrl={selectedClass.coachAvatarUrl ?? coachFotoById[String(selectedClass.coachId ?? selectedClass.coach_id ?? '')] ?? coachFotoByName[String(selectedClass.coachNombre ?? selectedClass.coach ?? '')] ?? null}
+            coachAvatarUrl={coachFotoById[String(selectedClass.coachId ?? selectedClass.coach_id ?? '')] ?? selectedClass.coachAvatarUrl ?? coachFotoByName[String(selectedClass.coachNombre ?? selectedClass.coach ?? '')] ?? null}
             onReservationCreated={async () => {
               await Promise.allSettled([
                 loadClasesFromApi?.(),
@@ -639,7 +646,7 @@ export default function Clases() {
           <SeatSelector
             cls={{
               ...selectedClass,
-              coachAvatarUrl: selectedClass.coachAvatarUrl ?? coachFotoById[String(selectedClass.coachId ?? selectedClass.coach_id ?? '')] ?? coachFotoByName[String(selectedClass.coachNombre ?? selectedClass.coach ?? '')] ?? null,
+              coachAvatarUrl: coachFotoById[String(selectedClass.coachId ?? selectedClass.coach_id ?? '')] ?? selectedClass.coachAvatarUrl ?? coachFotoByName[String(selectedClass.coachNombre ?? selectedClass.coach ?? '')] ?? null,
             }}
             onClose={() => setSelectedClass(null)}
             fecha={selectedDate}

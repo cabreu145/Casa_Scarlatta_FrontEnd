@@ -30,6 +30,29 @@ export function resolveApiClassStatus(status) {
   return 'programada'
 }
 
+const CLASS_FORM_REQUIRED_FIELDS = [
+  ['nombre', 'Nombre de la clase'],
+  ['tipo', 'Tipo / Disciplina'],
+  ['coach', 'Coach'],
+  ['fecha', 'Fecha específica'],
+  ['dia', 'Día de la semana'],
+  ['hora', 'Hora de inicio'],
+  ['descripcion', 'Descripción'],
+]
+
+export function validateClaseForm(form = {}) {
+  const missingFields = CLASS_FORM_REQUIRED_FIELDS
+    .filter(([field]) => !String(form?.[field] ?? '').trim())
+    .map(([, label]) => label)
+
+  const duration = Number(form?.duracion)
+  if (!Number.isFinite(duration) || duration < 30 || duration > 120) {
+    missingFields.push('Duración (minutos) válida entre 30 y 120')
+  }
+
+  return missingFields
+}
+
 export function buildClaseApiPayload({ form, coaches, fallbackCoachId = null }) {
   const coachId = resolveCoachIdByName(coaches, form?.coach) ?? toNumber(fallbackCoachId, null)
   const durationMinutes = Number(form?.duracion) || 50

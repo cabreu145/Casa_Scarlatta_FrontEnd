@@ -779,6 +779,8 @@ export default function ClientPanel() {
             occurrenceId: occ.occurrenceId,
             title: occ.claseNombre ?? c.nombre,
             coach: resolveCoachNombre(occ, c),
+            coachId: resolveCoachId(occ, c),
+            coachAvatarUrl: coachFotoById[String(resolveCoachId(occ, c) ?? '')] ?? occ.coachAvatarUrl ?? c.coachAvatarUrl ?? null,
             date: c.dia,
             fecha: occ.fecha,
             time: occurrenceTime ?? c.hora ?? null,

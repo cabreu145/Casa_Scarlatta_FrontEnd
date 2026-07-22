@@ -56,7 +56,7 @@ import {
   updateCoachApi,
   updateCoachStatusApi,
 } from '@/services/coachesApiService'
-import { buildClaseApiPayload } from './classApiPayload'
+import { buildClaseApiPayload, validateClaseForm } from './classApiPayload'
 import { getMapCapacityByDiscipline, isMapDiscipline } from '@/utils/classCapacity'
 import { buildCoachApiPayload, validateCoachApiPayload } from './coachApiPayload'
 import { buildPackageApiPayload, validatePackageApiPayload } from './packageApiPayload'
@@ -447,9 +447,9 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
 
   // Coach form
   const [coachForm, setCoachForm] = useState({ nombre: '', especialidad: '', disciplina: 'Stryde X', email: '', telefono: '', bio: '', estado: 'activo', instagram: '', avatar_url: '', public_profile_enabled: true, password: '' })
-  // Clase form — publicarEn: ISO datetime string o '' (publicar inmediatamente)
-  //              fecha:      YYYY-MM-DD o '' (si vacío → clase recurrente cada semana)
-  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
+  // Clase form — publicarEn: ISO datetime string o '' (publicar inmediatamente).
+  // Fecha específica es obligatoria para crear la occurrence del calendario.
+  const [claseForm, setClaseForm] = useState({ nombre: '', tipo: '', coach: '', dia: '', hora: '', duracion: '', descripcion: '', publicarEn: '', fecha: '' })
   // Clase — ver alumnos
   const [modalAlumnosClase, setModalAlumnosClase] = useState(null) // clase | null
   const [modalWaitlistClase, setModalWaitlistClase] = useState(null) // clase | null
@@ -501,7 +501,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const [userSelectedIds,    setUserSelectedIds]    = useState(new Set())
   // Clase — editar
   const [modalEditClase,     setModalEditClase]     = useState(null)  // clase | null
-  const [editClaseForm,      setEditClaseForm]      = useState({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', descripcion: '', publicarEn: '', fecha: '' })
+  const [editClaseForm,      setEditClaseForm]      = useState({ nombre: '', tipo: '', coach: '', dia: '', hora: '', duracion: '', descripcion: '', publicarEn: '', fecha: '' })
   const [editAplicarATodos,  setEditAplicarATodos]  = useState(false)
   const [editClaseSaving,    setEditClaseSaving]    = useState(false)
   // Paquete form (crear)
@@ -1969,22 +1969,22 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
             </div>
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Nombre de la clase</label>
+                <label className={styles.formLabel}>Nombre de la clase *</label>
                 <input className={styles.formInput} placeholder="Ej: Stride Power" value={claseForm.nombre}
-                  onChange={e => setClaseForm(f => ({ ...f, nombre: e.target.value }))} />
+                  onChange={e => setClaseForm(f => ({ ...f, nombre: e.target.value }))} required />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Tipo / Disciplina</label>
+                <label className={styles.formLabel}>Tipo / Disciplina *</label>
                 <select className={styles.formSelect} value={claseForm.tipo}
-                  onChange={e => setClaseForm(f => ({ ...f, tipo: e.target.value }))}>
+                  onChange={e => setClaseForm(f => ({ ...f, tipo: e.target.value }))} required>
                   <option value="">Seleccionar…</option>
                   {disciplinas.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Coach</label>
+                <label className={styles.formLabel}>Coach *</label>
                 <select className={styles.formSelect} value={claseForm.coach}
-                  onChange={e => setClaseForm(f => ({ ...f, coach: e.target.value }))}>
+                  onChange={e => setClaseForm(f => ({ ...f, coach: e.target.value }))} required>
                   <option value="">Seleccionar coach…</option>
                   {coachesForClassForms.filter(c => {
                     if (c.activo === false) return false
@@ -1999,15 +1999,13 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>
-                  Fecha específica
-                  <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)', marginLeft: 6 }}>
-                    — vacío = clase recurrente
-                  </span>
+                  Fecha específica *
                 </label>
                 <input
                   className={styles.formInput}
                   type="date"
                   value={claseForm.fecha}
+                  required
                   onChange={e => {
                     const fecha = e.target.value
                     if (fecha) {
@@ -2026,9 +2024,10 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 )}
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Día de la semana</label>
+                <label className={styles.formLabel}>Día de la semana *</label>
                 <select className={styles.formSelect} value={claseForm.dia}
-                  onChange={e => setClaseForm(f => ({ ...f, dia: e.target.value }))}>
+                  onChange={e => setClaseForm(f => ({ ...f, dia: e.target.value }))} required>
+                  <option value="">Seleccionar…</option>
                   {['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => <option key={d}>{d}</option>)}
                 </select>
                 {claseForm.fecha && (
@@ -2049,20 +2048,20 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   </p>
                 </div>
               )}
-                <label className={styles.formLabel}>Hora de inicio</label>
+                <label className={styles.formLabel}>Hora de inicio *</label>
                 <input className={styles.formInput} type="time" value={claseForm.hora}
-                  onChange={e => setClaseForm(f => ({ ...f, hora: e.target.value }))} />
+                  onChange={e => setClaseForm(f => ({ ...f, hora: e.target.value }))} required />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Duración (minutos)</label>
+                <label className={styles.formLabel}>Duración (minutos) *</label>
                 <input className={styles.formInput} type="number" min="30" max="120" placeholder="50" value={claseForm.duracion}
-                  onChange={e => setClaseForm(f => ({ ...f, duracion: e.target.value }))} />
+                  onChange={e => setClaseForm(f => ({ ...f, duracion: e.target.value }))} required />
               </div>
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
-                <label className={styles.formLabel}>Descripción</label>
+                <label className={styles.formLabel}>Descripción *</label>
                 <textarea className={styles.formInput} rows={2} placeholder="Descripción breve de la clase…"
                   value={claseForm.descripcion} onChange={e => setClaseForm(f => ({ ...f, descripcion: e.target.value }))}
-                  style={{ resize: 'vertical' }} />
+                  style={{ resize: 'vertical' }} required />
               </div>
 
               {/* ── Programar publicación ── */}
@@ -2091,7 +2090,11 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
                 onClick={async () => {
-                  if (!claseForm.nombre.trim()) return
+                  const validationErrors = validateClaseForm(claseForm)
+                  if (validationErrors.length > 0) {
+                    toast.error(`Completa los campos obligatorios: ${validationErrors.join(', ')}.`)
+                    return
+                  }
                   const payload = buildClaseApiPayload({ form: claseForm, coaches: coachesForClassForms })
                   if (useApiClasses) {
                     try {
@@ -2125,7 +2128,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       }
                     }
                     if (occurrenceFailed) {
-                      setClaseForm({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+                      setClaseForm({ nombre: '', tipo: '', coach: '', dia: '', hora: '', duracion: '', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
                       closeModal()
                       return
                     }
@@ -2174,7 +2177,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     dia:         claseForm.dia,
                     hora:        claseForm.hora,
                   })
-                  setClaseForm({ nombre: '', tipo: '', coach: '', dia: 'Lunes', hora: '07:00', duracion: '50', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+                  setClaseForm({ nombre: '', tipo: '', coach: '', dia: '', hora: '', duracion: '', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
                   closeModal()
                 }}
               >
@@ -2729,24 +2732,24 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
 
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Nombre de la clase</label>
+                <label className={styles.formLabel}>Nombre de la clase *</label>
                 <input className={styles.formInput} placeholder="Ej: Stride Power"
                   value={editClaseForm.nombre}
-                  onChange={e => setEditClaseForm(f => ({ ...f, nombre: e.target.value }))} />
+                  onChange={e => setEditClaseForm(f => ({ ...f, nombre: e.target.value }))} required />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Tipo / Disciplina</label>
+                <label className={styles.formLabel}>Tipo / Disciplina *</label>
                 <select className={styles.formSelect} value={editClaseForm.tipo}
-                  onChange={e => setEditClaseForm(f => ({ ...f, tipo: e.target.value }))}>
+                  onChange={e => setEditClaseForm(f => ({ ...f, tipo: e.target.value }))} required>
                   <option value="">Seleccionar…</option>
                   {disciplinas.map((d) => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Coach</label>
+                <label className={styles.formLabel}>Coach *</label>
                 <select className={styles.formSelect} value={editClaseForm.coach}
-                  onChange={e => setEditClaseForm(f => ({ ...f, coach: e.target.value }))}>
-                  <option value="">Sin asignar</option>
+                  onChange={e => setEditClaseForm(f => ({ ...f, coach: e.target.value }))} required>
+                  <option value="">Seleccionar coach…</option>
                   {coachesForClassForms.filter(c => {
                     if (c.activo === false) return false
                     const esp = c.especialidad
@@ -2774,15 +2777,13 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               )}
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>
-                  Fecha específica
-                  <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)', marginLeft: 6 }}>
-                    — vacío = recurrente
-                  </span>
+                  Fecha específica *
                 </label>
                 <input
                   className={styles.formInput}
                   type="date"
                   value={editClaseForm.fecha}
+                  required
                   onChange={e => {
                     const fecha = e.target.value
                     if (fecha) {
@@ -2801,9 +2802,10 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 )}
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Día de la semana</label>
+                <label className={styles.formLabel}>Día de la semana *</label>
                 <select className={styles.formSelect} value={editClaseForm.dia}
-                  onChange={e => setEditClaseForm(f => ({ ...f, dia: e.target.value }))}>
+                  onChange={e => setEditClaseForm(f => ({ ...f, dia: e.target.value }))} required>
+                  <option value="">Seleccionar…</option>
                   {['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d => <option key={d}>{d}</option>)}
                 </select>
               </div>
@@ -2819,22 +2821,22 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   </p>
                 </div>
               )}
-                <label className={styles.formLabel}>Hora de inicio</label>
+                <label className={styles.formLabel}>Hora de inicio *</label>
                 <input className={styles.formInput} type="time" value={editClaseForm.hora}
-                  onChange={e => setEditClaseForm(f => ({ ...f, hora: e.target.value }))} />
+                  onChange={e => setEditClaseForm(f => ({ ...f, hora: e.target.value }))} required />
               </div>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Duración (minutos)</label>
+                <label className={styles.formLabel}>Duración (minutos) *</label>
                 <input className={styles.formInput} type="number" min="30" max="120"
                   value={editClaseForm.duracion}
-                  onChange={e => setEditClaseForm(f => ({ ...f, duracion: e.target.value }))} />
+                  onChange={e => setEditClaseForm(f => ({ ...f, duracion: e.target.value }))} required />
               </div>
               <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
-                <label className={styles.formLabel}>Descripción</label>
+                <label className={styles.formLabel}>Descripción *</label>
                 <textarea className={styles.formInput} rows={2}
                   value={editClaseForm.descripcion}
                   onChange={e => setEditClaseForm(f => ({ ...f, descripcion: e.target.value }))}
-                  style={{ resize: 'vertical' }} />
+                  style={{ resize: 'vertical' }} required />
               </div>
 
               {/* ── Programar publicación ── */}
@@ -2868,7 +2870,11 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 disabled={editClaseSaving}
                 style={editClaseSaving ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}
                 onClick={async () => {
-                  if (!editClaseForm.nombre.trim()) return
+                  const validationErrors = validateClaseForm(editClaseForm)
+                  if (validationErrors.length > 0) {
+                    toast.error(`Completa los campos obligatorios: ${validationErrors.join(', ')}.`)
+                    return
+                  }
                   setEditClaseSaving(true)
                   const payload = buildClaseApiPayload({
                     form: editClaseForm,

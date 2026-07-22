@@ -102,6 +102,30 @@ describe('reservationAdapter', () => {
     expect(mapped.classStatus).toBe('programada')
   })
 
+  test('prioriza coach de reserva/occurrence sobre coach de clase base', () => {
+    const mapped = mapBackendReservationToFrontend(
+      {
+        id: 101,
+        class_id: 3,
+        occurrence_id: 33,
+        coach_id: 9,
+        coach_name: 'Mali',
+        coach_avatar_url: '/media/coaches/mali.png',
+      },
+      {
+        3: {
+          coachId: 1,
+          coachNombre: 'Coach anterior',
+          coachAvatarUrl: '/media/coaches/anterior.png',
+        },
+      }
+    )
+
+    expect(mapped.coachId).toBe(9)
+    expect(mapped.coachNombre).toBe('Mali')
+    expect(mapped.coachAvatarUrl).toContain('/media/coaches/mali.png')
+  })
+
   test('deriva discipline desde class_name cuando backend no manda discipline canónico', () => {
     const mapped = mapBackendReservationToFrontend(
       {

@@ -7,8 +7,9 @@ import { usePublicCoachesQuery } from '@/hooks/useApiQueries'
 export default function SeatMapViewer({ cls, occurrenceId, onClose, fecha }) {
   const [occupantMap, setOccupantMap] = useState({})
 
-  // Fetch public coaches only when cls is missing coachAvatarUrl or coachNombre
-  const needsCoachEnrichment = Boolean(cls.coachId && (!cls.coachAvatarUrl || !cls.coachNombre))
+  // The occurrence may override the template coach. Always resolve its current
+  // public profile by effective coach ID instead of retaining a stale template avatar.
+  const needsCoachEnrichment = Boolean(cls.coachId)
   const coachesQuery = usePublicCoachesQuery({ enabled: needsCoachEnrichment })
 
   // Enrich cls with coach photo/name from the public coaches API when missing
@@ -22,7 +23,7 @@ export default function SeatMapViewer({ cls, occurrenceId, onClose, fecha }) {
     if (!coach) return cls
     return {
       ...cls,
-      coachAvatarUrl: cls.coachAvatarUrl ?? coach.avatarUrl ?? coach.foto ?? null,
+      coachAvatarUrl: coach.avatarUrl ?? coach.foto ?? cls.coachAvatarUrl ?? null,
       coachNombre: cls.coachNombre ?? coach.name ?? coach.nombre ?? null,
     }
   }, [cls, needsCoachEnrichment, coachesQuery.data])

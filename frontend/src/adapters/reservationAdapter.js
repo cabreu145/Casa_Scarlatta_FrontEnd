@@ -117,7 +117,9 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
     spotId: reservation.spot_id ?? reservation.spotId ?? null,
     holdId: reservation.hold_id ?? reservation.holdId ?? null,
     claseNombre: classNameSnapshot ?? classData?.nombre ?? classData?.name ?? `Clase #${claseId ?? 'N/A'}`,
-    coachId: classData?.coachId ?? reservation.coach_id ?? reservation.coachId ?? null,
+    // Reservation snapshot belongs to a specific occurrence and therefore wins
+    // over the class template coach when an occurrence substitution exists.
+    coachId: reservation.effective_coach_id ?? reservation.effectiveCoachId ?? reservation.coach_id ?? reservation.coachId ?? classData?.coachId ?? null,
     claseHora: classStartTime ?? getClassTimeToken(classData ?? {}) ?? null,
     displayTime: getClassDisplayTime({
       classStartTime,
@@ -127,8 +129,8 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
     }),
     displayDate,
     claseDia: classData?.dia ?? null,
-    coachNombre: classData?.coachNombre ?? 'Sin coach',
-    coachAvatarUrl: classData?.coachAvatarUrl ?? reservation.coach_avatar_url ?? reservation.coachAvatarUrl ?? null,
+    coachNombre: reservation.effective_coach_name ?? reservation.effectiveCoachName ?? reservation.coach_name ?? reservation.coachName ?? classData?.coachNombre ?? 'Sin coach',
+    coachAvatarUrl: reservation.effective_coach_avatar_url ?? reservation.effectiveCoachAvatarUrl ?? reservation.coach_avatar_url ?? reservation.coachAvatarUrl ?? classData?.coachAvatarUrl ?? null,
     tipo: classData?.tipo ?? 'Stryde X',
     discipline: normalizeDiscipline(
       reservation.discipline ??
