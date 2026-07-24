@@ -680,6 +680,12 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     setAsignarPaqueteForm({ paqueteNombre: client.paquete || '', metodoPago: 'efectivo' })
     setEditNotas(client.notas || '')
     setCederClaseUserId('')
+    setEditClientForm({
+      nombre: client.nombre ?? client.name ?? '',
+      email: client.email ?? '',
+      telefono: client.telefono ?? client.phone ?? '',
+      estado: client.estado ?? client.status ?? (client.activo ? 'active' : 'inactive'),
+    })
     if (!useApiClients) {
       setModalVerUsuario(client)
       return
@@ -706,7 +712,10 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   }, [])
 
   const refreshClientDetail = useCallback(async (clientId) => {
-    await queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(clientId) })
+    // Invalidate the whole ['admin', 'clients', ...] prefix so the clients
+    // list (used to re-open this modal later) also picks up the change,
+    // not just the detail query for this modal instance.
+    await queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
     return queryClient.fetchQuery({
       queryKey: queryKeys.adminClientDetail(clientId),
       queryFn: () => getClientByIdApi(clientId),
