@@ -69,6 +69,18 @@ export async function patchOccurrenceApi(classId, occurrenceId, payload) {
   return mapBackendOccurrenceToFrontend(response ?? {})
 }
 
+export async function cancelOccurrenceApi(classId, occurrenceId) {
+  const response = await httpPatch(ENDPOINTS.claseOcurrenciaCancelar(classId, occurrenceId), {})
+  return {
+    occurrenceId: response?.occurrence_id ?? occurrenceId,
+    classId: response?.class_id ?? classId,
+    cancelledReservations: response?.cancelled_reservations ?? 0,
+    creditsRefunded: response?.credits_refunded ?? 0,
+    affectedClients: response?.affected_clients ?? 0,
+    waitlistCancelled: response?.waitlist_cancelled ?? 0,
+  }
+}
+
 export async function deleteClaseApi(id) {
   const response = await httpDelete(ENDPOINTS.claseById(id))
   return response ?? { success: true, id }

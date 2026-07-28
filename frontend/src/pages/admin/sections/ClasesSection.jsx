@@ -16,7 +16,7 @@ import { diaDesdefecha } from '@/utils/formatters'
 import { normalizeDiscipline } from '@/utils/discipline'
 import { getClassDisplayTime, getClassTimeToken } from '@/utils/classSchedule'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
-import { createClaseApi, createClassOccurrenceApi, deleteClaseApi, getClasesPaginatedApi } from '@/services/clasesApiService'
+import { cancelOccurrenceApi, createClaseApi, createClassOccurrenceApi, deleteClaseApi, getClasesPaginatedApi } from '@/services/clasesApiService'
 import { getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { invalidateClassSideEffects } from '@/hooks/useApiQueries'
 import { hasAnyPermission, hasPermission } from '@/auth/permissions'
@@ -648,6 +648,22 @@ export default function ClasesSection({
     eliminarClaseConReservas(claseId)
   }, [canDeleteClass, clasesListPage, fetchApiClasesPage, queryClient, useApiClasses])
 
+  const handleCancelOccurrence = useCallback(async (classId, occurrenceId) => {
+    if (!canUpdateClass) {
+      toast.error('No tienes permisos para cancelar clases.')
+      return null
+    }
+    if (!useApiClasses) {
+      toast.error('Cancelar clase con reembolso solo esta disponible en modo API.')
+      return null
+    }
+    const result = await cancelOccurrenceApi(classId, occurrenceId)
+    await invalidateClassSideEffects(queryClient, { classId, occurrenceId })
+    await useClasesStore.getState().loadClasesFromApi({ force: true, status: 'programada' })
+    await fetchApiClasesPage(clasesListPage)
+    return result
+  }, [canUpdateClass, clasesListPage, fetchApiClasesPage, queryClient, useApiClasses])
+
   const handleImportar = async (clases, { onProgress } = {}) => {
     if (!canCreateClass) {
       toast.error('No tienes permisos para crear clases.')
@@ -1216,6 +1232,35 @@ export default function ClasesSection({
                           ✏️
                         </button>
                       )}
+                      {canUpdateClass && (c.occurrenceId ?? c.occurrence_id) && (
+                        <button
+                          className={`${styles.btn} ${styles.btnGhost}`}
+                          style={{ padding: '6px 9px', fontSize: 14, color: '#f59e0b' }}
+                          title="Cancelar esta sesión y reembolsar créditos"
+                          onClick={async () => {
+                            const occurrenceActionId = c.occurrenceId ?? c.occurrence_id
+                            if (!classActionId || !occurrenceActionId) {
+                              toast.error('No se pudo identificar la sesión para cancelar.')
+                              return
+                            }
+                            if (!window.confirm(`¿Cancelar la sesión "${c.nombre}"? Se cancelarán todas las reservas y se devolverán los créditos correspondientes a cada cliente.`)) return
+                            try {
+                              const result = await handleCancelOccurrence(classActionId, occurrenceActionId)
+                              if (!result) return
+                              logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                              toast.success(
+                                result.cancelledReservations > 0
+                                  ? `Clase cancelada. Se reembolsaron ${result.creditsRefunded} crédito(s) a ${result.affectedClients} cliente(s).`
+                                  : 'Clase cancelada.'
+                              )
+                            } catch (error) {
+                              toast.error(error?.message ?? 'No se pudo cancelar la sesión.')
+                            }
+                          }}
+                        >
+                          🚫
+                        </button>
+                      )}
                       {canDeleteClass && (
                         <button
                           className={`${styles.btn} ${styles.btnGhost}`}
@@ -1311,15 +1356,23 @@ export default function ClasesSection({
                         <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 20, alignSelf: 'flex-start', background: isPasada ? 'rgba(255,255,255,0.05)' : pct >= 100 ? 'rgba(239,68,68,0.12)' : pct >= 80 ? 'rgba(234,179,8,0.12)' : 'rgba(34,197,94,0.12)', color: isPasada ? 'rgba(255,255,255,0.3)' : pct >= 100 ? '#ef4444' : pct >= 80 ? '#eab308' : '#22c55e' }}>
                           {isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'}
                         </span>
-                        <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                        <div style={{ display: 'flex', gap: 4, marginTop: 2, flexWrap: 'wrap' }}>
                           {canReadRoster && (
-                            <button onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }} title='Ver alumnos' style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}>
-                              Alumnos ({c.cupoActual})
+                            <button
+                              onClick={() => { setModalAlumnosClase(c); setAlumnoAgregarId('') }}
+                              title='Ver alumnos'
+                              style={{ minWidth: 26, height: 24, padding: '0 6px', borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}
+                            >
+                              👥{c.cupoActual}
                             </button>
                           )}
                           {c.cupoActual >= c.cupoMax && (
-                            <button onClick={() => setModalWaitlistClase(c)} title='Ver lista de espera en tiempo real' style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', background: 'transparent', color: '#F59E0B', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}>
-                              ⏳ Espera
+                            <button
+                              onClick={() => setModalWaitlistClase(c)}
+                              title='Ver lista de espera en tiempo real'
+                              style={{ minWidth: 24, height: 24, padding: '0 6px', borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', background: 'transparent', color: '#F59E0B', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              ⏳
                             </button>
                           )}
                           {canUpdateClass && (
@@ -1330,8 +1383,35 @@ export default function ClasesSection({
                                     setEditClaseForm({ nombre: c.nombre, tipo: c.tipo, coach: c.coachNombre === 'Sin asignar' ? '' : c.coachNombre, dia: c.dia, hora: c.hora, duracion: String(c.duracion||50), cupoMax: String(c.cupoMax||15), descripcion: c.descripcion||'', publicarEn: c.publicarEn ? new Date(c.publicarEn).toISOString().slice(0,16) : '', fecha: c.fecha ?? '' })
                               }}
                               title='Editar'
-                              style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}
-                            >Editar</button>
+                              style={{ minWidth: 24, height: 24, padding: '0 6px', borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              ✏️
+                            </button>
+                          )}
+                          {canUpdateClass && (c.occurrenceId ?? c.occurrence_id) && (
+                            <button
+                              onClick={async () => {
+                                const occurrenceActionId = c.occurrenceId ?? c.occurrence_id
+                                if (!classActionId || !occurrenceActionId) { toast.error('No se pudo identificar la sesión.'); return }
+                                if (!window.confirm(`¿Cancelar la sesión "${c.nombre}"? Se cancelarán todas las reservas y se devolverán los créditos correspondientes a cada cliente.`)) return
+                                try {
+                                  const result = await handleCancelOccurrence(classActionId, occurrenceActionId)
+                                  if (!result) return
+                                  logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                                  toast.success(
+                                    result.cancelledReservations > 0
+                                      ? `Clase cancelada. Se reembolsaron ${result.creditsRefunded} crédito(s) a ${result.affectedClients} cliente(s).`
+                                      : 'Clase cancelada.'
+                                  )
+                                } catch (error) {
+                                  toast.error(error?.message ?? 'No se pudo cancelar la sesión.')
+                                }
+                              }}
+                              title='Cancelar esta sesión y reembolsar créditos'
+                              style={{ minWidth: 24, height: 24, padding: '0 6px', borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', background: 'transparent', color: '#f59e0b', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              🚫
+                            </button>
                           )}
                           {canDeleteClass && (
                             <button
@@ -1343,8 +1423,10 @@ export default function ClasesSection({
                                 toast.success('Clase eliminada')
                               }}
                               title='Eliminar'
-                              style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}
-                            >Borrar</button>
+                              style={{ minWidth: 24, height: 24, padding: '0 6px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              🗑️
+                            </button>
                           )}
                         </div>
                       </div>
@@ -1546,6 +1628,35 @@ export default function ClasesSection({
                               style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             >
                               ✏️
+                            </button>
+                          )}
+                          {canUpdateClass && (c.occurrenceId ?? c.occurrence_id) && (
+                            <button
+                              onClick={async () => {
+                                const classActionId = resolveClassActionId(c)
+                                const occurrenceActionId = c.occurrenceId ?? c.occurrence_id
+                                if (!classActionId || !occurrenceActionId) {
+                                  toast.error('No se pudo identificar la sesión para cancelar.')
+                                  return
+                                }
+                                if (!window.confirm(`¿Cancelar la sesión "${c.nombre}"? Se cancelarán todas las reservas y se devolverán los créditos correspondientes a cada cliente.`)) return
+                                try {
+                                  const result = await handleCancelOccurrence(classActionId, occurrenceActionId)
+                                  if (!result) return
+                                  logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                                  toast.success(
+                                    result.cancelledReservations > 0
+                                      ? `Clase cancelada. Se reembolsaron ${result.creditsRefunded} crédito(s) a ${result.affectedClients} cliente(s).`
+                                      : 'Clase cancelada.'
+                                  )
+                                } catch (error) {
+                                  toast.error(error?.message ?? 'No se pudo cancelar la sesión.')
+                                }
+                              }}
+                              title="Cancelar esta sesión y reembolsar créditos"
+                              style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', background: 'transparent', color: '#f59e0b', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              🚫
                             </button>
                           )}
                           {canDeleteClass && (

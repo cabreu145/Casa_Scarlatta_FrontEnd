@@ -33,6 +33,7 @@ export const ENDPOINTS = {
   claseDisponibilidad: (id) => withPrefix(`/clases/${id}/disponibilidad`),
   claseOcurrenciasCreate: (id) => withPrefix(`/clases/${id}/ocurrencias`),
   claseOcurrenciaById: (classId, occurrenceId) => withPrefix(`/clases/${classId}/ocurrencias/${occurrenceId}`),
+  claseOcurrenciaCancelar: (classId, occurrenceId) => withPrefix(`/clases/${classId}/ocurrencias/${occurrenceId}/cancelar`),
   claseOcurrencias: (id, { from, to } = {}) =>
     withPrefix(`/clases/${id}/ocurrencias?from=${from ?? ''}&to=${to ?? ''}`),
 
