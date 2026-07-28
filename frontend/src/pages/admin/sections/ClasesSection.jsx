@@ -561,7 +561,7 @@ export default function ClasesSection({
   const [semanaOccurrencesLoading, setSemanaOccurrencesLoading] = useState(false)
   const [clasesListPage, setClasesListPage] = useState(1)
   const [clasesSearch, setClasesSearch] = useState('')
-  const [clasesStatusFilter, setClasesStatusFilter] = useState('activa')
+  const [clasesStatusFilter, setClasesStatusFilter] = useState('Todas')
   const [clasesCoachFilter, setClasesCoachFilter] = useState('Todos')
   const [apiListState, setApiListState] = useState({
     items: [],
@@ -650,12 +650,10 @@ export default function ClasesSection({
 
   const handleCancelOccurrence = useCallback(async (classId, occurrenceId) => {
     if (!canUpdateClass) {
-      toast.error('No tienes permisos para cancelar clases.')
-      return null
+      throw new Error('No tienes permisos para cancelar clases.')
     }
     if (!useApiClasses) {
-      toast.error('Cancelar clase con reembolso solo esta disponible en modo API.')
-      return null
+      throw new Error('Cancelar clase con reembolso solo esta disponible en modo API.')
     }
     const result = await cancelOccurrenceApi(classId, occurrenceId)
     await invalidateClassSideEffects(queryClient, { classId, occurrenceId })
@@ -724,10 +722,11 @@ export default function ClasesSection({
         .some((value) => String(value).toLowerCase().includes(searchTerm))
       const statusValue = String(clasesStatusFilter ?? '').trim().toLowerCase()
       const rowStatus = String(row.status ?? row.estado ?? '').trim().toLowerCase()
+      // "Cancelada"/"Finalizada" son estados de la ocurrencia, no de la clase base:
+      // no se debe excluir la clase aquí, el filtro real ocurre a nivel de ocurrencia.
       const matchesStatus = !statusValue || statusValue === 'todas'
+        || statusValue === 'cancelada' || statusValue === 'finalizada'
         || (statusValue === 'activa' && ['programada', 'activa', 'active'].includes(rowStatus))
-        || (statusValue === 'cancelada' && rowStatus.includes('cancel'))
-        || (statusValue === 'finalizada' && rowStatus.includes('final'))
         || rowStatus === statusValue
       const matchesDiscipline = !selectedDiscipline
         || normalizeDiscipline(row.discipline ?? row.tipo) === selectedDiscipline
@@ -761,10 +760,15 @@ export default function ClasesSection({
   useEffect(() => {
     if (!useApiClasses || vistaMode !== 'semana' || !clasesApiFiltradasBase.length) {
       setSemanaOccurrencesByClass({})
+      setSemanaOccurrencesLoading(false)
       return
     }
     const classIds = clasesApiFiltradasBase.map(c => c.id).filter(Boolean)
-    if (!classIds.length) return
+    if (!classIds.length) {
+      setSemanaOccurrencesByClass({})
+      setSemanaOccurrencesLoading(false)
+      return
+    }
     setSemanaOccurrencesLoading(true)
     let active = true
     const from = semanaWeekDays[0].isoDate
@@ -1088,8 +1092,10 @@ export default function ClasesSection({
                   fin.setHours(h + Math.floor((c.duracion || 50) / 60), m + (c.duracion || 50) % 60)
                   return fin < new Date()
                 })()
-                const statusTag    = isPasada ? 'gray' : pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
-                const statusLabel  = isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
+                const isCancelada  = String(c.status ?? c.estado ?? '').trim().toLowerCase() === 'cancelada'
+                const isBlocked    = isCancelada || isPasada
+                const statusTag    = isCancelada ? 'red' : isPasada ? 'gray' : pct >= 100 ? 'red' : pct >= 80 ? 'yellow' : 'green'
+                const statusLabel  = isCancelada ? 'Cancelada' : isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'
                 const isProgramada = c.publicarEn && new Date(c.publicarEn) > new Date()
                 const isSelected   = selectedIds.has(c.id)
                 const classActionId = resolveClassActionId(c)
@@ -1201,7 +1207,7 @@ export default function ClasesSection({
                           🗺️
                         </button>
                       )}
-                      {canUpdateClass && (
+                      {canUpdateClass && !isBlocked && (
                         <button
                           className={`${styles.btn} ${styles.btnGhost}`}
                           style={{ padding: '6px 9px', fontSize: 14 }}
@@ -1232,7 +1238,7 @@ export default function ClasesSection({
                           ✏️
                         </button>
                       )}
-                      {canUpdateClass && (c.occurrenceId ?? c.occurrence_id) && (
+                      {canUpdateClass && !isBlocked && (c.occurrenceId ?? c.occurrence_id) && (
                         <button
                           className={`${styles.btn} ${styles.btnGhost}`}
                           style={{ padding: '6px 9px', fontSize: 14, color: '#f59e0b' }}
@@ -1244,24 +1250,25 @@ export default function ClasesSection({
                               return
                             }
                             if (!window.confirm(`¿Cancelar la sesión "${c.nombre}"? Se cancelarán todas las reservas y se devolverán los créditos correspondientes a cada cliente.`)) return
-                            try {
-                              const result = await handleCancelOccurrence(classActionId, occurrenceActionId)
-                              if (!result) return
-                              logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
-                              toast.success(
-                                result.cancelledReservations > 0
-                                  ? `Clase cancelada. Se reembolsaron ${result.creditsRefunded} crédito(s) a ${result.affectedClients} cliente(s).`
-                                  : 'Clase cancelada.'
-                              )
-                            } catch (error) {
-                              toast.error(error?.message ?? 'No se pudo cancelar la sesión.')
-                            }
+                            await toast.promise(
+                              handleCancelOccurrence(classActionId, occurrenceActionId),
+                              {
+                                loading: 'Cancelando, espera un momento...',
+                                success: (result) => {
+                                  logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                                  return result.cancelledReservations > 0
+                                    ? `Clase cancelada. Se reembolsaron ${result.creditsRefunded} crédito(s) a ${result.affectedClients} cliente(s).`
+                                    : 'Clase cancelada.'
+                                },
+                                error: (error) => error?.message ?? 'No se pudo cancelar la sesión.',
+                              }
+                            )
                           }}
                         >
                           🚫
                         </button>
                       )}
-                      {canDeleteClass && (
+                      {canDeleteClass && !isBlocked && (
                         <button
                           className={`${styles.btn} ${styles.btnGhost}`}
                           style={{ padding: '6px 9px', fontSize: 14, color: '#ef4444' }}
@@ -1338,9 +1345,11 @@ export default function ClasesSection({
                       fin.setHours(hh + Math.floor((c.duracion||50)/60), mm + (c.duracion||50)%60)
                       return fin < new Date()
                     })()
+                    const isCancelada = String(c.status ?? c.estado ?? '').trim().toLowerCase() === 'cancelada'
+                    const isBlocked = isCancelada || isPasada
                     const classActionId = resolveClassActionId(c)
                     return (
-                      <div key={ci} style={{ background: 'var(--neutral-card)', border: '1px solid var(--neutral-border)', borderRadius: 10, padding: '10px 10px 8px', display: 'flex', flexDirection: 'column', gap: 5, opacity: isPasada ? 0.7 : 1 }}>
+                      <div key={ci} style={{ background: 'var(--neutral-card)', border: '1px solid var(--neutral-border)', borderRadius: 10, padding: '10px 10px 8px', display: 'flex', flexDirection: 'column', gap: 5, opacity: isBlocked ? 0.7 : 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
                           <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>{getClassDisplayTime(c)}</span>
                           <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 20, fontWeight: 700, background: isSlowCls ? 'rgba(59,130,246,0.15)' : 'rgba(239,68,68,0.15)', color: isSlowCls ? '#60a5fa' : '#f87171' }}>{isSlowCls ? 'SLOW' : 'STRYDE X'}</span>
@@ -1353,8 +1362,8 @@ export default function ClasesSection({
                           </div>
                           <span style={{ fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{c.cupoActual}/{c.cupoMax}</span>
                         </div>
-                        <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 20, alignSelf: 'flex-start', background: isPasada ? 'rgba(255,255,255,0.05)' : pct >= 100 ? 'rgba(239,68,68,0.12)' : pct >= 80 ? 'rgba(234,179,8,0.12)' : 'rgba(34,197,94,0.12)', color: isPasada ? 'rgba(255,255,255,0.3)' : pct >= 100 ? '#ef4444' : pct >= 80 ? '#eab308' : '#22c55e' }}>
-                          {isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'}
+                        <span style={{ fontSize: 9, padding: '2px 6px', borderRadius: 20, alignSelf: 'flex-start', background: isCancelada ? 'rgba(239,68,68,0.12)' : isPasada ? 'rgba(255,255,255,0.05)' : pct >= 100 ? 'rgba(239,68,68,0.12)' : pct >= 80 ? 'rgba(234,179,8,0.12)' : 'rgba(34,197,94,0.12)', color: isCancelada ? '#ef4444' : isPasada ? 'rgba(255,255,255,0.3)' : pct >= 100 ? '#ef4444' : pct >= 80 ? '#eab308' : '#22c55e' }}>
+                          {isCancelada ? 'Cancelada' : isPasada ? 'Finalizada' : pct >= 100 ? 'Llena' : pct >= 80 ? 'Casi llena' : 'Abierta'}
                         </span>
                         <div style={{ display: 'flex', gap: 4, marginTop: 2, flexWrap: 'wrap' }}>
                           {canReadRoster && (
@@ -1375,7 +1384,7 @@ export default function ClasesSection({
                               ⏳
                             </button>
                           )}
-                          {canUpdateClass && (
+                          {canUpdateClass && !isBlocked && (
                             <button
                               onClick={() => {
                                 if (!classActionId) { toast.error('No se pudo identificar la clase.'); return }
@@ -1388,24 +1397,25 @@ export default function ClasesSection({
                               ✏️
                             </button>
                           )}
-                          {canUpdateClass && (c.occurrenceId ?? c.occurrence_id) && (
+                          {canUpdateClass && !isBlocked && (c.occurrenceId ?? c.occurrence_id) && (
                             <button
                               onClick={async () => {
                                 const occurrenceActionId = c.occurrenceId ?? c.occurrence_id
                                 if (!classActionId || !occurrenceActionId) { toast.error('No se pudo identificar la sesión.'); return }
                                 if (!window.confirm(`¿Cancelar la sesión "${c.nombre}"? Se cancelarán todas las reservas y se devolverán los créditos correspondientes a cada cliente.`)) return
-                                try {
-                                  const result = await handleCancelOccurrence(classActionId, occurrenceActionId)
-                                  if (!result) return
-                                  logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
-                                  toast.success(
-                                    result.cancelledReservations > 0
-                                      ? `Clase cancelada. Se reembolsaron ${result.creditsRefunded} crédito(s) a ${result.affectedClients} cliente(s).`
-                                      : 'Clase cancelada.'
-                                  )
-                                } catch (error) {
-                                  toast.error(error?.message ?? 'No se pudo cancelar la sesión.')
-                                }
+                                await toast.promise(
+                                  handleCancelOccurrence(classActionId, occurrenceActionId),
+                                  {
+                                    loading: 'Cancelando, espera un momento...',
+                                    success: (result) => {
+                                      logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                                      return result.cancelledReservations > 0
+                                        ? `Clase cancelada. Se reembolsaron ${result.creditsRefunded} crédito(s) a ${result.affectedClients} cliente(s).`
+                                        : 'Clase cancelada.'
+                                    },
+                                    error: (error) => error?.message ?? 'No se pudo cancelar la sesión.',
+                                  }
+                                )
                               }}
                               title='Cancelar esta sesión y reembolsar créditos'
                               style={{ minWidth: 24, height: 24, padding: '0 6px', borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', background: 'transparent', color: '#f59e0b', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font-body)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -1413,7 +1423,7 @@ export default function ClasesSection({
                               🚫
                             </button>
                           )}
-                          {canDeleteClass && (
+                          {canDeleteClass && !isBlocked && (
                             <button
                               onClick={async () => {
                                 if (!window.confirm('Eliminar clase: ' + c.nombre + '?')) return
@@ -1517,6 +1527,8 @@ export default function ClasesSection({
                     fin.setHours(h, m, 0, 0)
                     return fin <= new Date()
                   })()
+                  const isCancelada = String(c.status ?? c.estado ?? '').trim().toLowerCase() === 'cancelada'
+                  const isBlocked   = isCancelada || isFinalizada
                   const esLlena  = c.cupoActual >= c.cupoMax
                   const enEspera = getPorClase(c.id)
                   return (
@@ -1565,11 +1577,11 @@ export default function ClasesSection({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{
                             fontSize: 10, padding: '2px 8px', borderRadius: 20,
-                            background: isFinalizada ? 'rgba(255,255,255,0.05)' : esLlena ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)',
-                            color: isFinalizada ? 'rgba(255,255,255,0.3)' : esLlena ? '#ef4444' : '#22c55e',
-                            border: `1px solid ${isFinalizada ? 'rgba(255,255,255,0.08)' : esLlena ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)'}`,
+                            background: isCancelada ? 'rgba(239,68,68,0.12)' : isFinalizada ? 'rgba(255,255,255,0.05)' : esLlena ? 'rgba(239,68,68,0.12)' : 'rgba(34,197,94,0.12)',
+                            color: isCancelada ? '#ef4444' : isFinalizada ? 'rgba(255,255,255,0.3)' : esLlena ? '#ef4444' : '#22c55e',
+                            border: `1px solid ${isCancelada ? 'rgba(239,68,68,0.25)' : isFinalizada ? 'rgba(255,255,255,0.08)' : esLlena ? 'rgba(239,68,68,0.25)' : 'rgba(34,197,94,0.25)'}`,
                           }}>
-                            {isFinalizada ? 'Finalizada' : esLlena ? 'Llena' : 'Abierta'}
+                            {isCancelada ? 'Cancelada' : isFinalizada ? 'Finalizada' : esLlena ? 'Llena' : 'Abierta'}
                           </span>
                           {esLlena && enEspera.length > 0 && (
                             <span style={{
@@ -1601,7 +1613,7 @@ export default function ClasesSection({
                               ⏳
                             </button>
                           )}
-                          {canUpdateClass && (
+                          {canUpdateClass && !isBlocked && (
                             <button
                               onClick={async () => {
                                 const classActionId = resolveClassActionId(c)
@@ -1630,7 +1642,7 @@ export default function ClasesSection({
                               ✏️
                             </button>
                           )}
-                          {canUpdateClass && (c.occurrenceId ?? c.occurrence_id) && (
+                          {canUpdateClass && !isBlocked && (c.occurrenceId ?? c.occurrence_id) && (
                             <button
                               onClick={async () => {
                                 const classActionId = resolveClassActionId(c)
@@ -1640,18 +1652,19 @@ export default function ClasesSection({
                                   return
                                 }
                                 if (!window.confirm(`¿Cancelar la sesión "${c.nombre}"? Se cancelarán todas las reservas y se devolverán los créditos correspondientes a cada cliente.`)) return
-                                try {
-                                  const result = await handleCancelOccurrence(classActionId, occurrenceActionId)
-                                  if (!result) return
-                                  logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
-                                  toast.success(
-                                    result.cancelledReservations > 0
-                                      ? `Clase cancelada. Se reembolsaron ${result.creditsRefunded} crédito(s) a ${result.affectedClients} cliente(s).`
-                                      : 'Clase cancelada.'
-                                  )
-                                } catch (error) {
-                                  toast.error(error?.message ?? 'No se pudo cancelar la sesión.')
-                                }
+                                await toast.promise(
+                                  handleCancelOccurrence(classActionId, occurrenceActionId),
+                                  {
+                                    loading: 'Cancelando, espera un momento...',
+                                    success: (result) => {
+                                      logClaseEliminada({ nombre: c.nombre, coachNombre: c.coachNombre })
+                                      return result.cancelledReservations > 0
+                                        ? `Clase cancelada. Se reembolsaron ${result.creditsRefunded} crédito(s) a ${result.affectedClients} cliente(s).`
+                                        : 'Clase cancelada.'
+                                    },
+                                    error: (error) => error?.message ?? 'No se pudo cancelar la sesión.',
+                                  }
+                                )
                               }}
                               title="Cancelar esta sesión y reembolsar créditos"
                               style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(245,158,11,0.3)', background: 'transparent', color: '#f59e0b', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -1659,7 +1672,7 @@ export default function ClasesSection({
                               🚫
                             </button>
                           )}
-                          {canDeleteClass && (
+                          {canDeleteClass && !isBlocked && (
                             <button
                               onClick={async () => {
                                 if (!window.confirm(`¿Eliminar la clase "${c.nombre}"?`)) return

@@ -41,15 +41,29 @@ function matchesDiscipline(row, disciplineFilter) {
   return true
 }
 
+function isOccurrenceFinalizada(row) {
+  if (row.fin) return new Date(row.fin) < new Date()
+  if (!row.fecha) return false
+  const timeToken = getClassTimeToken(row)
+  const [h, m] = (timeToken || '00:00').split(':').map(Number)
+  const fin = new Date(row.fecha + 'T00:00:00')
+  fin.setHours(h + Math.floor((row.duracion || 50) / 60), m + (row.duracion || 50) % 60)
+  return fin < new Date()
+}
+
 function matchesStatus(row, statusFilter) {
   const raw = normalizeText(statusFilter)
   if (!raw || raw === 'todas') return true
   const status = normalizeText(row.estado ?? row.status)
+  const isCancelled = status.includes('cancel')
+  // "Finalizada" no es un status real del backend: es una ocurrencia pasada
+  // que sigue "programada" (mismo criterio que las etiquetas visuales).
+  const isFinalizada = !isCancelled && isOccurrenceFinalizada(row)
   if (raw === 'activa' || raw === 'active' || raw === 'programada') {
-    return status === 'programada' || status === 'activa' || status === 'active'
+    return !isCancelled && !isFinalizada
   }
-  if (raw === 'cancelada' || raw === 'cancelled') return status.includes('cancel')
-  if (raw === 'finalizada' || raw === 'final') return status.includes('final')
+  if (raw === 'cancelada' || raw === 'cancelled') return isCancelled
+  if (raw === 'finalizada' || raw === 'final') return isFinalizada
   return true
 }
 
