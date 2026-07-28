@@ -535,9 +535,6 @@ export default function GastosSection({ inPanel = false, isActive = true, useApi
       {expenseModal && createPortal(
         <div
           className={`${styles.modalOverlay} ${styles.open}`}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) closeExpenseModal()
-          }}
         >
           <PosEntityModal
             title={expenseModal.mode === 'edit' ? 'Editar gasto' : 'Nuevo gasto'}
@@ -695,9 +692,6 @@ export default function GastosSection({ inPanel = false, isActive = true, useApi
       {cancelModal && createPortal(
         <div
           className={`${styles.modalOverlay} ${styles.open}`}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setCancelModal(null)
-          }}
         >
           <PosEntityModal
             title="Cancelar gasto"

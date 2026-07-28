@@ -46,7 +46,7 @@ export default function UserPermissionsDrawer({
   if (!open) return null
 
   return (
-    <div className={`${styles.modalOverlay} ${styles.open}`} onClick={(event) => { if (event.target === event.currentTarget) onClose?.() }}>
+    <div className={`${styles.modalOverlay} ${styles.open}`}>
       <div className={styles.modal} style={{ maxWidth: 860, width: '92vw', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className={styles.modalHeader}>
           <div>

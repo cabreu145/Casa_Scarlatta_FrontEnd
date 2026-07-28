@@ -47,7 +47,7 @@ import EquipmentReservationPanel from '@/features/reservas/EquipmentReservationP
 import { FinanzasSection } from './AdminFinanzas'
 import { ReportesSection } from './AdminReportes'
 import CompartirPaquete from '@/features/paquetes/CompartirPaquete'
-import { createClaseApi, createClassOccurrenceApi, patchOccurrenceCoachApi, updateClaseApi } from '@/services/clasesApiService'
+import { createClaseApi, createClassOccurrenceApi, patchOccurrenceApi, updateClaseApi } from '@/services/clasesApiService'
 import {
   createCoachApi,
   deleteCoachApi,
@@ -502,8 +502,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   // Clase — editar
   const [modalEditClase,     setModalEditClase]     = useState(null)  // clase | null
   const [editClaseForm,      setEditClaseForm]      = useState({ nombre: '', tipo: '', coach: '', dia: '', hora: '', duracion: '', descripcion: '', publicarEn: '', fecha: '' })
-  const [editAplicarATodos,  setEditAplicarATodos]  = useState(false)
   const [editClaseSaving,    setEditClaseSaving]    = useState(false)
+  const [claseSaving,        setClaseSaving]        = useState(false)
   // Paquete form (crear)
   const [paqueteForm, setPaqueteForm] = useState({
     nombre: '',
@@ -1706,7 +1706,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               setAlumnoAgregarId={setAlumnoAgregarId}
               setModalEditClase={setModalEditClase}
               setEditClaseForm={setEditClaseForm}
-              setEditAplicarATodos={setEditAplicarATodos}
               claseForm={claseForm}
               setClaseForm={setClaseForm}
               refreshToken={clasesRefreshToken}
@@ -1849,7 +1848,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       {/* ── MODAL OVERLAY ── */}
       <div
         className={`${styles.modalOverlay}${modalType ? ' ' + styles.open : ''}`}
-        onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}
       >
 
         {/* ── COACH ── */}
@@ -2098,25 +2096,32 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               <button className={`${styles.btn} ${styles.btnGhost}`} onClick={closeModal}>Cancelar</button>
               <button
                 className={`${styles.btn} ${styles.btnPrimary}`}
+                disabled={claseSaving}
+                style={claseSaving ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}
                 onClick={async () => {
+                  if (claseSaving) return
                   const validationErrors = validateClaseForm(claseForm)
                   if (validationErrors.length > 0) {
                     toast.error(`Completa los campos obligatorios: ${validationErrors.join(', ')}.`)
                     return
                   }
+                  setClaseSaving(true)
                   const payload = buildClaseApiPayload({ form: claseForm, coaches: coachesForClassForms })
                   if (useApiClasses) {
                     try {
                     if (!Array.isArray(coachesForClassForms) || coachesForClassForms.length === 0) {
                       toast.error('No hay coaches registrados en backend. Sincroniza coaches antes de crear clases.')
+                      setClaseSaving(false)
                       return
                     }
                     if (!Number.isInteger(payload.coach_id)) {
                       toast.error('Selecciona un coach válido para guardar en API mode')
+                      setClaseSaving(false)
                       return
                     }
                     if (claseForm.publicarEn) {
                       toast.error('Programar publicación no está soportado todavía por backend')
+                      setClaseSaving(false)
                       return
                     }
                     const createdClase = await createClaseApi(payload)
@@ -2138,6 +2143,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     }
                     if (occurrenceFailed) {
                       setClaseForm({ nombre: '', tipo: '', coach: '', dia: '', hora: '', duracion: '', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+                      setClaseSaving(false)
                       closeModal()
                       return
                     }
@@ -2155,6 +2161,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                         CLASS_SPOTS_NOT_CONFIGURED: 'No hay lugares configurados para esta disciplina.',
                       }[code]
                       toast.error(mapped ?? error?.message ?? 'No se pudo crear la clase.')
+                      setClaseSaving(false)
                       return
                     }
                   } else {
@@ -2187,10 +2194,16 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     hora:        claseForm.hora,
                   })
                   setClaseForm({ nombre: '', tipo: '', coach: '', dia: '', hora: '', duracion: '', cupoMax: '15', descripcion: '', publicarEn: '', fecha: '' })
+                  setClaseSaving(false)
                   closeModal()
                 }}
               >
-                {claseForm.fecha ? '📅 Crear para esta fecha' : claseForm.publicarEn ? '📅 Programar' : 'Publicar ahora'}
+                {claseSaving ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+                    Guardando…
+                  </span>
+                ) : (claseForm.fecha ? '📅 Crear para esta fecha' : claseForm.publicarEn ? '📅 Programar' : 'Publicar ahora')}
               </button>
             </div>
           </div>
@@ -2508,7 +2521,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       {prodModal && (
         <div
           className={`${styles.modalOverlay} ${styles.open}`}
-          onClick={(e) => { if (e.target === e.currentTarget) setProdModal(null) }}
         >
           <PosEntityModal
             title={prodModal === 'nuevo' ? 'Agregar producto' : 'Editar producto'}
@@ -2591,7 +2603,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       {modalEditCoach && (
         <div
           className={`${styles.modalOverlay} ${styles.open}`}
-          onClick={(e) => { if (e.target === e.currentTarget) setModalEditCoach(null) }}
         >
           <div className={styles.modal}>
             <div className={styles.modalHeader}>
@@ -2731,7 +2742,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       {modalEditClase && (
         <div
           className={`${styles.modalOverlay} ${styles.open}`}
-          onClick={(e) => { if (e.target === e.currentTarget) setModalEditClase(null) }}
         >
           <div className={styles.modal} style={{ maxWidth: 560 }}>
             <div className={styles.modalHeader}>
@@ -2770,20 +2780,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   ))}
                 </select>
               </div>
-              {modalEditClase?.occurrenceId && (
-                <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(251,191,36,0.25)', background: 'rgba(251,191,36,0.06)' }}>
-                  <input
-                    id="edit-aplicar-todos"
-                    type="checkbox"
-                    checked={editAplicarATodos}
-                    onChange={e => setEditAplicarATodos(e.target.checked)}
-                    style={{ width: 16, height: 16, accentColor: '#fbbf24', cursor: 'pointer', flexShrink: 0 }}
-                  />
-                  <label htmlFor="edit-aplicar-todos" style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(251,191,36,0.9)', cursor: 'pointer', margin: 0 }}>
-                    Aplicar cambios a todos los días futuros
-                  </label>
-                </div>
-              )}
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>
                   Fecha específica *
@@ -2897,29 +2893,13 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       setEditClaseSaving(false)
                       return
                     }
-                    if (modalEditClase?.occurrenceId && !editAplicarATodos) {
-                      // Solo cambiar el coach de esta ocurrencia específica
-                      const coachObj = coachesForClassForms.find(c => c.nombre === editClaseForm.coach)
-                      const resolvedCoachId = coachObj?.id ?? payload.coach_id ?? null
-                      try {
-                        await patchOccurrenceCoachApi(modalEditClase.claseId ?? modalEditClase.id, modalEditClase.occurrenceId, resolvedCoachId)
-                      } catch (patchErr) {
-                        toast.error(patchErr?.message ?? 'No se pudo actualizar el coach de esta sesión.')
-                        setEditClaseSaving(false)
-                        return
-                      }
-                      await invalidateClassSideEffects(queryClient, {
-                        classId: modalEditClase.claseId ?? modalEditClase.id,
-                        occurrenceId: modalEditClase.occurrenceId,
-                        coachId: resolvedCoachId,
-                      })
-                      await loadClasesFromApi({ force: true, status: 'programada' })
-                      setClasesRefreshToken(t => t + 1)
-                    } else {
                     if (editClaseForm.publicarEn) {
                       toast.error('Programar publicación no está soportado todavía por backend')
+                      setEditClaseSaving(false)
                       return
                     }
+                    // Nombre, disciplina y descripción viven en la clase (no hay variante por ocurrencia),
+                    // asi que siempre se guardan aqui sin importar "aplicar a todos los dias futuros".
                     let updatedClase
                     try {
                       updatedClase = await updateClaseApi(modalEditClase.id, payload)
@@ -2937,7 +2917,21 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     }
                     let editedOccurrence = null
                     let occurrenceFailed = false
-                    if (editClaseForm.fecha && !modalEditClase?.occurrenceId) {
+                    if (modalEditClase?.occurrenceId) {
+                      // Sincroniza fecha/hora/coach de ESTA sesion especifica con lo editado en el formulario.
+                      const occurrencePayload = buildOccurrencePayloadFromClassForm(editClaseForm, payload)
+                      try {
+                        editedOccurrence = await patchOccurrenceApi(modalEditClase.claseId ?? modalEditClase.id, modalEditClase.occurrenceId, occurrencePayload)
+                      } catch (patchErr) {
+                        occurrenceFailed = true
+                        await invalidateClassSideEffects(queryClient, {
+                          classId: updatedClase?.id ?? modalEditClase.id,
+                          coachId: updatedClase?.coachId ?? updatedClase?.coach_id ?? payload.coach_id,
+                        })
+                        await loadClasesFromApi({ force: true, status: 'programada' })
+                        toast.error(patchErr?.message ?? 'La clase se actualizó, pero no se pudo actualizar la fecha/hora de esta sesión.')
+                      }
+                    } else if (editClaseForm.fecha) {
                       const occurrencePayload = buildOccurrencePayloadFromClassForm(editClaseForm, payload)
                       try {
                         editedOccurrence = await createClassOccurrenceApi(updatedClase?.id ?? modalEditClase.id, occurrencePayload)
@@ -2962,7 +2956,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       coachId: updatedClase?.coachId ?? updatedClase?.coach_id ?? payload.coach_id,
                     })
                     await loadClasesFromApi({ force: true, status: 'programada' })
-                    }
+                    setClasesRefreshToken(t => t + 1)
                     } catch (error) {
                       const code = String(error?.code ?? '').trim()
                       const mapped = {
@@ -3633,7 +3627,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       {modalEditPaquete && (
         <div
           className={`${styles.modalOverlay} ${styles.open}`}
-          onClick={(e) => { if (e.target === e.currentTarget) setModalEditPaquete(null) }}
         >
           <div className={styles.modal} style={{ maxWidth: 520 }}>
             <div className={styles.modalHeader}>
@@ -3808,7 +3801,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
         return (
           <div
             className={`${styles.modalOverlay} ${styles.open}`}
-            onClick={e => { if (e.target === e.currentTarget) setModalVerUsuario(null) }}
           >
             <div className={styles.modal} style={{ maxWidth: 580, padding: 0, overflow: 'hidden' }}>
 
@@ -4403,9 +4395,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       {membershipExpirationModal && (
         <div
           className={`${styles.modalOverlay} ${styles.open}`}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setMembershipExpirationModal(null)
-          }}
         >
           <div className={styles.modal} style={{ maxWidth: 440 }}>
             <div className={styles.modalHeader}>
@@ -4495,7 +4484,6 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       {modalDisciplinas && (
         <div
           className={`${styles.modalOverlay} ${styles.open}`}
-          onClick={(e) => { if (e.target === e.currentTarget) setModalDisciplinas(false) }}
         >
           <div className={styles.modal} style={{ maxWidth: 400 }}>
             <div className={styles.modalHeader}>

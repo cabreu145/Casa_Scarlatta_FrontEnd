@@ -64,8 +64,8 @@ export async function updateClaseApi(id, payload) {
   return mapBackendClassToFrontendClass(response ?? {})
 }
 
-export async function patchOccurrenceCoachApi(classId, occurrenceId, coachId) {
-  const response = await httpPatch(ENDPOINTS.claseOcurrenciaById(classId, occurrenceId), { coach_id: coachId ?? null })
+export async function patchOccurrenceApi(classId, occurrenceId, payload) {
+  const response = await httpPatch(ENDPOINTS.claseOcurrenciaById(classId, occurrenceId), payload)
   return mapBackendOccurrenceToFrontend(response ?? {})
 }
 

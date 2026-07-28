@@ -2219,12 +2219,6 @@ export default function ClientPanel() {
           <div
             className={`${s.modalOverlay ?? ''}`}
             style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                setShareMembershipModal(null)
-                setShareMembershipEmail('')
-              }
-            }}
           >
             <div style={{ width: 'min(520px, 100%)', borderRadius: 18, background: '#fff', boxShadow: '0 30px 80px rgba(0,0,0,0.2)', padding: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>

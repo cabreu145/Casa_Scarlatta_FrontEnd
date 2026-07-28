@@ -1105,9 +1105,6 @@ export default function PuntoDeVentaSection({
         {categoryModal && createPortal(
           <div
             className={`${styles.modalOverlay} ${styles.open}`}
-            onClick={(event) => {
-              if (event.target === event.currentTarget) setCategoryModal(null)
-            }}
           >
             <PosEntityModal
               title={categoryModal === 'nuevo' ? 'Nueva categoría' : 'Editar categoría'}
@@ -1164,8 +1161,7 @@ export default function PuntoDeVentaSection({
 
       {/* Modal beneficiario 2×1 */}
       {bogoModal && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setBogoModal(null) }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ background: '#1E1218', borderRadius: 18, padding: 28, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.5)', color: '#F5EDE8' }}>
             <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6 }}>🎁 Paquete 2×1</div>
             <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 18 }}>

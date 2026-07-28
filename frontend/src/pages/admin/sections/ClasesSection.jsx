@@ -542,7 +542,6 @@ export default function ClasesSection({
   setAlumnoAgregarId,
   setModalEditClase,
   setEditClaseForm,
-  setEditAplicarATodos,
   claseForm,
   setClaseForm,
   refreshToken = 0,
@@ -1197,7 +1196,6 @@ export default function ClasesSection({
                               return
                             }
                             setModalEditClase({ ...c, id: classActionId })
-                            setEditAplicarATodos(false)
                             const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
                             setEditClaseForm({
                               nombre:      c.nombre,
@@ -1329,8 +1327,7 @@ export default function ClasesSection({
                               onClick={() => {
                                 if (!classActionId) { toast.error('No se pudo identificar la clase.'); return }
                                 setModalEditClase({ ...c, id: classActionId })
-                                setEditAplicarATodos(false)
-                                setEditClaseForm({ nombre: c.nombre, tipo: c.tipo, coach: c.coachNombre === 'Sin asignar' ? '' : c.coachNombre, dia: c.dia, hora: c.hora, duracion: String(c.duracion||50), cupoMax: String(c.cupoMax||15), descripcion: c.descripcion||'', publicarEn: c.publicarEn ? new Date(c.publicarEn).toISOString().slice(0,16) : '', fecha: c.fecha ?? '' })
+                                    setEditClaseForm({ nombre: c.nombre, tipo: c.tipo, coach: c.coachNombre === 'Sin asignar' ? '' : c.coachNombre, dia: c.dia, hora: c.hora, duracion: String(c.duracion||50), cupoMax: String(c.cupoMax||15), descripcion: c.descripcion||'', publicarEn: c.publicarEn ? new Date(c.publicarEn).toISOString().slice(0,16) : '', fecha: c.fecha ?? '' })
                               }}
                               title='Editar'
                               style={{ flex: 1, padding: '4px 0', borderRadius: 6, border: '1px solid var(--neutral-border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-body)' }}
@@ -1531,8 +1528,7 @@ export default function ClasesSection({
                                   return
                                 }
                                 setModalEditClase({ ...c, id: classActionId })
-                                setEditAplicarATodos(false)
-                                const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
+                                    const coachNombre = c.coachNombre === 'Sin asignar' ? '' : c.coachNombre
                                 setEditClaseForm({
                                   nombre: c.nombre,
                                   tipo: c.tipo,

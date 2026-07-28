@@ -209,14 +209,17 @@ export default function Clases() {
     [days, allClasses, filter, occurrenceSessions, useApiClasses]
   )
 
+  const byTimeAsc = (a, b) => (getClassTimeToken(a) ?? '99:99').localeCompare(getClassTimeToken(b) ?? '99:99')
+
   const dayClasses = useMemo(() => {
     const selectedIso = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
     const forDay = useApiClasses
       ? occurrenceSessions.filter((c) => c.fecha === selectedIso)
       : getPublicClassesByDate(allClasses, selectedDate)
+    const sorted = forDay.slice().sort(byTimeAsc)
     return filter
-      ? forDay.filter((c) => isSlow(filter) ? resolveDiscipline(c.discipline ?? c.tipo) === 'slow' : resolveDiscipline(c.discipline ?? c.tipo) === 'stryde')
-      : forDay
+      ? sorted.filter((c) => isSlow(filter) ? resolveDiscipline(c.discipline ?? c.tipo) === 'slow' : resolveDiscipline(c.discipline ?? c.tipo) === 'stryde')
+      : sorted
   }, [selectedDate, filter, allClasses, occurrenceSessions, useApiClasses])
 
   // Classes for every day of the current week (used by week view)
@@ -226,9 +229,10 @@ export default function Clases() {
       const forDay = useApiClasses
         ? occurrenceSessions.filter((c) => c.fecha === iso)
         : getPublicClassesByDate(allClasses, date)
+      const sorted = forDay.slice().sort(byTimeAsc)
       return filter
-        ? forDay.filter((c) => isSlow(filter) ? resolveDiscipline(c.discipline ?? c.tipo) === 'slow' : resolveDiscipline(c.discipline ?? c.tipo) === 'stryde')
-        : forDay
+        ? sorted.filter((c) => isSlow(filter) ? resolveDiscipline(c.discipline ?? c.tipo) === 'slow' : resolveDiscipline(c.discipline ?? c.tipo) === 'stryde')
+        : sorted
     })
   }, [days, allClasses, occurrenceSessions, filter, useApiClasses])
 
