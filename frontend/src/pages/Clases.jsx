@@ -13,7 +13,7 @@ import { useConfiguracionStore } from '@/stores/configuracionStore'
 import { useEffectiveSiteConfiguration } from '@/hooks/useSiteConfiguration'
 import { useAuth } from '@/context/AuthContext'
 import { getPublicClassesByDate, getPublicAvailability, getReservationOccurrenceDate } from '@/services/classService'
-import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
+import { getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { cancelarReserva as cancelarReservaService } from '@/services/reservasService'
 import { ROUTES } from '@/constants/routes'
 import { getWeekDays, isSameDay, formatHour, DAYS_ABBR, MONTHS_ES } from '@/utils/formatters'
@@ -94,12 +94,24 @@ export default function Clases() {
     from: `${days[0].getFullYear()}-${String(days[0].getMonth() + 1).padStart(2, '0')}-${String(days[0].getDate()).padStart(2, '0')}`,
     to: `${days[days.length - 1].getFullYear()}-${String(days[days.length - 1].getMonth() + 1).padStart(2, '0')}-${String(days[days.length - 1].getDate()).padStart(2, '0')}`,
   }), [days])
+  const selectedDateRange = useMemo(() => {
+    const isoDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+    return { from: isoDate, to: isoDate }
+  }, [selectedDate])
+  const occurrenceRange = viewMode === 'week' ? selectedRange : selectedDateRange
+  const visibleClassIds = useMemo(() => allClasses
+    .filter((cls) => {
+      if (!filter) return true
+      const discipline = normalizeDiscipline(cls.discipline ?? cls.tipo, cls.nombre ?? cls.name)
+      return filter === 'Slow' ? discipline === 'slow' : discipline === 'stryde'
+    })
+    .map((cls) => cls.id), [allClasses, filter])
 
   const refreshVisibleOccurrences = useCallback(async () => {
-    if (!useApiClasses || !allClasses.length) return
-    const data = await getOccurrencesForDateRangeApi(allClasses.map((c) => c.id), selectedRange)
+    if (!useApiClasses || !visibleClassIds.length) return
+    const data = await getOccurrencesForDateRangeApi(visibleClassIds, occurrenceRange)
     setOccurrencesByClass(data ?? {})
-  }, [allClasses, selectedRange, useApiClasses])
+  }, [occurrenceRange, useApiClasses, visibleClassIds])
 
   useEffect(() => {
     if (!useApiClasses) { setIsLoadingClasses(false); setIsLoadingOccurrences(false); return }
@@ -126,7 +138,7 @@ export default function Clases() {
   }, [loadClasesFromApi, useApiClasses])
 
   useEffect(() => {
-    if (!useApiClasses || !allClasses.length) {
+    if (!useApiClasses || !visibleClassIds.length) {
       setOccurrencesByClass({})
       return
     }
@@ -138,7 +150,7 @@ export default function Clases() {
       controller.abort()
       controller = new AbortController()
       try {
-        const data = await getOccurrencesForDateRangeApi(allClasses.map((c) => c.id), { ...selectedRange, signal: controller.signal })
+        const data = await getOccurrencesForDateRangeApi(visibleClassIds, { ...occurrenceRange, signal: controller.signal })
         if (active) {
           setOccurrencesByClass(data)
           if (isFirst) { isFirst = false; setIsLoadingOccurrences(false) }
@@ -154,9 +166,8 @@ export default function Clases() {
     return () => {
       active = false
       controller.abort()
-      clearOccurrencesInflightCache()
     }
-  }, [allClasses, selectedRange, useApiClasses])
+  }, [occurrenceRange, useApiClasses, visibleClassIds])
 
   // Classes for the selected day, filtered by discipline.
   // Uses slow-based detection: anything that doesn't contain 'slow' is Stryde.
@@ -202,11 +213,12 @@ export default function Clases() {
       const forDay = useApiClasses
         ? occurrenceSessions.filter((c) => c.fecha === `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
         : getPublicClassesByDate(allClasses, d)
+      if (useApiClasses && viewMode === 'day' && !isSameDay(d, selectedDate)) return false
       return filter
         ? forDay.some((c) => isSlow(filter) ? resolveDiscipline(c.discipline ?? c.tipo) === 'slow' : resolveDiscipline(c.discipline ?? c.tipo) === 'stryde')
         : forDay.length > 0
     }),
-    [days, allClasses, filter, occurrenceSessions, useApiClasses]
+    [days, allClasses, filter, occurrenceSessions, selectedDate, useApiClasses, viewMode]
   )
 
   const byTimeAsc = (a, b) => (getClassTimeToken(a) ?? '99:99').localeCompare(getClassTimeToken(b) ?? '99:99')
@@ -377,7 +389,23 @@ export default function Clases() {
               </button>
             </div>
           <div className={styles.weekGrid}>
-            {days.map((date, di) => {
+            {(isLoadingClasses || isLoadingOccurrences) ? (
+              <>
+                <span className={styles.weekLoadingLabel} role="status">Cargando clases de la semana...</span>
+                {days.map((date, di) => (
+                  <div key={di} className={styles.weekCol} aria-hidden="true">
+                    <div className={`${styles.weekColHeader} ${isSameDay(date, new Date()) ? styles.weekColHeaderToday : ''}`}>
+                      <span className={styles.weekColAbbr}>{DAYS_ABBR[date.getDay()]}</span>
+                      <span className={styles.weekColNum}>{date.getDate()}</span>
+                    </div>
+                    <div className={styles.weekColBody}>
+                      <div className={styles.weekSkeletonCard} />
+                      <div className={styles.weekSkeletonCard} />
+                    </div>
+                  </div>
+                ))}
+              </>
+            ) : days.map((date, di) => {
               const today = isSameDay(date, new Date())
               const classes = weekClasses[di] ?? []
               return (

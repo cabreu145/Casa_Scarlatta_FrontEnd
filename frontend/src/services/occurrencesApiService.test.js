@@ -12,8 +12,10 @@ vi.mock('@/lib/http', () => ({
 }))
 
 describe('occurrencesApiService', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     httpGet.mockReset()
+    const { clearOccurrencesInflightCache } = await import('./occurrencesApiService')
+    clearOccurrencesInflightCache()
   })
 
   test('getOccurrencesByClassApi usa endpoint esperado', async () => {
@@ -46,6 +48,27 @@ describe('occurrencesApiService', () => {
     expect(r1[0].occurrenceId).toBe(11)
     expect(r2[0].occurrenceId).toBe(11)
     clearOccurrencesInflightCache()
+  })
+
+  test('reusa respuesta reciente para misma clase y rango', async () => {
+    httpGet.mockResolvedValue([{ id: 12 }])
+    const { getOccurrencesByClassApi } = await import('./occurrencesApiService')
+    await getOccurrencesByClassApi(7, { from: '2026-05-29', to: '2026-06-04' })
+    await getOccurrencesByClassApi(7, { from: '2026-05-29', to: '2026-06-04' })
+    expect(httpGet).toHaveBeenCalledTimes(1)
+  })
+
+  test('reusa rango semanal al seleccionar un día contenido', async () => {
+    httpGet.mockResolvedValue([
+      { id: 12, occurrence_date: '2026-06-02' },
+      { id: 13, occurrence_date: '2026-06-04' },
+    ])
+    const { getOccurrencesByClassApi } = await import('./occurrencesApiService')
+    await getOccurrencesByClassApi(7, { from: '2026-06-01', to: '2026-06-07' })
+    const selectedDay = await getOccurrencesByClassApi(7, { from: '2026-06-04', to: '2026-06-04' })
+    expect(httpGet).toHaveBeenCalledTimes(1)
+    expect(selectedDay).toHaveLength(1)
+    expect(selectedDay[0].occurrenceId).toBe(13)
   })
 
   test('getOccurrencesForDateRangeApi limita concurrencia masiva', async () => {

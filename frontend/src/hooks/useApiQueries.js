@@ -3,7 +3,7 @@ import { queryKeys } from '@/api/queryKeys'
 import { getMyFinancialStateApi, getMyCreditMovementsPaginatedApi } from '@/services/financialStateApiService'
 import { getClasesApi, getClasesPaginatedApi, getClaseByIdApi } from '@/services/clasesApiService'
 import { useClasesStore } from '@/stores/clasesStore'
-import { getOccurrencesByClassApi } from '@/services/occurrencesApiService'
+import { clearOccurrencesCache, getOccurrencesByClassApi } from '@/services/occurrencesApiService'
 import {
   addClientMembershipBeneficiaryApi,
   addMyMembershipBeneficiaryApi,
@@ -1248,6 +1248,7 @@ export function invalidatePosSaleSideEffects(queryClient, { customerId } = {}) {
 }
 
 export function invalidateClassSideEffects(queryClient, { classId, occurrenceId, coachId } = {}) {
+  clearOccurrencesCache()
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ['classes'] }),
     queryClient.invalidateQueries({ queryKey: ['coaches'] }),
@@ -1512,6 +1513,7 @@ function invalidateSpotsAndHolds(queryClient, occurrenceId) {
 }
 
 export function invalidateReservationSideEffects(queryClient, { occurrenceId, classId, userId } = {}) {
+  clearOccurrencesCache()
   return Promise.all([
     invalidateSpotsAndHolds(queryClient, occurrenceId),
     queryClient.invalidateQueries({ queryKey: queryKeys.reservations.me() }),
