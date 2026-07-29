@@ -337,13 +337,75 @@ function LegacyActividadView() {
   )
 }
 
+function RelatedActivityList({ entityType, entityId, excludeId }) {
+  const query = useActivityQuery({
+    page: 1,
+    pageSize: 10,
+    entityType,
+    entityId,
+    enabled: Boolean(entityType) && entityId != null,
+  })
+
+  const relatedItems = (query.data?.items ?? []).filter((row) => row.id !== excludeId)
+
+  if (query.isLoading) {
+    return (
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>
+        Cargando eventos relacionados...
+      </div>
+    )
+  }
+
+  if (relatedItems.length === 0) {
+    return (
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>
+        No hay otros eventos relacionados con esta actividad.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 6 }}>
+      {relatedItems.map((row) => (
+        <div
+          key={row.id}
+          style={{
+            display: 'flex',
+            gap: 10,
+            alignItems: 'flex-start',
+            padding: '8px 10px',
+            borderRadius: 10,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          <span style={{ fontSize: 14, flexShrink: 0 }}>{CATEGORY_ICONS[row.category] ?? '📌'}</span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 500 }}>
+              {row.title}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+              {row.summary || row.description || 'Sin descripción'}
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+            {formatDateTime(row.createdAt)}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function ActivityEventCard({ item }) {
+  const [showRelated, setShowRelated] = useState(false)
   const categoryLabel = CATEGORY_LABELS[item.category] ?? item.category ?? 'Sistema'
   const icon = CATEGORY_ICONS[item.category] ?? '📌'
   const entityLabel = item.entityLabel || formatEntityLabel(item)
   const description = item.summary || item.description || 'Sin descripción'
   const metadataRows = getMetadataRows(item)
   const actorRole = item.actorRole ? String(item.actorRole) : ''
+  const canShowRelated = Boolean(item.entityType) && item.entityId != null
 
   return (
     <article
@@ -424,6 +486,30 @@ function ActivityEventCard({ item }) {
                 {row.label ? `${row.label}: ${row.value}` : row.value}
               </span>
             ))}
+          </div>
+        )}
+
+        {canShowRelated && (
+          <div style={{ marginTop: 10 }}>
+            <button
+              type="button"
+              onClick={() => setShowRelated((value) => !value)}
+              style={{
+                fontSize: 11,
+                color: 'var(--accent, #8b5cf6)',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontFamily: 'inherit',
+              }}
+            >
+              {showRelated ? '▲ Ocultar actividad relacionada' : '🔗 Ver actividad relacionada'}
+            </button>
+            {showRelated && (
+              <RelatedActivityList entityType={item.entityType} entityId={item.entityId} excludeId={item.id} />
+            )}
           </div>
         )}
       </div>
