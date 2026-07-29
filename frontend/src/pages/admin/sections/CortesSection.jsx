@@ -568,7 +568,7 @@ export default function CortesSection({ isActive = true, inPanel = false, useApi
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedDetailId(null) }}
           style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 16px', overflowY: 'auto' }}
         >
-          <div style={{ background: '#1C0A0E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, width: '100%', maxWidth: 860, padding: 32, position: 'relative', color: '#fff' }}>
+          <div role="dialog" aria-modal="true" aria-label="Detalle de corte" style={{ background: '#1C0A0E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, width: '100%', maxWidth: 860, padding: 32, position: 'relative', color: '#fff' }}>
             <button onClick={() => setSelectedDetailId(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 16, width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Detalle de corte</div>
             {detailQuery.data && <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 24 }}>{detailQuery.data.date ? new Date(`${detailQuery.data.date}T00:00:00`).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''} · {detailQuery.data.shiftLabel || ''}</div>}

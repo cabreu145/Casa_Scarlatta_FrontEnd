@@ -130,6 +130,7 @@ export const ENDPOINTS = {
       status,
     }),
   ventaById: (id) => withPrefix(`/ventas/${id}`),
+  ventaAnularById: (id) => withPrefix(`/ventas/${id}/anular`),
   ventaTicket: (id) => withPrefix(`/ventas/${id}/ticket`),
   ventaTicketPdf: (id) => withPrefix(`/ventas/${id}/ticket.pdf`),
   publicTicketByToken: (token) => withPrefix(`/public/tickets/${token}`),

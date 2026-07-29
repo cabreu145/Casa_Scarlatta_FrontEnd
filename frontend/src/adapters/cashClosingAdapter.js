@@ -129,6 +129,7 @@ export function mapBackendCashClosingToFrontend(item = {}) {
     createdAt: source.created_at ?? source.createdAt ?? null,
     createdBy: normalizeString(source.created_by ?? source.createdBy ?? '', ''),
     createdByName: normalizeString(source.created_by_name ?? source.createdByName ?? source.responsible_name ?? source.responsibleName ?? '', ''),
+    openingResponsibleName: normalizeString(source.opening_responsible_name ?? source.openingResponsibleName ?? '', ''),
     sales: includedSales.map(mapIncludedSale),
     expenses: normalized.expenses,
     raw: source,

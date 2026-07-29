@@ -162,6 +162,15 @@ export async function getSaleByIdApi(saleId) {
   return mapBackendSaleToFrontend(await httpGet(ENDPOINTS.ventaById(saleId)))
 }
 
+export async function voidSaleApi(saleId, reason = '') {
+  if (!ENDPOINTS.ventaAnularById) {
+    throw new Error('POS_SALES_ENDPOINT_MISSING')
+  }
+  return mapBackendSaleToFrontend(
+    await httpPatch(ENDPOINTS.ventaAnularById(saleId), { reason: String(reason ?? '').trim() })
+  )
+}
+
 export async function getSaleTicketApi(saleId) {
   if (!ENDPOINTS.ventaTicket) {
     throw new Error('POS_SALES_ENDPOINT_MISSING')

@@ -65,6 +65,16 @@ function formatDateMx(value) {
   })
 }
 
+function formatDateTimeMx(value) {
+  if (!value) return '—'
+  const date = new Date(String(value))
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleString('es-MX', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+}
+
 function buildReportRange(periodoReporte) {
   const today = formatMeridaDate(new Date())
   const weekStart = formatMeridaDate(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000))
@@ -691,17 +701,39 @@ export default function ReportesApiSection({ inPanel = false }) {
 
   const cortesDetailRows = useMemo(() => {
     if (!cashClosingItems.length) return []
-    return cashClosingItems.map((c) => ({
-      Fecha:            c.date ?? '—',
-      'Ventas':         c.salesCount ?? 0,
-      'Total ingresos': c.totalMxn ?? 0,
-      Efectivo:         c.cashTotalMxn ?? 0,
-      Tarjeta:          c.cardTotalMxn ?? 0,
-      Transferencia:    c.transferTotalMxn ?? 0,
-      Gastos:           c.expensesTotalMxn ?? 0,
-      Neto:             c.netTotalMxn ?? 0,
-      Notas:            c.notes || '—',
-    }))
+    return cashClosingItems.map((c) => {
+      const dineroFisico = Number(c.cashTotalMxn ?? 0)
+      const dineroBancario = Number(c.cardTotalMxn ?? 0) + Number(c.transferTotalMxn ?? 0) + Number(c.otherTotalMxn ?? 0)
+      const counted = c.countedCashMxn
+      const diff = c.cashDifferenceMxn
+      let estadoCaja = 'Sin contar'
+      if (counted !== null && counted !== undefined) {
+        if (diff > 0) estadoCaja = `Sobrante ${formatMoneyMx(diff)}`
+        else if (diff < 0) estadoCaja = `Faltante ${formatMoneyMx(Math.abs(diff))}`
+        else estadoCaja = 'Cuadrado'
+      }
+      return {
+        Fecha:                    c.date ?? '—',
+        Turno:                    c.shiftLabel || 'Día completo',
+        Estado:                   c.isClosed ? 'Cerrado' : (c.isOpen ? 'Abierto' : '—'),
+        Ventas:                   c.salesCount ?? 0,
+        'Responsable apertura':   c.openingResponsibleName || '—',
+        'Hora apertura':          formatDateTimeMx(c.openedAt),
+        'Responsable cierre':     c.createdByName || '—',
+        'Hora cierre':            formatDateTimeMx(c.closedAt),
+        'Fondo inicial':          c.openingCashMxn ?? 0,
+        'Total ventas':           c.totalMxn ?? 0,
+        'Dinero físico (efectivo)': dineroFisico,
+        'Dinero bancario':        dineroBancario,
+        Gastos:                   c.expensesTotalMxn ?? 0,
+        'Utilidad del turno':     c.netTotalMxn ?? 0,
+        'Efectivo esperado':      c.expectedCashMxn ?? 0,
+        'Efectivo contado':       counted ?? '—',
+        Diferencia:               diff ?? '—',
+        'Estado de caja':         estadoCaja,
+        Notas:                    c.notes || '—',
+      }
+    })
   }, [cashClosingItems])
 
   const exportCsv = (prefix, rows, headers) => {
@@ -972,7 +1004,12 @@ export default function ReportesApiSection({ inPanel = false }) {
           icono="✂️"
           titulo="Exportar cortes"
           descripcion="Historial de cortes de caja: ingresos, gastos y neto por corte."
-          onCsv={() => exportCsv('reporte-cortes', cortesDetailRows, ['Fecha', 'Ventas', 'Total ingresos', 'Efectivo', 'Tarjeta', 'Transferencia', 'Gastos', 'Neto', 'Notas'])}
+          onCsv={() => exportCsv('reporte-cortes', cortesDetailRows, [
+            'Fecha', 'Turno', 'Estado', 'Ventas',
+            'Responsable apertura', 'Hora apertura', 'Responsable cierre', 'Hora cierre',
+            'Fondo inicial', 'Total ventas', 'Dinero físico (efectivo)', 'Dinero bancario',
+            'Gastos', 'Utilidad del turno', 'Efectivo esperado', 'Efectivo contado', 'Diferencia', 'Estado de caja', 'Notas',
+          ])}
           onPdf={async () => {
             if (!cashClosingItems.length) { toast('Sin cortes para exportar.', { icon: '📋' }); return }
             try {

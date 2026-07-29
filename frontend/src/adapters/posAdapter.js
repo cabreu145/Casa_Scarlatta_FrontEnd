@@ -114,6 +114,8 @@ export function mapBackendSaleToFrontend(item = {}) {
     public_ticket_url: item.public_ticket_url ?? item.publicTicketUrl ?? null,
     publicTicketImageUrl: item.public_ticket_image_url ?? item.publicTicketImageUrl ?? null,
     public_ticket_image_url: item.public_ticket_image_url ?? item.publicTicketImageUrl ?? null,
+    cancelReason: normalizeString(item.cancel_reason ?? item.cancelReason ?? '', ''),
+    cancelledAt: item.cancelled_at ?? item.cancelledAt ?? null,
     items: Array.isArray(item.items) ? item.items.map(mapSaleItem) : [],
     raw: item,
   }

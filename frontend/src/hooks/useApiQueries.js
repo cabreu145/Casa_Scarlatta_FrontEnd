@@ -122,6 +122,7 @@ import {
   getAllSalesForReportApi,
   updateProductApi,
   updateProductStatusApi,
+  voidSaleApi,
 } from '@/services/posApiService'
 import {
   createProductCategoryApi,
@@ -1283,6 +1284,20 @@ export function useCreatePosSaleMutation() {
     onSuccess: async (_, variables) => {
       await Promise.all([
         invalidatePosSaleSideEffects(queryClient, { customerId: variables?.customerId }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'sales'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'products'] }),
+      ])
+    },
+  })
+}
+
+export function useVoidSaleMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }) => voidSaleApi(id, reason),
+    onSuccess: async (data) => {
+      await Promise.all([
+        invalidatePosSaleSideEffects(queryClient, { customerId: data?.customerId }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'sales'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'products'] }),
       ])

@@ -22,6 +22,7 @@ import {
   useUpdateProductCategoryMutation,
   useUpdateProductCategoryStatusMutation,
   useDeleteProductCategoryMutation,
+  useVoidSaleMutation,
 } from '@/hooks/useApiQueries'
 import { useAuthStore } from '@/stores/authStore'
 import { hasAnyPermission, hasPermission } from '@/auth/permissions'
@@ -171,6 +172,9 @@ export default function PuntoDeVentaSection({
   const [categoryStatus, setCategoryStatus] = useState('active')
   const [categoryModal, setCategoryModal] = useState(null)
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', isActive: true })
+  const [salesDateFilter, setSalesDateFilter] = useState('')
+  const [voidSaleModal, setVoidSaleModal] = useState(null)
+  const [voidSaleReason, setVoidSaleReason] = useState('')
   const canViewPos = hasAnyPermission(usuario, ['pos.read', 'pos.sell', 'pos.products.read', 'pos.categories.read', 'pos.products.manage', 'pos.categories.manage'])
   const canSellPos = hasPermission(usuario, 'pos.sell')
   const canReadProducts = hasAnyPermission(usuario, ['pos.products.read', 'pos.sell', 'pos.products.manage'])
@@ -204,10 +208,13 @@ export default function PuntoDeVentaSection({
   })
   const posSalesQuery = usePosSalesQuery({
     page: 1,
-    pageSize: 8,
+    pageSize: salesDateFilter ? 100 : 8,
+    from: salesDateFilter || undefined,
+    to: salesDateFilter || undefined,
     enabled: useApiMode && isActive && canViewPos,
   })
   const createSaleMutation = useCreatePosSaleMutation()
+  const voidSaleMutation = useVoidSaleMutation()
   const createCategoryMutation = useCreateProductCategoryMutation()
   const updateCategoryMutation = useUpdateProductCategoryMutation()
   const updateCategoryStatusMutation = useUpdateProductCategoryStatusMutation()
@@ -218,6 +225,32 @@ export default function PuntoDeVentaSection({
   const apiPackages = membershipPackagesQuery.data ?? []
   const buyerClients = buyerClientsQuery.data?.items ?? []
   const recentSales = posSalesQuery.data?.items ?? []
+
+  const openVoidSaleModal = (sale) => {
+    setVoidSaleReason('')
+    setVoidSaleModal(sale)
+  }
+
+  const closeVoidSaleModal = () => {
+    setVoidSaleModal(null)
+    setVoidSaleReason('')
+  }
+
+  const confirmVoidSale = async () => {
+    if (!voidSaleModal || !voidSaleReason.trim()) return
+    try {
+      await voidSaleMutation.mutateAsync({ id: voidSaleModal.id, reason: voidSaleReason.trim() })
+      toast.success('Venta anulada correctamente.')
+      closeVoidSaleModal()
+    } catch (error) {
+      const errorMessages = {
+        SALE_ALREADY_CANCELLED: 'Esta venta ya estaba anulada.',
+        SALE_CASH_CLOSURE_CLOSED: 'No se puede anular: el corte de caja de este turno ya está cerrado.',
+        SALE_CREDITS_ALREADY_USED: 'No se puede anular: ya se usó al menos un crédito de este paquete.',
+      }
+      toast.error(errorMessages[error?.code] || error?.message || 'No se pudo anular la venta.')
+    }
+  }
 
   const selectedCustomer = useMemo(() => {
     if (!useApiMode) return null
@@ -785,36 +818,82 @@ export default function PuntoDeVentaSection({
               )}
             </div>
 
-            {canUseApiCatalog && posSalesQuery.data?.items?.length > 0 && (
+            {canUseApiCatalog && (
               <div className={styles.card} style={{ marginTop: 20 }}>
                 <div className={styles.cardHeader}>
                   <div className={styles.cardTitle}>Ventas recientes</div>
-                  <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}></span>
+                  <input
+                    type="date"
+                    className={styles.searchInput}
+                    style={{ width: 'auto' }}
+                    value={salesDateFilter}
+                    onChange={(event) => setSalesDateFilter(event.target.value)}
+                  />
+                  {salesDateFilter && (
+                    <button
+                      type="button"
+                      onClick={() => setSalesDateFilter('')}
+                      style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}
+                    >
+                      Limpiar fecha
+                    </button>
+                  )}
                 </div>
-                <div className={styles.tableWrap}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Folio</th>
-                        <th>Cliente</th>
-                        <th>Fecha</th>
-                        <th>Método</th>
-                        <th>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentSales.map((sale) => (
-                        <tr key={sale.id}>
-                          <td>{sale.folio}</td>
-                          <td>{sale.customerName || sale.customerEmail || 'Venta mostrador'}</td>
-                          <td>{formatDateTime(sale.createdAt)}</td>
-                          <td>{translatePaymentMethod(sale.paymentMethod)}</td>
-                          <td>{money(sale.totalMxn)}</td>
+                {recentSales.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)' }}>
+                    {salesDateFilter ? 'No hay ventas en esta fecha.' : 'No hay ventas recientes.'}
+                  </div>
+                ) : (
+                  <div className={styles.tableWrap}>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Folio</th>
+                          <th>Cliente</th>
+                          <th>Fecha</th>
+                          <th>Método</th>
+                          <th>Total</th>
+                          <th></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {recentSales.map((sale) => {
+                          const isCancelled = sale.status === 'cancelled'
+                          return (
+                            <tr key={sale.id} style={isCancelled ? { opacity: 0.6 } : undefined}>
+                              <td style={isCancelled ? { textDecoration: 'line-through' } : undefined}>{sale.folio}</td>
+                              <td style={isCancelled ? { textDecoration: 'line-through' } : undefined}>
+                                {sale.customerName || sale.customerEmail || 'Venta mostrador'}
+                              </td>
+                              <td>{formatDateTime(sale.createdAt)}</td>
+                              <td>{translatePaymentMethod(sale.paymentMethod)}</td>
+                              <td style={isCancelled ? { textDecoration: 'line-through' } : undefined}>{money(sale.totalMxn)}</td>
+                              <td>
+                                {isCancelled ? (
+                                  <span
+                                    title={sale.cancelReason || undefined}
+                                    style={{ color: '#ef4444', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}
+                                  >
+                                    Anulada
+                                  </span>
+                                ) : canSellPos ? (
+                                  <button
+                                    type="button"
+                                    title="Anular venta"
+                                    onClick={() => openVoidSaleModal(sale)}
+                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 15, fontWeight: 700, padding: '0 4px' }}
+                                  >
+                                    ✕
+                                  </button>
+                                ) : null}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1104,7 +1183,7 @@ export default function PuntoDeVentaSection({
         )}
         {categoryModal && createPortal(
           <div
-            className={`${styles.modalOverlay} ${styles.open}`}
+            className={`${styles.root} ${styles.modalOverlay} ${styles.open}`}
           >
             <PosEntityModal
               title={categoryModal === 'nuevo' ? 'Nueva categoría' : 'Editar categoría'}
@@ -1194,6 +1273,51 @@ export default function PuntoDeVentaSection({
               </button>
             </div>
           </div>
+        </div>,
+        document.body
+      )}
+
+      {voidSaleModal && createPortal(
+        <div className={`${styles.root} ${styles.modalOverlay} ${styles.open}`}>
+          <PosEntityModal
+            title="Anular venta"
+            ariaLabel="Anular venta"
+            onClose={closeVoidSaleModal}
+            footer={(
+              <>
+                <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={closeVoidSaleModal}>
+                  No
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${styles.btnPrimary}`}
+                  onClick={confirmVoidSale}
+                  disabled={!voidSaleReason.trim() || voidSaleMutation.isPending}
+                >
+                  {voidSaleMutation.isPending ? 'Anulando...' : 'Sí, anular venta'}
+                </button>
+              </>
+            )}
+          >
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div style={{ color: 'var(--muted)' }}>
+                ¿Seguro que deseas anular la venta <strong>{voidSaleModal?.folio}</strong> por {money(voidSaleModal?.totalMxn)}?
+                Esto revierte el stock y los créditos que haya generado, y ya no contará en finanzas ni reportes.
+              </div>
+              <div className={styles.formGroupFull}>
+                <label className={styles.formLabel} htmlFor="void-sale-reason">Motivo (obligatorio)</label>
+                <textarea
+                  id="void-sale-reason"
+                  className={styles.formInput}
+                  rows={3}
+                  value={voidSaleReason}
+                  onChange={(event) => setVoidSaleReason(event.target.value)}
+                  placeholder="Venta registrada por error"
+                  autoFocus
+                />
+              </div>
+            </div>
+          </PosEntityModal>
         </div>,
         document.body
       )}

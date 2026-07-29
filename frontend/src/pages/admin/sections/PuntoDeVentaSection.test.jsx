@@ -43,6 +43,10 @@ vi.mock('@/hooks/useApiQueries', () => ({
     mutateAsync,
     isPending: false,
   }),
+  useVoidSaleMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useCreateProductCategoryMutation: () => ({
     mutateAsync: createCategoryMutateAsync,
   }),
