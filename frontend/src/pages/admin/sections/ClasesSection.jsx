@@ -793,7 +793,12 @@ export default function ClasesSection({
 
 
   useEffect(() => {
-    if (!useApiClasses) return
+    if (!useApiClasses || vistaMode !== 'dia') {
+      setApiOccurrencesByClass({})
+      setApiOccurrencesError('')
+      setApiOccurrencesLoading(false)
+      return
+    }
     const classIds = clasesApiFiltradasBase.map((row) => row.id).filter((id) => id !== null && id !== undefined)
     if (!classIds.length) {
       setApiOccurrencesByClass({})

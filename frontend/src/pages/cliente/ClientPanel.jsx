@@ -21,7 +21,7 @@ import { useFinancialStateStore } from '@/stores/financialStateStore'
 import { reservarClase, cancelarReserva } from '@/services/reservasService'
 import { editarPerfilService }            from '@/services/usuariosService'
 import { getPublicClassesByDate, getReservationOccurrenceDate, isPublished } from '@/services/classService'
-import { clearOccurrencesInflightCache, getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
+import { getOccurrencesForDateRangeApi } from '@/services/occurrencesApiService'
 import { logListaEsperaUnirse, logListaEsperaSalir } from '@/services/actividadService'
 import {
   hoyLocal,
@@ -347,6 +347,7 @@ export default function ClientPanel() {
   })
   const weekDays = useMemo(() => buildWeek(weekOff), [weekOff])
   const resWeekDays = useMemo(() => buildWeek(resWeekOff), [resWeekOff])
+  const selectedReservarDay = resWeekDays[resDayIdx] ?? null
   const [selectedPackageId, setSelectedPackageId] = useState(packageIdQuery ?? null)
   const misClasesApiFilters = useMemo(
     () => buildMisClasesApiFilters(misClasesStatusFilter, weekDays),
@@ -388,6 +389,7 @@ export default function ClientPanel() {
   }, [financialHistoryPage, queryClient, useApiFinancialState])
   const apiClassIdsSignature = useMemo(
     () => clases
+      .filter(isPublished)
       .map((c) => c?.id)
       .filter((id) => id !== null && id !== undefined)
       .map((id) => String(id))
@@ -398,13 +400,12 @@ export default function ClientPanel() {
   )
   const refreshReservarSection = useCallback(async () => {
     if (!useApiClasses || activeSection !== 'reservar' || !clases.length) return
-    const from = resWeekDays[0]?.isoDate
-    const to = resWeekDays[resWeekDays.length - 1]?.isoDate
-    if (!from || !to) return
-    const classIds = Array.from(new Set(clases.map((c) => c.id)))
-    const data = await getOccurrencesForDateRangeApi(classIds, { from, to })
+    const selectedDate = selectedReservarDay?.isoDate
+    if (!selectedDate) return
+    const classIds = Array.from(new Set(clases.filter(isPublished).map((c) => c.id)))
+    const data = await getOccurrencesForDateRangeApi(classIds, { from: selectedDate, to: selectedDate })
     setOccurrencesByClass(data ?? {})
-  }, [activeSection, clases, resWeekDays, useApiClasses])
+  }, [activeSection, clases, selectedReservarDay?.isoDate, useApiClasses])
 
   useEffect(() => {
     document.body.style.overflow = isSidebarOpen ? 'hidden' : ''
@@ -492,18 +493,17 @@ export default function ClientPanel() {
       if (activeSection !== 'reservar') setOccurrencesByClass({})
       return
     }
-    const from = resWeekDays[0]?.isoDate
-    const to = resWeekDays[resWeekDays.length - 1]?.isoDate
-    if (!from || !to) return
+    const selectedDate = selectedReservarDay?.isoDate
+    if (!selectedDate) return
     setIsLoadingOccurrences(true)
     let active = true
     let controller = new AbortController()
-    const classIds = Array.from(new Set(clases.map((c) => c.id)))
+    const classIds = Array.from(new Set(clases.filter(isPublished).map((c) => c.id)))
     const fetchOccurrences = async () => {
       controller.abort()
       controller = new AbortController()
       try {
-        const data = await getOccurrencesForDateRangeApi(classIds, { from, to, signal: controller.signal })
+        const data = await getOccurrencesForDateRangeApi(classIds, { from: selectedDate, to: selectedDate, signal: controller.signal })
         if (active) { setOccurrencesByClass(data); setIsLoadingOccurrences(false) }
       } catch (err) {
         if (err?.name === 'AbortError') return
@@ -514,9 +514,8 @@ export default function ClientPanel() {
     return () => {
       active = false
       controller.abort()
-      clearOccurrencesInflightCache()
     }
-  }, [activeSection, apiClassIdsSignature, resWeekDays[0]?.isoDate, resWeekDays[resWeekDays.length - 1]?.isoDate, useApiClasses])
+  }, [activeSection, apiClassIdsSignature, selectedReservarDay?.isoDate, useApiClasses])
 
   // â”€â”€ Datos del usuario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const userName = usuario?.nombre ?? 'Cliente'
