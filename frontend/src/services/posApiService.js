@@ -166,8 +166,14 @@ export async function voidSaleApi(saleId, reason = '') {
   if (!ENDPOINTS.ventaAnularById) {
     throw new Error('POS_SALES_ENDPOINT_MISSING')
   }
+  const normalizedReason = String(reason ?? '').trim()
+  if (normalizedReason.length < 3) {
+    const error = new Error('El motivo para anular la venta debe tener al menos 3 caracteres.')
+    error.code = 'POS_VOID_REASON_INVALID'
+    throw error
+  }
   return mapBackendSaleToFrontend(
-    await httpPatch(ENDPOINTS.ventaAnularById(saleId), { reason: String(reason ?? '').trim() })
+    await httpPatch(ENDPOINTS.ventaAnularById(saleId), { reason: normalizedReason })
   )
 }
 

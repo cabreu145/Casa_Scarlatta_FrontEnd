@@ -38,6 +38,7 @@ vi.mock('@/constants/api', () => ({
       return `/api/v1/ventas?${params.toString()}`
     },
     ventaById: (id) => `/api/v1/ventas/${id}`,
+    ventaAnularById: (id) => `/api/v1/ventas/${id}/anular`,
     ventaTicket: (id) => `/api/v1/ventas/${id}/ticket`,
     ventaTicketPdf: (id) => `/api/v1/ventas/${id}/ticket.pdf`,
     publicTicketByToken: (token) => `/api/v1/public/tickets/${token}`,
@@ -197,6 +198,19 @@ describe('posApiService', () => {
     expect(httpGet).toHaveBeenCalledWith('/api/v1/ventas/100/ticket')
     expect(getSaleTicketPdfUrl(100)).toBe('/api/v1/ventas/100/ticket.pdf')
     expect(getPublicTicketUrl('abc123')).toBe('/api/v1/public/tickets/abc123')
+  })
+
+  test('anula venta con reason válido y bloquea uno corto', async () => {
+    httpPatch.mockResolvedValue({ id: 214, status: 'cancelled' })
+    const { voidSaleApi } = await import('./posApiService')
+
+    await voidSaleApi(214, 'Venta capturada por error')
+    await expect(voidSaleApi(214, 'No')).rejects.toMatchObject({ code: 'POS_VOID_REASON_INVALID' })
+
+    expect(httpPatch).toHaveBeenCalledTimes(1)
+    expect(httpPatch).toHaveBeenCalledWith('/api/v1/ventas/214/anular', {
+      reason: 'Venta capturada por error',
+    })
   })
 
   test('mapea snapshot histórico con impuesto sin romper compatibilidad', async () => {

@@ -175,6 +175,7 @@ export default function PuntoDeVentaSection({
   const [salesDateFilter, setSalesDateFilter] = useState('')
   const [voidSaleModal, setVoidSaleModal] = useState(null)
   const [voidSaleReason, setVoidSaleReason] = useState('')
+  const [voidSaleReasonError, setVoidSaleReasonError] = useState('')
   const canViewPos = hasAnyPermission(usuario, ['pos.read', 'pos.sell', 'pos.products.read', 'pos.categories.read', 'pos.products.manage', 'pos.categories.manage'])
   const canSellPos = hasPermission(usuario, 'pos.sell')
   const canReadProducts = hasAnyPermission(usuario, ['pos.products.read', 'pos.sell', 'pos.products.manage'])
@@ -228,18 +229,27 @@ export default function PuntoDeVentaSection({
 
   const openVoidSaleModal = (sale) => {
     setVoidSaleReason('')
+    setVoidSaleReasonError('')
     setVoidSaleModal(sale)
   }
 
   const closeVoidSaleModal = () => {
     setVoidSaleModal(null)
     setVoidSaleReason('')
+    setVoidSaleReasonError('')
   }
 
   const confirmVoidSale = async () => {
-    if (!voidSaleModal || !voidSaleReason.trim()) return
+    const reason = voidSaleReason.trim()
+    if (!voidSaleModal) return
+    if (reason.length < 3) {
+      const message = 'Escribe un motivo de al menos 3 caracteres para anular la venta.'
+      setVoidSaleReasonError(message)
+      toast.error(message)
+      return
+    }
     try {
-      await voidSaleMutation.mutateAsync({ id: voidSaleModal.id, reason: voidSaleReason.trim() })
+      await voidSaleMutation.mutateAsync({ id: voidSaleModal.id, reason })
       toast.success('Venta anulada correctamente.')
       closeVoidSaleModal()
     } catch (error) {
@@ -247,8 +257,11 @@ export default function PuntoDeVentaSection({
         SALE_ALREADY_CANCELLED: 'Esta venta ya estaba anulada.',
         SALE_CASH_CLOSURE_CLOSED: 'No se puede anular: el corte de caja de este turno ya está cerrado.',
         SALE_CREDITS_ALREADY_USED: 'No se puede anular: ya se usó al menos un crédito de este paquete.',
+        VALIDATION_ERROR: 'El motivo para anular la venta debe tener al menos 3 caracteres.',
+        POS_VOID_REASON_INVALID: 'El motivo para anular la venta debe tener al menos 3 caracteres.',
       }
-      toast.error(errorMessages[error?.code] || error?.message || 'No se pudo anular la venta.')
+      const status = error?.status ?? error?.response?.status
+      toast.error(errorMessages[error?.code] || (status === 422 ? 'El motivo para anular la venta debe tener al menos 3 caracteres.' : null) || error?.message || 'No se pudo anular la venta.')
     }
   }
 
@@ -1292,7 +1305,7 @@ export default function PuntoDeVentaSection({
                   type="button"
                   className={`${styles.btn} ${styles.btnPrimary}`}
                   onClick={confirmVoidSale}
-                  disabled={!voidSaleReason.trim() || voidSaleMutation.isPending}
+                  disabled={voidSaleReason.trim().length < 3 || voidSaleMutation.isPending}
                 >
                   {voidSaleMutation.isPending ? 'Anulando...' : 'Sí, anular venta'}
                 </button>
@@ -1305,16 +1318,22 @@ export default function PuntoDeVentaSection({
                 Esto revierte el stock y los créditos que haya generado, y ya no contará en finanzas ni reportes.
               </div>
               <div className={styles.formGroupFull}>
-                <label className={styles.formLabel} htmlFor="void-sale-reason">Motivo (obligatorio)</label>
+                <label className={styles.formLabel} htmlFor="void-sale-reason">Motivo (mínimo 3 caracteres)</label>
                 <textarea
                   id="void-sale-reason"
                   className={styles.formInput}
                   rows={3}
                   value={voidSaleReason}
-                  onChange={(event) => setVoidSaleReason(event.target.value)}
-                  placeholder="Venta registrada por error"
+                  onChange={(event) => {
+                    setVoidSaleReason(event.target.value)
+                    if (voidSaleReasonError) setVoidSaleReasonError('')
+                  }}
+                  placeholder="Ejemplo: Venta capturada por error"
                   autoFocus
+                  aria-invalid={Boolean(voidSaleReasonError)}
+                  aria-describedby={voidSaleReasonError ? 'void-sale-reason-error' : undefined}
                 />
+                {voidSaleReasonError && <small id="void-sale-reason-error" style={{ color: '#dc2626' }}>{voidSaleReasonError}</small>}
               </div>
             </div>
           </PosEntityModal>
