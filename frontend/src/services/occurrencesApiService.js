@@ -99,15 +99,34 @@ export async function getOccurrencesByClassApi(claseId, { from, to, signal } = {
   return request
 }
 
-export async function getOccurrencesForDateRangeApi(clasesIds = [], { from, to, signal } = {}) {
-  const ids = Array.isArray(clasesIds)
-    ? [...new Set(clasesIds.filter((id) => id !== null && id !== undefined))]
-    : []
+export async function getOccurrencesForDateRangeApi(_clasesIds = [], params = {}) {
+  const groupByClass = (occurrences) => occurrences.reduce((byClass, occurrence) => {
+    const classId = occurrence.classId ?? occurrence.claseId
+    if (classId === null || classId === undefined) return byClass
+    const key = String(classId)
+    if (!byClass[key]) byClass[key] = []
+    byClass[key].push(occurrence)
+    return byClass
+  }, {})
 
-  const settled = await runWithConcurrency(ids, OCCURRENCES_CONCURRENCY_LIMIT, async (claseId) => ({
-    claseId,
-    occurrences: await getOccurrencesByClassApi(claseId, { from, to, signal }),
-  }))
+  try {
+    const payload = await httpGet(ENDPOINTS.clasesOcurrenciasBulk(params), { signal: params.signal })
+    const rawItems = Array.isArray(payload) ? payload : (payload?.items ?? [])
+    return groupByClass(mapBackendOccurrencesToFrontend(rawItems))
+  } catch (error) {
+    const validationErrors = error?.details?.errors ?? error?.response?.data?.error?.details?.errors ?? []
+    const isRouteConflict = Number(error?.status ?? error?.response?.status) === 422 && validationErrors.some(
+      (item) => Array.isArray(item?.loc) && item.loc.includes('class_id'),
+    )
+    if (!isRouteConflict) throw error
 
-  return Object.fromEntries(settled.map(({ claseId, occurrences }) => [claseId, occurrences]))
+    const ids = Array.isArray(_clasesIds)
+      ? [...new Set(_clasesIds.filter((id) => id !== null && id !== undefined))]
+      : []
+    const settled = await runWithConcurrency(ids, OCCURRENCES_CONCURRENCY_LIMIT, async (classId) => ({
+      classId,
+      occurrences: await getOccurrencesByClassApi(classId, params),
+    }))
+    return Object.fromEntries(settled.map(({ classId, occurrences }) => [classId, occurrences]))
+  }
 }

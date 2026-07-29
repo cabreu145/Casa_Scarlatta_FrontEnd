@@ -109,7 +109,7 @@ export default function Clases() {
 
   const refreshVisibleOccurrences = useCallback(async () => {
     if (!useApiClasses || !visibleClassIds.length) return
-    const data = await getOccurrencesForDateRangeApi(visibleClassIds, occurrenceRange)
+    const data = await getOccurrencesForDateRangeApi(visibleClassIds, { ...occurrenceRange, status: 'programada' })
     setOccurrencesByClass(data ?? {})
   }, [occurrenceRange, useApiClasses, visibleClassIds])
 
@@ -140,6 +140,7 @@ export default function Clases() {
   useEffect(() => {
     if (!useApiClasses || !visibleClassIds.length) {
       setOccurrencesByClass({})
+      setIsLoadingOccurrences(false)
       return
     }
     setIsLoadingOccurrences(true)
@@ -150,7 +151,7 @@ export default function Clases() {
       controller.abort()
       controller = new AbortController()
       try {
-        const data = await getOccurrencesForDateRangeApi(visibleClassIds, { ...occurrenceRange, signal: controller.signal })
+        const data = await getOccurrencesForDateRangeApi(visibleClassIds, { ...occurrenceRange, status: 'programada', signal: controller.signal })
         if (active) {
           setOccurrencesByClass(data)
           if (isFirst) { isFirst = false; setIsLoadingOccurrences(false) }

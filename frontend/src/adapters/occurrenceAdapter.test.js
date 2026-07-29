@@ -42,5 +42,16 @@ describe('occurrenceAdapter', () => {
     expect(result).toHaveLength(2)
     expect(result[0].occurrenceId).toBe(1)
   })
+
+  test('prioriza available_spots del endpoint bulk', () => {
+    const mapped = mapBackendOccurrenceToFrontend({
+      occurrence_id: 1,
+      class_id: 2,
+      capacity_max: 15,
+      capacity_current: 4,
+      available_spots: 9,
+    })
+    expect(mapped.cupoDisponible).toBe(9)
+  })
 })
 

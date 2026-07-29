@@ -36,6 +36,17 @@ export const ENDPOINTS = {
   claseOcurrenciaCancelar: (classId, occurrenceId) => withPrefix(`/clases/${classId}/ocurrencias/${occurrenceId}/cancelar`),
   claseOcurrencias: (id, { from, to } = {}) =>
     withPrefix(`/clases/${id}/ocurrencias?from=${from ?? ''}&to=${to ?? ''}`),
+  clasesOcurrenciasBulk: ({ from, to, discipline, status, coachId, includeCancelled, page, pageSize } = {}) =>
+    withQuery('/clases/ocurrencias', {
+      from,
+      to,
+      discipline,
+      status,
+      coach_id: coachId,
+      include_cancelled: includeCancelled,
+      page,
+      page_size: pageSize,
+    }),
 
   reservas: withPrefix('/reservas'),
   reservasMe: withPrefix('/reservas/me'),

@@ -61,7 +61,7 @@ export function mapBackendOccurrenceToFrontend(item = {}) {
     displayTime: getClassDisplayTime(item),
     cupoMax,
     cupoActual,
-    cupoDisponible: safeNumber(item.cupo_disponible, Math.max(0, cupoMax - cupoActual)),
+    cupoDisponible: safeNumber(item.available_spots ?? item.availableSpots ?? item.cupo_disponible, Math.max(0, cupoMax - cupoActual)),
     coachId,
     effectiveCoachId,
     usesCoachOverride,
