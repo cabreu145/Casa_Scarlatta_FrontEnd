@@ -448,7 +448,7 @@ function buildCorteDetailedRows(cortes = []) {
 function buildInventoryDetailedRows(reporte) {
   if (!reporte) return []
   const rows = []
-  const blankRow = { SKU: '—', Producto: '', 'Stock inicial': '—', Entradas: '—', Vendidos: '—', 'Stock actual': '—', 'Stock mínimo': '—', Estatus: '—' }
+  const blankRow = { SKU: '—', Producto: '', 'Stock inicial': '—', Entradas: '—', Ajustes: '—', Vendidos: '—', 'Stock actual': '—', 'Stock mínimo': '—', Estatus: '—' }
   const s = reporte.summary || {}
   ;[
     ['Productos activos', s.activeProducts],
@@ -469,6 +469,7 @@ function buildInventoryDetailedRows(reporte) {
         Producto: item.name,
         'Stock inicial': item.stockInicial,
         Entradas: item.entradas,
+        Ajustes: item.ajustes,
         Vendidos: item.vendidos,
         'Stock actual': item.stockActual,
         'Stock mínimo': item.stockMinimo,
@@ -478,7 +479,9 @@ function buildInventoryDetailedRows(reporte) {
   }
   pushSection('Detalle por producto', reporte.detail)
   pushSection('Top vendidos', reporte.topSold)
-  pushSection('Sin movimiento', reporte.noMovement)
+  ;(reporte.noMovement ?? []).forEach((item) => {
+    rows.push({ Sección: 'Sin movimiento', ...blankRow, SKU: item.sku, Producto: item.name })
+  })
   pushSection('Agotados', reporte.outOfStock)
   return rows
 }
@@ -1068,7 +1071,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           onCsv={() => {
             if (!inventoryQuery.data) { toast('Sin datos de inventario para exportar.', { icon: '📋' }); return }
             exportCsv('reporte-inventario', buildInventoryDetailedRows(inventoryQuery.data), [
-              'Sección', 'SKU', 'Producto', 'Stock inicial', 'Entradas', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus',
+              'Sección', 'SKU', 'Producto', 'Stock inicial', 'Entradas', 'Ajustes', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus',
             ])
           }}
           onPdf={() => {

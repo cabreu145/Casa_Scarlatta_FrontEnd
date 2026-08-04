@@ -201,10 +201,19 @@ function mapInventoryProductRow(item = {}) {
     name: normalizeString(item.name, 'Producto'),
     stockInicial: toNumber(item.stock_inicial ?? item.stockInicial, 0),
     entradas: toNumber(item.entradas, 0),
+    ajustes: toNumber(item.ajustes, 0),
     vendidos: toNumber(item.vendidos, 0),
     stockActual: toNumber(item.stock_actual ?? item.stockActual, 0),
     stockMinimo: toNumber(item.stock_minimo ?? item.stockMinimo, 0),
     estatus: normalizeString(item.estatus, 'OK'),
+  }
+}
+
+function mapInventoryNoMovementItem(item = {}) {
+  return {
+    productId: item.product_id ?? item.productId ?? null,
+    sku: normalizeString(item.sku, '—'),
+    name: normalizeString(item.name, 'Producto'),
   }
 }
 
@@ -221,7 +230,7 @@ export function mapBackendInventoryReportToFrontend(payload = {}) {
     },
     detail: (payload.detail ?? []).map(mapInventoryProductRow),
     topSold: (payload.top_sold ?? payload.topSold ?? []).map(mapInventoryProductRow),
-    noMovement: (payload.no_movement ?? payload.noMovement ?? []).map(mapInventoryProductRow),
+    noMovement: (payload.no_movement ?? payload.noMovement ?? []).map(mapInventoryNoMovementItem),
     outOfStock: (payload.out_of_stock ?? payload.outOfStock ?? []).map(mapInventoryProductRow),
     reliabilityWarning: payload.reliability_warning ?? payload.reliabilityWarning ?? null,
     raw: payload,

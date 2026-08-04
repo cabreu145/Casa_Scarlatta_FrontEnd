@@ -834,7 +834,7 @@ function estatusColor(estatus) {
   return '#22c55e'
 }
 
-function buildInventoryTable(titulo, rows, { showStockCols = true } = {}) {
+function buildInventoryTable(titulo, rows, { mode = 'full' } = {}) {
   if (!rows?.length) {
     return `
       <div style="margin-top:14px">
@@ -842,9 +842,18 @@ function buildInventoryTable(titulo, rows, { showStockCols = true } = {}) {
         <div style="font-size:10.5px;color:#9C7A74;padding:10px 0">Sin registros.</div>
       </div>`
   }
-  const headers = showStockCols
-    ? ['SKU', 'Producto', 'Stock inicial', 'Entradas', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus']
-    : ['SKU', 'Producto', 'Vendidos']
+  if (mode === 'simple') {
+    return `
+      <div style="margin-top:14px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">${titulo} (${rows.length})</div>
+        <div style="font-size:9.5px;color:#2C1810;line-height:1.9">
+          ${rows.map(r => `<div>${r.name} <span style="color:#9C7A74">— ${r.sku}</span></div>`).join('')}
+        </div>
+      </div>`
+  }
+  const headers = mode === 'topSold'
+    ? ['SKU', 'Producto', 'Vendidos']
+    : ['SKU', 'Producto', 'Stock inicial', 'Entradas', 'Ajustes', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus']
   return `
     <div style="margin-top:14px">
       <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">${titulo} (${rows.length})</div>
@@ -854,12 +863,12 @@ function buildInventoryTable(titulo, rows, { showStockCols = true } = {}) {
         </tr></thead>
         <tbody>
           ${rows.map((r, i) => {
-            const cells = showStockCols
-              ? [r.sku, r.name, r.stockInicial, r.entradas, r.vendidos, r.stockActual, r.stockMinimo]
-              : [r.sku, r.name, r.vendidos]
+            const cells = mode === 'topSold'
+              ? [r.sku, r.name, r.vendidos]
+              : [r.sku, r.name, r.stockInicial, r.entradas, r.ajustes, r.vendidos, r.stockActual, r.stockMinimo]
             return `<tr style="background:${i % 2 === 0 ? '#fff' : '#FDFAF8'}">
               ${cells.map(v => `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${v}</td>`).join('')}
-              ${showStockCols ? `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;font-weight:700;color:${estatusColor(r.estatus)}">${r.estatus}</td>` : ''}
+              ${mode !== 'topSold' ? `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;font-weight:700;color:${estatusColor(r.estatus)}">${r.estatus}</td>` : ''}
             </tr>`
           }).join('')}
         </tbody>
@@ -921,8 +930,8 @@ function buildInventarioDetalladoHTML({ titulo, reporte, periodo, siteInfo = {} 
     <div class="stats-grid">${statsHTML}</div>
     ${warningHTML}
     ${buildInventoryTable('Detalle por producto', reporte.detail)}
-    ${buildInventoryTable('Top 5 más vendidos', reporte.topSold, { showStockCols: false })}
-    ${buildInventoryTable('Sin movimiento en el periodo', reporte.noMovement)}
+    ${buildInventoryTable('Top 5 más vendidos', reporte.topSold, { mode: 'topSold' })}
+    ${buildInventoryTable('Sin movimiento en el periodo', reporte.noMovement, { mode: 'simple' })}
     ${buildInventoryTable('Agotados actualmente', reporte.outOfStock)}
     <div class="footer">
       <span><strong>${nombre}</strong> Wellness Studio</span>
