@@ -41,6 +41,7 @@ import {
   getCoachPaymentsReport,
   getCoachesReport,
   getFinanceReport,
+  getInventoryReport,
   getOccupancyByDisciplineReport,
   getPackagesReport,
   getPosReport,
@@ -112,6 +113,7 @@ import {
   releaseSpotHoldApi,
 } from '@/services/equipmentReservationApiService'
 import {
+  adjustProductStockApi,
   createProductApi,
   createSaleApi,
   deleteProductApi,
@@ -120,6 +122,7 @@ import {
   getSaleTicketApi,
   getSalesApi,
   getAllSalesForReportApi,
+  restockProductApi,
   updateProductApi,
   updateProductStatusApi,
   voidSaleApi,
@@ -656,6 +659,15 @@ export function usePosReportQuery({ from, to, enabled = false } = {}) {
   })
 }
 
+export function useInventoryReportQuery({ from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.inventory({ from: from || '', to: to || '' }),
+    queryFn: () => getInventoryReport({ from, to }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
 export function useCoachesReportQuery({ from, to, enabled = false } = {}) {
   return useQuery({
     queryKey: queryKeys.reports.coaches({ from: from || '', to: to || '' }),
@@ -1161,6 +1173,26 @@ export function useUpdateProductStatusMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, status }) => updateProductStatusApi(id, status),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'products'] })
+    },
+  })
+}
+
+export function useRestockProductMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, quantity, reason }) => restockProductApi(id, { quantity, reason }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'products'] })
+    },
+  })
+}
+
+export function useAdjustProductStockMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, newStock, reason }) => adjustProductStockApi(id, { newStock, reason }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'pos', 'products'] })
     },

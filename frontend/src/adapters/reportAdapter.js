@@ -194,6 +194,40 @@ export function mapBackendPosReportToFrontend(payload = {}) {
   }
 }
 
+function mapInventoryProductRow(item = {}) {
+  return {
+    productId: item.product_id ?? item.productId ?? null,
+    sku: normalizeString(item.sku, '—'),
+    name: normalizeString(item.name, 'Producto'),
+    stockInicial: toNumber(item.stock_inicial ?? item.stockInicial, 0),
+    entradas: toNumber(item.entradas, 0),
+    vendidos: toNumber(item.vendidos, 0),
+    stockActual: toNumber(item.stock_actual ?? item.stockActual, 0),
+    stockMinimo: toNumber(item.stock_minimo ?? item.stockMinimo, 0),
+    estatus: normalizeString(item.estatus, 'OK'),
+  }
+}
+
+export function mapBackendInventoryReportToFrontend(payload = {}) {
+  const summary = payload.summary ?? {}
+  return {
+    from: payload.from ?? null,
+    to: payload.to ?? null,
+    summary: {
+      activeProducts: toNumber(summary.active_products ?? summary.activeProducts, 0),
+      productsWithEntries: toNumber(summary.products_with_entries ?? summary.productsWithEntries, 0),
+      unitsSold: toNumber(summary.units_sold ?? summary.unitsSold, 0),
+      currentStockTotal: toNumber(summary.current_stock_total ?? summary.currentStockTotal, 0),
+    },
+    detail: (payload.detail ?? []).map(mapInventoryProductRow),
+    topSold: (payload.top_sold ?? payload.topSold ?? []).map(mapInventoryProductRow),
+    noMovement: (payload.no_movement ?? payload.noMovement ?? []).map(mapInventoryProductRow),
+    outOfStock: (payload.out_of_stock ?? payload.outOfStock ?? []).map(mapInventoryProductRow),
+    reliabilityWarning: payload.reliability_warning ?? payload.reliabilityWarning ?? null,
+    raw: payload,
+  }
+}
+
 function mapCoachItem(item = {}) {
   const id = item.coach_id ?? item.coachId ?? item.id ?? null
   return {

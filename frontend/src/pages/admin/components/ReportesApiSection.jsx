@@ -9,6 +9,7 @@ import {
   useDeletePayTableMutation,
   usePayTableQuery,
   useUpdatePayTableMutation,
+  useInventoryReportQuery,
   useOccupancyByDisciplineReportQuery,
   usePackagesReportQuery,
   usePosReportQuery,
@@ -24,7 +25,7 @@ import {
 } from '@/hooks/useApiQueries'
 import { useAuth } from '@/context/AuthContext'
 import { hasPermission } from '@/auth/permissions'
-import { abrirReportePDF, abrirCortesDetalladoPDF } from '@/utils/reportePDF'
+import { abrirReportePDF, abrirCortesDetalladoPDF, abrirInventarioDetalladoPDF } from '@/utils/reportePDF'
 import { buildReportFilename, downloadCsvFromRows } from '@/utils/reportExport'
 import { exportFinanceCsv } from '@/services/financeApiService'
 import { getCashClosingDetail } from '@/services/cashClosingsApiService'
@@ -365,6 +366,123 @@ function payTableRowsFromReport(payTableItems = []) {
   }))
 }
 
+const CORTE_CSV_METODOS_LABEL = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', mercado_pago: 'Mercado Pago', mercadopago: 'Mercado Pago' }
+
+function corteCsvMetodoPago(metodo) {
+  return CORTE_CSV_METODOS_LABEL[(metodo ?? '').toLowerCase()] || metodo || '—'
+}
+
+function buildCorteDetailedRows(cortes = []) {
+  const rows = []
+  cortes.forEach((c) => {
+    const fecha = c.date ?? '—'
+    const turno = c.shiftLabel || 'Día completo'
+    const estado = c.isClosed ? 'Cerrado' : (c.isOpen ? 'Abierto' : '—')
+    const counted = c.countedCashMxn
+    const diff = c.cashDifferenceMxn
+    let estadoCaja = 'Sin contar'
+    if (counted !== null && counted !== undefined) {
+      if (diff > 0) estadoCaja = `Sobrante ${formatMoneyMx(diff)}`
+      else if (diff < 0) estadoCaja = `Faltante ${formatMoneyMx(Math.abs(diff))}`
+      else estadoCaja = 'Cuadrado'
+    }
+    const base = { 'Fecha corte': fecha, Turno: turno, 'Estado corte': estado }
+
+    rows.push({
+      ...base,
+      Tipo: 'Resumen del corte',
+      'Folio / Categoría': '—',
+      'Cliente / Descripción': '—',
+      Producto: '—',
+      Cantidad: '—',
+      Método: '—',
+      Subtotal: c.subtotalMxn ?? 0,
+      IVA: c.taxMxn ?? 0,
+      Total: c.totalMxn ?? 0,
+      'Fondo inicial': c.openingCashMxn ?? 0,
+      'Efectivo esperado': c.expectedCashMxn ?? 0,
+      'Efectivo contado': counted ?? '—',
+      Diferencia: diff ?? '—',
+      'Estado de caja': estadoCaja,
+      'Responsable apertura': c.openingResponsibleName || '—',
+      'Hora apertura': formatDateTimeMx(c.openedAt),
+      'Responsable cierre': c.createdByName || '—',
+      'Hora cierre': formatDateTimeMx(c.closedAt),
+      Notas: c.notes || '—',
+    })
+    ;(c.sales ?? []).forEach((s) => {
+      const items = Array.isArray(s.items) ? s.items : []
+      const producto = items.map((i) => (i.quantity > 1 ? `${i.name} (x${i.quantity})` : i.name)).join(', ') || '—'
+      const cantidad = items.reduce((sum, i) => sum + Number(i.quantity ?? 1), 0)
+      rows.push({
+        ...base,
+        Tipo: 'Venta',
+        'Folio / Categoría': s.folio || '—',
+        'Cliente / Descripción': s.customerName || s.customerEmail || 'Venta mostrador',
+        Producto: producto,
+        Cantidad: items.length ? cantidad : '—',
+        Método: corteCsvMetodoPago(s.paymentMethod),
+        Subtotal: s.subtotalMxn ?? 0,
+        IVA: s.taxMxn ?? 0,
+        Total: s.totalMxn ?? 0,
+      })
+    })
+    ;(c.expenses ?? []).forEach((e) => {
+      rows.push({
+        ...base,
+        Tipo: 'Gasto',
+        'Folio / Categoría': e.category || '—',
+        'Cliente / Descripción': e.description || '—',
+        Producto: '—',
+        Cantidad: '—',
+        Método: corteCsvMetodoPago(e.paymentMethod),
+        Subtotal: '—',
+        IVA: '—',
+        Total: -Math.abs(Number(e.amountMxn ?? 0)),
+      })
+    })
+  })
+  return rows
+}
+
+function buildInventoryDetailedRows(reporte) {
+  if (!reporte) return []
+  const rows = []
+  const blankRow = { SKU: '—', Producto: '', 'Stock inicial': '—', Entradas: '—', Vendidos: '—', 'Stock actual': '—', 'Stock mínimo': '—', Estatus: '—' }
+  const s = reporte.summary || {}
+  ;[
+    ['Productos activos', s.activeProducts],
+    ['Productos con entradas en el periodo', s.productsWithEntries],
+    ['Unidades vendidas en el periodo', s.unitsSold],
+    ['Existencia actual total', s.currentStockTotal],
+  ].forEach(([label, value]) => {
+    rows.push({ Sección: 'Resumen', ...blankRow, Producto: label, 'Stock actual': value ?? 0 })
+  })
+  if (reporte.reliabilityWarning) {
+    rows.push({ Sección: 'Aviso', ...blankRow, Producto: reporte.reliabilityWarning })
+  }
+  const pushSection = (label, items = []) => {
+    items.forEach((item) => {
+      rows.push({
+        Sección: label,
+        SKU: item.sku,
+        Producto: item.name,
+        'Stock inicial': item.stockInicial,
+        Entradas: item.entradas,
+        Vendidos: item.vendidos,
+        'Stock actual': item.stockActual,
+        'Stock mínimo': item.stockMinimo,
+        Estatus: item.estatus,
+      })
+    })
+  }
+  pushSection('Detalle por producto', reporte.detail)
+  pushSection('Top vendidos', reporte.topSold)
+  pushSection('Sin movimiento', reporte.noMovement)
+  pushSection('Agotados', reporte.outOfStock)
+  return rows
+}
+
 export default function ReportesApiSection({ inPanel = false }) {
   const { usuario } = useAuth()
   const canReadPayTable = hasPermission(usuario, 'pay_table.read')
@@ -377,6 +495,7 @@ export default function ReportesApiSection({ inPanel = false }) {
   const usersQuery = useUsersReportQuery({ from, to, enabled: true })
   const packagesQuery = usePackagesReportQuery({ from, to, enabled: true })
   const posQuery = usePosReportQuery({ from, to, enabled: true })
+  const inventoryQuery = useInventoryReportQuery({ from, to, enabled: true })
   const coachesQuery = useCoachesReportQuery({ from, to, enabled: true })
   const topClassesQuery = useTopClassesReportQuery({ from, to, limit: 5, enabled: true })
   const occupancyQuery = useOccupancyByDisciplineReportQuery({ from, to, enabled: true })
@@ -699,43 +818,6 @@ export default function ReportesApiSection({ inPanel = false }) {
     }))
   }, [expenseItems])
 
-  const cortesDetailRows = useMemo(() => {
-    if (!cashClosingItems.length) return []
-    return cashClosingItems.map((c) => {
-      const dineroFisico = Number(c.cashTotalMxn ?? 0)
-      const dineroBancario = Number(c.cardTotalMxn ?? 0) + Number(c.transferTotalMxn ?? 0) + Number(c.otherTotalMxn ?? 0)
-      const counted = c.countedCashMxn
-      const diff = c.cashDifferenceMxn
-      let estadoCaja = 'Sin contar'
-      if (counted !== null && counted !== undefined) {
-        if (diff > 0) estadoCaja = `Sobrante ${formatMoneyMx(diff)}`
-        else if (diff < 0) estadoCaja = `Faltante ${formatMoneyMx(Math.abs(diff))}`
-        else estadoCaja = 'Cuadrado'
-      }
-      return {
-        Fecha:                    c.date ?? '—',
-        Turno:                    c.shiftLabel || 'Día completo',
-        Estado:                   c.isClosed ? 'Cerrado' : (c.isOpen ? 'Abierto' : '—'),
-        Ventas:                   c.salesCount ?? 0,
-        'Responsable apertura':   c.openingResponsibleName || '—',
-        'Hora apertura':          formatDateTimeMx(c.openedAt),
-        'Responsable cierre':     c.createdByName || '—',
-        'Hora cierre':            formatDateTimeMx(c.closedAt),
-        'Fondo inicial':          c.openingCashMxn ?? 0,
-        'Total ventas':           c.totalMxn ?? 0,
-        'Dinero físico (efectivo)': dineroFisico,
-        'Dinero bancario':        dineroBancario,
-        Gastos:                   c.expensesTotalMxn ?? 0,
-        'Utilidad del turno':     c.netTotalMxn ?? 0,
-        'Efectivo esperado':      c.expectedCashMxn ?? 0,
-        'Efectivo contado':       counted ?? '—',
-        Diferencia:               diff ?? '—',
-        'Estado de caja':         estadoCaja,
-        Notas:                    c.notes || '—',
-      }
-    })
-  }, [cashClosingItems])
-
   const exportCsv = (prefix, rows, headers) => {
     downloadCsvFromRows({
       rows,
@@ -980,6 +1062,22 @@ export default function ReportesApiSection({ inPanel = false }) {
           onPdf={() => exportPdf('pdv', 'Reporte POS operativo', posDetailRows, true)}
         />
         <ReportCard
+          icono="📦"
+          titulo="Reporte de inventario"
+          descripcion="Existencias, entradas y ventas de productos físicos (sin paquetes)."
+          onCsv={() => {
+            if (!inventoryQuery.data) { toast('Sin datos de inventario para exportar.', { icon: '📋' }); return }
+            exportCsv('reporte-inventario', buildInventoryDetailedRows(inventoryQuery.data), [
+              'Sección', 'SKU', 'Producto', 'Stock inicial', 'Entradas', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus',
+            ])
+          }}
+          onPdf={() => {
+            if (!inventoryQuery.data) { toast('Sin datos de inventario para exportar.', { icon: '📋' }); return }
+            const rangeLabel = `${formatDateMx(from)} a ${formatDateMx(to)}`
+            abrirInventarioDetalladoPDF({ titulo: `Reporte de inventario — ${rangeLabel}`, reporte: inventoryQuery.data, periodo: rangeLabel, siteInfo })
+          }}
+        />
+        <ReportCard
           icono="💰"
           titulo="Pago de coaches"
           descripcion="Pago por clase, cupos y asistencia real."
@@ -1003,13 +1101,21 @@ export default function ReportesApiSection({ inPanel = false }) {
         <ReportCard
           icono="✂️"
           titulo="Exportar cortes"
-          descripcion="Historial de cortes de caja: ingresos, gastos y neto por corte."
-          onCsv={() => exportCsv('reporte-cortes', cortesDetailRows, [
-            'Fecha', 'Turno', 'Estado', 'Ventas',
-            'Responsable apertura', 'Hora apertura', 'Responsable cierre', 'Hora cierre',
-            'Fondo inicial', 'Total ventas', 'Dinero físico (efectivo)', 'Dinero bancario',
-            'Gastos', 'Utilidad del turno', 'Efectivo esperado', 'Efectivo contado', 'Diferencia', 'Estado de caja', 'Notas',
-          ])}
+          descripcion="Detalle por corte: cada venta (con productos y cantidades) y cada gasto, con sus métodos de pago."
+          onCsv={async () => {
+            if (!cashClosingItems.length) { toast('Sin cortes para exportar.', { icon: '📋' }); return }
+            try {
+              const details = await Promise.all(cashClosingItems.map((c) => getCashClosingDetail(c.id)))
+              exportCsv('reporte-cortes', buildCorteDetailedRows(details), [
+                'Fecha corte', 'Turno', 'Estado corte', 'Tipo', 'Folio / Categoría', 'Cliente / Descripción',
+                'Producto', 'Cantidad', 'Método', 'Subtotal', 'IVA', 'Total',
+                'Fondo inicial', 'Efectivo esperado', 'Efectivo contado', 'Diferencia', 'Estado de caja',
+                'Responsable apertura', 'Hora apertura', 'Responsable cierre', 'Hora cierre', 'Notas',
+              ])
+            } catch {
+              toast.error('No se pudo exportar el CSV de cortes.')
+            }
+          }}
           onPdf={async () => {
             if (!cashClosingItems.length) { toast('Sin cortes para exportar.', { icon: '📋' }); return }
             try {

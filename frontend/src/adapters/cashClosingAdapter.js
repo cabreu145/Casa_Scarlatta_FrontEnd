@@ -14,6 +14,15 @@ function normalizeString(value, fallback = '') {
   return raw || fallback
 }
 
+function mapSaleLineItem(line = {}) {
+  return {
+    name: normalizeString(line.name ?? line.nombre ?? line.displayName ?? '', 'Producto'),
+    quantity: toNumber(line.quantity ?? line.qty ?? 1, 1),
+    unitPriceMxn: toNumber(line.unit_price_mxn ?? line.unitPriceMxn ?? 0, 0),
+    lineTotalMxn: toNumber(line.line_total_mxn ?? line.lineTotalMxn ?? 0, 0),
+  }
+}
+
 function mapIncludedSale(item = {}) {
   return {
     id: item.id ?? item.sale_id ?? null,
@@ -26,6 +35,7 @@ function mapIncludedSale(item = {}) {
     taxMxn: toNumber(item.tax_mxn ?? item.taxMxn ?? 0, 0),
     totalMxn: toNumber(item.total_mxn ?? item.totalMxn ?? 0, 0),
     createdAt: item.created_at ?? item.createdAt ?? null,
+    items: Array.isArray(item.items) ? item.items.map(mapSaleLineItem) : [],
     raw: item,
   }
 }

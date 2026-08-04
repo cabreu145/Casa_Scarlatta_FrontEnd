@@ -618,6 +618,22 @@ function metodoPago(m) {
   return map[(m || '').toLowerCase()] || m || '—'
 }
 
+function productosVenta(sale) {
+  const items = Array.isArray(sale.items) ? sale.items : []
+  if (!items.length) return '—'
+  return items.map((i) => {
+    const nombre = i.name || i.nombre || i.displayName || 'Producto'
+    const cantidad = i.quantity ?? i.qty ?? 1
+    return cantidad > 1 ? `${nombre} (x${cantidad})` : nombre
+  }).join(', ')
+}
+
+function cantidadVenta(sale) {
+  const items = Array.isArray(sale.items) ? sale.items : []
+  if (!items.length) return '—'
+  return items.reduce((sum, i) => sum + Number(i.quantity ?? i.qty ?? 1), 0)
+}
+
 function buildCortesDetalladoHTML({ titulo, cortes, periodo, siteInfo = {} }) {
   const nombre  = siteInfo.nombre || siteInfo.nombreEstudio || 'Casa Scarlatta'
   const fechaHoy = hoy()
@@ -685,11 +701,11 @@ function buildCortesDetalladoHTML({ titulo, cortes, periodo, siteInfo = {} }) {
         <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">Ventas incluidas (${c.sales.length})</div>
         <table style="width:100%;border-collapse:collapse;font-size:9.5px">
           <thead><tr style="background:#7B1E22">
-            ${['Folio','Cliente','Método','Subtotal','IVA','Total','Fecha'].map(h => `<th style="padding:5px 7px;color:#fff;text-align:left;font-size:8px;letter-spacing:0.06em;text-transform:uppercase">${h}</th>`).join('')}
+            ${['Folio','Cliente','Producto','Cantidad','Método','Subtotal','IVA','Total','Fecha'].map(h => `<th style="padding:5px 7px;color:#fff;text-align:left;font-size:8px;letter-spacing:0.06em;text-transform:uppercase">${h}</th>`).join('')}
           </tr></thead>
           <tbody>
             ${c.sales.map((s, i) => `<tr style="background:${i % 2 === 0 ? '#fff' : '#FDFAF8'}">
-              ${[s.folio, s.customerName || s.customerEmail || 'Venta mostrador', metodoPago(s.paymentMethod), fmtMoney(s.subtotalMxn), fmtMoney(s.taxMxn), fmtMoney(s.totalMxn), fmtDateTime(s.createdAt)]
+              ${[s.folio, s.customerName || s.customerEmail || 'Venta mostrador', productosVenta(s), cantidadVenta(s), metodoPago(s.paymentMethod), fmtMoney(s.subtotalMxn), fmtMoney(s.taxMxn), fmtMoney(s.totalMxn), fmtDateTime(s.createdAt)]
                 .map(v => `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${v}</td>`).join('')}
             </tr>`).join('')}
           </tbody>
@@ -803,6 +819,126 @@ function buildCortesDetalladoHTML({ titulo, cortes, periodo, siteInfo = {} }) {
 
 export function abrirCortesDetalladoPDF({ titulo, cortes, periodo = '', siteInfo = {} }) {
   const html = buildCortesDetalladoHTML({ titulo, cortes, periodo, siteInfo })
+  const win  = window.open('', '_blank')
+  if (!win) {
+    alert('El navegador bloqueó la ventana emergente. Permite pop-ups para este sitio.')
+    return
+  }
+  win.document.write(html)
+  win.document.close()
+}
+
+function estatusColor(estatus) {
+  if (estatus === 'Agotado') return '#dc2626'
+  if (estatus === 'Bajo stock') return '#d97706'
+  return '#22c55e'
+}
+
+function buildInventoryTable(titulo, rows, { showStockCols = true } = {}) {
+  if (!rows?.length) {
+    return `
+      <div style="margin-top:14px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">${titulo} (0)</div>
+        <div style="font-size:10.5px;color:#9C7A74;padding:10px 0">Sin registros.</div>
+      </div>`
+  }
+  const headers = showStockCols
+    ? ['SKU', 'Producto', 'Stock inicial', 'Entradas', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus']
+    : ['SKU', 'Producto', 'Vendidos']
+  return `
+    <div style="margin-top:14px">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">${titulo} (${rows.length})</div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5px">
+        <thead><tr style="background:#7B1E22">
+          ${headers.map(h => `<th style="padding:5px 7px;color:#fff;text-align:left;font-size:8px;letter-spacing:0.06em;text-transform:uppercase">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${rows.map((r, i) => {
+            const cells = showStockCols
+              ? [r.sku, r.name, r.stockInicial, r.entradas, r.vendidos, r.stockActual, r.stockMinimo]
+              : [r.sku, r.name, r.vendidos]
+            return `<tr style="background:${i % 2 === 0 ? '#fff' : '#FDFAF8'}">
+              ${cells.map(v => `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${v}</td>`).join('')}
+              ${showStockCols ? `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;font-weight:700;color:${estatusColor(r.estatus)}">${r.estatus}</td>` : ''}
+            </tr>`
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`
+}
+
+function buildInventarioDetalladoHTML({ titulo, reporte, periodo, siteInfo = {} }) {
+  const nombre = siteInfo.nombre || siteInfo.nombreEstudio || 'Casa Scarlatta'
+  const fechaHoy = hoy()
+  const s = reporte.summary || {}
+
+  const statsHTML = [
+    { v: s.activeProducts ?? 0, l: 'Productos activos' },
+    { v: s.productsWithEntries ?? 0, l: 'Con entradas en el periodo' },
+    { v: s.unitsSold ?? 0, l: 'Unidades vendidas' },
+    { v: s.currentStockTotal ?? 0, l: 'Existencia actual total' },
+  ].map(x => `<div class="stat-card"><div class="stat-value">${x.v}</div><div class="stat-label">${x.l}</div></div>`).join('')
+
+  const warningHTML = reporte.reliabilityWarning
+    ? `<div style="background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:10.5px;color:#92400E">⚠️ ${reporte.reliabilityWarning}</div>`
+    : ''
+
+  const periodoStr = periodo ? ` · Período: <strong>${periodo}</strong>` : ''
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${nombre} — ${titulo}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400;1,600&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    ${CSS_VARS}
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: 'DM Sans', sans-serif; color: var(--dark); background: #F0E9E4; min-height: 100vh; padding: 40px 20px 60px; }
+    .page { background: white; max-width: 900px; margin: 0 auto; padding: 44px 52px; border-radius: 4px; box-shadow: 0 4px 40px rgba(44,24,16,0.15); }
+    ${CSS_SHARED}
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+    @media print {
+      body { background: white; padding: 0; }
+      .page { box-shadow: none; border-radius: 0; padding: 20px 24px; max-width: 100%; }
+      .print-controls { display: none; }
+      @page { size: letter portrait; margin: 10mm 8mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    ${buildHeaderBlock(siteInfo)}
+    <div class="report-meta">
+      <div class="report-meta-icon">📦</div>
+      <div>
+        <div class="report-title">${titulo}</div>
+        <div class="report-date">Generado el ${fechaHoy}${periodoStr}</div>
+      </div>
+    </div>
+    <div class="stats-grid">${statsHTML}</div>
+    ${warningHTML}
+    ${buildInventoryTable('Detalle por producto', reporte.detail)}
+    ${buildInventoryTable('Top 5 más vendidos', reporte.topSold, { showStockCols: false })}
+    ${buildInventoryTable('Sin movimiento en el periodo', reporte.noMovement)}
+    ${buildInventoryTable('Agotados actualmente', reporte.outOfStock)}
+    <div class="footer">
+      <span><strong>${nombre}</strong> Wellness Studio</span>
+      <span>Documento generado automáticamente · ${fechaHoy}</span>
+    </div>
+  </div>
+  <div class="print-controls">
+    <button class="btn-print" onclick="window.print()">🖨&nbsp; Guardar como PDF</button>
+    <button class="btn-close" onclick="window.close()">Cerrar</button>
+  </div>
+</body>
+</html>`
+}
+
+export function abrirInventarioDetalladoPDF({ titulo, reporte, periodo = '', siteInfo = {} }) {
+  const html = buildInventarioDetalladoHTML({ titulo, reporte, periodo, siteInfo })
   const win  = window.open('', '_blank')
   if (!win) {
     alert('El navegador bloqueó la ventana emergente. Permite pop-ups para este sitio.')

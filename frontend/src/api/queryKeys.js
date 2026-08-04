@@ -117,6 +117,7 @@ export const queryKeys = {
     users: (params = {}) => ['reports', 'users', params],
     packages: (params = {}) => ['reports', 'packages', params],
     pos: (params = {}) => ['reports', 'pos', params],
+    inventory: (params = {}) => ['reports', 'inventory', params],
     coaches: (params = {}) => ['reports', 'coaches', params],
     coachesPayments: (params = {}) => ['reports', 'coachesPayments', params],
     coachPayments: (params = {}) => ['reports', 'coachesPayments', params],

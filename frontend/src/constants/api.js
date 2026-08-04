@@ -130,6 +130,8 @@ export const ENDPOINTS = {
   productoById: (id) => withPrefix(`/productos/${id}`),
   productoStatusById: (id) => withPrefix(`/productos/${id}/status`),
   productoDeleteById: (id) => withPrefix(`/productos/${id}`),
+  productoRestockById: (id) => withPrefix(`/productos/${id}/reabastecer`),
+  productoAdjustStockById: (id) => withPrefix(`/productos/${id}/corregir-stock`),
   ventas: withPrefix('/ventas'),
   ventasPaginated: ({ page, pageSize, from, to, paymentMethod, status }) =>
     withQuery('/ventas', {
@@ -236,6 +238,8 @@ export const ENDPOINTS = {
     withQuery('/reportes/paquetes', { from, to }),
   reportesPos: ({ from, to } = {}) =>
     withQuery('/reportes/pos', { from, to }),
+  reportesInventario: ({ from, to, lowStockThreshold } = {}) =>
+    withQuery('/reportes/inventario', { from, to, low_stock_threshold: lowStockThreshold }),
   reportesCoaches: ({ from, to } = {}) =>
     withQuery('/reportes/coaches', { from, to }),
   reportesCoachesPagos: ({ from, to } = {}) =>

@@ -4,6 +4,7 @@ import {
   mapBackendCoachPaymentsReportToFrontend,
   mapBackendCoachesReportToFrontend,
   mapBackendFinanceReportToFrontend,
+  mapBackendInventoryReportToFrontend,
   mapBackendOccupancyByDisciplineReportToFrontend,
   mapBackendPackagesReportToFrontend,
   mapBackendPosReportToFrontend,
@@ -42,6 +43,14 @@ export async function getPackagesReport(params = {}) {
 export async function getPosReport(params = {}) {
   const payload = await httpGet(ENDPOINTS.reportesPos(normalizeRange(params)))
   return mapBackendPosReportToFrontend(payload)
+}
+
+export async function getInventoryReport(params = {}) {
+  const payload = await httpGet(ENDPOINTS.reportesInventario({
+    ...normalizeRange(params),
+    lowStockThreshold: params.lowStockThreshold,
+  }))
+  return mapBackendInventoryReportToFrontend(payload)
 }
 
 export async function getCoachesReport(params = {}) {

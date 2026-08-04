@@ -2,6 +2,7 @@
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import styles from '../AdminPanel.module.css'
+import { hoyLocal } from '@/utils/fecha'
 import SaleConfirmationCard from '@/components/ui/SaleConfirmationCard'
 import PosEntityModal from '../components/PosEntityModal'
 import {
@@ -120,6 +121,8 @@ export default function PuntoDeVentaSection({
   setProdForm,
   confirmarEliminarProd,
   setConfirmarEliminarProd,
+  setRestockModal,
+  setAdjustStockModal,
   pendingAsignacion,
   cartSubtotal,
   cartIva,
@@ -172,7 +175,8 @@ export default function PuntoDeVentaSection({
   const [categoryStatus, setCategoryStatus] = useState('active')
   const [categoryModal, setCategoryModal] = useState(null)
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', isActive: true })
-  const [salesDateFilter, setSalesDateFilter] = useState('')
+  const [salesDateFilter, setSalesDateFilter] = useState(() => hoyLocal())
+  const [salesExpanded, setSalesExpanded] = useState(false)
   const [voidSaleModal, setVoidSaleModal] = useState(null)
   const [voidSaleReason, setVoidSaleReason] = useState('')
   const [voidSaleReasonError, setVoidSaleReasonError] = useState('')
@@ -209,9 +213,9 @@ export default function PuntoDeVentaSection({
   })
   const posSalesQuery = usePosSalesQuery({
     page: 1,
-    pageSize: salesDateFilter ? 100 : 8,
-    from: salesDateFilter || undefined,
-    to: salesDateFilter || undefined,
+    pageSize: salesExpanded ? 100 : 8,
+    from: salesDateFilter,
+    to: salesDateFilter,
     enabled: useApiMode && isActive && canViewPos,
   })
   const createSaleMutation = useCreatePosSaleMutation()
@@ -480,6 +484,7 @@ export default function PuntoDeVentaSection({
         INSUFFICIENT_STOCK: 'Stock insuficiente.',
         PRODUCT_INACTIVE: 'Producto inactivo.',
         PACKAGE_INACTIVE: 'Paquete inactivo.',
+        CASH_REGISTER_NOT_OPEN: 'No has abierto el corte de caja. Ábrelo para poder registrar ventas.',
         PACKAGE_NOT_SHAREABLE: 'Paquete no compartible.',
         SHARED_CREDITS_NOT_DIVISIBLE: 'Este paquete no se puede dividir exactamente entre los beneficiarios seleccionados.',
         BENEFICIARY_NOT_FOUND: 'No encontramos un cliente con ese correo.',
@@ -814,6 +819,22 @@ export default function PuntoDeVentaSection({
                         </button>
                         <button
                           type="button"
+                          title="Reabastecer"
+                          style={{ flex: 1, fontSize: 11, padding: '3px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)' }}
+                          onClick={() => setRestockModal({ producto: item })}
+                        >
+                          📥
+                        </button>
+                        <button
+                          type="button"
+                          title="Corregir stock"
+                          style={{ flex: 1, fontSize: 11, padding: '3px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)' }}
+                          onClick={() => setAdjustStockModal({ producto: item })}
+                        >
+                          ⚖️
+                        </button>
+                        <button
+                          type="button"
                           style={{ flex: 1, fontSize: 11, padding: '3px 0', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, cursor: 'pointer', color: '#ef4444' }}
                           onClick={() => setConfirmarEliminarProd(item)}
                         >
@@ -840,21 +861,21 @@ export default function PuntoDeVentaSection({
                     className={styles.searchInput}
                     style={{ width: 'auto' }}
                     value={salesDateFilter}
-                    onChange={(event) => setSalesDateFilter(event.target.value)}
+                    onChange={(event) => { setSalesDateFilter(event.target.value || hoyLocal()); setSalesExpanded(false) }}
                   />
-                  {salesDateFilter && (
+                  {salesDateFilter !== hoyLocal() && (
                     <button
                       type="button"
-                      onClick={() => setSalesDateFilter('')}
+                      onClick={() => { setSalesDateFilter(hoyLocal()); setSalesExpanded(false) }}
                       style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}
                     >
-                      Limpiar fecha
+                      Hoy
                     </button>
                   )}
                 </div>
                 {recentSales.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)' }}>
-                    {salesDateFilter ? 'No hay ventas en esta fecha.' : 'No hay ventas recientes.'}
+                    {salesDateFilter === hoyLocal() ? 'No hay ventas hoy.' : 'No hay ventas en esta fecha.'}
                   </div>
                 ) : (
                   <div className={styles.tableWrap}>
@@ -905,6 +926,18 @@ export default function PuntoDeVentaSection({
                         })}
                       </tbody>
                     </table>
+                  </div>
+                )}
+                {(posSalesQuery.data?.total ?? 0) > 8 && (
+                  <div style={{ textAlign: 'center', marginTop: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => setSalesExpanded((current) => !current)}
+                      disabled={posSalesQuery.isFetching}
+                      style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 8, padding: '8px 16px', cursor: posSalesQuery.isFetching ? 'default' : 'pointer', fontSize: 12 }}
+                    >
+                      {posSalesQuery.isFetching ? 'Cargando…' : salesExpanded ? 'Ver menos' : 'Ver más'}
+                    </button>
                   </div>
                 )}
               </div>

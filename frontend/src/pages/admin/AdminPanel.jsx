@@ -92,10 +92,12 @@ import {
   useAdminCoachesActiveCountQuery,
   useCancelPendingPaymentAdminMutation,
   invalidateClassSideEffects,
+  useAdjustProductStockMutation,
   useCreateProductMutation,
   useDeleteProductMutation,
   useOccurrenceRosterQuery,
   useProductCategoriesQuery,
+  useRestockProductMutation,
   useUpdateClientMembershipExpirationMutation,
   useUpdateProductMutation,
 } from '@/hooks/useApiQueries'
@@ -426,6 +428,12 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const [prodForm, setProdForm]                 = useState({ nombre: '', categoria: 'Accesorios', categoryId: '', precio: '', stock: '', emoji: '' })
   const [confirmarEliminarProd, setConfirmarEliminarProd] = useState(null)
 
+  // Reabastecer / corregir stock
+  const [restockModal, setRestockModal]         = useState(null) // null | { producto }
+  const [restockForm, setRestockForm]           = useState({ quantity: '', reason: '' })
+  const [adjustStockModal, setAdjustStockModal] = useState(null) // null | { producto }
+  const [adjustStockForm, setAdjustStockForm]   = useState({ newStock: '', reason: '' })
+
   // Coach avatar — crear
   const [coachAvatarPreview, setCoachAvatarPreview] = useState(null)
   const [coachAvatarFile, setCoachAvatarFile] = useState(null)
@@ -580,6 +588,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const createProductMutation = useCreateProductMutation()
   const updateProductMutation = useUpdateProductMutation()
   const deleteProductMutation = useDeleteProductMutation()
+  const restockProductMutation = useRestockProductMutation()
+  const adjustProductStockMutation = useAdjustProductStockMutation()
   const updateClientMembershipExpirationMutation = useUpdateClientMembershipExpirationMutation()
   const productCategoriesQuery = useProductCategoriesQuery({
     page: 1,
@@ -1361,7 +1371,53 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
       )
     }
   }
-  
+
+  async function handleRestockProduct() {
+    const quantity = Number(restockForm.quantity)
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      toast.error('Ingresa una cantidad válida (mayor a 0).')
+      return
+    }
+    try {
+      const result = await restockProductMutation.mutateAsync({
+        id: restockModal.producto.id,
+        quantity,
+        reason: restockForm.reason,
+      })
+      toast.success(`Stock actualizado a ${result.stock} unidades.`)
+      setRestockModal(null)
+      setRestockForm({ quantity: '', reason: '' })
+    } catch (error) {
+      toast.error(error?.message === 'Failed to fetch'
+        ? 'No se pudo conectar con el servidor. Verifica tu conexión.'
+        : (error?.message ?? 'No se pudo reabastecer el producto')
+      )
+    }
+  }
+
+  async function handleAdjustProductStock() {
+    const newStock = Number(adjustStockForm.newStock)
+    if (!Number.isInteger(newStock) || newStock < 0) {
+      toast.error('Ingresa una cantidad válida (0 o mayor).')
+      return
+    }
+    try {
+      const result = await adjustProductStockMutation.mutateAsync({
+        id: adjustStockModal.producto.id,
+        newStock,
+        reason: adjustStockForm.reason,
+      })
+      toast.success(result.changed ? `Stock corregido a ${result.stock} unidades.` : (result.message || 'El stock ya tenía ese valor.'))
+      setAdjustStockModal(null)
+      setAdjustStockForm({ newStock: '', reason: '' })
+    } catch (error) {
+      toast.error(error?.message === 'Failed to fetch'
+        ? 'No se pudo conectar con el servidor. Verifica tu conexión.'
+        : (error?.message ?? 'No se pudo corregir el stock')
+      )
+    }
+  }
+
   async function handleEliminarProducto() {
     try {
       if (useApiPos) {
@@ -1771,6 +1827,8 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               setProdForm={setProdForm}
               confirmarEliminarProd={confirmarEliminarProd}
               setConfirmarEliminarProd={setConfirmarEliminarProd}
+              setRestockModal={setRestockModal}
+              setAdjustStockModal={setAdjustStockModal}
               pendingAsignacion={pendingAsignacion}
               cartSubtotal={cartSubtotal}
               cartIva={cartIva}
@@ -2584,15 +2642,92 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                 <input className={styles.formInput} type="number" min="0" placeholder="Ej: 350" value={prodForm.precio}
                   onChange={(e) => setProdForm((f) => ({ ...f, precio: e.target.value }))} />
               </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Stock inicial</label>
-                <input className={styles.formInput} type="number" min="0" placeholder="Ej: 20" value={prodForm.stock}
-                  onChange={(e) => setProdForm((f) => ({ ...f, stock: e.target.value }))} />
-              </div>
+              {prodModal === 'nuevo' && (
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Stock inicial</label>
+                  <input className={styles.formInput} type="number" min="0" placeholder="Ej: 20" value={prodForm.stock}
+                    onChange={(e) => setProdForm((f) => ({ ...f, stock: e.target.value }))} />
+                </div>
+              )}
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Emoji (opcional)</label>
                 <input className={styles.formInput} maxLength={2} placeholder="🎽" value={prodForm.emoji}
                   onChange={(e) => setProdForm((f) => ({ ...f, emoji: e.target.value }))} />
+              </div>
+              {prodModal !== 'nuevo' && (
+                <div className={styles.formGroupFull} style={{ fontSize: 12, color: 'var(--muted)' }}>
+                  El stock ya no se edita aquí — usa "Reabastecer" o "Corregir stock" desde la tarjeta del producto.
+                </div>
+              )}
+            </div>
+          </PosEntityModal>
+        </div>
+      )}
+
+      {/* ── REABASTECER PRODUCTO ── */}
+      {restockModal && (
+        <div className={`${styles.modalOverlay} ${styles.open}`}>
+          <PosEntityModal
+            title={`Reabastecer — ${restockModal.producto.name ?? restockModal.producto.nombre}`}
+            ariaLabel="Reabastecer producto"
+            onClose={() => { setRestockModal(null); setRestockForm({ quantity: '', reason: '' }) }}
+            footer={(
+              <>
+                <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => { setRestockModal(null); setRestockForm({ quantity: '', reason: '' }) }}>Cancelar</button>
+                <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={handleRestockProduct} disabled={restockProductMutation.isPending}>
+                  {restockProductMutation.isPending ? 'Guardando…' : 'Reabastecer'}
+                </button>
+              </>
+            )}
+          >
+            <div className={styles.formGrid}>
+              <div className={styles.formGroupFull} style={{ fontSize: 12, color: 'var(--muted)' }}>
+                Stock actual: {restockModal.producto.stock}
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Cantidad a sumar</label>
+                <input className={styles.formInput} type="number" min="1" placeholder="Ej: 24" value={restockForm.quantity}
+                  onChange={(e) => setRestockForm((f) => ({ ...f, quantity: e.target.value }))} />
+              </div>
+              <div className={styles.formGroupFull}>
+                <label className={styles.formLabel}>Motivo (opcional)</label>
+                <input className={styles.formInput} placeholder="Ej: Entrega de proveedor" value={restockForm.reason}
+                  onChange={(e) => setRestockForm((f) => ({ ...f, reason: e.target.value }))} />
+              </div>
+            </div>
+          </PosEntityModal>
+        </div>
+      )}
+
+      {/* ── CORREGIR STOCK ── */}
+      {adjustStockModal && (
+        <div className={`${styles.modalOverlay} ${styles.open}`}>
+          <PosEntityModal
+            title={`Corregir stock — ${adjustStockModal.producto.name ?? adjustStockModal.producto.nombre}`}
+            ariaLabel="Corregir stock"
+            onClose={() => { setAdjustStockModal(null); setAdjustStockForm({ newStock: '', reason: '' }) }}
+            footer={(
+              <>
+                <button className={`${styles.btn} ${styles.btnGhost}`} type="button" onClick={() => { setAdjustStockModal(null); setAdjustStockForm({ newStock: '', reason: '' }) }}>Cancelar</button>
+                <button className={`${styles.btn} ${styles.btnPrimary}`} type="button" onClick={handleAdjustProductStock} disabled={adjustProductStockMutation.isPending}>
+                  {adjustProductStockMutation.isPending ? 'Guardando…' : 'Corregir'}
+                </button>
+              </>
+            )}
+          >
+            <div className={styles.formGrid}>
+              <div className={styles.formGroupFull} style={{ fontSize: 12, color: 'var(--muted)' }}>
+                Stock actual: {adjustStockModal.producto.stock}
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>Cantidad exacta</label>
+                <input className={styles.formInput} type="number" min="0" placeholder="Ej: 15" value={adjustStockForm.newStock}
+                  onChange={(e) => setAdjustStockForm((f) => ({ ...f, newStock: e.target.value }))} />
+              </div>
+              <div className={styles.formGroupFull}>
+                <label className={styles.formLabel}>Motivo (opcional)</label>
+                <input className={styles.formInput} placeholder="Ej: Conteo físico" value={adjustStockForm.reason}
+                  onChange={(e) => setAdjustStockForm((f) => ({ ...f, reason: e.target.value }))} />
               </div>
             </div>
           </PosEntityModal>

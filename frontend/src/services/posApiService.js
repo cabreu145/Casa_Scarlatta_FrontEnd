@@ -4,6 +4,7 @@ import { normalizePaginatedResponse } from '@/adapters/paginationAdapter'
 import {
   mapBackendProductToFrontend,
   mapBackendSaleToFrontend,
+  mapBackendStockChangeToFrontend,
   resolvePublicTicketImageUrl,
 } from '@/adapters/posAdapter'
 import {
@@ -91,6 +92,22 @@ export async function deleteProductApi(productId) {
   }
   const response = await httpDelete(ENDPOINTS.productoDeleteById(productId))
   return response ?? { success: true, id: productId }
+}
+
+export async function restockProductApi(productId, { quantity, reason } = {}) {
+  if (!ENDPOINTS.productoRestockById) {
+    throw new Error('POS_PRODUCTS_ENDPOINT_MISSING')
+  }
+  const payload = { quantity: Number(quantity), reason: reason?.trim() || null }
+  return mapBackendStockChangeToFrontend(await httpPost(ENDPOINTS.productoRestockById(productId), payload))
+}
+
+export async function adjustProductStockApi(productId, { newStock, reason } = {}) {
+  if (!ENDPOINTS.productoAdjustStockById) {
+    throw new Error('POS_PRODUCTS_ENDPOINT_MISSING')
+  }
+  const payload = { new_stock: Number(newStock), reason: reason?.trim() || null }
+  return mapBackendStockChangeToFrontend(await httpPost(ENDPOINTS.productoAdjustStockById(productId), payload))
 }
 
 export async function createSaleApi(form = {}) {

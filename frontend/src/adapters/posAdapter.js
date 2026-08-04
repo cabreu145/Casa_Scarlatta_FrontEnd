@@ -55,6 +55,26 @@ export function mapBackendProductsToFrontend(items = []) {
   return (Array.isArray(items) ? items : []).map(mapBackendProductToFrontend)
 }
 
+function mapBackendStockMovement(movement) {
+  if (!movement) return null
+  return {
+    id: movement.id ?? null,
+    movementType: movement.movement_type ?? movement.movementType ?? '',
+    qty: toNumber(movement.qty, 0),
+    reason: movement.reason ?? null,
+    createdAt: movement.created_at ?? movement.createdAt ?? null,
+  }
+}
+
+export function mapBackendStockChangeToFrontend(payload = {}) {
+  return {
+    ...mapBackendProductToFrontend(payload),
+    movement: mapBackendStockMovement(payload.movement),
+    changed: Boolean(payload.changed),
+    message: payload.message ?? null,
+  }
+}
+
 function mapSaleItem(item = {}) {
   const quantity = Math.max(1, toNumber(item.quantity ?? 1, 1))
   const unitPriceMxn = toNumber(item.unit_price_mxn ?? item.unitPriceMxn ?? item.price_mxn ?? item.price ?? 0, 0)
