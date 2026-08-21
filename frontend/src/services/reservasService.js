@@ -160,11 +160,11 @@ export async function reservarClase(userId, claseId, asiento = null, occurrenceI
   return { ok: true }
 }
 
-export async function cancelarReserva(reservaId, userId) {
+export async function cancelarReserva(reservaId, userId, options = {}) {
   if (useApiReservations) {
     try {
       const reservaActual = useReservasStore.getState().reservas.find((r) => r.id === reservaId)
-      await cancelarReservaApi(reservaId)
+      const reservation = await cancelarReservaApi(reservaId, options)
       await syncReservasFromApi()
       try {
         await useClasesStore.getState().loadClasesFromApi?.({ force: true })
@@ -178,21 +178,24 @@ export async function cancelarReserva(reservaId, userId) {
       }
       if (useApiWaitlist) {
         const occurrenceId = reservaActual?.occurrenceId ?? null
-        if (!occurrenceId) {
-          return { ok: true }
-        }
-        try {
-          await useListaEsperaStore.getState().syncOccurrenceApi?.(occurrenceId)
-        } catch {
-          // noop
+        if (occurrenceId) {
+          try {
+            await useListaEsperaStore.getState().syncOccurrenceApi?.(occurrenceId)
+          } catch {
+            // noop
+          }
         }
       }
-      return { ok: true }
+      return { ok: true, reservation }
     } catch (err) {
       if (import.meta.env.DEV && err?.details) {
         console.error('[cancelarReserva][api] error details', err.details)
       }
-      return { ok: false, error: err.message || 'No se pudo cancelar la reserva' }
+      return {
+        ok: false,
+        code: err?.code ?? err?.error?.code ?? null,
+        error: err.message || 'No se pudo cancelar la reserva',
+      }
     }
   }
 

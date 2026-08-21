@@ -159,6 +159,11 @@ export function mapBackendReservationToFrontend(reservation = {}, classesById = 
     classStatus: classStatusSnapshot,
     fechaCreacionReserva,
     fechaReserva: fechaCreacionReserva,
+    refundApplied: Boolean(reservation.refund_applied ?? reservation.refundApplied ?? false),
+    refundedCredits: Number(reservation.refunded_credits ?? reservation.refundedCredits ?? 0),
+    cancelledByAdmin: Boolean(reservation.cancelled_by_admin ?? reservation.cancelledByAdmin ?? false),
+    cancellationReason: reservation.cancellation_reason ?? reservation.cancellationReason ?? null,
+    cancelledAt: reservation.cancelled_at ?? reservation.cancelledAt ?? null,
   }
 }
 

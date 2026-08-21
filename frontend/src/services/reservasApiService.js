@@ -14,6 +14,29 @@ function buildClassesById() {
   return Object.fromEntries(clases.map((c) => [c.id, c]))
 }
 
+function getCancellationField(payload, reservation, camelCase, snakeCase) {
+  return reservation?.[camelCase] ??
+    reservation?.[snakeCase] ??
+    payload?.[camelCase] ??
+    payload?.[snakeCase] ??
+    payload?.data?.[camelCase] ??
+    payload?.data?.[snakeCase] ??
+    null
+}
+
+function mapCancellationResponse(payload) {
+  const reservation = payload?.reservation ?? payload?.data?.reservation ?? payload?.data ?? payload ?? {}
+  const mappedReservation = mapBackendReservationToFrontend(reservation, buildClassesById())
+  return {
+    ...mappedReservation,
+    refundApplied: Boolean(getCancellationField(payload, reservation, 'refundApplied', 'refund_applied')),
+    refundedCredits: Number(getCancellationField(payload, reservation, 'refundedCredits', 'refunded_credits') ?? 0),
+    cancelledByAdmin: Boolean(getCancellationField(payload, reservation, 'cancelledByAdmin', 'cancelled_by_admin')),
+    cancellationReason: getCancellationField(payload, reservation, 'cancellationReason', 'cancellation_reason'),
+    cancelledAt: getCancellationField(payload, reservation, 'cancelledAt', 'cancelled_at'),
+  }
+}
+
 export async function getMisReservasApi() {
   const payload = await httpGet(ENDPOINTS.reservasMe)
   return mapBackendReservationsToFrontend(Array.isArray(payload) ? payload : [], buildClassesById())
@@ -66,15 +89,21 @@ export async function getOccurrenceRosterApi(occurrenceId, { includeCanceled = f
   return mapBackendOccurrenceRosterToFrontend(payload ?? {})
 }
 
-export async function cancelarReservaApi(id) {
-  const payload = await httpPost(ENDPOINTS.cancelarReserva(id), {})
-  return mapBackendReservationToFrontend(payload ?? {}, buildClassesById())
+export async function cancelarReservaApi(id, { reason, refundCredit } = {}) {
+  const requestPayload = {
+    ...(String(reason ?? '').trim() ? { reason: String(reason).trim() } : {}),
+    ...(refundCredit === true ? { refundCredit: true } : {}),
+  }
+  const payload = await httpPost(ENDPOINTS.cancelarReserva(id), requestPayload)
+  return mapCancellationResponse(payload)
 }
 
-export async function cancelarReservasMultipleApi({ reservationIds, userId }) {
+export async function cancelarReservasMultipleApi({ reservationIds, userId, reason, refundCredit } = {}) {
   const payload = await httpPost(ENDPOINTS.cancelarReservasMultiple, {
     reservation_ids: Array.isArray(reservationIds) ? reservationIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)) : [],
     ...(userId !== undefined && userId !== null && userId !== '' ? { user_id: Number(userId) } : {}),
+    ...(String(reason ?? '').trim() ? { reason: String(reason).trim() } : {}),
+    ...(refundCredit === true ? { refundCredit: true } : {}),
   })
 
   return {

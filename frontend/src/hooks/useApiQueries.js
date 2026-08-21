@@ -1576,6 +1576,7 @@ export function invalidateReservationSideEffects(queryClient, { occurrenceId, cl
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.activity.list() }),
+    queryClient.invalidateQueries({ queryKey: ['reports'] }),
     queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
     userId ? queryClient.invalidateQueries({ queryKey: queryKeys.clients.detail(userId) }) : Promise.resolve(),
     userId ? queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(userId) }) : Promise.resolve(),
@@ -1634,7 +1635,7 @@ export function useCreateReservationMutation() {
 export function useCancelReservationMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ reservationId }) => cancelarReservaApi(reservationId),
+    mutationFn: ({ reservationId, reason, refundCredit }) => cancelarReservaApi(reservationId, { reason, refundCredit }),
     onSuccess: async (_data, variables) => {
       await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId, userId: variables?.userId })
     },
@@ -1644,7 +1645,7 @@ export function useCancelReservationMutation() {
 export function useCancelMultipleReservationsMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ reservationIds, userId }) => cancelarReservasMultipleApi({ reservationIds, userId }),
+    mutationFn: ({ reservationIds, userId, reason, refundCredit }) => cancelarReservasMultipleApi({ reservationIds, userId, reason, refundCredit }),
     onSuccess: async (_data, variables) => {
       await invalidateReservationSideEffects(queryClient, { occurrenceId: variables?.occurrenceId, classId: variables?.classId, userId: variables?.userId })
     },

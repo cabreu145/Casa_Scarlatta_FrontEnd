@@ -94,6 +94,7 @@ import {
   useAdminCoachesActiveCountQuery,
   useCancelPendingPaymentAdminMutation,
   invalidateClassSideEffects,
+  invalidateReservationSideEffects,
   useAdjustProductStockMutation,
   useCreateProductMutation,
   useDeleteProductMutation,
@@ -3222,19 +3223,62 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
           ? (occurrenceRosterQuery.data?.capacityCurrent ?? inscritos.length ?? 0)
           : (cls.cupoActual ?? inscritos.length ?? 0)
 
+        let cancellationInFlight = false
         async function handleCancelar(r) {
           if (!canManageReservations) {
             toast.error('No tienes permisos para cancelar reservas.')
             return
           }
-          const res = await cancelarReservaService(r.id, r.userId)
+          if (cancellationInFlight) return
+          const confirmed = window.confirm('¿Cancelar esta reserva?\n\nEsta acción cancelará la reserva del cliente y devolverá el crédito correspondiente.')
+          if (!confirmed) return
+          cancellationInFlight = true
+          const res = await cancelarReservaService(r.id, r.userId, {
+            reason: 'Cancelación realizada por administración',
+            refundCredit: true,
+          })
+          cancellationInFlight = false
           if (res.ok) {
-            toast.success(`Reserva de ${r.nombreUsuario} cancelada`)
+            const cancelledReservation = res?.reservation ?? res?.data?.reservation ?? res?.data ?? res
+            const refundApplied = cancelledReservation?.refundApplied ??
+              cancelledReservation?.refund_applied ??
+              res?.refundApplied ??
+              res?.refund_applied ??
+              res?.data?.refundApplied ??
+              res?.data?.refund_applied ??
+              res?.data?.reservation?.refundApplied ??
+              res?.data?.reservation?.refund_applied ??
+              false
+            const refundedCredits = Number(
+              cancelledReservation?.refundedCredits ??
+              cancelledReservation?.refunded_credits ??
+              res?.refundedCredits ??
+              res?.refunded_credits ??
+              res?.data?.refundedCredits ??
+              res?.data?.refunded_credits ??
+              res?.data?.reservation?.refundedCredits ??
+              res?.data?.reservation?.refunded_credits ??
+              0
+            )
+            if (refundApplied || refundedCredits > 0) {
+              toast.success(refundedCredits > 1
+                ? `Reserva cancelada y ${refundedCredits} créditos devueltos al cliente.`
+                : 'Reserva cancelada y crédito devuelto al cliente.')
+            } else {
+              toast.success('Reserva cancelada. No se aplicó devolución de crédito.')
+            }
             if (useApiMode && occurrenceId) {
               await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
             }
+            await invalidateReservationSideEffects(queryClient, {
+              occurrenceId,
+              classId: cls.id,
+              userId: r.userId,
+            })
           }
-          else toast.error(res.error)
+          else if (res.code === 'CANCELLATION_WINDOW_EXPIRED') {
+            toast.error('No se pudo cancelar por la ventana de cancelación. Verifica que el usuario tenga permiso reservations.manage y que backend esté actualizado.')
+          } else toast.error(res.error)
         }
 
           async function handleAgregar() {
