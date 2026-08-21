@@ -2,6 +2,7 @@ import { ENDPOINTS } from '@/constants/api'
 import { httpDelete, httpGet, httpPatch, httpPost, httpPut } from '@/lib/http'
 import { mapBackendClientToFrontend } from '@/adapters/clientAdapter'
 import { mapBackendMembershipToFrontend } from '@/adapters/membershipAdapter'
+import { mapCreditMovement } from '@/adapters/financialStateAdapter'
 import { normalizePaginatedResponse } from '@/adapters/paginationAdapter'
 import {
   ADMIN_CLIENTS_PAGE_SIZE,
@@ -96,4 +97,9 @@ export async function updateClientMembershipExpirationApi(clientId, membershipId
     notes: String(payload.notes ?? '').trim() || null,
   })
   return mapBackendMembershipToFrontend(response)
+}
+
+export async function getClientMembershipCreditLedgerApi(clientId, membershipId, { page = 1, pageSize = 20 } = {}) {
+  const payload = await httpGet(ENDPOINTS.adminClientMembershipCreditLedger(clientId, membershipId, { page, pageSize }))
+  return normalizePaginatedResponse(payload, (item) => mapCreditMovement(item ?? {}))
 }

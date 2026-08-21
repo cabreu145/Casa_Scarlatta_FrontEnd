@@ -76,8 +76,8 @@ export const ENDPOINTS = {
   userById: (id) => withPrefix(`/users/${id}`),
   miPerfil: withPrefix('/usuarios/me'),
   miEstadoFinanciero: withPrefix('/clientes/me/estado-financiero'),
-  miCreditMovements: ({ page, pageSize }) =>
-    withQuery('/clientes/me/credit-movements', { page, page_size: pageSize }),
+  miCreditMovements: ({ page, pageSize, membershipId } = {}) =>
+    withQuery('/clientes/me/credit-movements', { page, page_size: pageSize, membership_id: membershipId }),
   clientPayments: ({ page, pageSize, status } = {}) =>
     withQuery('/clientes/me/pagos', { page, page_size: pageSize, status }),
   clientMemberships: withPrefix('/clientes/me/memberships'),
@@ -98,6 +98,8 @@ export const ENDPOINTS = {
   adminClientById: (id) => withPrefix(`/clientes/${id}`),
   adminClientPackages: (id) => withPrefix(`/clientes/${id}/paquetes`),
   adminClientCredits: (id) => withPrefix(`/clientes/${id}/credits`),
+  adminClientMembershipCreditLedger: (clientId, membershipId, { page, pageSize } = {}) =>
+    withQuery(`/admin/clientes/${clientId}/memberships/${membershipId}/credit-ledger`, { page, page_size: pageSize }),
   clientMembershipExpiration: (clientId, membershipId) => withPrefix(`/clientes/${clientId}/memberships/${membershipId}/expiration`),
   adminClientMembershipBeneficiaries: (clientId, membershipId) =>
     withPrefix(`/clientes/${clientId}/memberships/${membershipId}/beneficiaries`),

@@ -103,6 +103,7 @@ import {
   getClientByIdApi,
   getClientsPaginatedApi,
   getAllClientsForReportApi,
+  getClientMembershipCreditLedgerApi,
   updateClientMembershipExpirationApi,
   updateClientApi,
 } from '@/services/clientsApiService'
@@ -179,10 +180,10 @@ export function useMyMembershipsQuery({ enabled = false, refetchInterval = 15_00
   })
 }
 
-export function useMyCreditMovementsQuery({ page = 1, pageSize = 8, enabled = false, refetchInterval = 15_000 } = {}) {
+export function useMyCreditMovementsQuery({ page = 1, pageSize = 8, membershipId, enabled = false, refetchInterval = 15_000 } = {}) {
   return useQuery({
-    queryKey: queryKeys.myCreditMovements({ page, pageSize }),
-    queryFn: () => getMyCreditMovementsPaginatedApi({ page, pageSize }),
+    queryKey: queryKeys.myCreditMovements({ page, pageSize, membershipId }),
+    queryFn: () => getMyCreditMovementsPaginatedApi({ page, pageSize, membershipId }),
     enabled,
     placeholderData: (previousData) => previousData,
     refetchInterval,
@@ -1428,6 +1429,16 @@ export function useAdminClientDetailQuery(clientId, { enabled = false } = {}) {
   })
 }
 
+export function useAdminClientMembershipCreditLedgerQuery(clientId, membershipId, { page = 1, pageSize = 20, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.adminClientMembershipCreditLedger(clientId, membershipId, { page, pageSize }),
+    queryFn: () => getClientMembershipCreditLedgerApi(clientId, membershipId, { page, pageSize }),
+    enabled: Boolean(enabled && clientId && membershipId),
+    placeholderData: (previousData) => previousData,
+    ...shortDefaults,
+  })
+}
+
 function invalidateAdminClients(queryClient, clientId) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] }),
@@ -1437,6 +1448,7 @@ function invalidateAdminClients(queryClient, clientId) {
     queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+    queryClient.invalidateQueries({ queryKey: ['admin', 'clients', clientId, 'memberships'] }),
     queryClient.invalidateQueries({ queryKey: ['activity'] }),
   ])
 }
@@ -1559,6 +1571,7 @@ export function invalidateReservationSideEffects(queryClient, { occurrenceId, cl
     queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() }),
+    queryClient.invalidateQueries({ queryKey: ['admin', 'clients', userId, 'memberships'] }),
     queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() }),

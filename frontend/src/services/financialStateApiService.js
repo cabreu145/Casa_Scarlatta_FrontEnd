@@ -8,7 +8,7 @@ export async function getMyFinancialStateApi() {
   return mapFinancialStateToFrontend(payload ?? {})
 }
 
-export async function getMyCreditMovementsPaginatedApi({ page = 1, pageSize = 20 } = {}) {
-  const payload = await httpGet(ENDPOINTS.miCreditMovements({ page, pageSize }))
+export async function getMyCreditMovementsPaginatedApi({ page = 1, pageSize = 20, membershipId } = {}) {
+  const payload = await httpGet(ENDPOINTS.miCreditMovements({ page, pageSize, membershipId }))
   return normalizePaginatedResponse(payload, (item) => mapCreditMovement(item ?? {}))
 }

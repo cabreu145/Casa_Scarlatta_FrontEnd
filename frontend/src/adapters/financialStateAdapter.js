@@ -19,21 +19,39 @@ function mapMembership(membership) {
 }
 
 export function mapCreditMovement(movement = {}) {
+  const delta = Number(movement.delta ?? movement.amount ?? 0)
   return {
-    id: movement.id ?? null,
-    type: movement.type ?? null,
-    amount: movement.amount ?? 0,
+    id: movement.movement_id ?? movement.movementId ?? movement.id ?? null,
+    movementId: movement.movement_id ?? movement.movementId ?? movement.id ?? null,
+    membershipId: movement.membership_id ?? movement.membershipId ?? null,
+    packageId: movement.package_id ?? movement.packageId ?? null,
+    packageName: movement.package_name ?? movement.packageName ?? null,
+    type: movement.type ?? movement.reason ?? null,
+    reason: movement.reason ?? movement.type ?? null,
+    amount: delta,
+    delta,
     beforeBalance: movement.before_balance ?? movement.beforeBalance ?? null,
     balanceAfter: movement.balance_after ?? movement.balanceAfter ?? null,
     afterBalance: movement.after_balance ?? movement.afterBalance ?? movement.balance_after ?? movement.balanceAfter ?? null,
     displayTitle: movement.display_title ?? movement.displayTitle ?? null,
     displayDescription: movement.display_description ?? movement.displayDescription ?? '',
-    displayAmount: movement.display_amount ?? movement.displayAmount ?? movement.amount ?? 0,
+    displayAmount: movement.display_amount ?? movement.displayAmount ?? delta,
     displayAmountLabel: movement.display_amount_label ?? movement.displayAmountLabel ?? null,
     displayAmountMode: movement.display_amount_mode ?? movement.displayAmountMode ?? 'delta',
     createdAt: movement.created_at ?? movement.createdAt ?? null,
     reservationId: movement.reservation_id ?? movement.reservationId ?? null,
+    reservationStatus: movement.reservation_status ?? movement.reservationStatus ?? null,
     occurrenceId: movement.occurrence_id ?? movement.occurrenceId ?? null,
+    className: movement.class_name ?? movement.className ?? null,
+    classStartAt: movement.class_start_at ?? movement.classStartAt ?? null,
+    classDate: movement.class_date ?? movement.classDate ?? null,
+    classTime: movement.class_time ?? movement.classTime ?? null,
+    coachId: movement.coach_id ?? movement.coachId ?? null,
+    coachName: movement.coach_name ?? movement.coachName ?? null,
+    spotNumber: movement.spot_number ?? movement.spotNumber ?? null,
+    spots: Array.isArray(movement.spots) ? movement.spots : [],
+    quantity: Number(movement.quantity ?? 1),
+    spotsCount: Number(movement.spots_count ?? movement.spotsCount ?? 1),
   }
 }
 

@@ -43,6 +43,7 @@ import { normalizeDiscipline } from '@/utils/discipline'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { clampPage, paginateArray } from '@/utils/paginationUtils'
 import CoachAvatar from '@/components/common/CoachAvatar'
+import CreditMovementsGroupedList from '@/components/financial/CreditMovementsGroupedList'
 import NotificationsPanel from '@/components/layout/NotificationsPanel'
 import {
   formatPackagePriceLabel,
@@ -124,78 +125,6 @@ function resolveMembershipErrorMessage(error) {
   return raw || 'No se pudo actualizar la membresía compartida.'
 }
 
-function getCreditMovementTitle(movement) {
-  return movement?.displayTitle || movement?.display_title || movement?.type || 'Movimiento de crédito'
-}
-
-const UNLIMITED_CREDITS_THRESHOLD = 450
-
-function isUnlimitedCreditsValue(value) {
-  const numberValue = Number(value)
-  return Number.isFinite(numberValue) && numberValue >= UNLIMITED_CREDITS_THRESHOLD
-}
-
-function formatPackageCreditsDescription(credits) {
-  const numberValue = Number(credits)
-
-  if (isUnlimitedCreditsValue(numberValue)) {
-    return 'clases ilimitadas'
-  }
-
-  if (!Number.isFinite(numberValue)) {
-    return 'clases'
-  }
-
-  return `${numberValue} ${numberValue === 1 ? 'clase' : 'clases'}`
-}
-
-function getMovementAfterBalance(movement) {
-  return (
-    movement?.afterBalance ??
-    movement?.after_balance ??
-    movement?.balanceAfter ??
-    movement?.balance_after ??
-    null
-  )
-}
-
-function getCreditMovementDescription(movement) {
-  const type = movement?.type
-  const rawDescription = movement?.displayDescription || movement?.display_description || ''
-
-  if (type === 'package_purchase' || type === 'admin_package_assignment') {
-    const afterBalance = getMovementAfterBalance(movement)
-
-    if (afterBalance !== null && afterBalance !== undefined) {
-      return `Tu nuevo paquete incluye ${formatPackageCreditsDescription(afterBalance)}`
-    }
-  }
-
-  if (type === 'promotion_bonus_package') {
-    const afterBalance = getMovementAfterBalance(movement)
-
-    if (afterBalance !== null && afterBalance !== undefined) {
-      return `Tu paquete de regalo incluye ${formatPackageCreditsDescription(afterBalance)}`
-    }
-  }
-
-  return rawDescription
-}
-
-function getCreditMovementAmountMode(movement) {
-  return movement?.displayAmountMode || movement?.display_amount_mode || 'delta'
-}
-
-function formatCreditMovementAmount(movement) {
-  const rawAmount = movement?.displayAmount ?? movement?.display_amount ?? movement?.amount ?? 0
-  if (rawAmount == null || rawAmount === '') return ''
-  const amountNumber = Number(rawAmount)
-  if (!Number.isFinite(amountNumber)) return String(rawAmount)
-  if (amountNumber >= 450) return '+∞'
-  if (amountNumber <= -999) return '-∞'
-  return `${amountNumber > 0 ? '+' : ''}${amountNumber}`
-}
-
 // â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Mapea una reserva al shape interno usado por MisClasesCard / ClassCard
 function toClsShape(r) {
@@ -273,11 +202,19 @@ export default function ClientPanel() {
   const noPromoQuery = new URLSearchParams(location.search).get('noPromo') === 'true'
   const [activeSection, setActiveSection] = useState(sectionQuery === 'pagos' ? 'pagos' : 'inicio')
   const [financialHistoryPage, setFinancialHistoryPage] = useState(1)
+  const [loadedCreditMovements, setLoadedCreditMovements] = useState([])
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const membershipPackagesQuery = useMembershipPackagesQuery({ enabled: useApiFinancialState && activeSection === 'pagos' })
   const financialStateQuery = useMyFinancialStateQuery({ enabled: useApiFinancialState && usuario?.rol === 'cliente' })
+  const apiFinancialState = financialStateQuery.data ?? null
   const membershipsQuery = useMyMembershipsQuery({ enabled: useApiFinancialState && activeSection === 'pagos' && usuario?.rol === 'cliente' })
-  const creditMovementsQuery = useMyCreditMovementsQuery({ page: financialHistoryPage, pageSize: 8, enabled: useApiFinancialState && usuario?.rol === 'cliente' })
+  const activeMembershipId = apiFinancialState?.activeMembership?.membershipId ?? apiFinancialState?.activeMembership?.id ?? null
+  const creditMovementsQuery = useMyCreditMovementsQuery({
+    page: financialHistoryPage,
+    pageSize: 8,
+    membershipId: activeMembershipId,
+    enabled: useApiFinancialState && activeSection === 'pagos' && usuario?.rol === 'cliente' && Boolean(activeMembershipId),
+  })
   const notificationsQuery = useNotificationsQuery({
     page: 1,
     pageSize: 5,
@@ -287,7 +224,6 @@ export default function ClientPanel() {
   const [shareMembershipEmail, setShareMembershipEmail] = useState('')
   const [shareMembershipSubmitting, setShareMembershipSubmitting] = useState(false)
   const addMyMembershipBeneficiaryMutation = useAddMyMembershipBeneficiaryMutation()
-  const apiFinancialState = financialStateQuery.data ?? null
   const apiMembershipPackages = membershipPackagesQuery.data ?? []
   const apiMemberships = membershipsQuery.data ?? []
   const apiCreditMovementsPage = useMemo(
@@ -296,7 +232,7 @@ export default function ClientPanel() {
       page: creditMovementsQuery.data?.page ?? financialHistoryPage,
       pageSize: creditMovementsQuery.data?.pageSize ?? 8,
       total: creditMovementsQuery.data?.total ?? 0,
-      totalPages: creditMovementsQuery.data?.totalPages ?? 1,
+      totalPages: Math.max(1, Math.ceil((creditMovementsQuery.data?.total ?? 0) / (creditMovementsQuery.data?.pageSize ?? 8))),
       isLoading: creditMovementsQuery.isLoading,
       error: creditMovementsQuery.error,
     }),
@@ -378,7 +314,7 @@ export default function ClientPanel() {
     if (useApiFinancialState) {
       queryClient.invalidateQueries({ queryKey: queryKeys.myFinancialState })
       queryClient.invalidateQueries({ queryKey: queryKeys.myMemberships })
-      queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements({ page: financialHistoryPage, pageSize: 8 }) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.myCreditMovements() })
       queryClient.invalidateQueries({ queryKey: queryKeys.myPayments() })
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() })
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() })
@@ -387,6 +323,24 @@ export default function ClientPanel() {
     }
     setFinancialRefreshTick((tick) => tick + 1)
   }, [financialHistoryPage, queryClient, useApiFinancialState])
+
+  useEffect(() => {
+    setFinancialHistoryPage(1)
+    setLoadedCreditMovements([])
+  }, [activeMembershipId])
+
+  useEffect(() => {
+    const incoming = creditMovementsQuery.data?.items
+    if (!Array.isArray(incoming)) return
+    setLoadedCreditMovements((current) => {
+      const unique = new Map()
+      if (financialHistoryPage > 1) {
+        current.forEach((movement) => unique.set(String(movement.movementId ?? movement.id), movement))
+      }
+      incoming.forEach((movement) => unique.set(String(movement.movementId ?? movement.id), movement))
+      return [...unique.values()]
+    })
+  }, [creditMovementsQuery.data?.items, financialHistoryPage])
   const apiClassIdsSignature = useMemo(
     () => clases
       .filter(isPublished)
@@ -2121,11 +2075,11 @@ export default function ClientPanel() {
             </div>
 
             <RecentPaymentsStatusPanel enabled={useApiFinancialState && activeSection === 'pagos'} onFinancialRefreshRequested={requestFinancialRefresh} />
-
+              <br />
             <div className={s.card}>
               <div className={s.cardHeader}>
-                <div className={s.cardTitle}>{useApiFinancialState ? 'Movimientos de crédito' : 'Historial de pagos'}</div>
-                <div className={s.cardSubtitle}>{useApiFinancialState ? 'Actividad reciente de membresía' : 'Últimas transacciones'}</div>
+                <div className={s.cardTitle}>{useApiFinancialState ? 'Historial de créditos' : 'Historial de pagos'}</div>
+                <div className={s.cardSubtitle}>{useApiFinancialState ? 'Cada lugar reservado consume 1 crédito. Si reservas varios lugares, aparecerán agrupados por clase.' : 'Últimas transacciones'}</div>
               </div>
               <div className={s.cardBody}>
                 {useApiFinancialState && apiCreditMovementsPage.isLoading ? (
@@ -2138,39 +2092,10 @@ export default function ClientPanel() {
                   </div>
                 ) : useApiFinancialState && (apiCreditMovementsPage.total ?? 0) === 0 && historialPagos.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>
-                    Aún no hay movimientos registrados.
+                    Aún no hay movimientos de crédito para este paquete.
                   </div>
                 ) : useApiFinancialState && (apiCreditMovementsPage.total ?? 0) > 0 ? (
-                  paginatedFinancialHistory.items.map((mv) => (
-                      (() => {
-                        const title = getCreditMovementTitle(mv)
-                        const description = getCreditMovementDescription(mv)
-                        const amountMode = getCreditMovementAmountMode(mv)
-                        const amountLabel = formatCreditMovementAmount(mv)
-                        const shouldShowAmount = amountMode !== 'hidden'
-                        const numericAmount = Number(mv?.displayAmount ?? mv?.display_amount ?? mv?.amount ?? 0)
-                        const amountStyle = numericAmount < 0 ? { color: '#e53e3e' } : { color: '#16a34a' }
-                        return (
-                      <div key={`mv-${mv.id ?? mv.createdAt}`} className={s.historyRow}>
-                        <div className={s.historyIcon}>💳</div>
-                        <div style={{ flex: 1 }}>
-                          <div className={s.historyDesc}>{title}</div>
-                          <div className={s.historyDate}>{mv.createdAt ? formatFechaISO(mv.createdAt.slice(0, 10)) : 'Sin fecha'}</div>
-                          {description && (
-                            <div className={s.historyDate} style={{ marginTop: 4 }}>
-                              {description}
-                            </div>
-                          )}
-                        </div>
-                        {shouldShowAmount && (
-                          <div className={s.historyAmount} style={amountStyle}>
-                            {amountLabel}
-                          </div>
-                        )}
-                      </div>
-                        )
-                      })()
-                    ))
+                  <CreditMovementsGroupedList movements={loadedCreditMovements} variant="client" />
                 ) : historialPagos.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--muted)', fontSize: 13 }}>
                     No hay transacciones registradas.
@@ -2194,7 +2119,17 @@ export default function ClientPanel() {
                       </div>
                     ))
                 )}
-                {(useApiFinancialState ? (apiCreditMovementsPage.total ?? 0) > 0 : financialHistorySource.length > 0) && (
+                {useApiFinancialState && loadedCreditMovements.length < (apiCreditMovementsPage.total ?? 0) ? (
+                  <button
+                    type="button"
+                    className={`${s.btn} ${s.btnOutline}`}
+                    style={{ width: '100%', marginTop: 14 }}
+                    disabled={creditMovementsQuery.isFetching}
+                    onClick={() => setFinancialHistoryPage((page) => page + 1)}
+                  >
+                    {creditMovementsQuery.isFetching ? 'Cargando movimientos...' : 'Ver más movimientos'}
+                  </button>
+                ) : !useApiFinancialState && financialHistorySource.length > 0 ? (
                   <PaginationControls
                     page={paginatedFinancialHistory.page}
                     totalPages={paginatedFinancialHistory.totalPages}
@@ -2202,7 +2137,7 @@ export default function ClientPanel() {
                     onPrev={() => setFinancialHistoryPage((p) => Math.max(1, p - 1))}
                     onNext={() => setFinancialHistoryPage((p) => Math.min(paginatedFinancialHistory.totalPages, p + 1))}
                   />
-                )}
+                ) : null}
               </div>
             </div>
           </div>

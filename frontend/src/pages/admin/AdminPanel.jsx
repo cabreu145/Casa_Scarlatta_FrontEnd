@@ -1,6 +1,7 @@
 ﻿import { useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import PasswordInput from '@/components/ui/PasswordInput'
+import CreditMovementsGroupedList from '@/components/financial/CreditMovementsGroupedList'
 import WaitlistModal from '@/components/shared/WaitlistModal'
 import DashboardSection from './sections/DashboardSection'
 import CoachesSection from './sections/CoachesSection'
@@ -86,6 +87,7 @@ import { resolvePackagePurchaseErrorMessage } from '@/utils/packagePurchasePolic
 import { queryKeys } from '@/api/queryKeys'
 import {
   useAdminClientDetailQuery,
+  useAdminClientMembershipCreditLedgerQuery,
   useAdminClientPaymentsQuery,
   useAdminClientsQuery,
   useAdminClientsActiveCountQuery,
@@ -559,6 +561,17 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     pageSize: 20,
     enabled: useApiClients && Boolean(modalVerUsuario?.id),
   })
+  const activeMembershipIdForLedger = apiClientDetailQuery.data?.activeMembership?.membershipId ?? modalVerUsuario?.activeMembership?.membershipId ?? null
+  const [creditLedgerPage, setCreditLedgerPage] = useState(1)
+  const clientCreditLedgerQuery = useAdminClientMembershipCreditLedgerQuery(
+    modalVerUsuario?.id,
+    activeMembershipIdForLedger,
+    {
+      page: creditLedgerPage,
+      pageSize: 20,
+      enabled: useApiClients && Boolean(modalVerUsuario?.id && activeMembershipIdForLedger),
+    }
+  )
   const cancelPendingPaymentMutation = useCancelPendingPaymentAdminMutation()
   const [cancelingPaymentRef, setCancelingPaymentRef] = useState(null)
   const modalAlumnosOccurrenceId = modalAlumnosClase?.occurrenceId ?? modalAlumnosClase?.occurrence_id ?? null
@@ -597,6 +610,10 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     status: 'active',
     enabled: useApiPos,
   })
+
+  useEffect(() => {
+    setCreditLedgerPage(1)
+  }, [modalVerUsuario?.id, activeMembershipIdForLedger])
 
   const loadApiCoaches = useCallback(async () => {
     if (!useApiCoaches) return
@@ -4019,6 +4036,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                     No hay membresía activa para editar.
                   </div>
                 )}
+
                 {useApiClients && (
                   <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <input className={styles.formInput} value={editClientForm.nombre} placeholder="Nombre"
@@ -4447,27 +4465,39 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   </div>
                 )}
 
-                {useApiClients && (
-                  <div style={{ marginBottom: 24 }}>
-                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', textTransform: 'uppercase', marginBottom: 12 }}>
-                      Movimientos recientes ({u.recentCreditMovements?.length ?? 0})
+                {useApiClients && activeMembership?.membershipId && (
+                  <div style={{ marginTop: 18, padding: '16px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 6 }}>
+                      Historial de créditos del paquete
                     </div>
-                    {(u.recentCreditMovements?.length ?? 0) === 0 ? (
-                      <div style={{ color: 'var(--muted)', fontSize: 13 }}>Sin movimientos recientes.</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
+                      Cada grupo corresponde a una clase y horario. Dentro puedes ver cada lugar reservado o devuelto.
+                    </div>
+                    {clientCreditLedgerQuery.isLoading ? (
+                      <div style={{ padding: '18px 0', color: 'var(--muted)', fontSize: 13 }}>Cargando historial de créditos...</div>
+                    ) : clientCreditLedgerQuery.error ? (
+                      <div style={{ padding: '18px 0', color: '#f87171', fontSize: 13 }}>No pudimos cargar el historial de créditos. Intenta nuevamente.</div>
+                    ) : (clientCreditLedgerQuery.data?.items ?? []).length === 0 ? (
+                      <div style={{ padding: '18px 0', color: 'var(--muted)', fontSize: 13 }}>Aún no hay movimientos de crédito para este paquete.</div>
                     ) : (
-                      <div style={{ display: 'grid', gap: 8 }}>
-                        {u.recentCreditMovements.map((movement, index) => (
-                          <div key={movement.id ?? `movement-${index}`} style={{ display: 'flex', justifyContent: 'space-between', padding: 10, border: '1px solid var(--muted-2)', borderRadius: 8 }}>
-                            <span>{movement.reason ?? 'Movimiento'}</span>
-                            <strong>{movement.amount > 0 ? '+' : ''}{movement.amount}</strong>
-                          </div>
-                        ))}
-                      </div>
+                      <>
+                        <CreditMovementsGroupedList movements={clientCreditLedgerQuery.data?.items ?? []} admin />
+                        {(clientCreditLedgerQuery.data?.total ?? 0) > (clientCreditLedgerQuery.data?.pageSize ?? 20) && (
+                          <PaginationControls
+                            page={clientCreditLedgerQuery.data?.page ?? creditLedgerPage}
+                            totalPages={Math.max(1, Math.ceil((clientCreditLedgerQuery.data?.total ?? 0) / (clientCreditLedgerQuery.data?.pageSize ?? 20)))}
+                            label="Movimientos"
+                            onPrev={() => setCreditLedgerPage((page) => Math.max(1, page - 1))}
+                            onNext={() => setCreditLedgerPage((page) => Math.min(Math.max(1, Math.ceil((clientCreditLedgerQuery.data?.total ?? 0) / (clientCreditLedgerQuery.data?.pageSize ?? 20))), page + 1))}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 )}
 
                 {/* ── HISTORIAL DE RESERVAS ── */}
+                <br />
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.15em', color: 'var(--muted)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', marginBottom: 12 }}>
                     Historial de reservas ({reservasU.length})
