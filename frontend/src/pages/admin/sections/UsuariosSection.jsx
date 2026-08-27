@@ -145,9 +145,11 @@ export default function UsuariosSection({
               <tr>
                 {userSelectMode && <th style={{ width: 36 }} />}
                 <th>Usuario</th>
+                <th>Registro</th>
                 <th>Paquete</th>
                 <th>Creditos</th>
                 <th>Vencimiento</th>
+                <th>Dias sin renovar</th>
                 <th>Ultima visita</th>
                 <th>Reservas</th>
                 <th>Estado</th>
@@ -156,7 +158,7 @@ export default function UsuariosSection({
             </thead>
             <tbody>
               {!isLoading && usuariosVisibles.length === 0 && (
-                <tr><td colSpan={userSelectMode ? 9 : 8}>No hay clientes para estos filtros.</td></tr>
+                <tr><td colSpan={userSelectMode ? 11 : 10}>No hay clientes para estos filtros.</td></tr>
               )}
               {usuariosVisibles.map((client) => {
                 const selected = userSelectedIds.has(client.id)
@@ -186,9 +188,11 @@ export default function UsuariosSection({
                         </div>
                       </div>
                     </td>
+                    <td>{client.createdAt ?? '-'}</td>
                     <td>{client.paquete || '-'}</td>
                     <td>{client.creditsBalance ?? client.clasesPaquete ?? 0}</td>
                     <td>{client.activeMembership?.expiresAt ?? client.paqueteInfo?.fechaVencimiento ?? '-'}</td>
+                    <td>{client.daysSinceExpired != null ? `${client.daysSinceExpired} dias` : '-'}</td>
                     <td>{client.lastVisit ?? '-'}</td>
                     <td>{client.reservationsCount ?? '-'}</td>
                     <td><Tag color={statusColor}>{statusLabel}</Tag></td>

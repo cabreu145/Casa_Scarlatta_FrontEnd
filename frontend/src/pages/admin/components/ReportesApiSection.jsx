@@ -2,6 +2,8 @@ import { Fragment, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import DateNavigator from '@/components/ui/DateNavigator'
 import {
+  useClientPackagePurchaseHistoryQuery,
+  useClientRetentionReportQuery,
   useCoachPaymentsReportQuery,
   useCoachesReportQuery,
   useFinanceReportQuery,
@@ -9,6 +11,7 @@ import {
   useDeletePayTableMutation,
   usePayTableQuery,
   useUpdatePayTableMutation,
+  useInventoryMovementHistoryQuery,
   useInventoryReportQuery,
   useOccupancyByDisciplineReportQuery,
   usePackagesReportQuery,
@@ -25,8 +28,8 @@ import {
 } from '@/hooks/useApiQueries'
 import { useAuth } from '@/context/AuthContext'
 import { hasPermission } from '@/auth/permissions'
-import { abrirReportePDF, abrirCortesDetalladoPDF, abrirInventarioDetalladoPDF } from '@/utils/reportePDF'
-import { buildReportFilename, downloadCsvFromRows } from '@/utils/reportExport'
+import { abrirReportePDF, abrirCortesDetalladoPDF, abrirInventarioDetalladoPDF, abrirFinancieroDetalladoPDF, abrirUsuariosDetalladoPDF } from '@/utils/reportePDF'
+import { buildReportFilename, downloadCsvFromRows, downloadCsvFromBlocks } from '@/utils/reportExport'
 import { exportFinanceCsv } from '@/services/financeApiService'
 import { getCashClosingDetail } from '@/services/cashClosingsApiService'
 import styles from '@/styles/dashboard.module.css'
@@ -445,45 +448,104 @@ function buildCorteDetailedRows(cortes = []) {
   return rows
 }
 
-function buildInventoryDetailedRows(reporte) {
+const CLIENT_RETENTION_STATUS_LABEL = { nuevo: 'Nuevo', recurrente: 'Recurrente', en_riesgo: 'En riesgo' }
+
+function buildClientRetentionRows(reporte) {
   if (!reporte) return []
-  const rows = []
-  const blankRow = { SKU: '—', Producto: '', 'Stock inicial': '—', Entradas: '—', Ajustes: '—', Vendidos: '—', 'Stock actual': '—', 'Stock mínimo': '—', Estatus: '—' }
+  return reporte.detail.map((row) => ({
+    Cliente: row.name,
+    Email: row.email,
+    'Compras de paquete': row.purchasesCount,
+    'Primera compra': row.firstPurchaseAt ?? '—',
+    'Última compra': row.lastPurchaseAt ?? '—',
+    'Días sin comprar': row.daysSinceLastPurchase,
+    Estado: CLIENT_RETENTION_STATUS_LABEL[row.status] || row.status,
+  }))
+}
+
+function buildFinancialCsvBlocks(finance, transactionRows) {
+  const itemSummary = finance?.itemSummary ?? []
+  const s = finance?.summary ?? {}
+
+  const totalCantidad = itemSummary.reduce((sum, r) => sum + Number(r.quantity ?? 0), 0)
+  const totalIngresosResumen = itemSummary.reduce((sum, r) => sum + Number(r.revenueMxn ?? 0), 0)
+  const resumenRows = [
+    ['Producto / Paquete', 'Tipo', 'Cantidad', 'Ingresos'],
+    ...itemSummary.map((r) => [r.name, r.itemType === 'package' ? 'Paquete' : 'Producto', r.quantity, r.revenueMxn]),
+    ['Total', '', totalCantidad, totalIngresosResumen],
+  ]
+
+  const rows = transactionRows ?? []
+  const detalleRows = [
+    ['Fecha', 'Hora', 'Folio', 'Tipo', 'Concepto', 'Producto', 'Método', 'Monto'],
+    ...rows.map((r) => [r.Fecha, r.Hora, r.Folio, r.Tipo, r.Concepto, r.Producto, r.Método, r.Monto]),
+    [],
+    ['INGRESOS', '', '', '', '', '', '', s.salesTotalMxn ?? 0],
+    ['GASTOS', '', '', '', '', '', '', -(s.expensesTotalMxn ?? 0)],
+    ['UTILIDAD', '', '', '', '', '', '', s.netTotalMxn ?? 0],
+  ]
+
+  return [
+    { title: 'RESUMEN POR PRODUCTO / PAQUETE', rows: resumenRows },
+    { title: 'DETALLE DE VENTAS Y GASTOS', rows: detalleRows },
+  ]
+}
+
+function buildUsersCsvBlocks(usersDetailRows) {
+  const conPaquete = usersDetailRows.filter((r) => r.Paquete !== '—')
+  const sinPaquete = usersDetailRows.filter((r) => r.Paquete === '—')
+
+  const conPaqueteRows = [
+    ['Cliente', 'Email', 'Paquete', 'Estado', 'Vencimiento', 'Créditos'],
+    ...conPaquete.map((r) => [r.Cliente, r.Email, r.Paquete, r.Estado, r.Vencimiento, r.Créditos]),
+  ]
+  // Paquete y Vencimiento se omiten aqui porque para este grupo siempre estan
+  // vacios (por definicion no tienen paquete ni fecha de vencimiento).
+  const sinPaqueteRows = [
+    ['Cliente', 'Email', 'Estado', 'Créditos'],
+    ...sinPaquete.map((r) => [r.Cliente, r.Email, r.Estado, r.Créditos]),
+  ]
+
+  return [
+    { title: 'CLIENTES CON PAQUETE', rows: conPaqueteRows },
+    { title: 'CLIENTES SIN PAQUETE', rows: sinPaqueteRows },
+  ]
+}
+
+function buildInventoryCsvBlocks(reporte) {
+  if (!reporte) return []
   const s = reporte.summary || {}
-  ;[
-    ['Productos activos', s.activeProducts],
-    ['Productos con entradas en el periodo', s.productsWithEntries],
-    ['Unidades vendidas en el periodo', s.unitsSold],
-    ['Existencia actual total', s.currentStockTotal],
-  ].forEach(([label, value]) => {
-    rows.push({ Sección: 'Resumen', ...blankRow, Producto: label, 'Stock actual': value ?? 0 })
-  })
-  if (reporte.reliabilityWarning) {
-    rows.push({ Sección: 'Aviso', ...blankRow, Producto: reporte.reliabilityWarning })
-  }
-  const pushSection = (label, items = []) => {
-    items.forEach((item) => {
-      rows.push({
-        Sección: label,
-        SKU: item.sku,
-        Producto: item.name,
-        'Stock inicial': item.stockInicial,
-        Entradas: item.entradas,
-        Ajustes: item.ajustes,
-        Vendidos: item.vendidos,
-        'Stock actual': item.stockActual,
-        'Stock mínimo': item.stockMinimo,
-        Estatus: item.estatus,
-      })
-    })
-  }
-  pushSection('Detalle por producto', reporte.detail)
-  pushSection('Top vendidos', reporte.topSold)
-  ;(reporte.noMovement ?? []).forEach((item) => {
-    rows.push({ Sección: 'Sin movimiento', ...blankRow, SKU: item.sku, Producto: item.name })
-  })
-  pushSection('Agotados', reporte.outOfStock)
-  return rows
+
+  const resumenRows = [
+    ['Indicador', 'Valor'],
+    ['Productos activos', s.activeProducts ?? 0],
+    ['Productos con entradas en el periodo', s.productsWithEntries ?? 0],
+    ['Unidades vendidas en el periodo', s.unitsSold ?? 0],
+    ['Existencia actual total', s.currentStockTotal ?? 0],
+    ...(reporte.reliabilityWarning ? [[], ['Aviso', reporte.reliabilityWarning]] : []),
+  ]
+
+  const fullCols = ['SKU', 'Producto', 'Stock inicial', 'Reabastecido', 'Ajustes', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus']
+  const toFullRow = (item) => [item.sku, item.name, item.stockInicial, item.entradas, item.ajustes, item.vendidos, item.stockActual, item.stockMinimo, item.estatus]
+
+  const detalleRows = [fullCols, ...(reporte.detail ?? []).map(toFullRow)]
+  const agotadosRows = [fullCols, ...(reporte.outOfStock ?? []).map(toFullRow)]
+  const topVendidosRows = [
+    ['SKU', 'Producto', 'Vendidos'],
+    ...(reporte.topSold ?? []).map((item) => [item.sku, item.name, item.vendidos]),
+  ]
+  const sinMovimientoRows = [
+    ['SKU', 'Producto'],
+    ...(reporte.noMovement ?? []).map((item) => [item.sku, item.name]),
+  ]
+
+  return [
+    { title: 'RESUMEN', rows: resumenRows },
+    { title: 'DETALLE POR PRODUCTO', rows: detalleRows },
+    { title: 'AGOTADOS ACTUALMENTE', rows: agotadosRows },
+    { title: 'TOP 5 MÁS VENDIDOS', rows: topVendidosRows },
+    { title: 'SIN MOVIMIENTO EN EL PERIODO', rows: sinMovimientoRows },
+  ]
 }
 
 export default function ReportesApiSection({ inPanel = false }) {
@@ -499,6 +561,20 @@ export default function ReportesApiSection({ inPanel = false }) {
   const packagesQuery = usePackagesReportQuery({ from, to, enabled: true })
   const posQuery = usePosReportQuery({ from, to, enabled: true })
   const inventoryQuery = useInventoryReportQuery({ from, to, enabled: true })
+  const [inventoryHistoryExpandedId, setInventoryHistoryExpandedId] = useState(null)
+  const inventoryHistoryQuery = useInventoryMovementHistoryQuery({
+    productId: inventoryHistoryExpandedId,
+    from,
+    to,
+    enabled: inventoryHistoryExpandedId != null,
+  })
+  const clientRetentionQuery = useClientRetentionReportQuery({ riskThresholdDays: 45, enabled: true })
+  const [clientHistoryExpandedId, setClientHistoryExpandedId] = useState(null)
+  const [clientRetentionSearch, setClientRetentionSearch] = useState('')
+  const clientHistoryQuery = useClientPackagePurchaseHistoryQuery({
+    userId: clientHistoryExpandedId,
+    enabled: clientHistoryExpandedId != null,
+  })
   const coachesQuery = useCoachesReportQuery({ from, to, enabled: true })
   const topClassesQuery = useTopClassesReportQuery({ from, to, limit: 5, enabled: true })
   const occupancyQuery = useOccupancyByDisciplineReportQuery({ from, to, enabled: true })
@@ -523,6 +599,8 @@ export default function ReportesApiSection({ inPanel = false }) {
     isActive: true,
   })
   const [coachPaymentsExpandedId, setCoachPaymentsExpandedId] = useState(null)
+  const [financeTransactionsExpanded, setFinanceTransactionsExpanded] = useState(false)
+  const [clientRetentionExpanded, setClientRetentionExpanded] = useState(false)
   const [exportingFinanceType, setExportingFinanceType] = useState(null)
 
   const handleExportFinanceCsv = async (type) => {
@@ -552,6 +630,8 @@ export default function ReportesApiSection({ inPanel = false }) {
       cashClosingsCount: 0,
       paymentMethods: { cashMxn: 0, cardMxn: 0, transferMxn: 0, otherMxn: 0 },
     },
+    itemSummary: [],
+    transactions: [],
   }
   const users = usersQuery.data ?? {
     activeClients: 0,
@@ -577,6 +657,19 @@ export default function ReportesApiSection({ inPanel = false }) {
     packageRevenueMxn: 0,
     paymentMethods: { cashMxn: 0, cardMxn: 0, transferMxn: 0, otherMxn: 0 },
     productCategories: [],
+  }
+  const inventory = inventoryQuery.data ?? {
+    summary: { activeProducts: 0, productsWithEntries: 0, unitsSold: 0, currentStockTotal: 0 },
+    detail: [],
+    topSold: [],
+    noMovement: [],
+    outOfStock: [],
+    reliabilityWarning: null,
+  }
+  const clientRetention = clientRetentionQuery.data ?? {
+    riskThresholdDays: 45,
+    summary: { clientsWithPackagePurchase: 0, recurringClients: 0, recurrenceRatePct: 0, atRiskClients: 0 },
+    detail: [],
   }
   const coaches = coachesQuery.data?.items ?? []
   const topClasses = topClassesQuery.data?.items ?? []
@@ -642,7 +735,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           const folio = t.folio
             || t.raw?.folio || t.raw?.code || t.raw?.external_id || t.raw?.payment_id
             || folioByAmountAndDay.get(`${fecha}_${t.montoMxn}`)
-            || '—'
+            || (t.tipo === 'mercado_pago' ? 'Online' : '—')
           return {
             Fecha:    fecha,
             Hora:     hora,
@@ -690,16 +783,25 @@ export default function ReportesApiSection({ inPanel = false }) {
 
     // Append expense rows so gastos appear in the financial report
     const rawExpenses = expensesQuery.data?.items ?? []
-    const expenseRows = rawExpenses.map((e) => ({
-      Fecha:    e.expenseDate ?? '—',
-      Hora:     '—',
-      Folio:    'GASTO',
-      Tipo:     'Gasto',
-      Concepto: e.category || '—',
-      Producto: e.description || '—',
-      Método:   metodosLabel[(e.paymentMethod ?? '').toLowerCase()] || e.paymentMethod || '—',
-      Monto:    -(e.amountMxn ?? 0),
-    }))
+    const expenseRows = rawExpenses.map((e) => {
+      // expenseDate es solo la fecha del gasto (se puede registrar con fecha
+      // atrasada); la hora real de registro viene de createdAt.
+      const createdAtRaw = String(e.createdAt ?? '')
+      const createdAtObj = createdAtRaw ? new Date(createdAtRaw) : null
+      const hora = createdAtObj && !Number.isNaN(createdAtObj.getTime())
+        ? createdAtObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' })
+        : '—'
+      return {
+        Fecha:    e.expenseDate ?? '—',
+        Hora:     hora,
+        Folio:    'GASTO',
+        Tipo:     'Gasto',
+        Concepto: e.category || '—',
+        Producto: e.description || '—',
+        Método:   metodosLabel[(e.paymentMethod ?? '').toLowerCase()] || e.paymentMethod || '—',
+        Monto:    -(e.amountMxn ?? 0),
+      }
+    })
 
     return [...incomeRows, ...expenseRows]
   }, [salesItems, finance, folioByAmountAndDay, expensesQuery.data])
@@ -707,25 +809,29 @@ export default function ReportesApiSection({ inPanel = false }) {
   const allClients = allClientsQuery.data?.items ?? []
 
   const packagesDetailRows = useMemo(() => {
-    const clientMap = new Map(allClients.map((c) => [String(c.id), c]))
+    // Solo ventas que de verdad incluyen un paquete (no basta con tener cliente
+    // asociado — una venta de solo agua tambien puede tener cliente).
+    const packageSales = salesItems.filter((sale) =>
+      Array.isArray(sale.items) && sale.items.some((i) => (i.type || i.itemType || '').toLowerCase() === 'package')
+    )
 
-    // POS package sales: those associated with a customer
-    const packageSales = salesItems.filter((sale) => !!(sale.customerId || sale.customer_id))
-
-    const posRows_ = packageSales.map((sale) => {
+    // Una fila por paquete (no por venta), para no mezclar el monto de un
+    // producto suelto que haya ido en la misma compra.
+    const posRows_ = packageSales.flatMap((sale) => {
       const raw     = String(sale.createdAt ?? sale.created_at ?? '')
       const dateObj = raw ? new Date(raw) : null
       const valid   = dateObj && !Number.isNaN(dateObj.getTime())
       const fecha   = valid ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' }) : '—'
       const hora    = valid ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' }) : '—'
       const cliente = sale.customerName || sale.customer_name || '—'
-      const clientId = String(sale.customerId ?? sale.customer_id ?? '')
-      const clientData = clientMap.get(clientId)
-      const itemName = Array.isArray(sale.items) && sale.items.length
-        ? sale.items.map((i) => i.name || i.nombre || i.displayName || '').filter((n) => n && n !== 'Item').join(', ')
-        : ''
-      const paquete = itemName || clientData?.paquete || '—'
-      return { Fecha: fecha, Hora: hora, Cliente: cliente, Paquete: paquete, Monto: sale.totalMxn ?? sale.total_mxn ?? 0 }
+      const packageItems = sale.items.filter((i) => (i.type || i.itemType || '').toLowerCase() === 'package')
+      return packageItems.map((i) => ({
+        Fecha: fecha,
+        Hora: hora,
+        Cliente: cliente,
+        Paquete: i.name || i.nombre || i.displayName || '—',
+        Monto: i.lineTotalMxn ?? i.line_total_mxn ?? (sale.totalMxn ?? sale.total_mxn ?? 0),
+      }))
     })
 
     // Mercado Pago transactions are exclusively package/membership sales
@@ -760,31 +866,38 @@ export default function ReportesApiSection({ inPanel = false }) {
     ]
 
     return [...transactionRows, ...summaryRows]
-  }, [salesItems, packagesRows, packagesReport, allClients, finance])
+  }, [salesItems, packagesRows, packagesReport, finance])
 
   const posDetailRows = useMemo(() => {
     if (!salesItems.length) return posRows
-    return salesItems.map((sale) => {
+    // Una fila por producto (no una fila por venta) para que una compra mixta
+    // (ej. agua + gomitas en el mismo ticket) se lea como dos renglones claros
+    // en vez de un solo "agua, gomitas" combinado.
+    return salesItems.flatMap((sale) => {
       const raw     = String(sale.createdAt ?? sale.created_at ?? '')
       const dateObj = raw ? new Date(raw) : null
       const valid   = dateObj && !Number.isNaN(dateObj.getTime())
       const fecha   = valid ? dateObj.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Merida' }) : '—'
       const hora    = valid ? dateObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Merida' }) : '—'
       const items   = Array.isArray(sale.items) ? sale.items : []
-      const producto = items.map((i) => i.name || i.nombre || i.displayName || '').filter(Boolean).join(', ') || '—'
-      const cantidad = items.reduce((sum, i) => sum + (i.quantity ?? 1), 0) || 1
       const metodosLabel = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', mercado_pago: 'Mercado Pago' }
       const metodo = metodosLabel[(sale.paymentMethod ?? sale.payment_method ?? '').toLowerCase()] || sale.paymentMethod || '—'
       const cliente = sale.customerName || sale.customer_name || '—'
-      return {
+      if (!items.length) {
+        return [{
+          Fecha: fecha, Hora: hora, Cliente: cliente, Producto: '—', Cantidad: 1, Método: metodo,
+          Monto: sale.totalMxn ?? sale.total_mxn ?? 0,
+        }]
+      }
+      return items.map((i) => ({
         Fecha:    fecha,
         Hora:     hora,
         Cliente:  cliente,
-        Producto: producto,
-        Cantidad: cantidad,
+        Producto: i.name || i.nombre || i.displayName || '—',
+        Cantidad: i.quantity ?? 1,
         Método:   metodo,
-        Monto:    sale.totalMxn ?? sale.total_mxn ?? 0,
-      }
+        Monto:    i.lineTotalMxn ?? i.line_total_mxn ?? 0,
+      }))
     })
   }, [salesItems, posRows])
   const usersDetailRows = useMemo(() => {
@@ -1039,22 +1152,53 @@ export default function ReportesApiSection({ inPanel = false }) {
         <ReportCard
           icono="💰"
           titulo="Reporte financiero"
-          descripcion="Ingresos, gastos, utilidad neta y métodos de pago."
-          onCsv={() => exportCsv('reporte-financiero', financeTransactionRows, ['Fecha', 'Hora', 'Folio', 'Tipo', 'Concepto', 'Producto', 'Método', 'Monto'])}
-          onPdf={() => exportPdf('financiero', 'Reporte Financiero operativo', financeTransactionRows)}
+          descripcion="Ingresos, gastos, utilidad neta, resumen por producto/paquete y detalle de ventas."
+          onCsv={() => downloadCsvFromBlocks({
+            blocks: buildFinancialCsvBlocks(finance, financeTransactionRows),
+            filename: buildReportFilename('reporte-financiero', from, to, 'csv'),
+            emptyMessage: 'No hay datos para exportar.',
+          })}
+          onPdf={() => abrirFinancieroDetalladoPDF({
+            titulo: 'Reporte Financiero operativo',
+            finance,
+            transactionRows: financeTransactionRows,
+            periodo: `${formatDateMx(from)} a ${formatDateMx(to)}`,
+            siteInfo,
+          })}
         />
         <ReportCard
           icono="👥"
           titulo="Reporte de usuarios"
           descripcion="Estado de clientes y membresías activas."
-          onCsv={() => exportCsv('reporte-usuarios', usersDetailRows, ['Cliente', 'Email', 'Paquete', 'Estado', 'Vencimiento', 'Créditos'])}
-          onPdf={() => exportPdf('usuarios', 'Reporte de Usuarios operativo', usersDetailRows)}
+          onCsv={() => downloadCsvFromBlocks({
+            blocks: buildUsersCsvBlocks(usersDetailRows),
+            filename: buildReportFilename('reporte-usuarios', from, to, 'csv'),
+            emptyMessage: 'No hay datos para exportar.',
+          })}
+          onPdf={() => abrirUsuariosDetalladoPDF({
+            titulo: 'Reporte de Usuarios operativo',
+            conPaquete: usersDetailRows.filter((r) => r.Paquete !== '—'),
+            sinPaquete: usersDetailRows.filter((r) => r.Paquete === '—'),
+            periodo: `${formatDateMx(from)} a ${formatDateMx(to)}`,
+            siteInfo,
+          })}
         />
         <ReportCard
           icono="📦"
           titulo="Reporte de paquetes"
           descripcion="Ventas de membresías y paquetes compartibles."
-          onCsv={() => exportCsv('reporte-paquetes', packagesDetailRows, ['Fecha', 'Hora', 'Cliente', 'Paquete', 'Monto'])}
+          onCsv={() => {
+            // El PDF calcula y muestra el TOTAL automáticamente; el CSV no,
+            // así que aquí se agrega como fila explícita antes del resumen
+            // (Paquetes vendidos / Paquete más vendido), sin tocar los datos
+            // que usa el PDF.
+            const firstSummaryIdx = packagesDetailRows.findIndex((r) => r.Fecha === '')
+            const totalRow = { Fecha: '', Hora: '', Cliente: 'TOTAL', Paquete: '', Monto: packagesReport.packagesRevenueMxn ?? 0 }
+            const rowsWithTotal = firstSummaryIdx === -1
+              ? [...packagesDetailRows, totalRow]
+              : [...packagesDetailRows.slice(0, firstSummaryIdx), totalRow, ...packagesDetailRows.slice(firstSummaryIdx)]
+            exportCsv('reporte-paquetes', rowsWithTotal, ['Fecha', 'Hora', 'Cliente', 'Paquete', 'Monto'])
+          }}
           onPdf={() => exportPdf('paquetes', 'Reporte de Paquetes operativo', packagesDetailRows)}
         />
         <ReportCard
@@ -1070,14 +1214,38 @@ export default function ReportesApiSection({ inPanel = false }) {
           descripcion="Existencias, entradas y ventas de productos físicos (sin paquetes)."
           onCsv={() => {
             if (!inventoryQuery.data) { toast('Sin datos de inventario para exportar.', { icon: '📋' }); return }
-            exportCsv('reporte-inventario', buildInventoryDetailedRows(inventoryQuery.data), [
-              'Sección', 'SKU', 'Producto', 'Stock inicial', 'Entradas', 'Ajustes', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus',
-            ])
+            downloadCsvFromBlocks({
+              blocks: buildInventoryCsvBlocks(inventoryQuery.data),
+              filename: buildReportFilename('reporte-inventario', from, to, 'csv'),
+              emptyMessage: 'No hay datos para exportar.',
+            })
           }}
           onPdf={() => {
             if (!inventoryQuery.data) { toast('Sin datos de inventario para exportar.', { icon: '📋' }); return }
             const rangeLabel = `${formatDateMx(from)} a ${formatDateMx(to)}`
             abrirInventarioDetalladoPDF({ titulo: `Reporte de inventario — ${rangeLabel}`, reporte: inventoryQuery.data, periodo: rangeLabel, siteInfo })
+          }}
+        />
+        <ReportCard
+          icono="🔁"
+          titulo="Clientes recurrentes"
+          descripcion="Quién repite compra de paquete y quién no ha vuelto. Ve el historial completo del cliente, sin importar el rango de fechas de arriba."
+          onCsv={() => {
+            if (!clientRetentionQuery.data) { toast('Sin datos de clientes recurrentes para exportar.', { icon: '📋' }); return }
+            exportCsv('reporte-clientes-recurrentes', buildClientRetentionRows(clientRetentionQuery.data), [
+              'Cliente', 'Email', 'Compras de paquete', 'Primera compra', 'Última compra', 'Días sin comprar', 'Estado',
+            ])
+          }}
+          onPdf={() => {
+            if (!clientRetentionQuery.data) { toast('Sin datos de clientes recurrentes para exportar.', { icon: '📋' }); return }
+            abrirReportePDF({
+              tipo: 'clientes_recurrentes',
+              titulo: 'Reporte de Clientes Recurrentes',
+              datos: buildClientRetentionRows(clientRetentionQuery.data),
+              periodo: 'Historial completo de cada cliente',
+              landscape: true,
+              siteInfo,
+            })
           }}
         />
         <ReportCard
@@ -1138,6 +1306,97 @@ export default function ReportesApiSection({ inPanel = false }) {
           <MetricCard label="Gastos totales" value={formatMoneyMx(finance.summary.expensesTotalMxn)} helper="Gastos activos del rango" accent="#ef4444" />
           <MetricCard label="Utilidad neta" value={formatMoneyMx(finance.summary.netTotalMxn)} helper="Ingresos - gastos" accent={finance.summary.netTotalMxn >= 0 ? '#22c55e' : '#ef4444'} />
           <MetricCard label="Ticket promedio" value={formatMoneyMx(finance.summary.averageTicketMxn)} helper={`${finance.summary.salesCount} ventas`} accent="var(--text-primary)" />
+        </div>
+
+        <div style={{ marginTop: 22 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+            Resumen por producto / paquete
+          </div>
+          {finance.itemSummary.length > 0 ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Producto / Paquete', 'Tipo', 'Cantidad', 'Ingresos'].map((head) => (
+                    <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {head}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {finance.itemSummary.map((row, idx) => (
+                  <tr key={`${row.itemType}-${row.name}-${idx}`} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                    <td style={{ padding: '10px', fontFamily: 'var(--font-body)', fontSize: 13 }}>{row.name}</td>
+                    <td style={{ padding: '10px' }}>{row.itemType === 'package' ? 'Paquete' : 'Producto'}</td>
+                    <td style={{ padding: '10px' }}>{row.quantity}</td>
+                    <td style={{ padding: '10px', fontWeight: 600, color: '#22c55e' }}>{formatMoneyMx(row.revenueMxn)}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td style={{ padding: '10px', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600 }} colSpan={2}>Total</td>
+                  <td style={{ padding: '10px', fontWeight: 600 }}>{finance.itemSummary.reduce((sum, row) => sum + row.quantity, 0)}</td>
+                  <td style={{ padding: '10px', fontWeight: 600, color: '#22c55e' }}>{formatMoneyMx(finance.itemSummary.reduce((sum, row) => sum + row.revenueMxn, 0))}</td>
+                </tr>
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+              No hay productos ni paquetes vendidos para este rango.
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontFamily: 'var(--font-body)', fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+            Detalle de ventas y gastos
+          </div>
+          {financeTransactionRows.length > 0 ? (
+            <>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Fecha', 'Hora', 'Folio', 'Tipo', 'Concepto', 'Producto', 'Método', 'Monto'].map((head) => (
+                      <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {head}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {(financeTransactionsExpanded ? financeTransactionRows : financeTransactionRows.slice(0, 15)).map((row, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                      <td style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 12 }}>{row.Fecha}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 12 }}>{row.Hora}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 12 }}>{row.Folio}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 12, color: row.Tipo === 'Gasto' ? '#f87171' : '#4ade80' }}>{row.Tipo}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 12 }}>{row.Concepto}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 12 }}>{row.Producto}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 12 }}>{row.Método}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 12, fontWeight: 600, color: row.Monto < 0 ? '#f87171' : '#4ade80' }}>{formatMoneyMx(row.Monto)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {financeTransactionRows.length > 15 && (
+                <button
+                  type="button"
+                  onClick={() => setFinanceTransactionsExpanded((value) => !value)}
+                  style={{
+                    width: '100%', marginTop: 12, padding: '9px 0',
+                    borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)',
+                    fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  {financeTransactionsExpanded ? 'Ver menos' : `Ver ${financeTransactionRows.length - 15} más`}
+                </button>
+              )}
+            </>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+              No hay ventas ni gastos para este rango.
+            </div>
+          )}
         </div>
       </SectionCard>
 
@@ -1240,6 +1499,292 @@ export default function ReportesApiSection({ inPanel = false }) {
           )}
         </SectionCard>
       </div>
+
+      <SectionCard title="Reporte de inventario" subtitle={`Rango ${formatDateMx(from)} a ${formatDateMx(to)}`}>
+        {inventory.reliabilityWarning && (
+          <div style={{
+            marginBottom: 12,
+            padding: '10px 14px',
+            borderRadius: 8,
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.3)',
+            color: '#fbbf24',
+            fontFamily: 'var(--font-body)',
+            fontSize: 13,
+          }}>
+            {inventory.reliabilityWarning}
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 16 }}>
+          <MetricCard label="Productos activos" value={String(inventory.summary.activeProducts)} helper={`Con entradas ${inventory.summary.productsWithEntries}`} accent="#22c55e" />
+          <MetricCard label="Unidades vendidas" value={String(inventory.summary.unitsSold)} helper="En el rango seleccionado" accent="#3b82f6" />
+          <MetricCard label="Existencia actual" value={String(inventory.summary.currentStockTotal)} helper="Suma de todos los productos" accent="var(--text-primary)" />
+        </div>
+
+        {inventory.detail.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['SKU', 'Producto', 'Stock inicial', 'Reabastecido', 'Ajustes', 'Vendidos', 'Stock actual', 'Estatus', 'Historial'].map((head) => (
+                  <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    {head}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {inventory.detail.map((item) => (
+                <Fragment key={item.productId}>
+                  <tr style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                    <td style={{ padding: '10px', fontFamily: 'var(--font-body)', fontSize: 13 }}>{item.sku}</td>
+                    <td style={{ padding: '10px' }}>{item.name}</td>
+                    <td style={{ padding: '10px' }}>{item.stockInicial}</td>
+                    <td style={{ padding: '10px', color: item.entradas > 0 ? '#22c55e' : 'var(--text-primary)' }}>{item.entradas}</td>
+                    <td style={{ padding: '10px', color: item.ajustes !== 0 ? '#eab308' : 'var(--text-primary)' }}>{item.ajustes}</td>
+                    <td style={{ padding: '10px' }}>{item.vendidos}</td>
+                    <td style={{ padding: '10px', fontWeight: 600 }}>{item.stockActual}</td>
+                    <td style={{ padding: '10px' }}>
+                      <span style={{
+                        padding: '3px 8px',
+                        borderRadius: 999,
+                        fontSize: 11,
+                        background: item.estatus === 'Agotado' ? 'rgba(239,68,68,0.15)' : item.estatus === 'Bajo stock' ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)',
+                        color: item.estatus === 'Agotado' ? '#f87171' : item.estatus === 'Bajo stock' ? '#fbbf24' : '#4ade80',
+                      }}>
+                        {item.estatus}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setInventoryHistoryExpandedId((current) => (current === item.productId ? null : item.productId))}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(59,130,246,0.35)',
+                          background: 'rgba(59,130,246,0.08)',
+                          color: '#93c5fd',
+                          fontFamily: 'var(--font-body)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {inventoryHistoryExpandedId === item.productId ? 'Ocultar' : 'Ver historial'}
+                      </button>
+                    </td>
+                  </tr>
+                  {inventoryHistoryExpandedId === item.productId && (
+                    <tr>
+                      <td colSpan={9} style={{ padding: '0 10px 14px' }}>
+                        <div style={{ marginTop: 10, border: '1px solid var(--neutral-border)', borderRadius: 10, overflow: 'hidden' }}>
+                          {inventoryHistoryQuery.isLoading ? (
+                            <div style={{ padding: 14, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                              Cargando historial...
+                            </div>
+                          ) : inventoryHistoryQuery.data?.movements?.length ? (
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                  {['Fecha', 'Movimiento', 'Cantidad', 'Saldo', 'Motivo / Venta'].map((head) => (
+                                    <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                      {head}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {inventoryHistoryQuery.data.movements.map((movimiento, idx) => (
+                                  <tr key={idx} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                                    <td style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 12 }}>{formatDateTimeMx(movimiento.fecha)}</td>
+                                    <td style={{ padding: '8px 10px', fontSize: 12 }}>{movimiento.etiqueta}</td>
+                                    <td style={{ padding: '8px 10px', fontSize: 12, color: movimiento.cantidad >= 0 ? '#4ade80' : '#f87171', fontWeight: 600 }}>
+                                      {movimiento.cantidad > 0 ? `+${movimiento.cantidad}` : movimiento.cantidad}
+                                    </td>
+                                    <td style={{ padding: '8px 10px', fontSize: 12 }}>{movimiento.saldo}</td>
+                                    <td style={{ padding: '8px 10px', fontSize: 12, color: 'var(--text-muted)' }}>
+                                      {movimiento.ventaFolio ? `Venta ${movimiento.ventaFolio}` : (movimiento.motivo || '—')}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <div style={{ padding: 14, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                              Sin movimientos en este rango.
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+            No hay datos de inventario para este rango.
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Clientes recurrentes" subtitle={`Historial completo de cada cliente · en riesgo despues de ${clientRetention.riskThresholdDays} dias sin comprar`}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 16 }}>
+          <MetricCard label="Con paquete comprado" value={String(clientRetention.summary.clientsWithPackagePurchase)} helper="Alguna vez compraron un paquete" accent="var(--text-primary)" />
+          <MetricCard label="Recurrentes" value={String(clientRetention.summary.recurringClients)} helper="2+ compras y siguen activos" accent="#22c55e" />
+          <MetricCard label="% de recurrencia" value={`${clientRetention.summary.recurrenceRatePct}%`} helper="Recurrentes / con paquete" accent="#3b82f6" />
+          <MetricCard label="En riesgo" value={String(clientRetention.summary.atRiskClients)} helper="No han vuelto a comprar" accent="#ef4444" />
+        </div>
+
+        <input
+          type="text"
+          value={clientRetentionSearch}
+          onChange={(event) => setClientRetentionSearch(event.target.value)}
+          placeholder="Buscar cliente por nombre o email..."
+          style={{
+            width: '100%',
+            maxWidth: 360,
+            marginBottom: 14,
+            padding: '9px 12px',
+            borderRadius: 8,
+            border: '1px solid var(--neutral-border)',
+            background: 'rgba(255,255,255,0.03)',
+            color: 'var(--text-primary)',
+            fontFamily: 'var(--font-body)',
+            fontSize: 13,
+          }}
+        />
+
+        {(() => {
+          const search = clientRetentionSearch.trim().toLowerCase()
+          const filteredClientRetention = search
+            ? clientRetention.detail.filter((row) =>
+                row.name.toLowerCase().includes(search) || row.email.toLowerCase().includes(search)
+              )
+            : clientRetention.detail
+          return filteredClientRetention.length > 0 ? (
+          <>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Cliente', 'Compras', 'Primera compra', 'Última compra', 'Días sin comprar', 'Estado', 'Historial'].map((head) => (
+                    <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {head}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(clientRetentionExpanded ? filteredClientRetention : filteredClientRetention.slice(0, 15)).map((row) => {
+                  const statusStyles = {
+                    recurrente: { background: 'rgba(34,197,94,0.15)', color: '#4ade80' },
+                    en_riesgo: { background: 'rgba(239,68,68,0.15)', color: '#f87171' },
+                    nuevo: { background: 'rgba(234,179,8,0.15)', color: '#fbbf24' },
+                  }
+                  const badgeStyle = statusStyles[row.status] || statusStyles.nuevo
+                  return (
+                    <Fragment key={row.userId}>
+                      <tr style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                        <td style={{ padding: '10px', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                          <div>{row.name}</div>
+                          <small style={{ color: 'var(--text-muted)' }}>{row.email}</small>
+                        </td>
+                        <td style={{ padding: '10px' }}>{row.purchasesCount}</td>
+                        <td style={{ padding: '10px' }}>{formatDateMx(row.firstPurchaseAt)}</td>
+                        <td style={{ padding: '10px' }}>{formatDateMx(row.lastPurchaseAt)}</td>
+                        <td style={{ padding: '10px' }}>{row.daysSinceLastPurchase}</td>
+                        <td style={{ padding: '10px' }}>
+                          <span style={{ padding: '3px 8px', borderRadius: 999, fontSize: 11, ...badgeStyle }}>
+                            {CLIENT_RETENTION_STATUS_LABEL[row.status] || row.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setClientHistoryExpandedId((current) => (current === row.userId ? null : row.userId))}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: 8,
+                              border: '1px solid rgba(59,130,246,0.35)',
+                              background: 'rgba(59,130,246,0.08)',
+                              color: '#93c5fd',
+                              fontFamily: 'var(--font-body)',
+                              fontSize: 12,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {clientHistoryExpandedId === row.userId ? 'Ocultar' : 'Ver historial'}
+                          </button>
+                        </td>
+                      </tr>
+                      {clientHistoryExpandedId === row.userId && (
+                        <tr>
+                          <td colSpan={7} style={{ padding: '0 10px 14px' }}>
+                            <div style={{ marginTop: 10, border: '1px solid var(--neutral-border)', borderRadius: 10, overflow: 'hidden' }}>
+                              {clientHistoryQuery.isLoading ? (
+                                <div style={{ padding: 14, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                                  Cargando historial...
+                                </div>
+                              ) : clientHistoryQuery.data?.purchases?.length ? (
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                  <thead>
+                                    <tr style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                      {['Fecha', 'Paquete', 'Monto', 'Origen', 'Folio'].map((head) => (
+                                        <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                          {head}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {clientHistoryQuery.data.purchases.map((purchase, idx) => (
+                                      <tr key={idx} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                                        <td style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 12 }}>{formatDateTimeMx(purchase.fecha)}</td>
+                                        <td style={{ padding: '8px 10px', fontSize: 12 }}>{purchase.paquete}</td>
+                                        <td style={{ padding: '8px 10px', fontSize: 12, fontWeight: 600, color: '#4ade80' }}>{formatMoneyMx(purchase.monto)}</td>
+                                        <td style={{ padding: '8px 10px', fontSize: 12 }}>{purchase.origen === 'mercado_pago' ? 'Online' : 'Punto de venta'}</td>
+                                        <td style={{ padding: '8px 10px', fontSize: 12, color: 'var(--text-muted)' }}>{purchase.folio || '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : (
+                                <div style={{ padding: 14, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                                  Sin compras registradas.
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+            {filteredClientRetention.length > 15 && (
+              <button
+                type="button"
+                onClick={() => setClientRetentionExpanded((value) => !value)}
+                style={{
+                  width: '100%', marginTop: 12, padding: '9px 0',
+                  borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)',
+                  fontFamily: 'var(--font-body)', fontSize: 13, cursor: 'pointer',
+                }}
+              >
+                {clientRetentionExpanded ? 'Ver menos' : `Ver ${filteredClientRetention.length - 15} más`}
+              </button>
+            )}
+          </>
+          ) : (
+            <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+              {search ? 'Ningún cliente coincide con la búsqueda.' : 'Ningún cliente ha comprado un paquete todavía.'}
+            </div>
+          )
+        })()}
+      </SectionCard>
 
       <SectionCard title="Pago de coaches" subtitle={`Rango ${formatDateMx(from)} a ${formatDateMx(to)}`}>
         {coachPayments.missingRateClasses > 0 && (

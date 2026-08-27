@@ -242,6 +242,12 @@ export const ENDPOINTS = {
     withQuery('/reportes/pos', { from, to }),
   reportesInventario: ({ from, to, lowStockThreshold } = {}) =>
     withQuery('/reportes/inventario', { from, to, low_stock_threshold: lowStockThreshold }),
+  reportesInventarioHistorial: (productId, { from, to } = {}) =>
+    withQuery(`/reportes/inventario/${productId}/historial`, { from, to }),
+  reportesClientesRecurrentes: ({ riskThresholdDays } = {}) =>
+    withQuery('/reportes/clientes-recurrentes', { risk_threshold_days: riskThresholdDays }),
+  reportesClientesRecurrentesHistorial: (userId) =>
+    withQuery(`/reportes/clientes-recurrentes/${userId}/historial`, {}),
   reportesCoaches: ({ from, to } = {}) =>
     withQuery('/reportes/coaches', { from, to }),
   reportesCoachesPagos: ({ from, to } = {}) =>

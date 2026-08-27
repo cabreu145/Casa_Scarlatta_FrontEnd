@@ -102,12 +102,23 @@ function mapFinanceTransaction(t = {}) {
   }
 }
 
+function mapFinanceItemSummary(item = {}) {
+  return {
+    name: normalizeString(item.name, 'Sin nombre'),
+    itemType: normalizeString(item.item_type ?? item.itemType, 'product'),
+    quantity: toNumber(item.quantity, 0),
+    revenueMxn: toNumber(item.revenue_mxn ?? item.revenueMxn, 0),
+  }
+}
+
 export function mapBackendFinanceReportToFrontend(payload = {}) {
   const rawTransactions = Array.isArray(payload.transactions) ? payload.transactions : []
+  const rawItemSummary = Array.isArray(payload.item_summary ?? payload.itemSummary) ? (payload.item_summary ?? payload.itemSummary) : []
   return {
     from: payload.from ?? payload.fecha_inicio ?? payload.fechaInicio ?? null,
     to: payload.to ?? payload.fecha_fin ?? payload.fechaFin ?? null,
     summary: mapFinanceSummary(payload),
+    itemSummary: rawItemSummary.map(mapFinanceItemSummary),
     transactions: rawTransactions.map(mapFinanceTransaction),
     raw: payload,
   }
@@ -217,6 +228,32 @@ function mapInventoryNoMovementItem(item = {}) {
   }
 }
 
+function mapInventoryMovement(item = {}) {
+  return {
+    fecha: item.fecha ?? null,
+    tipo: normalizeString(item.tipo, ''),
+    etiqueta: normalizeString(item.etiqueta, item.tipo ?? ''),
+    cantidad: toNumber(item.cantidad, 0),
+    saldo: toNumber(item.saldo, 0),
+    motivo: item.motivo ?? null,
+    ventaFolio: item.venta_folio ?? item.ventaFolio ?? null,
+  }
+}
+
+export function mapBackendInventoryMovementHistoryToFrontend(payload = {}) {
+  return {
+    productId: payload.product_id ?? payload.productId ?? null,
+    sku: normalizeString(payload.sku, '—'),
+    name: normalizeString(payload.name, 'Producto'),
+    from: payload.from ?? null,
+    to: payload.to ?? null,
+    stockInicial: toNumber(payload.stock_inicial ?? payload.stockInicial, 0),
+    stockFinal: toNumber(payload.stock_final ?? payload.stockFinal, 0),
+    movements: (payload.movements ?? []).map(mapInventoryMovement),
+    raw: payload,
+  }
+}
+
 export function mapBackendInventoryReportToFrontend(payload = {}) {
   const summary = payload.summary ?? {}
   return {
@@ -233,6 +270,54 @@ export function mapBackendInventoryReportToFrontend(payload = {}) {
     noMovement: (payload.no_movement ?? payload.noMovement ?? []).map(mapInventoryNoMovementItem),
     outOfStock: (payload.out_of_stock ?? payload.outOfStock ?? []).map(mapInventoryProductRow),
     reliabilityWarning: payload.reliability_warning ?? payload.reliabilityWarning ?? null,
+    raw: payload,
+  }
+}
+
+function mapClientRetentionDetail(item = {}) {
+  return {
+    userId: item.user_id ?? item.userId ?? null,
+    name: normalizeString(item.name, 'Cliente'),
+    email: normalizeString(item.email, ''),
+    purchasesCount: toNumber(item.purchases_count ?? item.purchasesCount, 0),
+    firstPurchaseAt: item.first_purchase_at ?? item.firstPurchaseAt ?? null,
+    lastPurchaseAt: item.last_purchase_at ?? item.lastPurchaseAt ?? null,
+    daysSinceLastPurchase: toNumber(item.days_since_last_purchase ?? item.daysSinceLastPurchase, 0),
+    status: normalizeString(item.status, 'nuevo'),
+  }
+}
+
+export function mapBackendClientRetentionReportToFrontend(payload = {}) {
+  const summary = payload.summary ?? {}
+  return {
+    riskThresholdDays: toNumber(payload.risk_threshold_days ?? payload.riskThresholdDays, 45),
+    summary: {
+      clientsWithPackagePurchase: toNumber(summary.clients_with_package_purchase ?? summary.clientsWithPackagePurchase, 0),
+      recurringClients: toNumber(summary.recurring_clients ?? summary.recurringClients, 0),
+      recurrenceRatePct: toNumber(summary.recurrence_rate_pct ?? summary.recurrenceRatePct, 0),
+      atRiskClients: toNumber(summary.at_risk_clients ?? summary.atRiskClients, 0),
+    },
+    detail: (payload.detail ?? []).map(mapClientRetentionDetail),
+    raw: payload,
+  }
+}
+
+function mapClientPackagePurchase(item = {}) {
+  return {
+    fecha: item.fecha ?? null,
+    paquete: normalizeString(item.paquete, 'Paquete'),
+    monto: toNumber(item.monto, 0),
+    origen: normalizeString(item.origen, 'pos'),
+    folio: item.folio ?? null,
+  }
+}
+
+export function mapBackendClientPackagePurchaseHistoryToFrontend(payload = {}) {
+  return {
+    userId: payload.user_id ?? payload.userId ?? null,
+    name: normalizeString(payload.name, 'Cliente'),
+    email: normalizeString(payload.email, ''),
+    purchases: (payload.purchases ?? []).map(mapClientPackagePurchase),
     raw: payload,
   }
 }

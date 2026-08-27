@@ -75,6 +75,8 @@ export function mapBackendClientToFrontend(item = {}) {
     fechaNacimiento: item.nacimiento ?? item.fecha_nacimiento ?? item.fechaNacimiento ?? item.birth_date ?? item.birthDate ?? item.birthdate ?? null,
     lastVisit: item.last_visit ?? item.lastVisit ?? null,
     reservationsCount: Number(item.reservations_count ?? item.reservationsCount ?? 0),
+    createdAt: item.created_at ?? item.createdAt ?? null,
+    daysSinceExpired: item.days_since_expired ?? item.daysSinceExpired ?? null,
     recentCreditMovements: (item.recent_credit_movements ?? item.recentCreditMovements ?? []).map(mapCreditMovement),
     recentReservations: (item.recent_reservations ?? item.recentReservations ?? []).map(mapReservation),
     raw: item,

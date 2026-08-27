@@ -38,9 +38,12 @@ import {
   getRecentFinanceSales,
 } from '@/services/financeApiService'
 import {
+  getClientPackagePurchaseHistory,
+  getClientRetentionReport,
   getCoachPaymentsReport,
   getCoachesReport,
   getFinanceReport,
+  getInventoryMovementHistory,
   getInventoryReport,
   getOccupancyByDisciplineReport,
   getPackagesReport,
@@ -665,6 +668,33 @@ export function useInventoryReportQuery({ from, to, enabled = false } = {}) {
     queryKey: queryKeys.reports.inventory({ from: from || '', to: to || '' }),
     queryFn: () => getInventoryReport({ from, to }),
     enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useInventoryMovementHistoryQuery({ productId, from, to, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.inventoryHistory(productId, { from: from || '', to: to || '' }),
+    queryFn: () => getInventoryMovementHistory(productId, { from, to }),
+    enabled: enabled && Boolean(productId),
+    ...shortDefaults,
+  })
+}
+
+export function useClientRetentionReportQuery({ riskThresholdDays, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.clientRetention({ riskThresholdDays: riskThresholdDays || '' }),
+    queryFn: () => getClientRetentionReport({ riskThresholdDays }),
+    enabled,
+    ...shortDefaults,
+  })
+}
+
+export function useClientPackagePurchaseHistoryQuery({ userId, enabled = false } = {}) {
+  return useQuery({
+    queryKey: queryKeys.reports.clientPackageHistory(userId),
+    queryFn: () => getClientPackagePurchaseHistory(userId),
+    enabled: enabled && Boolean(userId),
     ...shortDefaults,
   })
 }

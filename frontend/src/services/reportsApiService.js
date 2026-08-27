@@ -3,7 +3,10 @@ import { httpGet } from '@/lib/http'
 import {
   mapBackendCoachPaymentsReportToFrontend,
   mapBackendCoachesReportToFrontend,
+  mapBackendClientPackagePurchaseHistoryToFrontend,
+  mapBackendClientRetentionReportToFrontend,
   mapBackendFinanceReportToFrontend,
+  mapBackendInventoryMovementHistoryToFrontend,
   mapBackendInventoryReportToFrontend,
   mapBackendOccupancyByDisciplineReportToFrontend,
   mapBackendPackagesReportToFrontend,
@@ -51,6 +54,21 @@ export async function getInventoryReport(params = {}) {
     lowStockThreshold: params.lowStockThreshold,
   }))
   return mapBackendInventoryReportToFrontend(payload)
+}
+
+export async function getInventoryMovementHistory(productId, params = {}) {
+  const payload = await httpGet(ENDPOINTS.reportesInventarioHistorial(productId, normalizeRange(params)))
+  return mapBackendInventoryMovementHistoryToFrontend(payload)
+}
+
+export async function getClientRetentionReport(params = {}) {
+  const payload = await httpGet(ENDPOINTS.reportesClientesRecurrentes({ riskThresholdDays: params.riskThresholdDays }))
+  return mapBackendClientRetentionReportToFrontend(payload)
+}
+
+export async function getClientPackagePurchaseHistory(userId) {
+  const payload = await httpGet(ENDPOINTS.reportesClientesRecurrentesHistorial(userId))
+  return mapBackendClientPackagePurchaseHistoryToFrontend(payload)
 }
 
 export async function getCoachesReport(params = {}) {

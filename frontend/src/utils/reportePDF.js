@@ -853,7 +853,7 @@ function buildInventoryTable(titulo, rows, { mode = 'full' } = {}) {
   }
   const headers = mode === 'topSold'
     ? ['SKU', 'Producto', 'Vendidos']
-    : ['SKU', 'Producto', 'Stock inicial', 'Entradas', 'Ajustes', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus']
+    : ['SKU', 'Producto', 'Stock inicial', 'Reabastecido', 'Ajustes', 'Vendidos', 'Stock actual', 'Stock mínimo', 'Estatus']
   return `
     <div style="margin-top:14px">
       <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">${titulo} (${rows.length})</div>
@@ -930,9 +930,9 @@ function buildInventarioDetalladoHTML({ titulo, reporte, periodo, siteInfo = {} 
     <div class="stats-grid">${statsHTML}</div>
     ${warningHTML}
     ${buildInventoryTable('Detalle por producto', reporte.detail)}
+    ${buildInventoryTable('Agotados actualmente', reporte.outOfStock)}
     ${buildInventoryTable('Top 5 más vendidos', reporte.topSold, { mode: 'topSold' })}
     ${buildInventoryTable('Sin movimiento en el periodo', reporte.noMovement, { mode: 'simple' })}
-    ${buildInventoryTable('Agotados actualmente', reporte.outOfStock)}
     <div class="footer">
       <span><strong>${nombre}</strong> Wellness Studio</span>
       <span>Documento generado automáticamente · ${fechaHoy}</span>
@@ -944,6 +944,253 @@ function buildInventarioDetalladoHTML({ titulo, reporte, periodo, siteInfo = {} 
   </div>
 </body>
 </html>`
+}
+
+function buildFinancialResumenTable(itemSummary) {
+  if (!itemSummary?.length) {
+    return `
+      <div style="margin-top:14px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">Resumen por producto / paquete (0)</div>
+        <div style="font-size:10.5px;color:#9C7A74;padding:10px 0">Sin datos para este rango.</div>
+      </div>`
+  }
+  const totalCantidad = itemSummary.reduce((a, r) => a + Number(r.quantity ?? 0), 0)
+  const totalIngresos = itemSummary.reduce((a, r) => a + Number(r.revenueMxn ?? 0), 0)
+  return `
+    <div style="margin-top:14px">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">Resumen por producto / paquete (${itemSummary.length})</div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5px">
+        <thead><tr style="background:#7B1E22">
+          ${['Producto / Paquete', 'Tipo', 'Cantidad', 'Ingresos'].map(h => `<th style="padding:5px 7px;color:#fff;text-align:left;font-size:8px;letter-spacing:0.06em;text-transform:uppercase">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${itemSummary.map((r, i) => `<tr style="background:${i % 2 === 0 ? '#fff' : '#FDFAF8'}">
+            <td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${r.name}</td>
+            <td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${r.itemType === 'package' ? 'Paquete' : 'Producto'}</td>
+            <td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${r.quantity}</td>
+            <td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#7B1E22;font-weight:600">${fmtMoney(r.revenueMxn)}</td>
+          </tr>`).join('')}
+          <tr style="background:#F5EDE8">
+            <td style="padding:6px 7px;font-weight:700;color:#7B1E22" colspan="2">Total</td>
+            <td style="padding:6px 7px;font-weight:700;color:#7B1E22">${totalCantidad}</td>
+            <td style="padding:6px 7px;font-weight:700;color:#7B1E22">${fmtMoney(totalIngresos)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`
+}
+
+function buildFinancialDetailTable(rows, summary = {}) {
+  if (!rows?.length) {
+    return `
+      <div style="margin-top:14px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">Detalle de ventas y gastos (0)</div>
+        <div style="font-size:10.5px;color:#9C7A74;padding:10px 0">Sin datos para este rango.</div>
+      </div>`
+  }
+  const cols = ['Fecha', 'Hora', 'Folio', 'Tipo', 'Concepto', 'Producto', 'Método']
+  const ingresos = Number(summary.salesTotalMxn ?? 0)
+  const gastos = Number(summary.expensesTotalMxn ?? 0)
+  const utilidad = Number(summary.netTotalMxn ?? 0)
+  const blanks = '<td></td>'.repeat(cols.length - 1)
+  return `
+    <div style="margin-top:14px">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">Detalle de ventas y gastos (${rows.length})</div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5px">
+        <thead><tr style="background:#7B1E22">
+          ${[...cols, 'Monto'].map(h => `<th style="padding:5px 7px;color:#fff;text-align:left;font-size:8px;letter-spacing:0.06em;text-transform:uppercase">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${rows.map((r, i) => {
+            const esGasto = Number(r.Monto) < 0
+            return `<tr style="background:${i % 2 === 0 ? '#fff' : '#FDFAF8'}">
+              ${cols.map((c) => `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${r[c] ?? '—'}</td>`).join('')}
+              <td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;font-weight:700;color:${esGasto ? '#B91C1C' : '#7B1E22'}">${fmtMoney(r.Monto)}</td>
+            </tr>`
+          }).join('')}
+          <tr style="background:#F5EDE8"><td style="padding:6px 7px;font-weight:700;color:#7B1E22;border-top:2px solid #7B1E22">INGRESOS</td>${blanks}<td style="padding:6px 7px;font-weight:700;color:#7B1E22;border-top:2px solid #7B1E22">${fmtMoney(ingresos)}</td></tr>
+          <tr style="background:#F5EDE8"><td style="padding:6px 7px;font-weight:700;color:#B91C1C">GASTOS</td>${blanks}<td style="padding:6px 7px;font-weight:700;color:#B91C1C">−${fmtMoney(gastos)}</td></tr>
+          <tr style="background:#F5EDE8"><td style="padding:6px 7px;font-weight:700;color:#7B1E22;border-top:1px solid #7B1E22">UTILIDAD</td>${blanks}<td style="padding:6px 7px;font-weight:700;color:#7B1E22;border-top:1px solid #7B1E22">${fmtMoney(utilidad)}</td></tr>
+        </tbody>
+      </table>
+    </div>`
+}
+
+function buildFinancieroDetalladoHTML({ titulo, finance, transactionRows, periodo, siteInfo = {} }) {
+  const nombre = siteInfo.nombre || siteInfo.nombreEstudio || 'Casa Scarlatta'
+  const fechaHoy = hoy()
+  const s = finance?.summary || {}
+
+  const statsHTML = [
+    { v: fmtMoney(s.salesTotalMxn), l: 'Ingresos totales' },
+    { v: fmtMoney(s.expensesTotalMxn), l: 'Gastos totales' },
+    { v: fmtMoney(s.netTotalMxn), l: 'Utilidad neta' },
+    { v: fmtMoney(s.averageTicketMxn), l: 'Ticket promedio' },
+  ].map(x => `<div class="stat-card"><div class="stat-value">${x.v}</div><div class="stat-label">${x.l}</div></div>`).join('')
+
+  const periodoStr = periodo ? ` · Período: <strong>${periodo}</strong>` : ''
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${nombre} — ${titulo}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400;1,600&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    ${CSS_VARS}
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: 'DM Sans', sans-serif; color: var(--dark); background: #F0E9E4; min-height: 100vh; padding: 40px 20px 60px; }
+    .page { background: white; max-width: 900px; margin: 0 auto; padding: 44px 52px; border-radius: 4px; box-shadow: 0 4px 40px rgba(44,24,16,0.15); }
+    ${CSS_SHARED}
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+    .section-break { page-break-before: always; break-before: page; }
+    @media print {
+      body { background: white; padding: 0; }
+      .page { box-shadow: none; border-radius: 0; padding: 20px 24px; max-width: 100%; }
+      .print-controls { display: none; }
+      @page { size: letter portrait; margin: 10mm 8mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    ${buildHeaderBlock(siteInfo)}
+    <div class="report-meta">
+      <div class="report-meta-icon">💰</div>
+      <div>
+        <div class="report-title">${titulo}</div>
+        <div class="report-date">Generado el ${fechaHoy}${periodoStr}</div>
+      </div>
+    </div>
+    <div class="stats-grid">${statsHTML}</div>
+    ${buildFinancialResumenTable(finance?.itemSummary)}
+    <div class="section-break"></div>
+    ${buildFinancialDetailTable(transactionRows, s)}
+    <div class="footer">
+      <span><strong>${nombre}</strong> Wellness Studio</span>
+      <span>Documento generado automáticamente · ${fechaHoy}</span>
+    </div>
+  </div>
+  <div class="print-controls">
+    <button class="btn-print" onclick="window.print()">🖨&nbsp; Guardar como PDF</button>
+    <button class="btn-close" onclick="window.close()">Cerrar</button>
+  </div>
+</body>
+</html>`
+}
+
+export function abrirFinancieroDetalladoPDF({ titulo, finance, transactionRows, periodo = '', siteInfo = {} }) {
+  const html = buildFinancieroDetalladoHTML({ titulo, finance, transactionRows, periodo, siteInfo })
+  const win  = window.open('', '_blank')
+  if (!win) {
+    alert('El navegador bloqueó la ventana emergente. Permite pop-ups para este sitio.')
+    return
+  }
+  win.document.write(html)
+  win.document.close()
+}
+
+function buildUsersTable(titulo, rows, columns) {
+  if (!rows?.length) {
+    return `
+      <div style="margin-top:14px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">${titulo} (0)</div>
+        <div style="font-size:10.5px;color:#9C7A74;padding:10px 0">Sin registros.</div>
+      </div>`
+  }
+  return `
+    <div style="margin-top:14px">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#7A5C58;margin-bottom:6px">${titulo} (${rows.length})</div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5px">
+        <thead><tr style="background:#7B1E22">
+          ${columns.map(h => `<th style="padding:5px 7px;color:#fff;text-align:left;font-size:8px;letter-spacing:0.06em;text-transform:uppercase">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${rows.map((r, i) => `<tr style="background:${i % 2 === 0 ? '#fff' : '#FDFAF8'}">
+            ${columns.map((c) => `<td style="padding:5px 7px;border-bottom:1px solid #E8D5CB;color:#2C1810">${r[c] ?? '—'}</td>`).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`
+}
+
+function buildUsuariosDetalladoHTML({ titulo, conPaquete, sinPaquete, periodo, siteInfo = {} }) {
+  const nombre = siteInfo.nombre || siteInfo.nombreEstudio || 'Casa Scarlatta'
+  const fechaHoy = hoy()
+  const total = conPaquete.length + sinPaquete.length
+  const tasa = total ? Math.round((conPaquete.length / total) * 100) : 0
+
+  const statsHTML = [
+    { v: total, l: 'Total de clientes' },
+    { v: conPaquete.length, l: 'Con paquete' },
+    { v: sinPaquete.length, l: 'Sin paquete' },
+    { v: tasa + '%', l: 'Tasa de renovación' },
+  ].map(x => `<div class="stat-card"><div class="stat-value">${x.v}</div><div class="stat-label">${x.l}</div></div>`).join('')
+
+  const periodoStr = periodo ? ` · Período: <strong>${periodo}</strong>` : ''
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${nombre} — ${titulo}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400;1,600&family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    ${CSS_VARS}
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: 'DM Sans', sans-serif; color: var(--dark); background: #F0E9E4; min-height: 100vh; padding: 40px 20px 60px; }
+    .page { background: white; max-width: 900px; margin: 0 auto; padding: 44px 52px; border-radius: 4px; box-shadow: 0 4px 40px rgba(44,24,16,0.15); }
+    ${CSS_SHARED}
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+    .section-break { page-break-before: always; break-before: page; }
+    @media print {
+      body { background: white; padding: 0; }
+      .page { box-shadow: none; border-radius: 0; padding: 20px 24px; max-width: 100%; }
+      .print-controls { display: none; }
+      @page { size: letter portrait; margin: 10mm 8mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    ${buildHeaderBlock(siteInfo)}
+    <div class="report-meta">
+      <div class="report-meta-icon">👥</div>
+      <div>
+        <div class="report-title">${titulo}</div>
+        <div class="report-date">Generado el ${fechaHoy}${periodoStr}</div>
+      </div>
+    </div>
+    <div class="stats-grid">${statsHTML}</div>
+    ${buildUsersTable('Clientes con paquete', conPaquete, ['Cliente', 'Email', 'Paquete', 'Estado', 'Vencimiento', 'Créditos'])}
+    <div class="section-break"></div>
+    ${buildUsersTable('Clientes sin paquete', sinPaquete, ['Cliente', 'Email', 'Estado', 'Créditos'])}
+    <div class="footer">
+      <span><strong>${nombre}</strong> Wellness Studio</span>
+      <span>Documento generado automáticamente · ${fechaHoy}</span>
+    </div>
+  </div>
+  <div class="print-controls">
+    <button class="btn-print" onclick="window.print()">🖨&nbsp; Guardar como PDF</button>
+    <button class="btn-close" onclick="window.close()">Cerrar</button>
+  </div>
+</body>
+</html>`
+}
+
+export function abrirUsuariosDetalladoPDF({ titulo, conPaquete, sinPaquete, periodo = '', siteInfo = {} }) {
+  const html = buildUsuariosDetalladoHTML({ titulo, conPaquete, sinPaquete, periodo, siteInfo })
+  const win  = window.open('', '_blank')
+  if (!win) {
+    alert('El navegador bloqueó la ventana emergente. Permite pop-ups para este sitio.')
+    return
+  }
+  win.document.write(html)
+  win.document.close()
 }
 
 export function abrirInventarioDetalladoPDF({ titulo, reporte, periodo = '', siteInfo = {} }) {
