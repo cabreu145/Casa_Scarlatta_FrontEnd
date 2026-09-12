@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import PasswordInput from '@/components/ui/PasswordInput'
+import SocialAuthButtons from '@/components/auth/SocialAuthButtons'
 import {
   clearPendingPackagePurchaseIntent,
   normalizeInternalRedirect,
@@ -66,11 +67,29 @@ function LegalModal({ titulo, children, onClose }) {
   )
 }
 
+function resolveLoginDestination(user, redirect) {
+  const pendingIntent = readPendingPackagePurchaseIntent()
+  const safePendingRedirect = normalizeInternalRedirect(pendingIntent.redirect)
+  const safeRedirect = normalizeInternalRedirect(redirect)
+  const destination =
+    user.rol === 'cliente'
+      ? safePendingRedirect ?? safeRedirect ?? rolDashboard[user.rol] ?? '/cliente/dashboard'
+      : rolDashboard[user.rol] ?? '/'
+  clearPendingPackagePurchaseIntent()
+  return destination
+}
+
 export default function Login() {
   const location = useLocation()
+  const navigate = useNavigate()
   const reservation = location.state ?? {}
   const redirectFromQuery = normalizeInternalRedirect(new URLSearchParams(location.search).get('redirect'))
   const [mode, setMode] = useState('login')
+
+  const handleSocialSuccess = (user) => {
+    toast.success(`Bienvenido, ${user.nombre.split(' ')[0]}`)
+    navigate(resolveLoginDestination(user, redirectFromQuery), { replace: true })
+  }
 
   return (
     <main className={styles.page}>
@@ -109,6 +128,8 @@ export default function Login() {
         {mode === 'login'
           ? <LoginForm redirect={redirectFromQuery} />
           : <RegisterForm onSuccess={() => setMode('login')} LegalModal={LegalModal} />}
+
+        <SocialAuthButtons onSuccess={handleSocialSuccess} />
       </div>
     </main>
   )

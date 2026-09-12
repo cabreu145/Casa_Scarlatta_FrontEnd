@@ -283,6 +283,8 @@ function mapClientRetentionDetail(item = {}) {
     firstPurchaseAt: item.first_purchase_at ?? item.firstPurchaseAt ?? null,
     lastPurchaseAt: item.last_purchase_at ?? item.lastPurchaseAt ?? null,
     daysSinceLastPurchase: toNumber(item.days_since_last_purchase ?? item.daysSinceLastPurchase, 0),
+    lastPackageName: item.last_package_name ?? item.lastPackageName ?? null,
+    lastPackageExpiresAt: item.last_package_expires_at ?? item.lastPackageExpiresAt ?? null,
     status: normalizeString(item.status, 'nuevo'),
   }
 }

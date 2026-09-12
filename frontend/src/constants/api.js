@@ -22,6 +22,8 @@ export const ENDPOINTS = {
   registro: withPrefix('/auth/registro'),
   logout: withPrefix('/auth/logout'),
   me: withPrefix('/auth/me'),
+  authGoogle: withPrefix('/auth/google'),
+  authFacebook: withPrefix('/auth/facebook'),
   resetPasswordRequest: withPrefix('/auth/reset-password/request'),
   resetPasswordConfirm: withPrefix('/auth/reset-password/confirm'),
 

@@ -458,7 +458,10 @@ function buildClientRetentionRows(reporte) {
     'Compras de paquete': row.purchasesCount,
     'Primera compra': row.firstPurchaseAt ?? '—',
     'Última compra': row.lastPurchaseAt ?? '—',
-    'Días sin comprar': row.daysSinceLastPurchase,
+    'Último paquete': row.lastPackageName
+      ? `${row.lastPackageName} · vence ${formatDateMx(row.lastPackageExpiresAt)}`
+      : '—',
+    'Días desde vencimiento': row.daysSinceLastPurchase,
     Estado: CLIENT_RETENTION_STATUS_LABEL[row.status] || row.status,
   }))
 }
@@ -870,10 +873,11 @@ export default function ReportesApiSection({ inPanel = false }) {
 
   const posDetailRows = useMemo(() => {
     if (!salesItems.length) return posRows
-    // Una fila por producto (no una fila por venta) para que una compra mixta
-    // (ej. agua + gomitas en el mismo ticket) se lea como dos renglones claros
-    // en vez de un solo "agua, gomitas" combinado.
-    return salesItems.flatMap((sale) => {
+    // Una fila por venta (no por producto), igual que el Reporte financiero:
+    // una compra mixta (ej. agua + gomitas en el mismo ticket) se lee en un
+    // solo renglón como "1 agua 500ml, 1 gomitas", con la cantidad ya incluida
+    // en el nombre — así no se ve como dos compras separadas del mismo cliente.
+    return salesItems.map((sale) => {
       const raw     = String(sale.createdAt ?? sale.created_at ?? '')
       const dateObj = raw ? new Date(raw) : null
       const valid   = dateObj && !Number.isNaN(dateObj.getTime())
@@ -883,21 +887,22 @@ export default function ReportesApiSection({ inPanel = false }) {
       const metodosLabel = { cash: 'Efectivo', card: 'Tarjeta', transfer: 'Transferencia', mercado_pago: 'Mercado Pago' }
       const metodo = metodosLabel[(sale.paymentMethod ?? sale.payment_method ?? '').toLowerCase()] || sale.paymentMethod || '—'
       const cliente = sale.customerName || sale.customer_name || '—'
-      if (!items.length) {
-        return [{
-          Fecha: fecha, Hora: hora, Cliente: cliente, Producto: '—', Cantidad: 1, Método: metodo,
-          Monto: sale.totalMxn ?? sale.total_mxn ?? 0,
-        }]
-      }
-      return items.map((i) => ({
+      const producto = items
+        .map((i) => {
+          const name = i.name || i.nombre || i.displayName || ''
+          if (!name || name === 'Item') return null
+          return `${i.quantity ?? i.qty ?? 1} ${name}`
+        })
+        .filter(Boolean)
+        .join(', ') || '—'
+      return {
         Fecha:    fecha,
         Hora:     hora,
         Cliente:  cliente,
-        Producto: i.name || i.nombre || i.displayName || '—',
-        Cantidad: i.quantity ?? 1,
+        Producto: producto,
         Método:   metodo,
-        Monto:    i.lineTotalMxn ?? i.line_total_mxn ?? 0,
-      }))
+        Monto:    sale.totalMxn ?? sale.total_mxn ?? 0,
+      }
     })
   }, [salesItems, posRows])
   const usersDetailRows = useMemo(() => {
@@ -1205,7 +1210,7 @@ export default function ReportesApiSection({ inPanel = false }) {
           icono="🛒"
           titulo="Reporte POS"
           descripcion="Ventas operativas, productos y categorías."
-          onCsv={() => exportCsv('reporte-pos', posDetailRows, ['Fecha', 'Hora', 'Cliente', 'Producto', 'Cantidad', 'Método', 'Monto'])}
+          onCsv={() => exportCsv('reporte-pos', posDetailRows, ['Fecha', 'Hora', 'Cliente', 'Producto', 'Método', 'Monto'])}
           onPdf={() => exportPdf('pdv', 'Reporte POS operativo', posDetailRows, true)}
         />
         <ReportCard
@@ -1233,7 +1238,8 @@ export default function ReportesApiSection({ inPanel = false }) {
           onCsv={() => {
             if (!clientRetentionQuery.data) { toast('Sin datos de clientes recurrentes para exportar.', { icon: '📋' }); return }
             exportCsv('reporte-clientes-recurrentes', buildClientRetentionRows(clientRetentionQuery.data), [
-              'Cliente', 'Email', 'Compras de paquete', 'Primera compra', 'Última compra', 'Días sin comprar', 'Estado',
+              'Cliente', 'Email', 'Compras de paquete', 'Primera compra', 'Última compra',
+              'Último paquete', 'Días desde vencimiento', 'Estado',
             ])
           }}
           onPdf={() => {
@@ -1629,7 +1635,7 @@ export default function ReportesApiSection({ inPanel = false }) {
         )}
       </SectionCard>
 
-      <SectionCard title="Clientes recurrentes" subtitle={`Historial completo de cada cliente · en riesgo despues de ${clientRetention.riskThresholdDays} dias sin comprar`}>
+      <SectionCard title="Clientes recurrentes" subtitle={`Historial completo de cada cliente · "días sin comprar" se cuenta desde que venció su último paquete · en riesgo despues de ${clientRetention.riskThresholdDays} dias sin comprar`}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 16 }}>
           <MetricCard label="Con paquete comprado" value={String(clientRetention.summary.clientsWithPackagePurchase)} helper="Alguna vez compraron un paquete" accent="var(--text-primary)" />
           <MetricCard label="Recurrentes" value={String(clientRetention.summary.recurringClients)} helper="2+ compras y siguen activos" accent="#22c55e" />
@@ -1668,9 +1674,13 @@ export default function ReportesApiSection({ inPanel = false }) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  {['Cliente', 'Compras', 'Primera compra', 'Última compra', 'Días sin comprar', 'Estado', 'Historial'].map((head) => (
-                    <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {head}
+                  {['Cliente', 'Compras', 'Primera compra', 'Última compra', 'Último paquete', 'Días sin comprar', 'Estado', 'Historial'].map((head) => (
+                    <th
+                      key={head}
+                      title={head === 'Días sin comprar' ? 'Se cuenta a partir de que venció su último paquete, no desde la fecha de compra.' : undefined}
+                      style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em', cursor: head === 'Días sin comprar' ? 'help' : undefined }}
+                    >
+                      {head}{head === 'Días sin comprar' ? ' ⓘ' : ''}
                     </th>
                   ))}
                 </tr>
@@ -1693,6 +1703,16 @@ export default function ReportesApiSection({ inPanel = false }) {
                         <td style={{ padding: '10px' }}>{row.purchasesCount}</td>
                         <td style={{ padding: '10px' }}>{formatDateMx(row.firstPurchaseAt)}</td>
                         <td style={{ padding: '10px' }}>{formatDateMx(row.lastPurchaseAt)}</td>
+                        <td style={{ padding: '10px', fontFamily: 'var(--font-body)', fontSize: 13 }}>
+                          {row.lastPackageName ? (
+                            <>
+                              <div>{row.lastPackageName}</div>
+                              <small style={{ color: 'var(--text-muted)' }}>
+                                {row.lastPackageExpiresAt ? `Vence: ${formatDateMx(row.lastPackageExpiresAt)}` : 'Sin fecha de vencimiento'}
+                              </small>
+                            </>
+                          ) : '—'}
+                        </td>
                         <td style={{ padding: '10px' }}>{row.daysSinceLastPurchase}</td>
                         <td style={{ padding: '10px' }}>
                           <span style={{ padding: '3px 8px', borderRadius: 999, fontSize: 11, ...badgeStyle }}>
@@ -1720,7 +1740,7 @@ export default function ReportesApiSection({ inPanel = false }) {
                       </tr>
                       {clientHistoryExpandedId === row.userId && (
                         <tr>
-                          <td colSpan={7} style={{ padding: '0 10px 14px' }}>
+                          <td colSpan={8} style={{ padding: '0 10px 14px' }}>
                             <div style={{ marginTop: 10, border: '1px solid var(--neutral-border)', borderRadius: 10, overflow: 'hidden' }}>
                               {clientHistoryQuery.isLoading ? (
                                 <div style={{ padding: 14, color: 'var(--text-muted)', fontFamily: 'var(--font-body)', fontSize: 13 }}>

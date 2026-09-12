@@ -164,6 +164,35 @@ export function AuthProvider({ children }) {
     return safeUser
   }
 
+  const loginWithProvider = async (provider, endpoint, tokenField, token) => {
+    if (!useApiAuth) {
+      throw new Error(
+        `El inicio de sesión con ${provider} estará disponible cuando el backend esté conectado`
+      )
+    }
+    setLocalLoading(true)
+    try {
+      const payload = await httpPost(endpoint, { [tokenField]: token })
+      const { token: sessionToken, user } = mapAuthPayloadToSession(payload)
+      if (!user) throw new Error('No fue posible obtener usuario autenticado')
+      saveToken(sessionToken)
+      setSession({ usuario: user, token: sessionToken })
+      if (user.rol === 'cliente') {
+        await loadFinancialState().catch(() => {})
+        logLoginCliente({ nombre: user.nombre ?? user.name, email: user.email })
+      }
+      return user
+    } finally {
+      setLocalLoading(false)
+    }
+  }
+
+  const loginWithGoogle = (idToken) =>
+    loginWithProvider('Google', ENDPOINTS.authGoogle, 'id_token', idToken)
+
+  const loginWithFacebook = (accessToken) =>
+    loginWithProvider('Facebook', ENDPOINTS.authFacebook, 'access_token', accessToken)
+
   const register = async (datos) => {
     setLocalLoading(true)
 
@@ -279,6 +308,8 @@ export function AuthProvider({ children }) {
         isAuthenticated,
         loading,
         login,
+        loginWithGoogle,
+        loginWithFacebook,
         logout,
         register,
         resetPassword,
