@@ -17,6 +17,7 @@ import {
   cancelarReservaApi,
   completarReservaApi,
   crearReservaApi,
+  crearReservaCortesiaApi,
   getMisReservasApi,
   marcarNoAsistioApi,
 } from '@/services/reservasApiService'
@@ -40,6 +41,31 @@ async function syncReservasFromApi() {
   const reservas = await getMisReservasApi()
   useReservasStore.getState().setReservas(reservas)
   return reservas
+}
+
+export async function reservarCortesia(userId, occurrenceId) {
+  if (!useApiReservations) {
+    return { ok: false, error: 'La cortesía solo está disponible en modo API.' }
+  }
+  try {
+    await crearReservaCortesiaApi({ occurrenceId, userId })
+    await syncReservasFromApi()
+    try {
+      await useClasesStore.getState().loadClasesFromApi?.({ force: true })
+    } catch {
+      // noop
+    }
+    return { ok: true }
+  } catch (err) {
+    if (import.meta.env.DEV && err?.details) {
+      console.error('[reservarCortesia][api] error details', err.details)
+    }
+    return {
+      ok: false,
+      code: err?.code ?? null,
+      error: getMembershipEligibilityErrorMessage(err) ?? err.message ?? 'No se pudo reservar la cortesía',
+    }
+  }
 }
 
 export async function reservarClase(userId, claseId, asiento = null, occurrenceId = null) {

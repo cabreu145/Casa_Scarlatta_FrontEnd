@@ -40,7 +40,7 @@ import { useReservasStore }    from '@/stores/reservasStore'
 import { usePaquetesStore }    from '@/stores/paquetesStore'
 import { useUsuariosStore }    from '@/stores/usuariosStore'
 import { useListaEsperaStore } from '@/stores/listaEsperaStore'
-import { reservarClase as reservarClaseService, cancelarReserva as cancelarReservaService, eliminarClaseConReservas, marcarNoAsistio } from '@/services/reservasService'
+import { reservarClase as reservarClaseService, reservarCortesia as reservarCortesiaService, cancelarReserva as cancelarReservaService, eliminarClaseConReservas, marcarNoAsistio } from '@/services/reservasService'
 import { borrarCoachService } from '@/services/coachesService'
 import { useDisciplinasStore } from '@/stores/disciplinasStore'
 import SeatSelector from '@/features/clases/SeatSelector'
@@ -98,6 +98,7 @@ import {
   useAdjustProductStockMutation,
   useCreateProductMutation,
   useDeleteProductMutation,
+  useGrantCourtesyCreditMutation,
   useOccurrenceRosterQuery,
   useProductCategoriesQuery,
   useRestockProductMutation,
@@ -403,6 +404,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   const canReadClassRoster = hasAnyPermission(usuario, ['classes.roster.read', 'classes.roster.manage'])
   const canManageClassRoster = hasPermission(usuario, 'classes.roster.manage')
   const canManageReservations = hasPermission(usuario, 'reservations.manage')
+  const canGrantCourtesy = hasPermission(usuario, 'clients.assign_package')
 
   const denyPermission = useCallback((message = 'No tienes permisos para esta acción.') => {
     toast.error(message)
@@ -574,6 +576,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
     }
   )
   const cancelPendingPaymentMutation = useCancelPendingPaymentAdminMutation()
+  const grantCourtesyCreditMutation = useGrantCourtesyCreditMutation()
   const [cancelingPaymentRef, setCancelingPaymentRef] = useState(null)
   const modalAlumnosOccurrenceId = modalAlumnosClase?.occurrenceId ?? modalAlumnosClase?.occurrence_id ?? null
   const occurrenceRosterQuery = useOccurrenceRosterQuery(modalAlumnosOccurrenceId, {
@@ -3340,6 +3343,48 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
           }
         }
 
+          async function handleAgregarCortesia() {
+            if (!canGrantCourtesy) {
+              toast.error('No tienes permisos para asignar cortesías.')
+              return
+            }
+            if (!alumnoAgregarId) return
+            if (!occurrenceId) {
+              toast.error('Selecciona una fecha de ocurrencia para asignar la cortesía')
+              return
+            }
+            const targetUserId = Number(alumnoAgregarId)
+            if (isSpotManagedClass) {
+              try {
+                await grantCourtesyCreditMutation.mutateAsync({ occurrenceId, userId: targetUserId })
+              } catch (error) {
+                toast.error(error?.message ?? 'No se pudo otorgar la cortesía')
+                return
+              }
+              setAdminSeatSelector({
+                cls,
+                userId: targetUserId,
+                hasExistingReservationInOccurrence: hasActiveReservationInCurrentOccurrence(targetUserId),
+                isCourtesy: true,
+              })
+              return
+            }
+            const targetUsuario = useApiClients
+              ? (clientsForAdmin ?? []).find((u) => Number(u.id) === targetUserId)
+              : usuarios.find(u => u.id === targetUserId)
+            const res = await reservarCortesiaService(targetUserId, occurrenceId)
+            if (res.ok) {
+              toast.success(`🎁 Cortesía asignada a ${targetUsuario?.nombre ?? targetUsuario?.name ?? 'Cliente'} en ${cls.nombre}`)
+              setAlumnoAgregarId('')
+              if (useApiMode && occurrenceId) {
+                await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
+                await queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
+              }
+            } else {
+              toast.error(res.error)
+            }
+          }
+
         return (
           <div
             className={`${styles.modalOverlay} ${styles.open}`}
@@ -3695,6 +3740,17 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   >
                     🪑 Elegir asiento
                   </button>
+                  {canGrantCourtesy && (
+                    <button
+                      className={`${styles.btn} ${styles.btnSecondary}`}
+                      style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
+                      onClick={handleAgregarCortesia}
+                      disabled={!alumnoAgregarId || (useApiClasses && !occurrenceId)}
+                      title="Elige el asiento y apártalo gratis para este cliente, sin tocar su paquete pagado"
+                    >
+                      🎁 Cortesía
+                    </button>
+                  )}
                 </div>
                 {alumnoAgregarId && (() => {
                   const u = useApiClients
@@ -4776,10 +4832,17 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               onReservationCreated={async () => {
                 const u = (enrollableClients ?? []).find((uu) => Number(uu.id) === adminSeatSelector.userId)
                   ?? usuarios.find(u => u.id === adminSeatSelector.userId)
-                toast.success(`${u?.nombre ?? 'Alumno'} inscrito correctamente`)
+                toast.success(
+                  adminSeatSelector.isCourtesy
+                    ? `🎁 Cortesía asignada a ${u?.nombre ?? 'Cliente'}`
+                    : `${u?.nombre ?? 'Alumno'} inscrito correctamente`
+                )
                 setAdminSeatSelector(null)
                 setAlumnoAgregarId('')
                 await queryClient.invalidateQueries({ queryKey: queryKeys.occurrenceRoster.detail(occurrenceId, false) })
+                if (adminSeatSelector.isCourtesy) {
+                  await queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
+                }
               }}
               onClose={() => setAdminSeatSelector(null)}
             />

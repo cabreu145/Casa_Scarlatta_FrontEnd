@@ -81,6 +81,15 @@ export async function crearReservaApi({ claseId, userId, asiento, occurrenceId, 
   return mapBackendReservationToFrontend(payload ?? {}, buildClassesById())
 }
 
+export async function crearReservaCortesiaApi({ occurrenceId, userId }) {
+  const payload = await httpPost(ENDPOINTS.crearReservaCortesia, { occurrence_id: occurrenceId, user_id: userId })
+  return mapBackendReservationToFrontend(payload ?? {}, buildClassesById())
+}
+
+export async function otorgarCreditoCortesiaApi({ occurrenceId, userId }) {
+  return httpPost(ENDPOINTS.otorgarCreditoCortesia, { occurrence_id: occurrenceId, user_id: userId })
+}
+
 export async function getOccurrenceRosterApi(occurrenceId, { includeCanceled = false } = {}) {
   if (!occurrenceId) {
     throw new Error('OCCURRENCE_REQUIRED')

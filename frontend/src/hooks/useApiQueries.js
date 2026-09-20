@@ -95,6 +95,7 @@ import {
   cancelarReservaApi,
   cancelarReservasMultipleApi,
   crearReservaApi,
+  otorgarCreditoCortesiaApi,
   getMisReservasPaginatedApi,
   getOccurrenceRosterApi,
 } from '@/services/reservasApiService'
@@ -1657,6 +1658,18 @@ export function useCreateReservationMutation() {
           classId: variables?.claseId,
           userId: variables?.userId,
         })
+      }
+    },
+  })
+}
+
+export function useGrantCourtesyCreditMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ occurrenceId, userId }) => otorgarCreditoCortesiaApi({ occurrenceId, userId }),
+    onSuccess: async (_data, variables) => {
+      if (variables?.userId != null) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(variables.userId) })
       }
     },
   })
