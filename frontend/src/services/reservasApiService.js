@@ -90,6 +90,10 @@ export async function otorgarCreditoCortesiaApi({ occurrenceId, userId }) {
   return httpPost(ENDPOINTS.otorgarCreditoCortesia, { occurrence_id: occurrenceId, user_id: userId })
 }
 
+export async function revocarCreditoCortesiaApi({ occurrenceId, userId }) {
+  return httpPost(ENDPOINTS.revocarCreditoCortesia, { occurrence_id: occurrenceId, user_id: userId })
+}
+
 export async function getOccurrenceRosterApi(occurrenceId, { includeCanceled = false } = {}) {
   if (!occurrenceId) {
     throw new Error('OCCURRENCE_REQUIRED')

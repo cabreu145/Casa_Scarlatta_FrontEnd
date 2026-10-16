@@ -1775,6 +1775,33 @@ export default function ReportesApiSection({ inPanel = false }) {
                                 </div>
                               )}
                             </div>
+                            {clientHistoryQuery.data?.courtesies?.length > 0 && (
+                              <div style={{ marginTop: 10, border: '1px solid var(--neutral-border)', borderRadius: 10, overflow: 'hidden' }}>
+                                <div style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'rgba(255,255,255,0.02)' }}>
+                                  🎁 Cortesías otorgadas ({clientHistoryQuery.data.courtesies.length})
+                                </div>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                  <thead>
+                                    <tr>
+                                      {['Fecha', 'Cortesía', 'Clases usadas'].map((head) => (
+                                        <th key={head} style={{ textAlign: 'left', fontFamily: 'var(--font-body)', fontSize: 10, color: 'var(--text-muted)', padding: '8px 10px', borderBottom: '1px solid var(--neutral-border)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                          {head}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {clientHistoryQuery.data.courtesies.map((courtesy, idx) => (
+                                      <tr key={idx} style={{ borderBottom: '1px solid var(--neutral-border)' }}>
+                                        <td style={{ padding: '8px 10px', fontFamily: 'var(--font-body)', fontSize: 12 }}>{formatDateTimeMx(courtesy.fecha)}</td>
+                                        <td style={{ padding: '8px 10px', fontSize: 12 }}>{courtesy.paquete}</td>
+                                        <td style={{ padding: '8px 10px', fontSize: 12 }}>{courtesy.clasesUsadas}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )}

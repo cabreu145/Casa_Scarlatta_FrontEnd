@@ -58,6 +58,7 @@ export const ENDPOINTS = {
   crearReserva: withPrefix('/reservas'),
   crearReservaCortesia: withPrefix('/reservas/cortesia'),
   otorgarCreditoCortesia: withPrefix('/reservas/cortesia/credito'),
+  revocarCreditoCortesia: withPrefix('/reservas/cortesia/credito/revocar'),
   cancelarReservasMultiple: withPrefix('/reservas/cancelar-multiple'),
   completarReserva: (id) => withPrefix(`/reservas/${id}/completar`),
   cancelarReserva: (id) => withPrefix(`/reservas/${id}/cancelar`),
@@ -209,7 +210,7 @@ export const ENDPOINTS = {
   rbacUserRoleById: (userId) => withPrefix(`/rbac/users/${userId}/role`),
   rbacUserPermissionsById: (userId) => withPrefix(`/rbac/users/${userId}/permissions`),
 
-  actividad: ({ page, pageSize, category, from, to, actorId, entityType, entityId } = {}) =>
+  actividad: ({ page, pageSize, category, from, to, actorId, entityType, entityId, search } = {}) =>
     withQuery('/actividad', {
       page,
       page_size: pageSize,
@@ -219,6 +220,7 @@ export const ENDPOINTS = {
       actor_id: actorId,
       entity_type: entityType,
       entity_id: entityId,
+      search,
     }),
 
   finanzasKpis: ({ from, to } = {}) =>

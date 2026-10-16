@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import DateNavigator from '@/components/ui/DateNavigator'
 import PaginationControls from '@/components/ui/PaginationControls'
 import { useActividadStore, TIPO_LABELS, TIPO_ICONOS } from '@/stores/actividadStore'
@@ -531,6 +531,18 @@ function ActivityApiView() {
   const [pageSize] = useState(DEFAULT_PAGE_SIZE)
   const [category, setCategory] = useState('')
   const [dateFilter, setDateFilter] = useState({ tipo: 'todos' })
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+
+  // Espera a que termine de escribir antes de consultar (y exige 2+ letras).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const value = searchInput.trim()
+      setSearch(value.length >= 2 ? value : '')
+      setPage(1)
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   const range = useMemo(() => getDateRange(dateFilter), [dateFilter])
   const query = useActivityQuery({
@@ -539,6 +551,7 @@ function ActivityApiView() {
     category,
     from: range.from,
     to: range.to,
+    search,
     enabled: true,
   })
 
@@ -569,6 +582,15 @@ function ActivityApiView() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <input
+            type="text"
+            className={styles.formInput}
+            style={{ width: '100%', maxWidth: 420 }}
+            placeholder="Buscar por nombre, correo, clase, folio…"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            aria-label="Buscar en la actividad"
+          />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {CATEGORY_OPTIONS.map((option) => (
               <button
@@ -619,7 +641,7 @@ function ActivityApiView() {
 
         {!query.isLoading && !query.error && items.length === 0 && (
           <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--muted)' }}>
-            No hay eventos para este rango.
+            {search ? `No encontramos eventos con "${search}".` : 'No hay eventos para este rango.'}
           </div>
         )}
 

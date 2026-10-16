@@ -99,6 +99,7 @@ import {
   useCreateProductMutation,
   useDeleteProductMutation,
   useGrantCourtesyCreditMutation,
+  useRevokeCourtesyCreditMutation,
   useOccurrenceRosterQuery,
   useProductCategoriesQuery,
   useRestockProductMutation,
@@ -577,6 +578,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
   )
   const cancelPendingPaymentMutation = useCancelPendingPaymentAdminMutation()
   const grantCourtesyCreditMutation = useGrantCourtesyCreditMutation()
+  const revokeCourtesyCreditMutation = useRevokeCourtesyCreditMutation()
   const [cancelingPaymentRef, setCancelingPaymentRef] = useState(null)
   const modalAlumnosOccurrenceId = modalAlumnosClase?.occurrenceId ?? modalAlumnosClase?.occurrence_id ?? null
   const occurrenceRosterQuery = useOccurrenceRosterQuery(modalAlumnosOccurrenceId, {
@@ -3746,7 +3748,7 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                       style={{ fontSize: 13, padding: '8px 16px', flexShrink: 0 }}
                       onClick={handleAgregarCortesia}
                       disabled={!alumnoAgregarId || (useApiClasses && !occurrenceId)}
-                      title="Elige el asiento y apártalo gratis para este cliente, sin tocar su paquete pagado"
+                      title="Elige el asiento y apártalo gratis para cualquier cliente, tenga o no paquete. No toca sus créditos"
                     >
                       🎁 Cortesía
                     </button>
@@ -4822,13 +4824,24 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
               hasExistingReservationInOccurrence={Boolean(adminSeatSelector.hasExistingReservationInOccurrence)}
               limitErrorMessage={getOneSpotPerOccurrenceMessage({ admin: true })}
               isAdminBooking
-              financialState={{
-                financialState: targetClient ?? null,
-                creditsBalance: targetClient?.creditsBalance ?? null,
-                activeMembership: targetClient?.activeMembership ?? null,
-                isLoading: adminSeatTargetClientQuery.isLoading,
-                error: adminSeatTargetClientQuery.error,
-              }}
+              financialState={adminSeatSelector.isCourtesy
+                // La cortesía es un crédito aparte de 1 clase (el backend lo usa
+                // primero). La ficha del cliente muestra su paquete normal, que
+                // puede tener 0 créditos o no existir, y bloquearía el asiento.
+                ? {
+                    financialState: { courtesy: true },
+                    creditsBalance: 1,
+                    activeMembership: { creditsAvailable: 1, limitOneSpotPerOccurrence: false },
+                    isLoading: false,
+                    error: null,
+                  }
+                : {
+                    financialState: targetClient ?? null,
+                    creditsBalance: targetClient?.creditsBalance ?? null,
+                    activeMembership: targetClient?.activeMembership ?? null,
+                    isLoading: adminSeatTargetClientQuery.isLoading,
+                    error: adminSeatTargetClientQuery.error,
+                  }}
               onReservationCreated={async () => {
                 const u = (enrollableClients ?? []).find((uu) => Number(uu.id) === adminSeatSelector.userId)
                   ?? usuarios.find(u => u.id === adminSeatSelector.userId)
@@ -4844,7 +4857,14 @@ export default function AdminPanel({ initialSection = 'dashboard' }) {
                   await queryClient.invalidateQueries({ queryKey: ['admin', 'clients'] })
                 }
               }}
-              onClose={() => setAdminSeatSelector(null)}
+              onClose={() => {
+                // Si cerró el mapa sin elegir asiento, la cortesía no usada se retira
+                // (solo afecta cortesías de 1 clase sin usar, nunca un paquete pagado).
+                if (adminSeatSelector.isCourtesy) {
+                  revokeCourtesyCreditMutation.mutate({ occurrenceId, userId: adminSeatSelector.userId })
+                }
+                setAdminSeatSelector(null)
+              }}
             />
           )
         }

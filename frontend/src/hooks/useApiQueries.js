@@ -96,6 +96,7 @@ import {
   cancelarReservasMultipleApi,
   crearReservaApi,
   otorgarCreditoCortesiaApi,
+  revocarCreditoCortesiaApi,
   getMisReservasPaginatedApi,
   getOccurrenceRosterApi,
 } from '@/services/reservasApiService'
@@ -745,6 +746,7 @@ export function useActivityQuery({
   actorId,
   entityType,
   entityId,
+  search,
   enabled = false,
 } = {}) {
   const normalizedPageSize = Math.min(Math.max(1, Number(pageSize) || 20), 100)
@@ -758,6 +760,7 @@ export function useActivityQuery({
       actorId: actorId || '',
       entityType: entityType || '',
       entityId: entityId || '',
+      search: search || '',
     }),
     queryFn: () => getActivityApi({
       page,
@@ -768,6 +771,7 @@ export function useActivityQuery({
       actorId,
       entityType,
       entityId,
+      search,
     }),
     enabled,
     placeholderData: (previousData) => previousData,
@@ -1667,6 +1671,19 @@ export function useGrantCourtesyCreditMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ occurrenceId, userId }) => otorgarCreditoCortesiaApi({ occurrenceId, userId }),
+    onSuccess: async (_data, variables) => {
+      if (variables?.userId != null) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(variables.userId) })
+      }
+    },
+  })
+}
+
+// Takes back a courtesy credit granted to open the seat map but never used.
+export function useRevokeCourtesyCreditMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ occurrenceId, userId }) => revocarCreditoCortesiaApi({ occurrenceId, userId }),
     onSuccess: async (_data, variables) => {
       if (variables?.userId != null) {
         await queryClient.invalidateQueries({ queryKey: queryKeys.adminClientDetail(variables.userId) })

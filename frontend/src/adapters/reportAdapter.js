@@ -320,6 +320,11 @@ export function mapBackendClientPackagePurchaseHistoryToFrontend(payload = {}) {
     name: normalizeString(payload.name, 'Cliente'),
     email: normalizeString(payload.email, ''),
     purchases: (payload.purchases ?? []).map(mapClientPackagePurchase),
+    courtesies: (payload.courtesies ?? []).map((item = {}) => ({
+      fecha: item.fecha ?? null,
+      paquete: normalizeString(item.paquete, 'Cortesía'),
+      clasesUsadas: toNumber(item.clases_usadas ?? item.clasesUsadas, 0),
+    })),
     raw: payload,
   }
 }

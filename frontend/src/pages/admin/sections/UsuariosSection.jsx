@@ -152,13 +152,14 @@ export default function UsuariosSection({
                 <th>Dias sin renovar</th>
                 <th>Ultima visita</th>
                 <th>Reservas</th>
+                <th>Canceladas</th>
                 <th>Estado</th>
                 <th />
               </tr>
             </thead>
             <tbody>
               {!isLoading && usuariosVisibles.length === 0 && (
-                <tr><td colSpan={userSelectMode ? 11 : 10}>No hay clientes para estos filtros.</td></tr>
+                <tr><td colSpan={userSelectMode ? 12 : 11}>No hay clientes para estos filtros.</td></tr>
               )}
               {usuariosVisibles.map((client) => {
                 const selected = userSelectedIds.has(client.id)
@@ -195,6 +196,7 @@ export default function UsuariosSection({
                     <td>{client.daysSinceExpired != null ? `${client.daysSinceExpired} dias` : '-'}</td>
                     <td>{client.lastVisit ?? '-'}</td>
                     <td>{client.reservationsCount ?? '-'}</td>
+                    <td>{client.cancelledReservationsCount ?? '-'}</td>
                     <td><Tag color={statusColor}>{statusLabel}</Tag></td>
                     <td>
                       {!userSelectMode && (

@@ -11,6 +11,7 @@ export async function getActivityApi({
   actorId,
   entityType,
   entityId,
+  search,
 } = {}) {
   const payload = await httpGet(ENDPOINTS.actividad({
     page,
@@ -21,6 +22,7 @@ export async function getActivityApi({
     actorId,
     entityType,
     entityId,
+    search,
   }))
   return mapBackendActivityResponseToFrontend(payload ?? {})
 }
